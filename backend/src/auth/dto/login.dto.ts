@@ -3,7 +3,7 @@ import { UserRole } from '@prisma/client';
 
 /**
  * DTO para Login
- * 
+ *
  * Valida as credenciais do usuário
  * Requer email, senha e o tipo de acesso (ADMIN ou SUPPLIER)
  */

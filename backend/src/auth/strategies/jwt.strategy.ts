@@ -4,26 +4,25 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 
-
 export interface JwtPayload {
-  sub: string;      // ID do usuário (subject)
-  email: string;    // Email do usuário
-  role: string;     // Papel do usuário (ADMIN ou SUPPLIER)
+  sub: string; // ID do usuário (subject)
+  email: string; // Email do usuário
+  role: string; // Papel do usuário (ADMIN ou SUPPLIER)
   companyId?: string; // ID da empresa (se for fornecedor)
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-constructor(
-  private prisma: PrismaService,
-  config: ConfigService
-) {
-  super({
-    jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    ignoreExpiration: false,
-    secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
-  });
-}
+  constructor(
+    private prisma: PrismaService,
+    config: ConfigService,
+  ) {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
+    });
+  }
 
   async validate(payload: JwtPayload) {
     // Busca o usuário no banco pelo ID do payload

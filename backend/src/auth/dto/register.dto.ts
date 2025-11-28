@@ -1,4 +1,11 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  IsOptional,
+  Matches,
+} from 'class-validator';
 
 /**
  * DTO para dados da empresa durante o registro
@@ -8,7 +15,7 @@ export class RegisterCompanyDto {
   @IsString({ message: 'CNPJ deve ser uma string' })
   @IsNotEmpty({ message: 'CNPJ é obrigatório' })
   @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato 00.000.000/0000-00'
+    message: 'CNPJ deve estar no formato 00.000.000/0000-00',
   })
   cnpj: string;
 

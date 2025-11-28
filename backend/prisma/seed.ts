@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...');
+  console.log('Iniciando seed do banco de dados...');
 
   // Limpa dados existentes (cuidado em produção!)
   await prisma.document.deleteMany();
@@ -12,10 +12,10 @@ async function main() {
   await prisma.company.deleteMany();
 
   // ============================================
-  // 1. CRIAR ADMINISTRADOR
+  // 2. CRIAR ADMIN
   // ============================================
   const adminPassword = await bcrypt.hash('123456', 10);
-  
+
   const admin = await prisma.user.create({
     data: {
       name: 'Admin Master',
@@ -25,35 +25,47 @@ async function main() {
     },
   });
 
-  console.log('✅ Administrador criado:', admin.email);
+  console.log(' Admin criado:', admin.email);
 
   // ============================================
-  // 2. CRIAR EMPRESA DEMO
+  // 3. CRIAR EMPLOYEE
   // ============================================
+  const employeePassword = await bcrypt.hash('123456', 10);
+
+  const employee = await prisma.user.create({
+    data: {
+      name: 'Funcionário Interno',
+      email: 'employee@docflow.com',
+      password: employeePassword,
+      role: UserRole.EMPLOYEE,
+    },
+  });
+
+  console.log(' Employee criado:', employee.email);
+
+  // ============================================
+  // 4. CRIAR EMPRESA ATIVA + SUPPLIER
+  // ============================================
+  console.log('\n Criando empresa ativa...');
   const demoCompany = await prisma.company.create({
     data: {
-      cnpj: '12.345.678/0001-99',
+      cnpj: '12345678000199',
       fantasyName: 'Tech Solutions Ltda',
       socialReason: 'Tech Solutions Comércio e Serviços Ltda',
-      zipCode: '69000-000',
+      zipCode: '69000000',
       address: 'Av. Torquato Tapajós',
       number: '123',
       complement: 'Sala 456',
       neighborhood: 'Flores',
       city: 'Manaus',
       state: 'AM',
-      phone: '(92) 99999-9999',
-      status: CompanyStatus.ACTIVE, // Já aprovada para testes
+      phone: '92999999999',
+      status: CompanyStatus.ACTIVE,
     },
   });
 
-  console.log('✅ Empresa demo criada:', demoCompany.fantasyName);
-
-  // ============================================
-  // 3. CRIAR FORNECEDOR DEMO
-  // ============================================
   const supplierPassword = await bcrypt.hash('123456', 10);
-  
+
   const supplier = await prisma.user.create({
     data: {
       name: 'João Silva',
@@ -64,24 +76,26 @@ async function main() {
     },
   });
 
-  console.log('✅ Fornecedor demo criado:', supplier.email);
+  console.log('✔️ Empresa ativa criada:', demoCompany.fantasyName);
+  console.log('✔️ Supplier ativo criado:', supplier.email);
 
   // ============================================
-  // 4. CRIAR EMPRESA PENDENTE PARA TESTES
+  // 5. CRIAR EMPRESA PENDENTE + SUPPLIER
   // ============================================
+  console.log('\n Criando empresa pendente...');
   const pendingCompany = await prisma.company.create({
     data: {
-      cnpj: '98.765.432/0001-10',
+      cnpj: '98765432000110',
       fantasyName: 'Inovação Brasil',
       socialReason: 'Inovação Brasil Tecnologia Ltda',
-      zipCode: '69050-000',
+      zipCode: '69050000',
       address: 'Rua das Américas',
       number: '789',
       neighborhood: 'Adrianópolis',
       city: 'Manaus',
       state: 'AM',
-      phone: '(92) 98888-8888',
-      status: CompanyStatus.PENDING, // Aguardando aprovação
+      phone: '92988888888',
+      status: CompanyStatus.PENDING,
     },
   });
 
@@ -95,27 +109,37 @@ async function main() {
     },
   });
 
-  console.log('✅ Empresa pendente criada:', pendingCompany.fantasyName);
-  console.log('✅ Fornecedor pendente criado:', pendingSupplier.email);
+  console.log('Empresa pendente criada:', pendingCompany.fantasyName);
+  console.log('Supplier pendente criado:', pendingSupplier.email);
 
-  console.log('\n🎉 Seed concluído com sucesso!');
-  console.log('\n📋 Credenciais de acesso:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('👤 Admin:');
-  console.log('   Email: admin@docflow.com');
-  console.log('   Senha: 123456');
-  console.log('\n👤 Fornecedor (Ativo):');
-  console.log('   Email: joao@tech.com');
-  console.log('   Senha: 123456');
-  console.log('\n👤 Fornecedor (Pendente):');
-  console.log('   Email: maria@inovacao.com');
-  console.log('   Senha: 123456');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  // ============================================
+  // 6. LOG FINAL
+  // ============================================
+  console.log('\n Seed concluído com sucesso!');
+  console.log(`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Admin:
+Email: admin@docflow.com
+Senha: 123456
+
+Employee:
+Email: employee@docflow.com
+Senha: 123456
+
+Supplier Ativo:
+Email: joao@tech.com
+Senha: 123456
+
+Supplier Pendente:
+Email: maria@inovacao.com
+Senha: 123456
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Erro ao executar seed:', e);
+    console.error('Erro ao executar seed:', e);
     process.exit(1);
   })
   .finally(async () => {

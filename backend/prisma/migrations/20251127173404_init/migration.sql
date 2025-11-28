@@ -25,6 +25,7 @@ CREATE TABLE "users" (
     "password" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "companyId" TEXT,
+    "position" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "users_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
