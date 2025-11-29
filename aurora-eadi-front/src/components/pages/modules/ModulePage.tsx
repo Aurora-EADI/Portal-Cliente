@@ -24,7 +24,7 @@ export function ModulesPage(){
       title: 'Faturamento',
       description: 'Emissão de notas fiscais, relatório.',
       route: '/faturamento',
-      roles: [UserRole.ADMIN]
+      roles: [UserRole.SUPPLIER,UserRole.ADMIN]
     },
     {
       icon: FileText,

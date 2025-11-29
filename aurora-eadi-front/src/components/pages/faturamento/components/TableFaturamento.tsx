@@ -13,20 +13,75 @@ import { Eye } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { FaturamentoPost } from "@/services/faturamento/type/type_faturamentoCutOff";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
+
+// 🔥 Tipagem forte para as colunas
+type ColumnDefinition = {
+  label: string;
+  field: keyof FaturamentoDetalhado; // garante que só aceita campos válidos
+};
 
 interface Props {
-  data: FaturamentoPost[];
+  data: FaturamentoDetalhado[];
   isLoading: boolean;
-  itemsPerPage?: number; // opcional, padrão 5
+  itemsPerPage?: number;
 }
 
-export function FaturamentoTable({ data, isLoading, itemsPerPage = 5 }: Props) {
+export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = useMemo(() => {
-    return Math.ceil(data.length / itemsPerPage);
-  }, [data.length, itemsPerPage]);
+  const columns: ColumnDefinition[] = [
+    { label: "Cliente", field: "cliente" },
+    { label: "Endereço", field: "endereco" },
+    { label: "Bairro", field: "bairro" },
+    { label: "Cidade", field: "cidade" },
+    { label: "UF", field: "uf" },
+    { label: "CEP", field: "cep" },
+    { label: "CGC", field: "cgc" },
+    { label: "Inscrição Estadual", field: "inscr_esta" },
+    { label: "Inscrição Municipal", field: "inscr_munic" },
+    { label: "Código Cliente", field: "cod_cli" },
+    { label: "RPS", field: "rps" },
+    { label: "Tipo Nota", field: "tp_nota" },
+    { label: "Valor Extenso", field: "vl_extenso" },
+    { label: "Valor Fatura", field: "valor_fatura" },
+    { label: "Valor Serviços", field: "valor_servicos" },
+    { label: "Data Fatura", field: "dt_fatura" },
+    { label: "Data Vencimento", field: "dt_vencimento" },
+    { label: "ISS a Cobrar", field: "iss_cobrar" },
+    { label: "Valor ISS", field: "iss_valor" },
+    { label: "Percentual ISS", field: "iss_percentual" },
+    { label: "II Valor", field: "ii_valor" },
+    { label: "Observação", field: "observacao" },
+    { label: "Modalidade", field: "modalidade" },
+    { label: "Nº Fatura", field: "n_fatura" },
+    { label: "Despachante", field: "despachante" },
+    { label: "Valor CIF", field: "valor_cif" },
+    { label: "Nº DA", field: "n_da" },
+    { label: "Nº DI", field: "n_di" },
+    { label: "Nº Lote", field: "n_lote" },
+    { label: "Nº Conhecimento", field: "n_conhecimento" },
+    { label: "Nº Documento", field: "n_documento" },
+    { label: "TX Dólar", field: "tx_dolar" },
+    { label: "Data Entrada", field: "dt_entrada" },
+    { label: "Período Inicial", field: "nr_periodo_i" },
+    { label: "Período Final", field: "nr_periodo_f" },
+    { label: "Data Período Final", field: "dt_periodo_f" },
+    { label: "Qt Volumes", field: "qt_volumes" },
+    { label: "Peso Bruto", field: "peso_bruto" },
+    { label: "M³", field: "m3" },
+    { label: "Tributação", field: "tributacao_msg" },
+    { label: "Quantidade", field: "quantidade" },
+    { label: "Serviço ID", field: "servico_id" },
+    { label: "Serviço", field: "servico" },
+    { label: "Valor", field: "valor" },
+    { label: "Modalidade Texto", field: "modalidade_txt" },
+  ];
+
+  const totalPages = useMemo(
+    () => Math.ceil(data.length / itemsPerPage),
+    [data.length, itemsPerPage]
+  );
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -36,23 +91,26 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 5 }: Props) {
   const skeletonRows = Array.from({ length: itemsPerPage });
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-  const handleNext = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const handleNext = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Resultados</CardTitle>
+        <CardTitle>Faturamento</CardTitle>
       </CardHeader>
 
       <CardContent>
-        <div className="overflow-auto rounded border">
-          <Table className="text-sm w-full">
+        <div className="overflow-auto rounded border max-h-[70vh]">
+          <Table className="text-xs w-full">
             <TableHeader>
               <TableRow className="bg-gray-100">
-                <TableHead className="p-3 text-left">ID</TableHead>
-                <TableHead className="p-3 text-left">User</TableHead>
-                <TableHead className="p-3 text-left">Título</TableHead>
-                <TableHead className="p-3 text-left">Ações</TableHead>
+                {columns.map((col) => (
+                  <TableHead key={col.field} className="p-2 whitespace-nowrap">
+                    {col.label}
+                  </TableHead>
+                ))}
+                <TableHead className="p-2">Ações</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -60,26 +118,31 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 5 }: Props) {
               {isLoading
                 ? skeletonRows.map((_, idx) => (
                     <TableRow key={idx}>
-                      <TableCell className="p-3">
-                        <Skeleton className="h-4 w-10" />
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <Skeleton className="h-4 w-40" />
-                      </TableCell>
-                      <TableCell className="p-3">
-                        <Skeleton className="h-4 w-6" />
+                      {columns.map((col, i) => (
+                        <TableCell key={i} className="p-2">
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                      <TableCell className="p-2">
+                        <Skeleton className="h-4 w-4" />
                       </TableCell>
                     </TableRow>
                   ))
                 : paginatedData.map((item) => (
-                    <TableRow key={item.id} className="border-t">
-                      <TableCell className="p-3">{item.id}</TableCell>
-                      <TableCell className="p-3">{item.userId}</TableCell>
-                      <TableCell className="p-3">{item.title}</TableCell>
-                      <TableCell className="p-3">
+                    <TableRow
+                      key={item.id}
+                      className="border-t hover:bg-gray-50"
+                    >
+                      {columns.map((col) => (
+                        <TableCell
+                          key={col.field}
+                          className="p-2 whitespace-nowrap"
+                        >
+                          {String(item[col.field] ?? "")}
+                        </TableCell>
+                      ))}
+
+                      <TableCell className="p-2">
                         <Eye className="w-4 h-4 cursor-pointer hover:text-gray-800" />
                       </TableCell>
                     </TableRow>
@@ -88,16 +151,23 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 5 }: Props) {
           </Table>
         </div>
 
-        {/* Paginação */}
         {!isLoading && totalPages > 1 && (
           <div className="flex justify-end items-center gap-2 mt-4">
-            <Button onClick={handlePrev} disabled={currentPage === 1} variant="outline">
+            <Button
+              onClick={handlePrev}
+              disabled={currentPage === 1}
+              variant="outline"
+            >
               Anterior
             </Button>
             <span className="text-sm text-gray-600">
               Página {currentPage} de {totalPages}
             </span>
-            <Button onClick={handleNext} disabled={currentPage === totalPages} variant="outline">
+            <Button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              variant="outline"
+            >
               Próxima
             </Button>
           </div>

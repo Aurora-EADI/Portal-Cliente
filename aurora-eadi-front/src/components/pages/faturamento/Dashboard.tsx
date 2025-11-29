@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getFaturamento } from "@/services/faturamento/faturamentoCutOff";
-import { FaturamentoPost } from "@/services/faturamento/type/type_faturamentoCutOff";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
 
 import { FaturamentoFilters } from "./components/filtersFaturamento";
 import { FaturamentoTable } from "./components/TableFaturamento";
@@ -14,7 +14,7 @@ export function FaturamentoDashboard() {
     userId: "",
   });
 
-  const { data, isLoading } = useQuery<FaturamentoPost[]>({
+  const { data, isLoading } = useQuery<FaturamentoDetalhado[]>({
     queryKey: ["faturamento"],
     queryFn: getFaturamento,
   });
@@ -23,10 +23,10 @@ export function FaturamentoDashboard() {
     if (!data) return [];
 
     return data.filter((item) => {
-      if (filters.busca && !item.title.toLowerCase().includes(filters.busca.toLowerCase()))
+      if (filters.busca && !item.cliente.toLowerCase().includes(filters.busca.toLowerCase()))
         return false;
 
-      if (filters.userId && String(item.userId) !== filters.userId)
+      if (filters.userId && String(item.cidade) !== filters.userId)
         return false;
 
       return true;
