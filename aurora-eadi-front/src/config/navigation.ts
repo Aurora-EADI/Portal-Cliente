@@ -53,7 +53,7 @@ export const navigationContexts: NavigationContext[] = [
 
   // Navegação para a página de Supplier
   {
-    basePath: '/supplier',
+    basePath: '/cadastrar-modulos',
     items: [
       {
         label: 'Home',
@@ -61,12 +61,12 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Meus Documentos',
+        label: 'Cadastro de Módulos',
         icon: FileText,
-        path: '/supplier',
+        path: '/permissoes',
       },
     ],
-    allowedRoles: [UserRole.SUPPLIER],
+    allowedRoles: [UserRole.ADMIN],
   },
 
   // Navegação padrão (Home/Modules) - quando não está em nenhuma página específica

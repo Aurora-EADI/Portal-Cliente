@@ -37,7 +37,7 @@ export function ModulesPage(){
       icon: FileText,
       title: 'Permissões',
       description: 'Criar e permitir acesso aos usuários',
-      route: '/permission',
+      route: '/permissoes',
       roles: [UserRole.ADMIN]
     }
   ];
