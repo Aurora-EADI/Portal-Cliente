@@ -1,8 +1,15 @@
+// src/auth/auth.service.ts
+
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
+import { LoginDto } from './dto/login.dto';
+import {
+  ActivityPermissions,
+  ModuleData,
+  UserPermissionsResponse,
+} from './types/user-permissions.types';
 
 @Injectable()
 export class AuthService {
@@ -11,38 +18,138 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * Realiza o login do usuário
+   */
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
+    // Buscar usuário
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: { company: true },
     });
 
-    if (!user) throw new UnauthorizedException('Email ou senha incorretos');
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas');
+    }
 
+    // Verificar senha
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Email ou senha incorretos');
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Credenciais inválidas');
+    }
 
-    const token = await this.generateToken(user);
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = user;
-    return {
-      message: 'Login realizado com sucesso',
-      access_token: token,
-      user: userWithoutPassword,
-    };
-  }
-
-  private async generateToken(user: any): Promise<string> {
+    // Gerar token JWT
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       companyId: user.companyId,
     };
-    return this.jwtService.signAsync(payload);
+
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: userWithoutPassword,
+    };
+  }
+
+  /**
+   * Busca todas as permissões e módulos ativos do usuário
+   * @param userId - ID do usuário
+   * @returns Módulos e array de permissões
+   */
+  async getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
+    console.log(`[AUTH SERVICE] Buscando permissões para User ID: ${userId}`);
+
+    // Busca módulos ativos do usuário com toda a cadeia de relacionamentos
+    const userModules = await this.prisma.userModuleAccess.findMany({
+      where: { userId, isEnabled: true },
+      include: {
+        module: {
+          include: {
+            activities: {
+              include: {
+                permissions: {
+                  include: { permission: true },
+                },
+              },
+            },
+          },
+        },
+        activityAccess: true,
+      },
+    });
+
+    // Se não tiver módulos, retorna vazio
+    if (userModules.length === 0) {
+      console.log('[AUTH SERVICE] Usuário não tem módulos ativos');
+      return {
+        modules: [],
+        permissions: [],
+      };
+    }
+
+    const permissionsSet = new Set<string>();
+    const modulesData: ModuleData[] = [];
+
+    // Processa cada módulo
+    for (const modAccess of userModules) {
+      const moduleActivities: ActivityPermissions[] = [];
+
+      // Processa cada atividade do módulo
+      for (const activity of modAccess.module.activities) {
+        // Verifica se existe acesso específico (exceção) para esta atividade
+        const specificAccess = modAccess.activityAccess.find(
+          (a) => a.activityId === activity.id,
+        );
+
+        // Define se a atividade está ativa
+        let isActive = activity.isMandatory;
+        if (specificAccess) {
+          isActive = specificAccess.isEnabled;
+        }
+
+        // Extrai as chaves de permissão técnicas (ex: LOG_VIEW_FLEET)
+        const activityPermissions = activity.permissions.map(
+          (ap) => ap.permission.key,
+        );
+
+        // Adiciona atividade ao array
+        moduleActivities.push({
+          id: activity.id,
+          name: activity.name,
+          isMandatory: activity.isMandatory,
+          isActive,
+          permissions: activityPermissions,
+        });
+
+        // Se a atividade está ativa, adiciona suas permissões ao Set
+        if (isActive) {
+          activityPermissions.forEach((p) => permissionsSet.add(p));
+        }
+      }
+
+      // Adiciona módulo ao array
+      modulesData.push({
+        id: modAccess.module.id,
+        name: modAccess.module.name,
+        description: modAccess.module.description,
+        isEnabled: modAccess.isEnabled,
+        activities: moduleActivities,
+      });
+    }
+
+    // Converte Set para Array
+    const finalPermissions = Array.from(permissionsSet);
+
+    console.log('[AUTH SERVICE] Permissões encontradas:', finalPermissions);
+
+    return {
+      modules: modulesData,
+      permissions: finalPermissions,
+    };
   }
 }
