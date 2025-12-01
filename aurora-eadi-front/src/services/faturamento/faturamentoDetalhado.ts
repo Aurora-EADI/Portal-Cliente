@@ -1,5 +1,5 @@
 import axios from "axios";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
 
 const api = axios.create({
   baseURL: "http://localhost:3333/api",

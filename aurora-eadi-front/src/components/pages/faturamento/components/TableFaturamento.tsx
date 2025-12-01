@@ -12,13 +12,11 @@ import {
 import { Eye } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
 
-// 🔥 Tipagem forte para as colunas
 type ColumnDefinition = {
   label: string;
-  field: keyof FaturamentoDetalhado; // garante que só aceita campos válidos
+  field: keyof FaturamentoDetalhado;
 };
 
 interface Props {
@@ -27,10 +25,16 @@ interface Props {
   itemsPerPage?: number;
 }
 
-export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
+export function FaturamentoTable({
+  data,
+  isLoading,
+  itemsPerPage = 20,
+}: Props) {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const columns: ColumnDefinition[] = [
+const columns: ColumnDefinition[] = [
+    { label: "Código Cliente", field: "cod_cli" },
+    { label: "Nº Fatura", field: "n_fatura" },
     { label: "Cliente", field: "cliente" },
     { label: "Endereço", field: "endereco" },
     { label: "Bairro", field: "bairro" },
@@ -40,7 +44,6 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     { label: "CGC", field: "cgc" },
     { label: "Inscrição Estadual", field: "inscr_esta" },
     { label: "Inscrição Municipal", field: "inscr_munic" },
-    { label: "Código Cliente", field: "cod_cli" },
     { label: "RPS", field: "rps" },
     { label: "Tipo Nota", field: "tp_nota" },
     { label: "Valor Extenso", field: "vl_extenso" },
@@ -54,7 +57,6 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     { label: "II Valor", field: "ii_valor" },
     { label: "Observação", field: "observacao" },
     { label: "Modalidade", field: "modalidade" },
-    { label: "Nº Fatura", field: "n_fatura" },
     { label: "Despachante", field: "despachante" },
     { label: "Valor CIF", field: "valor_cif" },
     { label: "Nº DA", field: "n_da" },
@@ -76,7 +78,7 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     { label: "Serviço", field: "servico" },
     { label: "Valor", field: "valor" },
     { label: "Modalidade Texto", field: "modalidade_txt" },
-  ];
+    { label: "Cliente RPS", field: "cliente_rps" }  ];
 
   const totalPages = useMemo(
     () => Math.ceil(data.length / itemsPerPage),
@@ -101,76 +103,71 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
       </CardHeader>
 
       <CardContent>
-        <div className="overflow-auto rounded border max-h-[70vh]">
-          <Table className="text-xs w-full">
-            <TableHeader>
-              <TableRow className="bg-gray-100">
-                {columns.map((col) => (
-                  <TableHead key={col.field} className="p-2 whitespace-nowrap">
-                    {col.label}
-                  </TableHead>
-                ))}
-                <TableHead className="p-2">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
+        {data.length === 0 && !isLoading && (
+          <p className="text-gray-600 text-sm">
+            Nenhum dado carregado. Clique em <b>Buscar Dados</b> acima.
+          </p>
+        )}
 
-            <TableBody>
-              {isLoading
-                ? skeletonRows.map((_, idx) => (
-                    <TableRow key={idx}>
-                      {columns.map((col, i) => (
-                        <TableCell key={i} className="p-2">
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
+        {data.length > 0 && (
+          <>
+            <div className="overflow-auto rounded border max-h-[70vh]">
+              <Table className="text-xs w-full">
+                <TableHeader>
+                  <TableRow className="bg-gray-100">
+                    {columns.map((col) => (
+                      <TableHead key={col.field} className="p-2 whitespace-nowrap">
+                        {col.label}
+                      </TableHead>
+                    ))}
+                    <TableHead className="p-2">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {isLoading
+                    ? skeletonRows.map((_, idx) => (
+                        <TableRow key={idx}>
+                          {columns.map((_, i) => (
+                            <TableCell key={i} className="p-2">
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                          <TableCell className="p-2">
+                            <Skeleton className="h-4 w-4" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : paginatedData.map((item) => (
+                        <TableRow key={item.id} className="border-t hover:bg-gray-50">
+                          {columns.map((col) => (
+                            <TableCell key={col.field} className="p-2 whitespace-nowrap">
+                              {String(item[col.field] ?? "")}
+                            </TableCell>
+                          ))}
+                          <TableCell className="p-2">
+                            <Eye className="w-4 h-4 cursor-pointer hover:text-gray-800" />
+                          </TableCell>
+                        </TableRow>
                       ))}
-                      <TableCell className="p-2">
-                        <Skeleton className="h-4 w-4" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : paginatedData.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      className="border-t hover:bg-gray-50"
-                    >
-                      {columns.map((col) => (
-                        <TableCell
-                          key={col.field}
-                          className="p-2 whitespace-nowrap"
-                        >
-                          {String(item[col.field] ?? "")}
-                        </TableCell>
-                      ))}
+                </TableBody>
+              </Table>
+            </div>
 
-                      <TableCell className="p-2">
-                        <Eye className="w-4 h-4 cursor-pointer hover:text-gray-800" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {!isLoading && totalPages > 1 && (
-          <div className="flex justify-end items-center gap-2 mt-4">
-            <Button
-              onClick={handlePrev}
-              disabled={currentPage === 1}
-              variant="outline"
-            >
-              Anterior
-            </Button>
-            <span className="text-sm text-gray-600">
-              Página {currentPage} de {totalPages}
-            </span>
-            <Button
-              onClick={handleNext}
-              disabled={currentPage === totalPages}
-              variant="outline"
-            >
-              Próxima
-            </Button>
-          </div>
+            {!isLoading && totalPages > 1 && (
+              <div className="flex justify-end items-center gap-2 mt-4">
+                <button onClick={handlePrev} disabled={currentPage === 1}>
+                  Anterior
+                </button>
+                <span className="text-sm text-gray-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <button onClick={handleNext} disabled={currentPage === totalPages}>
+                  Próxima
+                </button>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

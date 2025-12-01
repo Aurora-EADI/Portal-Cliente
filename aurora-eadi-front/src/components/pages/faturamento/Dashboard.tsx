@@ -2,96 +2,65 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getFaturamento } from "@/services/faturamento/faturamentoCutOff";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
-import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
 
 import { FaturamentoFilters } from "./components/filtersFaturamento";
 import { FaturamentoTable } from "./components/TableFaturamento";
+import { ExportExcelButton } from "./components/ExportExcelButton";
 
 export function FaturamentoDashboard() {
   const [filters, setFilters] = useState({
-    busca: "",
-    userId: "",
-  });
+  cliente: "",
+  cod_cli: "",
+  n_fatura: "",
+  n_di: "",
+  n_lote: "",
+  modalidade_txt: "",
+});
 
-  const { data, isLoading } = useQuery<FaturamentoDetalhado[]>({
+
+  const [hasFetched, setHasFetched] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery<FaturamentoDetalhado[]>({
     queryKey: ["faturamento"],
     queryFn: getFaturamento,
+    enabled: false, 
   });
 
+  const handleFetch = async () => {
+    setHasFetched(true);
+    await refetch();
+  };
+
   const filteredData = useMemo(() => {
-    if (!data) return [];
+  if (!data) return [];
 
-    return data.filter((item) => {
-      if (filters.busca && !item.cliente.toLowerCase().includes(filters.busca.toLowerCase()))
-        return false;
+  return data.filter((item) => {
+    if (filters.cliente && !item.cliente.toLowerCase().includes(filters.cliente.toLowerCase()))
+      return false;
 
-      if (filters.userId && String(item.cidade) !== filters.userId)
-        return false;
+    if (filters.cod_cli && String(item.cod_cli) !== filters.cod_cli)
+      return false;
 
-      return true;
-    });
-  }, [data, filters]);
+    if (filters.n_fatura && String(item.n_fatura) !== filters.n_fatura)
+      return false;
 
-  // Função auxiliar para verificar se é uma Data
-  const isDate = (value: unknown): value is Date => {
-    return value instanceof Date && !isNaN(value.getTime());
-  };
+    if (filters.n_di && String(item.n_di) !== filters.n_di)
+      return false;
 
-  const exportToExcel = () => {
-    if (!filteredData || filteredData.length === 0) {
-      alert("Não há dados para exportar");
-      return;
-    }
+    if (filters.n_lote && String(item.n_lote) !== filters.n_lote)
+      return false;
 
-    // Formata os dados para o Excel
-    const dataFormatada = filteredData.map((item) => {
-      const itemFormatado: Record<string, any> = {};
-      
-      Object.entries(item).forEach(([key, value]) => {
-        // Converte datas para formato legível
-        if (isDate(value)) {
-          itemFormatado[key] = value.toLocaleDateString("pt-BR");
-        } else if (typeof value === 'string' && value.includes('-') && !isNaN(Date.parse(value))) {
-          // Tenta converter strings de data (formato ISO)
-          const date = new Date(value);
-          if (isDate(date)) {
-            itemFormatado[key] = date.toLocaleDateString("pt-BR");
-          } else {
-            itemFormatado[key] = value;
-          }
-        } else {
-          itemFormatado[key] = value ?? "";
-        }
-      });
-      
-      return itemFormatado;
-    });
+    if (
+      filters.modalidade_txt &&
+      !item.modalidade_txt.toLowerCase().includes(filters.modalidade_txt.toLowerCase())
+    )
+      return false;
 
-    // Cria a planilha
-    const worksheet = XLSX.utils.json_to_sheet(dataFormatada);
-    
-    // Ajusta a largura das colunas automaticamente
-    const maxWidth = 50;
-    const columns = Object.keys(dataFormatada[0] || {});
-    worksheet["!cols"] = columns.map((col) => {
-      const maxLength = Math.max(
-        col.length,
-        ...dataFormatada.map((row) => String(row[col] || "").length)
-      );
-      return { wch: Math.min(maxLength + 2, maxWidth) };
-    });
-
-    // Cria o workbook e adiciona a planilha
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Faturamento");
-
-    // Gera o arquivo com data no nome
-    const dataAtual = new Date().toISOString().split("T")[0];
-    XLSX.writeFile(workbook, `faturamento_${dataAtual}.xlsx`);
-  };
+    return true;
+  });
+}, [data, filters]);
 
   return (
     <div className="space-y-8 p-6">
@@ -100,20 +69,22 @@ export function FaturamentoDashboard() {
           <h1 className="text-2xl font-bold">Relatório Detalhado de Faturamento</h1>
           <p className="text-gray-500">Dados Consulta SIAUM base Jan/2025.</p>
         </div>
-        
-        <button
-          onClick={exportToExcel}
-          disabled={isLoading || !filteredData || filteredData.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Exportar Excel
-        </button>
+
+        <ExportExcelButton
+          data={filteredData}
+          disabled={!hasFetched || isLoading}
+        />
       </header>
 
-      <FaturamentoFilters filters={filters} setFilters={setFilters} />
+      <FaturamentoFilters
+        filters={filters}
+        setFilters={setFilters}
+        onFetch={handleFetch}
+      />
 
-      <FaturamentoTable data={filteredData} isLoading={isLoading} />
+      {hasFetched && (
+        <FaturamentoTable data={filteredData} isLoading={isLoading} />
+      )}
     </div>
   );
 }

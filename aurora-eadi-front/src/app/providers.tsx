@@ -7,12 +7,12 @@ import { AuthProvider } from "@/context/AuthContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="ligth">
+    // <ThemeProvider attribute="class" defaultTheme="ligth">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           {children}
         </AuthProvider>
       </QueryClientProvider>
-    </ThemeProvider>
+    // </ThemeProvider>
   );
 }

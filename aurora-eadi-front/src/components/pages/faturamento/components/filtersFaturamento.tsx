@@ -2,25 +2,35 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Search } from "lucide-react";
 
-interface Props {
-  filters: {
-    busca: string;
-    userId: string;
-  };
-  setFilters: (value: any) => void;
+interface FiltersProps {
+  cliente: string;
+  cod_cli: string;
+  n_fatura: string;
+  n_di: string;
+  n_lote: string;
+  modalidade_txt: string;
 }
 
-export function FaturamentoFilters({ filters, setFilters }: Props) {
+interface Props {
+  filters: FiltersProps;
+  setFilters: React.Dispatch<React.SetStateAction<FiltersProps>>;
+  onFetch: () => void;
+}
+
+export function FaturamentoFilters({ filters, setFilters, onFetch }: Props) {
+  const clearFilters = () =>
+    setFilters({
+      cliente: "",
+      cod_cli: "",
+      n_fatura: "",
+      n_di: "",
+      n_lote: "",
+      modalidade_txt: "",
+    });
+
   return (
     <Card>
       <CardHeader>
@@ -32,35 +42,70 @@ export function FaturamentoFilters({ filters, setFilters }: Props) {
 
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* Cliente */}
           <Input
-            placeholder="Buscar por título..."
-            value={filters.busca}
-            onChange={(e) => setFilters((p: any) => ({ ...p, busca: e.target.value }))}
+            placeholder="Cliente"
+            value={filters.cliente}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, cliente: e.target.value }))
+            }
           />
 
-          <Select
-            value={filters.userId}
-            onValueChange={(val) => setFilters((p: any) => ({ ...p, userId: val }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="User ID" />
-            </SelectTrigger>
-            <SelectContent>
-              {[1, 2, 3, 4].map((id) => (
-                <SelectItem key={id} value={String(id)}>
-                  {id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Código Cliente */}
+          <Input
+            placeholder="Código Cliente"
+            value={filters.cod_cli}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, cod_cli: e.target.value }))
+            }
+          />
+
+          {/* Nº Fatura */}
+          <Input
+            placeholder="Nº Fatura"
+            value={filters.n_fatura}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, n_fatura: e.target.value }))
+            }
+          />
+
+          {/* Nº DI */}
+          <Input
+            placeholder="Nº DI"
+            value={filters.n_di}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, n_di: e.target.value }))
+            }
+          />
+
+          {/* Nº Lote */}
+          <Input
+            placeholder="Nº Lote"
+            value={filters.n_lote}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, n_lote: e.target.value }))
+            }
+          />
+
+          {/* Modalidade Texto */}
+          <Input
+            placeholder="Modalidade (Marítimo, Aéreo)"
+            value={filters.modalidade_txt}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, modalidade_txt: e.target.value }))
+            }
+          />
         </div>
 
-        <div className="flex justify-end mt-4">
-          <Button
-            variant="secondary"
-            onClick={() => setFilters({ busca: "", userId: "" })}
-          >
+        {/* Botões */}
+        <div className="flex justify-between mt-4">
+          <Button variant="secondary" onClick={clearFilters}>
             Limpar Filtros
+          </Button>
+
+          <Button onClick={onFetch}>
+            Buscar Dados
           </Button>
         </div>
       </CardContent>

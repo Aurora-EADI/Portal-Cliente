@@ -10,7 +10,8 @@ export class FaturamentoService {
 
     const rawQuery = Prisma.sql`
       SELECT 
-        * 
+        *,
+        ((valor_fatura + valor_servicos ) * quantidade)  AS cliente_rps
       FROM 
         faturamento
       ORDER BY 

@@ -1,5 +1,7 @@
 export type FaturamentoDetalhado = {
   id: number;
+  cod_cli: string;
+  n_fatura: string;
   cliente: string;
   endereco: string;
   bairro: string;
@@ -9,7 +11,6 @@ export type FaturamentoDetalhado = {
   cgc: string;
   inscr_esta: string;
   inscr_munic: string;
-  cod_cli: string;
   rps: string;
   tp_nota: string;
   vl_extenso: string;
@@ -23,7 +24,6 @@ export type FaturamentoDetalhado = {
   ii_valor: number;
   observacao: string;
   modalidade: string;
-  n_fatura: string;
   despachante: string;
   valor_cif: number;
   n_da: string;
@@ -45,4 +45,5 @@ export type FaturamentoDetalhado = {
   servico: string;
   valor: number;
   modalidade_txt: string;
+  cliente_rps: number;
 };

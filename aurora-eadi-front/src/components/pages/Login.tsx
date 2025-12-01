@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-export function Login(){
+export function Login() {
   const { mutate: login, isPending: isLoading } = useLogin();
 
   const [email, setEmail] = useState('');
@@ -48,23 +48,30 @@ export function Login(){
 
   return (
     <div className="min-h-screen flex">
-      {/* LADO ESQUERDO */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-500 to-primary-600 p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-20 right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+      <div
+        className="
+    hidden lg:flex lg:w-1/2 
+    relative overflow-hidden 
+    bg-black/40 
+    before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary-600/70 before:to-primary-800/40
+    bg-[url('/cover-home.jpg')] bg-cover bg-center
+    p-12 flex-col justify-between
+  "
+      >
 
+        {/* CONTEÚDO */}
         <div className="relative z-10">
           <div className="mb-8">
-            <Logo size="lg" />
+            <Logo src='/logo_principal.png' size="lg" />
           </div>
         </div>
 
         <div className="relative z-10 max-w-md">
           <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
-            Logística Integrada e Inteligente
+            Gestão completa em um só lugar
           </h1>
           <p className="text-white/90 text-lg">
-            Controle total sobre armazém alfandegado, frota e operações de comércio exterior.
+            Acompanhe operações de armazém alfandegado, controle de frota, processos de comércio exterior e status de cargas. Tudo integrado para agilizar sua rotina e oferecer total transparência nas suas operações.
           </p>
         </div>
 
