@@ -43,7 +43,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Relatório CutOFF',
+        label: 'Relatório Detalhado',
         icon: FileBarChart,
         path: '/faturamento',
       },

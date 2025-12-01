@@ -1,11 +1,11 @@
 import axios from "axios";
-import { FaturamentoPost } from "@/services/faturamento/type/type_faturamentoCutOff";
+import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoCutOff";
 
 const api = axios.create({
-  baseURL: "https://jsonplaceholder.typicode.com",
+  baseURL: "http://localhost:3333/api",
 });
 
-export async function getFaturamento(): Promise<FaturamentoPost[]> {
-  const { data } = await api.get("/posts");
+export async function getFaturamento(): Promise<FaturamentoDetalhado[]> {
+  const { data } = await api.get("/faturamento");
   return data; // sem mapeamento, retorno cru
 }
