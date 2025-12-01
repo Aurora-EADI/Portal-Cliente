@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -187,4 +187,55 @@ model UserActivityAccess {
 
   @@unique([userModuleAccessId, activityId])
   @@map("user_activity_access")
+}
+
+model Faturamento {
+  id                     Int       @id @default(autoincrement())
+  cod_cli                String    @db.VarChar(50) // Código do Cliente
+  n_fatura               String    @db.VarChar(50) // Número da Fatura (Pode ser UNIQUE)
+  cliente                String    @db.VarChar(255)
+  endereco               String?   @db.VarChar(255) // ? = Opcional (Nullable)
+  bairro                 String?   @db.VarChar(100)
+  cidade                 String?   @db.VarChar(100)
+  uf                     String?   @db.VarChar(2)
+  cep                    String?   @db.VarChar(10)
+  cgc                    String?   @db.VarChar(20) // CNPJ/CPF
+  insc_esta              String?   @db.VarChar(50) // Inscrição Estadual
+  insc_munic             String?   @db.VarChar(50) // Inscrição Municipal
+  rps                    String?   @db.VarChar(50)
+  tp_nota                String?   @db.VarChar(20) // Tipo de Nota
+  vl_extenso             String?   @db.VarChar(255) // Valor por Extenso
+  valor_fatura           Decimal   @db.Decimal(10, 2) // Valor Total da Fatura
+  valor_servicos         Decimal   @db.Decimal(10, 2)
+  dt_fatura              DateTime  @db.Date // Data da Fatura
+  dt_vencimento          DateTime  @db.Date // Data de Vencimento
+  dt_entrada             DateTime? @db.Date // Data de Entrada
+  iss_cobrar             String?   @db.VarChar(5) // Indica se o ISS é cobrado (ex: 'S' ou 'N')
+  iss_valor              Decimal?  @db.Decimal(10, 2)
+  iss_percentual         Decimal?  @db.Decimal(5, 2)
+  iii_valor              Decimal?  @db.Decimal(10, 2)
+  tributacao_msg         String?   @db.Text // Mensagem de Tributação
+  observacao             String?   @db.Text
+  modalidade             String?   @db.VarChar(50)
+  despachante            String?   @db.VarChar(100)
+  valor_cif              Decimal?  @db.Decimal(16, 2)
+  n_da                   String?   @db.VarChar(50)
+  n_di                   String?   @db.VarChar(50)
+  n_lote                 String?   @db.VarChar(50)
+  n_conhecimento         String?   @db.VarChar(50)
+  n_documento            String?   @db.VarChar(50)
+  tx_dolar               Decimal?  @db.Decimal(10, 4) // Taxa do Dólar
+  nr_periodo_i           Int? // Número do Período Inicial (ex: mês 1)
+  nr_periodo_f           Int? // Número do Período Final (ex: mês 12)
+  dt_periodo_f           DateTime? @db.Date
+  qt_volumes             Int?
+  peso_bruto             Decimal?  @db.Decimal(10, 2)
+  m3                     Decimal?  @db.Decimal(10, 2)
+  quantidade             Int?
+  servico_id             String?   @db.VarChar(50)
+  servico                String?   @db.Text
+  valor                  Decimal?  @db.Decimal(10, 2) // Algum valor genérico? (se for o total, remova)
+  modalidade_txt         String?   @db.VarChar(100)
+
+  @@map("faturamento")
 }
