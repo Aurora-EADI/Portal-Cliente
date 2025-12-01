@@ -1,28 +1,33 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { UserRole } from '@/types'
-import { FaturamentoDashboard } from '@/components/pages/faturamento/Dashboard'
 import { PermissoesDashboard } from '@/components/pages/permissoes/Dashboard'
 
 export default function PermissoesPage() {
   const { currentUser, isLoading } = useAuthContext()
   const router = useRouter()
+  const [isMounted, setIsMounted] = useState(false)
 
-  useEffect(() => { 
-    if (isLoading) return
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // useEffect(() => { 
+  //   if (!isMounted || isLoading) return
     
-    if (!currentUser) {
-      router.push('/')
-    } else if (currentUser.role !== UserRole.ADMIN) {
-      router.push('/supplier')
-    }
-  }, [currentUser, isLoading, router])
+  //   if (!currentUser) {
+  //     router.push('/')
+  //   } else if (currentUser.role !== UserRole.ADMIN) {
+  //     router.push('/supplier')
+  //   }
+  // }, [currentUser, isLoading, router, isMounted])
 
-  if (isLoading) {
+  // Evita renderizar no servidor
+  if (!isMounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -30,9 +35,9 @@ export default function PermissoesPage() {
     )
   }
 
-  if (!currentUser || currentUser.role !== UserRole.ADMIN) {
-    return null
-  }
+  // if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+  //   return null
+  // }
 
   return (
     <Layout>

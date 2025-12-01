@@ -11,15 +11,15 @@ export default function SupplierPage() {
   const { currentUser, isLoading } = useAuthContext()
   const router = useRouter()
 
-  useEffect(() => {
-    if (isLoading) return
+  // useEffect(() => {
+  //   if (isLoading) return
     
-    if (!currentUser) {
-      router.push('/')
-    } else if (currentUser.role !== UserRole.SUPPLIER) {
-      router.push('/admin')
-    }
-  }, [currentUser, isLoading, router])
+  //   if (!currentUser) {
+  //     router.push('/')
+  //   } else if (currentUser.role !== UserRole.SUPPLIER) {
+  //     router.push('/admin')
+  //   }
+  // }, [currentUser, isLoading, router])
 
   if (isLoading) {
     return (
@@ -29,9 +29,9 @@ export default function SupplierPage() {
     )
   }
 
-  if (!currentUser || currentUser.role !== UserRole.SUPPLIER) {
-    return null
-  }
+  // if (!currentUser || currentUser.role !== UserRole.SUPPLIER) {
+  //   return null
+  // }
 
   return (
     <Layout>

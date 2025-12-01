@@ -11,15 +11,15 @@ export default function AdminPage() {
   const { currentUser, isLoading } = useAuthContext()
   const router = useRouter()
 
-  useEffect(() => { 
-    if (isLoading) return
+  // useEffect(() => { 
+  //   if (isLoading) return
     
-    if (!currentUser) {
-      router.push('/')
-    } else if (currentUser.role !== UserRole.ADMIN) {
-      router.push('/supplier')
-    }
-  }, [currentUser, isLoading, router])
+  //   if (!currentUser) {
+  //     router.push('/')
+  //   } else if (currentUser.role !== UserRole.ADMIN) {
+  //     router.push('/')
+  //   }
+  // }, [currentUser, isLoading, router])
 
   if (isLoading) {
     return (
@@ -29,9 +29,9 @@ export default function AdminPage() {
     )
   }
 
-  if (!currentUser || currentUser.role !== UserRole.ADMIN) {
-    return null
-  }
+  // if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+  //   return null
+  // }
 
   return (
     <Layout>
