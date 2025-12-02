@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { UserRole } from '@/types'
-import { FaturamentoDashboard } from '@/components/pages/faturamento/Dashboard'
+import { FaturamentoPage } from '@/components/pages/faturamento/Dashboard'
 
 export default function AdminPage() {
   const { currentUser, isLoading } = useAuthContext()
@@ -35,7 +35,7 @@ export default function AdminPage() {
 
   return (
     <Layout>
-      <FaturamentoDashboard />
+      <FaturamentoPage />
     </Layout>
   )
 }

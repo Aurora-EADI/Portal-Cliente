@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import React from "react";
 import {
   Table,
   TableHeader,
@@ -9,15 +10,10 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Eye } from "lucide-react";
+import { Eye, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
-
-type ColumnDefinition = {
-  label: string;
-  field: keyof FaturamentoDetalhado;
-};
 
 interface Props {
   data: FaturamentoDetalhado[];
@@ -25,70 +21,72 @@ interface Props {
   itemsPerPage?: number;
 }
 
+type GroupedData = {
+  cliente: string;
+  rps: string;
+  items: FaturamentoDetalhado[];
+};
+
 export function FaturamentoTable({
   data,
   isLoading,
   itemsPerPage = 20,
 }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-const columns: ColumnDefinition[] = [
-    { label: "Código Cliente", field: "cod_cli" },
-    { label: "Nº Fatura", field: "n_fatura" },
-    { label: "Cliente", field: "cliente" },
-    { label: "Endereço", field: "endereco" },
-    { label: "Bairro", field: "bairro" },
-    { label: "Cidade", field: "cidade" },
-    { label: "UF", field: "uf" },
-    { label: "CEP", field: "cep" },
-    { label: "CGC", field: "cgc" },
-    { label: "Inscrição Estadual", field: "inscr_esta" },
-    { label: "Inscrição Municipal", field: "inscr_munic" },
-    { label: "RPS", field: "rps" },
-    { label: "Tipo Nota", field: "tp_nota" },
-    { label: "Valor Extenso", field: "vl_extenso" },
-    { label: "Valor Fatura", field: "valor_fatura" },
-    { label: "Valor Serviços", field: "valor_servicos" },
-    { label: "Data Fatura", field: "dt_fatura" },
-    { label: "Data Vencimento", field: "dt_vencimento" },
-    { label: "ISS a Cobrar", field: "iss_cobrar" },
-    { label: "Valor ISS", field: "iss_valor" },
-    { label: "Percentual ISS", field: "iss_percentual" },
-    { label: "II Valor", field: "ii_valor" },
-    { label: "Observação", field: "observacao" },
-    { label: "Modalidade", field: "modalidade" },
-    { label: "Despachante", field: "despachante" },
-    { label: "Valor CIF", field: "valor_cif" },
-    { label: "Nº DA", field: "n_da" },
-    { label: "Nº DI", field: "n_di" },
-    { label: "Nº Lote", field: "n_lote" },
-    { label: "Nº Conhecimento", field: "n_conhecimento" },
-    { label: "Nº Documento", field: "n_documento" },
-    { label: "TX Dólar", field: "tx_dolar" },
-    { label: "Data Entrada", field: "dt_entrada" },
-    { label: "Período Inicial", field: "nr_periodo_i" },
-    { label: "Período Final", field: "nr_periodo_f" },
-    { label: "Data Período Final", field: "dt_periodo_f" },
-    { label: "Qt Volumes", field: "qt_volumes" },
-    { label: "Peso Bruto", field: "peso_bruto" },
-    { label: "M³", field: "m3" },
-    { label: "Tributação", field: "tributacao_msg" },
-    { label: "Quantidade", field: "quantidade" },
-    { label: "Serviço ID", field: "servico_id" },
-    { label: "Serviço", field: "servico" },
-    { label: "Valor", field: "valor" },
-    { label: "Modalidade Texto", field: "modalidade_txt" },
-    { label: "Cliente RPS", field: "cliente_rps" }  ];
+  // Formatar valores monetários
+  const formatCurrency = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(num);
+  };
+
+  // Formatar datas
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString("pt-BR");
+  };
+
+  // Agrupar dados por Cliente e RPS
+  const groupedData = useMemo(() => {
+    const groups: { [key: string]: GroupedData } = {};
+    
+    data.forEach(item => {
+      const key = `${item.cliente}_${item.rps}`;
+      if (!groups[key]) {
+        groups[key] = {
+          cliente: item.cliente,
+          rps: item.rps,
+          items: []
+        };
+      }
+      groups[key].items.push(item);
+    });
+    
+    return Object.entries(groups).map(([key, value]) => ({ key, ...value }));
+  }, [data]);
 
   const totalPages = useMemo(
-    () => Math.ceil(data.length / itemsPerPage),
-    [data.length, itemsPerPage]
+    () => Math.ceil(groupedData.length / itemsPerPage),
+    [groupedData.length, itemsPerPage]
   );
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return data.slice(start, start + itemsPerPage);
-  }, [currentPage, data, itemsPerPage]);
+    return groupedData.slice(start, start + itemsPerPage);
+  }, [currentPage, groupedData, itemsPerPage]);
+
+  const toggleRow = (key: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedRows(newExpanded);
+  };
 
   const skeletonRows = Array.from({ length: itemsPerPage });
 
@@ -115,12 +113,16 @@ const columns: ColumnDefinition[] = [
               <Table className="text-xs w-full">
                 <TableHeader>
                   <TableRow className="bg-gray-100">
-                    {columns.map((col) => (
-                      <TableHead key={col.field} className="p-2 whitespace-nowrap">
-                        {col.label}
-                      </TableHead>
-                    ))}
-                    <TableHead className="p-2">Ações</TableHead>
+                    <TableHead className="p-2 w-8"></TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Cliente</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">RPS</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Nº Fatura</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Valor Fatura</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Valor Serviços</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Modalidade</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">ISS</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Data Fatura</TableHead>
+                    <TableHead className="p-2 whitespace-nowrap font-semibold">Vencimento</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -128,41 +130,137 @@ const columns: ColumnDefinition[] = [
                   {isLoading
                     ? skeletonRows.map((_, idx) => (
                         <TableRow key={idx}>
-                          {columns.map((_, i) => (
+                          {Array.from({ length: 11 }).map((_, i) => (
                             <TableCell key={i} className="p-2">
                               <Skeleton className="h-4 w-full" />
                             </TableCell>
                           ))}
-                          <TableCell className="p-2">
-                            <Skeleton className="h-4 w-4" />
-                          </TableCell>
                         </TableRow>
                       ))
-                    : paginatedData.map((item) => (
-                        <TableRow key={item.id} className="border-t hover:bg-gray-50">
-                          {columns.map((col) => (
-                            <TableCell key={col.field} className="p-2 whitespace-nowrap">
-                              {String(item[col.field] ?? "")}
-                            </TableCell>
-                          ))}
-                          <TableCell className="p-2">
-                            <Eye className="w-4 h-4 cursor-pointer hover:text-gray-800" />
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                    : paginatedData.map((group) => {
+                        const isExpanded = expandedRows.has(group.key);
+                        const firstItem = group.items[0];
+                        
+                        return (
+                          <React.Fragment key={group.key}>
+                            {/* Linha Principal */}
+                            <TableRow 
+                              className="border-t hover:bg-gray-50 cursor-pointer bg-blue-50"
+                              onClick={() => toggleRow(group.key)}
+                            >
+                              <TableCell className="p-2 text-center">
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 inline-block" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 inline-block" />
+                                )}
+                              </TableCell>
+                              <TableCell className="p-2 font-medium">
+                                {group.cliente}
+                              </TableCell>
+                              <TableCell className="p-2">
+                                {group.rps}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {firstItem.n_fatura}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap font-semibold">
+                                {formatCurrency(firstItem.valor_fatura)}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {formatCurrency(firstItem.valor_servicos)}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {firstItem.modalidade_txt}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {formatCurrency(firstItem.iss_valor)}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {formatDate(firstItem.dt_fatura)}
+                              </TableCell>
+                              <TableCell className="p-2 whitespace-nowrap">
+                                {formatDate(firstItem.dt_vencimento)}
+                              </TableCell>
+                            </TableRow>
+
+                            {/* Seção Expandida com Sub-tabela de Serviços */}
+                            {isExpanded && (
+                              <TableRow className="bg-gray-50">
+                                <TableCell colSpan={11} className="p-0">
+                                  <div className="p-4 bg-white border-l-4 border-blue-500">
+                                    <h4 className="font-semibold text-sm mb-3 text-gray-700">
+                                      Serviços Detalhados
+                                    </h4>
+                                    <Table className="text-xs">
+                                      <TableHeader>
+                                        <TableRow className="bg-blue-100">
+                                          <TableHead className="p-2 font-semibold">Nome do Serviço</TableHead>
+                                          <TableHead className="p-2 font-semibold text-center">Quantidade</TableHead>
+                                          <TableHead className="p-2 font-semibold text-right">Valor Unitário</TableHead>
+                                          <TableHead className="p-2 font-semibold text-right">Total (Qtd × Valor)</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {group.items.map((item, idx) => {
+                                          const quantidade = parseFloat(item.quantidade?.toString() || "0");
+                                          const valorUnitario = parseFloat(item.valor?.toString() || "0");
+                                          const total = quantidade * valorUnitario;
+                                          
+                                          return (
+                                            <TableRow key={idx} className="hover:bg-gray-50">
+                                              <TableCell className="p-2">{item.servico}</TableCell>
+                                              <TableCell className="p-2 text-center">{quantidade}</TableCell>
+                                              <TableCell className="p-2 text-right">{formatCurrency(valorUnitario)}</TableCell>
+                                              <TableCell className="p-2 text-right font-semibold text-blue-600">
+                                                {formatCurrency(total)}
+                                              </TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
+                                        {/* Linha de Total */}
+                                        <TableRow className="bg-blue-50 font-semibold">
+                                          <TableCell className="p-2" colSpan={3}>TOTAL GERAL</TableCell>
+                                          <TableCell className="p-2 text-right text-blue-700">
+                                            {formatCurrency(
+                                              group.items.reduce((sum, item) => {
+                                                const qtd = parseFloat(item.quantidade?.toString() || "0");
+                                                const val = parseFloat(item.valor?.toString() || "0");
+                                                return sum + (qtd * val);
+                                              }, 0)
+                                            )}
+                                          </TableCell>
+                                        </TableRow>
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                 </TableBody>
               </Table>
             </div>
 
             {!isLoading && totalPages > 1 && (
               <div className="flex justify-end items-center gap-2 mt-4">
-                <button onClick={handlePrev} disabled={currentPage === 1}>
+                <button 
+                  onClick={handlePrev} 
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
                   Anterior
                 </button>
                 <span className="text-sm text-gray-600">
                   Página {currentPage} de {totalPages}
                 </span>
-                <button onClick={handleNext} disabled={currentPage === totalPages}>
+                <button 
+                  onClick={handleNext} 
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
                   Próxima
                 </button>
               </div>
