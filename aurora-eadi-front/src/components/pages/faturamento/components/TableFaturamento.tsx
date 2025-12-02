@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import React from "react";
 import {
   Table,
@@ -10,9 +10,18 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Settings, GripVertical } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
 
 interface Props {
@@ -27,6 +36,26 @@ type GroupedData = {
   items: FaturamentoDetalhado[];
 };
 
+type ColumnConfig = {
+  id: string;
+  label: string;
+  visible: boolean;
+  width: number;
+  minWidth: number;
+};
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { id: "cliente", label: "Cliente", visible: true, width: 200, minWidth: 100 },
+  { id: "rps", label: "RPS", visible: true, width: 120, minWidth: 80 },
+  { id: "n_fatura", label: "Nº Fatura", visible: true, width: 120, minWidth: 80 },
+  { id: "valor_fatura", label: "Valor Fatura", visible: true, width: 130, minWidth: 100 },
+  { id: "valor_servicos", label: "Valor Serviços", visible: true, width: 130, minWidth: 100 },
+  { id: "modalidade_txt", label: "Modalidade", visible: true, width: 150, minWidth: 100 },
+  { id: "iss_valor", label: "ISS", visible: true, width: 110, minWidth: 80 },
+  { id: "dt_fatura", label: "Data Fatura", visible: true, width: 120, minWidth: 100 },
+  { id: "dt_vencimento", label: "Vencimento", visible: true, width: 120, minWidth: 100 },
+];
+
 export function FaturamentoTable({
   data,
   isLoading,
@@ -34,6 +63,9 @@ export function FaturamentoTable({
 }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const resizeRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   // Formatar valores monetários
   const formatCurrency = (value: string | number) => {
@@ -88,6 +120,81 @@ export function FaturamentoTable({
     setExpandedRows(newExpanded);
   };
 
+  const toggleColumnVisibility = (columnId: string) => {
+    setColumns(prev =>
+      prev.map(col =>
+        col.id === columnId ? { ...col, visible: !col.visible } : col
+      )
+    );
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, columnId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const column = columns.find(col => col.id === columnId);
+    if (!column) return;
+
+    resizeRef.current = {
+      columnId,
+      startX: e.clientX,
+      startWidth: column.width,
+    };
+    setResizingColumn(columnId);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return;
+
+      const { columnId, startX, startWidth } = resizeRef.current;
+      const column = columns.find(col => col.id === columnId);
+      if (!column) return;
+
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(column.minWidth, startWidth + diff);
+
+      setColumns(prev =>
+        prev.map(col =>
+          col.id === columnId ? { ...col, width: newWidth } : col
+        )
+      );
+    };
+
+    const handleMouseUp = () => {
+      resizeRef.current = null;
+      setResizingColumn(null);
+    };
+
+    if (resizingColumn) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [resizingColumn, columns]);
+
+  const getCellValue = (item: FaturamentoDetalhado, columnId: string) => {
+    switch (columnId) {
+      case "valor_fatura":
+      case "valor_servicos":
+      case "iss_valor":
+        return formatCurrency(item[columnId]);
+      case "dt_fatura":
+      case "dt_vencimento":
+        return formatDate(item[columnId]);
+      default:
+        return item[columnId as keyof FaturamentoDetalhado];
+    }
+  };
+
+  const visibleColumns = columns.filter(col => col.visible);
   const skeletonRows = Array.from({ length: itemsPerPage });
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
@@ -96,8 +203,30 @@ export function FaturamentoTable({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Faturamento</CardTitle>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Colunas
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Exibir Colunas</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {columns.map(column => (
+              <DropdownMenuCheckboxItem
+                key={column.id}
+                checked={column.visible}
+                onCheckedChange={() => toggleColumnVisibility(column.id)}
+              >
+                {column.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </CardHeader>
 
       <CardContent>
@@ -113,16 +242,27 @@ export function FaturamentoTable({
               <Table className="text-xs w-full">
                 <TableHeader>
                   <TableRow className="bg-gray-100">
-                    <TableHead className="p-2 w-8"></TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Cliente</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">RPS</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Nº Fatura</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Valor Fatura</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Valor Serviços</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Modalidade</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">ISS</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Data Fatura</TableHead>
-                    <TableHead className="p-2 whitespace-nowrap font-semibold">Vencimento</TableHead>
+                    <TableHead className="p-2 w-8 sticky left-0 bg-gray-100 z-10"></TableHead>
+                    {visibleColumns.map((column) => (
+                      <TableHead
+                        key={column.id}
+                        className="p-2 whitespace-nowrap font-semibold relative group select-none"
+                        style={{ width: `${column.width}px`, minWidth: `${column.minWidth}px` }}
+                      >
+                        <div className="flex items-center justify-between pr-2">
+                          <span>{column.label}</span>
+                          <div
+                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 hover:w-1 transition-all z-20"
+                            onMouseDown={(e) => handleMouseDown(e, column.id)}
+                            style={{
+                              backgroundColor: resizingColumn === column.id ? '#3b82f6' : 'transparent',
+                              width: resizingColumn === column.id ? '2px' : undefined
+                            }}
+                            title="Arraste para redimensionar"
+                          />
+                        </div>
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
 
@@ -130,8 +270,11 @@ export function FaturamentoTable({
                   {isLoading
                     ? skeletonRows.map((_, idx) => (
                         <TableRow key={idx}>
-                          {Array.from({ length: 11 }).map((_, i) => (
-                            <TableCell key={i} className="p-2">
+                          <TableCell className="p-2">
+                            <Skeleton className="h-4 w-4" />
+                          </TableCell>
+                          {visibleColumns.map((col) => (
+                            <TableCell key={col.id} className="p-2">
                               <Skeleton className="h-4 w-full" />
                             </TableCell>
                           ))}
@@ -143,51 +286,39 @@ export function FaturamentoTable({
                         
                         return (
                           <React.Fragment key={group.key}>
-                            {/* Linha Principal */}
                             <TableRow 
                               className="border-t hover:bg-gray-50 cursor-pointer bg-blue-50"
                               onClick={() => toggleRow(group.key)}
                             >
-                              <TableCell className="p-2 text-center">
+                              <TableCell className="p-2 text-center sticky left-0 bg-blue-50 z-10">
                                 {isExpanded ? (
                                   <ChevronDown className="w-4 h-4 inline-block" />
                                 ) : (
                                   <ChevronRight className="w-4 h-4 inline-block" />
                                 )}
                               </TableCell>
-                              <TableCell className="p-2 font-medium">
-                                {group.cliente}
-                              </TableCell>
-                              <TableCell className="p-2">
-                                {group.rps}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {firstItem.n_fatura}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap font-semibold">
-                                {formatCurrency(firstItem.valor_fatura)}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {formatCurrency(firstItem.valor_servicos)}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {firstItem.modalidade_txt}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {formatCurrency(firstItem.iss_valor)}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {formatDate(firstItem.dt_fatura)}
-                              </TableCell>
-                              <TableCell className="p-2 whitespace-nowrap">
-                                {formatDate(firstItem.dt_vencimento)}
-                              </TableCell>
+                              {visibleColumns.map((column) => (
+                                <TableCell
+                                  key={column.id}
+                                  className={`p-2 whitespace-nowrap ${
+                                    column.id === 'valor_fatura' ? 'font-semibold' : ''
+                                  } ${column.id === 'cliente' ? 'font-medium' : ''}`}
+                                  style={{ 
+                                    width: `${column.width}px`,
+                                    maxWidth: `${column.width}px`,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                  }}
+                                  title={String(getCellValue(firstItem, column.id))}
+                                >
+                                  {getCellValue(firstItem, column.id)}
+                                </TableCell>
+                              ))}
                             </TableRow>
 
-                            {/* Seção Expandida com Sub-tabela de Serviços */}
                             {isExpanded && (
                               <TableRow className="bg-gray-50">
-                                <TableCell colSpan={11} className="p-0">
+                                <TableCell colSpan={visibleColumns.length + 1} className="p-0">
                                   <div className="p-4 bg-white border-l-4 border-blue-500">
                                     <h4 className="font-semibold text-sm mb-3 text-gray-700">
                                       Serviços Detalhados
@@ -218,7 +349,6 @@ export function FaturamentoTable({
                                             </TableRow>
                                           );
                                         })}
-                                        {/* Linha de Total */}
                                         <TableRow className="bg-blue-50 font-semibold">
                                           <TableCell className="p-2" colSpan={3}>TOTAL GERAL</TableCell>
                                           <TableCell className="p-2 text-right text-blue-700">
@@ -245,24 +375,31 @@ export function FaturamentoTable({
             </div>
 
             {!isLoading && totalPages > 1 && (
-              <div className="flex justify-end items-center gap-2 mt-4">
-                <button 
-                  onClick={handlePrev} 
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  Anterior
-                </button>
-                <span className="text-sm text-gray-600">
-                  Página {currentPage} de {totalPages}
-                </span>
-                <button 
-                  onClick={handleNext} 
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  Próxima
-                </button>
+              <div className="flex justify-between items-center mt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, groupedData.length)} de {groupedData.length} registros
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={handlePrev} 
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-gray-600 px-2">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button 
+                    onClick={handleNext} 
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Próxima
+                  </Button>
+                </div>
               </div>
             )}
           </>

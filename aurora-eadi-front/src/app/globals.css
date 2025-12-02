@@ -81,3 +81,15 @@ vercel-live-feedback {
     cursor: not-allowed !important;
   }
 }
+
+.tabulator {
+  font-size: 0.75rem;
+}
+
+.tabulator-row.tabulator-tree-level-0 {
+  font-weight: 500;
+}
+
+.tabulator .tabulator-header {
+  background-color: #f3f4f6;
+}
