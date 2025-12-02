@@ -67,10 +67,17 @@ vercel-live-feedback {
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  [type="button"]:not(:disabled) {
+    cursor: pointer !important;
   }
-  body {
-    @apply bg-background text-foreground;
+  
+  button:disabled,
+  [role="button"]:disabled,
+  [type="button"]:disabled,
+  button[disabled],
+  button[data-disabled="true"] {
+    cursor: not-allowed !important;
   }
 }
