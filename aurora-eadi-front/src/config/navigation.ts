@@ -50,7 +50,7 @@ export const navigationContexts: NavigationContext[] = [
       {
         label: 'Relatório CutOff',
         icon: FileBarChart,
-        path: '/cutoff',
+        path: '/faturamento/cutoff',
       },
     ],
     allowedRoles: [UserRole.ADMIN],

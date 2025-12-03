@@ -1,55 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, Menu, ChevronLeft } from 'lucide-react';
 import { UserRole } from '@/types';
-import { Logo } from '@/components/ui/Logo';
 import { getNavigationByPath } from '@/config/navigation';
 
 interface SidebarItemProps {
   label: string;
   icon: React.ReactNode;
   active: boolean;
+  collapsed: boolean;
   onClick: () => void;
 }
 
-export function SidebarItem({ label, icon, active, onClick }: SidebarItemProps) {
+function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemProps) {
   return (
     <Button
       variant={active ? "secondary" : "ghost"}
       className={`
-        w-full justify-start gap-3 
+        w-full flex items-center 
+        justify-${collapsed ? "center" : "start"} 
+        gap-3 transition-all duration-200 
+        overflow-hidden
         text-slate-300 hover:bg-slate-800 hover:text-white
         ${active ? "bg-primary-600 text-white hover:bg-primary-700" : ""}
+        ${collapsed ? "px-3" : "px-4"}
       `}
       onClick={onClick}
     >
       {icon}
-      {label}
+      {!collapsed && <span className="whitespace-nowrap">{label}</span>}
     </Button>
   );
 }
 
-interface SidebarProps {
-  className?: string;
-  showUserInfo?: boolean;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  className = "", 
-  showUserInfo = true 
-}) => {
+export const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser, logoutUser } = useAuthContext();
 
+  const [collapsed, setCollapsed] = useState(false);
+
   if (!currentUser) return null;
 
-  // 🎯 Obtém os itens de navegação baseado no PATH ATUAL
   const navigationItems = getNavigationByPath(pathname);
 
   const isActive = (path: string) => pathname === path;
@@ -59,46 +56,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
     router.push('/');
   };
 
-  const getRoleLabel = (role: UserRole) => {
-    return role === UserRole.ADMIN ? 'Administrador' : 'Fornecedor';
-  };
-
   return (
-    <div className={`w-full md:w-64 bg-slate-900 border-b md:border-r border-slate-700 flex flex-col ${className}`}>
-      {/* Logo */}
-      <div className="p-6 flex items-center justify-center md:justify-start border-b border-slate-800">
-        <Logo src='/logo_principal.png' size="md" />
+    <div
+      className={`
+        relative
+        bg-slate-900 border-r border-slate-700 
+         h-screen flex flex-col
+        transition-all duration-300
+        ${collapsed ? "w-16" : "w-64"}
+      `}
+    >
+      {/* Collapse Button */}
+      <div className="absolute -right-5 top-4 z-20">
+        <Button
+          size="icon"
+          variant="secondary"
+          className="rounded-full shadow-md"
+          onClick={() => setCollapsed((prev) => !prev)}
+        >
+          {collapsed ? <Menu size={18} /> : <ChevronLeft size={18} />}
+        </Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          {/* User Info */}
-          {showUserInfo && (
-            <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg mb-6">
-              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-primary-400">
-                <UserIcon size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {currentUser.name}
-                </p>
-                <p className="text-xs text-slate-400 capitalize">
-                  {getRoleLabel(currentUser.role)}
-                </p>
-              </div>
-            </div>
-          )}
+      {/* LOGO */}
+      <div className="p-4 flex items-center justify-center border-b border-slate-800">
+        {!collapsed ? (
+          <span className="text-white font-semibold text-lg tracking-wide">Aurora EADI</span>
+        ) : (
+          <span className="text-white text-lg font-bold">AE</span>
+        )}
+      </div>
 
-          {/* Navigation Items - Dinâmicos baseado no PATH */}
+      {/* NAVIGATION */}
+      <ScrollArea className="flex-1">
+        <div className="p-2">
           <nav className="space-y-1">
             {navigationItems.map((item) => {
-              const IconComponent = item.icon;
+              const Icon = item.icon;
               return (
                 <SidebarItem
                   key={item.path}
                   label={item.label}
-                  icon={<IconComponent size={18} />}
+                  icon={<Icon size={18} />}
                   active={isActive(item.path)}
+                  collapsed={collapsed}
                   onClick={() => router.push(item.path)}
                 />
               );
@@ -107,15 +108,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </ScrollArea>
 
-      {/* Logout Button */}
+      {/* Logout */}
       <div className="p-4 border-t border-slate-800">
         <Button
           variant="ghost"
           onClick={handleLogout}
-          className="w-full justify-start text-red-500 hover:bg-red-900/20 gap-2"
+          className={`
+            w-full flex items-center gap-2 
+            justify-${collapsed ? "center" : "start"}
+            text-red-500 hover:bg-red-900/20
+          `}
         >
           <LogOut size={18} />
-          Sair
+          {!collapsed && "Sair"}
         </Button>
       </div>
     </div>

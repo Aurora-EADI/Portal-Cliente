@@ -6,6 +6,7 @@ import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { SupplierDashboard } from '@/components/pages/supplier/Dashboard'
 import { UserRole } from '@/types'
+import { Header } from '@/components/layout/Header'
 
 export default function SupplierPage() {
   const { currentUser, isLoading } = useAuthContext()
@@ -13,7 +14,7 @@ export default function SupplierPage() {
 
   // useEffect(() => {
   //   if (isLoading) return
-    
+
   //   if (!currentUser) {
   //     router.push('/')
   //   } else if (currentUser.role !== UserRole.SUPPLIER) {
@@ -34,8 +35,11 @@ export default function SupplierPage() {
   // }
 
   return (
-    <Layout>
-      <SupplierDashboard />
-    </Layout>
+    <div className="h-screen flex flex-col overflow-hidden">
+      <Header />
+      <Layout>
+        <SupplierDashboard />
+      </Layout>
+    </div>
   )
 }

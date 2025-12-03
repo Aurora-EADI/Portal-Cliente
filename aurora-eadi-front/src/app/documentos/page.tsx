@@ -6,6 +6,7 @@ import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { AdminDashboard } from '@/components/pages/documentos/Dashboard'
 import { UserRole } from '@/types'
+import { Header } from '@/components/layout/Header'
 
 export default function AdminPage() {
   const { currentUser, isLoading } = useAuthContext()
@@ -13,7 +14,7 @@ export default function AdminPage() {
 
   // useEffect(() => { 
   //   if (isLoading) return
-    
+
   //   if (!currentUser) {
   //     router.push('/')
   //   } else if (currentUser.role !== UserRole.ADMIN) {
@@ -34,8 +35,11 @@ export default function AdminPage() {
   // }
 
   return (
-    <Layout>
-      <AdminDashboard />
-    </Layout>
+    <div className="h-screen flex flex-col overflow-hidden">
+      <Header />
+      <Layout>
+        <AdminDashboard />
+      </Layout>
+    </div>
   )
 }
