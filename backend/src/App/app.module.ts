@@ -10,6 +10,7 @@ import { ModulesModule } from 'src/modules/modules.module';
 import { UserModule } from 'src/user/user.module';
 import { PermissionsModule } from 'src/permissions/permissions.module';
 import { ActivitiesModule } from 'src/activities/activities.module';
+import { UserModuleAccessModule } from 'src/user-module-access/user-module-access.module';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { ActivitiesModule } from 'src/activities/activities.module';
     ModulesModule,
     UserModule,
     PermissionsModule,
-    ActivitiesModule
+    ActivitiesModule,
+    UserModuleAccessModule
   ],
 })
 export class AppModule {}
