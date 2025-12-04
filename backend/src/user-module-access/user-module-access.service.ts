@@ -3,7 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
 import { ToggleModuleDto } from './dto/toggle-module.dto';
 import { BulkAssignModulesDto } from './dto/bulk-assign-modules.dto';
 

@@ -4,7 +4,7 @@ import {
     ConflictException,
     BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { UpdateActivityPermissionsDto } from './dto/update-activity-permissions.dto';

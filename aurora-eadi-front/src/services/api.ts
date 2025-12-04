@@ -116,3 +116,79 @@ export const companyService = {
     }
   }
 };
+
+// --- MODULES SERVICE ---
+export interface Module {
+  id: number;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  activities?: Activity[];
+}
+
+export interface Activity {
+  id: number;
+  name: string;
+  description: string;
+  moduleId: number;
+  permissions?: ActivityPermission[];
+}
+
+export interface ActivityPermission {
+  id: number;
+  activityId: number;
+  permissionId: number;
+  permission: Permission;
+}
+
+export interface Permission {
+  id: number;
+  name: string;
+  description: string;
+}
+
+export interface CreateModuleDto {
+  name: string;
+  description: string;
+}
+
+export const modulesService = {
+  /**
+   * Busca todos os módulos com suas atividades e permissões
+   */
+  getAll: async (): Promise<Module[]> => {
+    try {
+      const response = await httpClient.get('/modules');
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao buscar módulos';
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Cria um novo módulo
+   */
+  create: async (data: CreateModuleDto): Promise<Module> => {
+    try {
+      const response = await httpClient.post('/modules', data);
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao criar módulo';
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Remove um módulo
+   */
+  remove: async (id: number): Promise<void> => {
+    try {
+      await httpClient.delete(`/modules/${id}`);
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao remover módulo';
+      throw new Error(message);
+    }
+  },
+};

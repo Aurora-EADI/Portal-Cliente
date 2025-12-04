@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import { ModulesPage } from '@/components/pages/modules/ModulePage'
 import { Header } from '@/components/layout/Header'
-import { Layout } from '@/components/layout/Layout'
+
 
 export default function Modules() {
   const { currentUser, isLoading } = useAuthContext()
@@ -27,11 +27,9 @@ export default function Modules() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <>
       <Header />
-      <Layout>
-        <ModulesPage />
-      </Layout>
-    </div>
+      <ModulesPage />
+    </>
   );
 }

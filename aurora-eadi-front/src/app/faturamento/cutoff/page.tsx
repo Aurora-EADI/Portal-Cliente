@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { UserRole } from '@/types'
-import { FaturamentoPage } from '@/components/pages/faturamento/Dashboard'
+import { CutOff } from '@/components/pages/faturamento/cutoff/Dashboard'
 import { Header } from '@/components/layout/Header'
 
-export default function AdminPage() {
+export default function FaturamentoCutOff() {
   const { currentUser, isLoading } = useAuthContext()
   const router = useRouter()
 
@@ -24,7 +24,7 @@ export default function AdminPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
@@ -38,7 +38,7 @@ export default function AdminPage() {
     <div className="h-screen flex flex-col overflow-hidden">
       <Header />
       <Layout>
-        <></>
+        <CutOff />
       </Layout>
     </div>
   )

@@ -1,0 +1,11 @@
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL_SQLSERVER")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client-sqlserver"
+}
+
+// Schema vazio - use apenas $queryRaw para consultas

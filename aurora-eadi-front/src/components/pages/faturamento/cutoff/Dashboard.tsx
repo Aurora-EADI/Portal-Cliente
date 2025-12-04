@@ -2,10 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FaturamentoFilters } from "./components/filtersFaturamento";
-import { FaturamentoTable } from "./components/TableFaturamento";
+import { FaturamentoFilters } from "../cutoff/components/filtersFaturamento";
+import { FaturamentoTable } from "../cutoff/components/TableFaturamento";
 import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
 import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { ExportExcelButton } from "../cutoff/components/ExportExcelButton";
 
 export interface FiltersProps {
   cliente: string;
@@ -18,7 +19,8 @@ export interface FiltersProps {
   dt_fatura_fim: string;
 }
 
-export function FaturamentoPage() {
+export function CutOff() {
+  // Estado dos filtros (ATUALIZADO com campos de data)
   const [filters, setFilters] = useState<FiltersProps>({
     cliente: "",
     n_fatura: "",
@@ -30,25 +32,10 @@ export function FaturamentoPage() {
     dt_fatura_fim: ""
   });
 
-  // Armazena os parâmetros da última busca realizada
-  const [searchParams, setSearchParams] = useState<{
-    dt_inicio: string;
-    dt_fim: string;
-  } | null>(null);
-
-  // Query só executa quando searchParams não é null
   const { data, isLoading, refetch } = useQuery<FaturamentoDetalhado[]>({
-    queryKey: ["faturamento", searchParams?.dt_inicio, searchParams?.dt_fim],
-    queryFn: () => {
-      if (!searchParams) {
-        return Promise.resolve([]);
-      }
-      return getFaturamento(searchParams.dt_inicio, searchParams.dt_fim);
-    },
-    enabled: searchParams !== null,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    queryKey: ["faturamento", filters.dt_fatura_inicio, filters.dt_fatura_fim],
+    queryFn: () => getFaturamento(filters.dt_fatura_inicio, filters.dt_fatura_fim),
+    enabled: false,
   });
 
   const clientesUnicos = useMemo(() => {
@@ -76,7 +63,45 @@ export function FaturamentoPage() {
     }).format(valor);
   };
 
-  // Filtragem no frontend (após receber dados da API)
+  // Função auxiliar para converter string de data DD/MM/YYYY para Date
+  const parseDate = (value: string | Date | null): Date | null => {
+    if (!value) return null;
+
+    // Caso já seja Date
+    if (value instanceof Date) return value;
+
+    // Remover milissegundos e horas se existirem
+    const cleaned = value.split("T")[0].split(" ")[0];
+
+    // Formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+      const [y, m, d] = cleaned.split("-");
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    // Formato DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleaned)) {
+      const [d, m, y] = cleaned.split("/");
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+
+    return null;
+  };
+
+  // Função auxiliar para comparar datas
+  const isDateInRange = (itemDate: any, start: string, end: string) => {
+    const date = parseDate(itemDate);
+    if (!date) return true;
+
+    const startDate = start ? parseDate(start) : null;
+    const endDate = end ? parseDate(end) : null;
+
+    if (startDate && date < startDate) return false;
+    if (endDate && date > endDate) return false;
+
+    return true;
+  };
+
   const filteredData = useMemo(() => {
     if (!data) return [];
 
@@ -99,39 +124,21 @@ export function FaturamentoPage() {
       const matchModalidade = !filters.modalidade_txt ||
         item.modalidade_txt?.toLowerCase().includes(filters.modalidade_txt.toLowerCase());
 
+      const matchData = isDateInRange(
+        item.dt_fatura, 
+        filters.dt_fatura_inicio,
+        filters.dt_fatura_fim
+      );
+
       return matchCliente && matchFatura && matchRps &&
-        matchDI && matchLote && matchModalidade;
+        matchDI && matchLote && matchModalidade && matchData;
     });
   }, [data, filters]);
 
-  // Função chamada SOMENTE quando usuário clica em "Buscar Dados"
   const handleFetch = () => {
-    if (filters.dt_fatura_inicio && filters.dt_fatura_fim) {
-      setSearchParams({
-        dt_inicio: filters.dt_fatura_inicio,
-        dt_fim: filters.dt_fatura_fim
-      });
-    }
+    refetch();
   };
 
-  // Função auxiliar para converter valores para número
-  const parseNumericValue = (value: any): number => {
-    if (value === null || value === undefined || value === '') return 0;
-    if (typeof value === 'number') return value;
-
-    if (typeof value === 'string') {
-      const cleaned = value
-        .replace(/[^\d,.-]/g, '')
-        .replace(',', '.');
-
-      const parsed = parseFloat(cleaned);
-      return isNaN(parsed) ? 0 : parsed;
-    }
-
-    return 0;
-  };
-
-  // Métricas calculadas com base nos dados filtrados
   const metricas = useMemo(() => {
     if (!filteredData || filteredData.length === 0) {
       return {
@@ -142,37 +149,13 @@ export function FaturamentoPage() {
       };
     }
 
-    // Total Faturado: soma de todos os valores de fatura
-    const totalFaturado = filteredData.reduce((acc, item) => {
-      const valor = parseNumericValue(item.valor_fatura);
-      return acc + valor;
-    }, 0);
-
-    // Quantidade RPS: conta quantos registros únicos têm RPS preenchido
-    const quantidadeRPS = new Set(
-      filteredData
-        .map(item => item.rps)
-        .filter(rps => rps && String(rps).trim() !== "")
-    ).size;
-
-    // Total ISS 5%: soma dos valores de ISS
-    const totalISS = filteredData.reduce((acc, item) => {
-      const valorISS = parseNumericValue(item.iss_valor);
-      return acc + valorISS;
-    }, 0);
-
-    // Total Outros Serviços: quantidade * valor
-    const totalOutrosServicos = filteredData.reduce((acc, item) => {
-      const quantidade = parseNumericValue(item.quantidade);
-      const valor = parseNumericValue(item.valor);
-      return acc + (quantidade * valor);
-    }, 0);
-
     return {
-      totalFaturado,
-      quantidadeRPS,
-      totalISS,
-      totalOutrosServicos
+      totalFaturado: filteredData.reduce((acc, item) => acc + (Number(item.valor_fatura) || 0), 0),
+      quantidadeRPS: filteredData.filter(item => item.rps).length,
+      totalISS: filteredData.reduce((acc, item) => acc + (Number(item.iss_valor) || 0), 0),
+      totalOutrosServicos: filteredData.reduce((acc, item) =>
+        acc + ((item.quantidade || 0) * (item.valor || 0)), 0
+      )
     };
   }, [filteredData]);
 

@@ -104,7 +104,7 @@ const formatDate = (date: string): string => {
 
 const getCellValue = (item: FaturamentoDetalhado, columnId: string): string | number => {
   const fieldName = columnId.replace('col_', '') as keyof FaturamentoDetalhado;
-  
+
   switch (fieldName) {
     case "valor_fatura":
     case "valor_servicos":
@@ -127,9 +127,9 @@ const TableSkeletonRow = ({ visibleColumns }: { visibleColumns: ColumnConfig[] }
     </TableCell>
     {visibleColumns.map((col) => (
       <TableCell key={col.id} className="p-2">
-        <Skeleton 
-          className="h-4 rounded" 
-          style={{ 
+        <Skeleton
+          className="h-4 rounded"
+          style={{
             width: `${Math.floor(Math.random() * 40 + 50)}%`,
           }}
         />
@@ -189,7 +189,7 @@ interface ExpandedRowContentProps {
 }
 
 const ExpandedRowContent = ({ group, visibleColumnsCount }: ExpandedRowContentProps) => {
-  const totalGeral = useMemo(() => 
+  const totalGeral = useMemo(() =>
     group.items.reduce((sum, item) => {
       const qtd = parseFloat(item.quantidade?.toString() || "0");
       const val = parseFloat(item.valor?.toString() || "0");
@@ -219,7 +219,7 @@ const ExpandedRowContent = ({ group, visibleColumnsCount }: ExpandedRowContentPr
                 const quantidade = parseFloat(item.quantidade?.toString() || "0");
                 const valorUnitario = parseFloat(item.valor?.toString() || "0");
                 const total = quantidade * valorUnitario;
-                
+
                 return (
                   <TableRow key={idx} className="hover:bg-gray-50">
                     <TableCell className="p-2">{item.servico}</TableCell>
@@ -286,8 +286,8 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
       Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
     </div>
     <div className="flex items-center gap-2">
-      <Button 
-        onClick={onPrev} 
+      <Button
+        onClick={onPrev}
         disabled={currentPage === 1}
         variant="outline"
         size="sm"
@@ -297,8 +297,8 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
       <span className="text-sm text-gray-600 px-2">
         Página {currentPage} de {totalPages}
       </span>
-      <Button 
-        onClick={onNext} 
+      <Button
+        onClick={onNext}
         disabled={currentPage === totalPages}
         variant="outline"
         size="sm"
@@ -314,12 +314,13 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
-  
+  const [lastSearchTime, setLastSearchTime] = useState<string | null>(null);
+
   const resizeRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   const groupedData = useMemo(() => {
     const groups: { [key: string]: GroupedData } = {};
-    
+
     data.forEach(item => {
       const key = `${item.cliente}_${item.rps}`;
       if (!groups[key]) {
@@ -332,7 +333,7 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
       }
       groups[key].items.push(item);
     });
-    
+
     return Object.values(groups);
   }, [data]);
 
@@ -346,7 +347,7 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     return groupedData.slice(start, start + itemsPerPage);
   }, [currentPage, groupedData, itemsPerPage]);
 
-  const visibleColumns = useMemo(() => 
+  const visibleColumns = useMemo(() =>
     columns.filter(col => col.visible),
     [columns]
   );
@@ -385,12 +386,12 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     setResizingColumn(columnId);
   }, [columns]);
 
-  const handlePrev = useCallback(() => 
+  const handlePrev = useCallback(() =>
     setCurrentPage(prev => Math.max(prev - 1, 1)),
     []
   );
 
-  const handleNext = useCallback(() => 
+  const handleNext = useCallback(() =>
     setCurrentPage(prev => Math.min(prev + 1, totalPages)),
     [totalPages]
   );
@@ -437,11 +438,29 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     setCurrentPage(1);
   }, [data]);
 
+  useEffect(() => {
+    if (!isLoading && data.length > 0) {
+      const now = new Date();
+      setLastSearchTime(now.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }));
+    }
+  }, [isLoading, data]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <CardTitle>Faturamento</CardTitle>
+
+          {lastSearchTime && !isLoading && (
+            <span className="text-xs text-gray-500">
+              Última consulta: {lastSearchTime}
+            </span>
+          )}
+
           {isLoading && (
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -449,7 +468,7 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
             </div>
           )}
         </div>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
@@ -504,10 +523,10 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
                     paginatedData.map((group) => {
                       const isExpanded = expandedRows.has(group.key);
                       const firstItem = group.items[0];
-                      
+
                       return (
                         <React.Fragment key={group.key}>
-                          <TableRow 
+                          <TableRow
                             className="border-t hover:bg-gray-50 cursor-pointer bg-blue-50 transition-colors"
                             onClick={() => toggleRow(group.key)}
                           >
@@ -521,10 +540,9 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
                             {visibleColumns.map((column) => (
                               <TableCell
                                 key={column.id}
-                                className={`p-2 whitespace-nowrap ${
-                                  column.id === 'col_valor_fatura' ? 'font-semibold' : ''
-                                } ${column.id === 'col_cliente' ? 'font-medium' : ''}`}
-                                style={{ 
+                                className={`p-2 whitespace-nowrap ${column.id === 'col_valor_fatura' ? 'font-semibold' : ''
+                                  } ${column.id === 'col_cliente' ? 'font-medium' : ''}`}
+                                style={{
                                   width: `${column.width}px`,
                                   maxWidth: `${column.width}px`,
                                   overflow: 'hidden',
@@ -538,8 +556,8 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
                           </TableRow>
 
                           {isExpanded && (
-                            <ExpandedRowContent 
-                              group={group} 
+                            <ExpandedRowContent
+                              group={group}
                               visibleColumnsCount={visibleColumns.length}
                             />
                           )}
