@@ -2,7 +2,7 @@
 
 import { Download, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { useState } from "react";
 
 interface Props {

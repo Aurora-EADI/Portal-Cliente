@@ -9,14 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Search, X, Calendar } from "lucide-react";
 import { CustomButton } from "@/components/ui/CustomButton";
 import { ExportExcelButton } from "./ExportExcelButton";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
+import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
 
 interface FiltersProps {
   cliente: string;
   n_fatura: string;
   n_di: string;
   n_lote: string;
-  modalidade_txt: string;
+  modalidade_txt: string[];
   rps: string;
   dt_fatura_inicio: string;
   dt_fatura_fim: string;
@@ -40,6 +41,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
   const [filteredClientes, setFilteredClientes] = useState<ClienteOption[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
+  const [modalidades, setModalidades] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
       n_fatura: "",
       n_di: "",
       n_lote: "",
-      modalidade_txt: "",
+      modalidade_txt: [],
       rps: "",
       dt_fatura_inicio: "",
       dt_fatura_fim: ""
@@ -286,14 +288,16 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
               </div>
 
               <div>
-                <Label className="text-sm font-medium mb-2 block">Modalidade</Label>
-                <Input
-                  placeholder="Ex: Marítimo, Aéreo"
-                  value={filters.modalidade_txt}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, modalidade_txt: e.target.value }))
-                  }
-                />
+                <SelectModalidadeMulti
+                    value={modalidades}
+                    onChange={(values) => {
+                      setModalidades(values);
+                      setFilters((prev) => ({
+                        ...prev,
+                        modalidade_txt: values
+                      }));
+                    }}
+                  />
               </div>
 
             </div>

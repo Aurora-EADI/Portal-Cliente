@@ -13,6 +13,11 @@ export const useLogin = () => {
     onSuccess: (user) => {
       loginUser(user);
     },
+    onError: (error: any) => {
+      // Captura o erro para não quebrar a aplicação
+      // console.error('Erro de autenticação:', error.message);
+      // O erro agora fica disponível em loginMutation.error no componente
+    },
   });
 };
 
@@ -20,6 +25,9 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: async ({ company, user }: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
       return await authService.register({ company, user });
+    },
+    onError: (error: any) => {
+      console.error('Erro no registro:', error.message);
     },
   });
 };

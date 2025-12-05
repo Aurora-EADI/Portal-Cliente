@@ -15,7 +15,7 @@ export class EmployeesService {
     return this.prisma.user.create({
       data: {
         ...dto,
-        role: UserRole.EMPLOYEE, // garante que é funcionário
+        role: UserRole.EMPLOYEE,
       },
     });
   }

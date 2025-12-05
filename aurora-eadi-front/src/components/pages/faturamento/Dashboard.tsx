@@ -5,14 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { FaturamentoFilters } from "./components/filtersFaturamento";
 import { FaturamentoTable } from "./components/TableFaturamento";
 import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 
 export interface FiltersProps {
   cliente: string;
   n_fatura: string;
   n_di: string;
   n_lote: string;
-  modalidade_txt: string;
+  modalidade_txt: string[];
   rps: string;
   dt_fatura_inicio: string;
   dt_fatura_fim: string;
@@ -24,7 +24,7 @@ export function FaturamentoPage() {
     n_fatura: "",
     n_di: "",
     n_lote: "",
-    modalidade_txt: "",
+    modalidade_txt: [],
     rps: "",
     dt_fatura_inicio: "",
     dt_fatura_fim: ""
@@ -96,8 +96,18 @@ export function FaturamentoPage() {
       const matchLote = !filters.n_lote ||
         item.n_lote?.toLowerCase().includes(filters.n_lote.toLowerCase());
 
-      const matchModalidade = !filters.modalidade_txt ||
-        item.modalidade_txt?.toLowerCase().includes(filters.modalidade_txt.toLowerCase());
+      const modalidadesItem = Array.isArray(item.modalidade_txt)
+        ? item.modalidade_txt.map(m => m.toLowerCase())
+        : (item.modalidade_txt ?? "")
+          .toLowerCase()
+          .split(",")
+          .map(s => s.trim());
+
+      const matchModalidade =
+        filters.modalidade_txt.length === 0 ||
+        filters.modalidade_txt.some((mod) =>
+          modalidadesItem.includes(mod.toLowerCase())
+        );
 
       return matchCliente && matchFatura && matchRps &&
         matchDI && matchLote && matchModalidade;
@@ -144,9 +154,16 @@ export function FaturamentoPage() {
 
     // Total Faturado: soma de todos os valores de fatura
     const totalFaturado = filteredData.reduce((acc, item) => {
-      const valor = parseNumericValue(item.valor_fatura);
-      return acc + valor;
-    }, 0);
+      const valorFaturado = parseNumericValue(item.valor_fatura);
+
+      // Verifica se já existe este valor de fatura no acumulador
+      if (!acc.faturas.has(item.valor_fatura)) {
+        acc.faturas.add(item.valor_fatura);
+        acc.total += valorFaturado;
+      }
+
+      return acc;
+    }, { total: 0, faturas: new Set() }).total;
 
     // Quantidade RPS: conta quantos registros únicos têm RPS preenchido
     const quantidadeRPS = new Set(
@@ -180,8 +197,8 @@ export function FaturamentoPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <header className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Faturamento CutOff</h1>
-          <p className="text-gray-500">Faturamento de corte</p>
+          <h1 className="text-2xl font-bold text-gray-900">Faturamento Detalhado</h1>
+          <p className="text-gray-500">Faturamento Detalhado por período.</p>
         </div>
       </header>
 

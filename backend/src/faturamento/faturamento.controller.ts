@@ -1,7 +1,7 @@
 // faturamento/faturamento.controller.ts
-import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { FaturamentoService } from './faturamento.service';
-import { FaturamentoQueryDto } from './dto/faturamentoDetalahdo.dto'
+import { FaturamentoQueryDto } from './dto/faturamentoDetalhado.dto'
 
 @Controller('faturamento')
 export class FaturamentoController {
@@ -15,5 +15,11 @@ export class FaturamentoController {
     const fim = data_final ? new Date(data_final) : undefined;
 
     return this.faturamentoService.findAll(inicio, fim);
+  }
+
+  @Get('/cutoff')
+  async getDetailBillingCutOff(@Query() query: FaturamentoQueryDto) {
+
+    return this.faturamentoService.getDetailBillingCutOff();
   }
 }

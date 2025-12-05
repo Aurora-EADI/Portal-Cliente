@@ -2,33 +2,36 @@ import { Injectable } from '@nestjs/common';
 // import { PrismaPostgresService as PrismaService } from 'src/prisma/prisma.service';
 import { PrismaSqlServerService as PrismaService } from 'src/prisma/prisma.service';
 import { Faturamento, Prisma } from '@prisma/client';
+import { TypeDetailedBilling } from './type/DetailedBilling.type'
+import { TypeBillingCutOff } from './type/BillingCutOff.type';
 
 @Injectable()
 export class FaturamentoService {
   constructor(private prisma: PrismaService) { }
 
 
-  async findAll(dataInicio?: Date, dataFim?: Date): Promise<Faturamento[]> {
+  async findAll(dataInicio?: Date, dataFim?: Date): Promise<TypeDetailedBilling[]> {
 
-  const toSqlString = (d?: Date) => {
-    if (!d) return null;
-    // Extrai somente YYYY-MM-DD
-    return d.toISOString().split("T")[0];
-  };
+    const toSqlString = (d?: Date) => {
+      if (!d) return null;
+      // Extrai somente YYYY-MM-DD
+      return d.toISOString().split("T")[0];
+    };
 
-  const inicio = toSqlString(dataInicio);
-  const fim = toSqlString(dataFim);
+    const inicio = toSqlString(dataInicio);
+    const fim = toSqlString(dataFim);
 
-  return this.prisma.$queryRaw<Faturamento[]>(Prisma.sql`
+    return this.prisma.$queryRaw<TypeDetailedBilling[]>(Prisma.sql`
     SELECT *
     FROM dbo.fnConsulta_Faturamento_Por_Periodo(${inicio}, ${fim}) AS a
   `);
-}
+  }
 
+  async getDetailBillingCutOff() {
 
-  // async findOne(id: number): Promise<Faturamento | null> {
-  //   return this.prisma.faturamento.findUnique({
-  //     where: { id },
-  //   });
-  // }
+    return this.prisma.$queryRaw<TypeBillingCutOff[]>(Prisma.sql`
+    EXEC stpRelatorio_Servicos_Pivot;
+  `);
+  }
+
 }

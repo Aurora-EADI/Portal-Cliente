@@ -22,7 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 
 interface Props {
   data: FaturamentoDetalhado[];
@@ -98,8 +98,19 @@ const formatCurrency = (value: string | number): string => {
   }).format(num);
 };
 
-const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString("pt-BR");
+const formatDate = (date?: string | null): string => {
+  if (!date) return ""; // ou "—"
+
+  const normalized = date.includes("T") ? date.split("T")[0] : date;
+  const d = new Date(normalized);
+
+  if (isNaN(d.getTime())) return ""; // evita erro caso seja uma data inválida
+
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const year = d.getUTCFullYear();
+
+  return `${day}/${month}/${year}`;
 };
 
 const getCellValue = (item: FaturamentoDetalhado, columnId: string): string | number => {
@@ -322,7 +333,8 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     const groups: { [key: string]: GroupedData } = {};
 
     data.forEach(item => {
-      const key = `${item.cliente}_${item.rps}`;
+      // Adicione n_fatura e dt_fatura para garantir unicidade
+      const key = `${item.cliente}_${item.rps}_${item.n_fatura}_${item.dt_fatura}`;
       if (!groups[key]) {
         groups[key] = {
           key,

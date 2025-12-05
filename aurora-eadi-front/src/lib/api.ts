@@ -1,40 +1,61 @@
 import axios from 'axios';
 
-// Crie uma instância do axios com configurações base
+// Instância principal do axios
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', // Ajuste a URL da sua API
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para adicionar o token JWT em todas as requisições
+/**
+ * -------------------------------
+ * REQUEST INTERCEPTOR
+ * Adiciona token quando existir
+ * -------------------------------
+ */
 api.interceptors.request.use(
   (config) => {
-    // Pega o token do localStorage ou de onde você estiver armazenando
-    const token = localStorage.getItem('access_token');
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
-    
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Interceptor para tratar erros de resposta
+/**
+ * -------------------------------
+ * RESPONSE INTERCEPTOR
+ * Trata 401 e limpa sessão
+ * -------------------------------
+ */
 api.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    // Se receber 401, redireciona para o login
-    if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.href = '/';
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || '';
+
+    // ⛔ Evita deslogar caso o erro seja na rota de login
+    const isLoginRequest = requestUrl.includes('/auth/login');
+
+    if (status === 401 && !isLoginRequest) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/' && currentPath !== '/login') {
+          window.location.href = '/';
+        }
+      }
     }
-    
+
     return Promise.reject(error);
   }
 );

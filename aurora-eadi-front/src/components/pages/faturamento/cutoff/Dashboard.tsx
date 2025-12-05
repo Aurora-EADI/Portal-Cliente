@@ -4,49 +4,56 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FaturamentoFilters } from "../cutoff/components/filtersFaturamento";
 import { FaturamentoTable } from "../cutoff/components/TableFaturamento";
-import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { getFaturamentoCutOff } from "@/services/faturamento/faturamentoDetalhado";
+import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
 import { ExportExcelButton } from "../cutoff/components/ExportExcelButton";
 
 export interface FiltersProps {
   cliente: string;
+  bl_awb: string;
+  lote: string;
+  container: string;
+  dta: string;
+  dt_entrada_inicio: string;
+  dt_entrada_fim: string;
   n_fatura: string;
   n_di: string;
   n_lote: string;
-  modalidade_txt: string;
+  MODALIDADE: string[];
   rps: string;
-  dt_fatura_inicio: string;
-  dt_fatura_fim: string;
 }
 
 export function CutOff() {
-  // Estado dos filtros (ATUALIZADO com campos de data)
   const [filters, setFilters] = useState<FiltersProps>({
     cliente: "",
+    bl_awb: "",
+    lote: "",
+    container: "",
+    dta: "",
+    dt_entrada_inicio: "",
+    dt_entrada_fim: "",
     n_fatura: "",
     n_di: "",
     n_lote: "",
-    modalidade_txt: "",
+    MODALIDADE: [],
     rps: "",
-    dt_fatura_inicio: "",
-    dt_fatura_fim: ""
   });
 
-  const { data, isLoading, refetch } = useQuery<FaturamentoDetalhado[]>({
-    queryKey: ["faturamento", filters.dt_fatura_inicio, filters.dt_fatura_fim],
-    queryFn: () => getFaturamento(filters.dt_fatura_inicio, filters.dt_fatura_fim),
+  const { data, isLoading, refetch } = useQuery<TypeBillingCutOff[]>({
+    queryKey: ["faturamentoCutOff"],
+    queryFn: () => getFaturamentoCutOff(),
     enabled: false,
   });
 
   const clientesUnicos = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    const uniqueMap = new Map();
+    const uniqueMap = new Map<string, { cliente: string }>();
 
     data.forEach((item) => {
-      if (item.cliente) {
-        uniqueMap.set(item.cod_cli, {
-          cliente: item.cliente,
+      if (item.CLIENTE) {
+        uniqueMap.set(item.CLIENTE, {
+          cliente: item.CLIENTE,
         });
       }
     });
@@ -63,23 +70,16 @@ export function CutOff() {
     }).format(valor);
   };
 
-  // Função auxiliar para converter string de data DD/MM/YYYY para Date
-  const parseDate = (value: string | Date | null): Date | null => {
+  const parseDate = (value: string | null): Date | null => {
     if (!value) return null;
 
-    // Caso já seja Date
-    if (value instanceof Date) return value;
-
-    // Remover milissegundos e horas se existirem
     const cleaned = value.split("T")[0].split(" ")[0];
 
-    // Formato YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
       const [y, m, d] = cleaned.split("-");
       return new Date(Number(y), Number(m) - 1, Number(d));
     }
 
-    // Formato DD/MM/YYYY
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleaned)) {
       const [d, m, y] = cleaned.split("/");
       return new Date(Number(y), Number(m) - 1, Number(d));
@@ -88,8 +88,7 @@ export function CutOff() {
     return null;
   };
 
-  // Função auxiliar para comparar datas
-  const isDateInRange = (itemDate: any, start: string, end: string) => {
+  const isDateInRange = (itemDate: string, start: string, end: string) => {
     const date = parseDate(itemDate);
     if (!date) return true;
 
@@ -102,36 +101,57 @@ export function CutOff() {
     return true;
   };
 
+  const parseNumericValue = (value: string | number): number => {
+    if (typeof value === 'number') return value;
+    if (!value || value === '') return 0;
+
+    const cleanValue = String(value)
+      .replace(/[^\d,.-]/g, '')
+      .replace(',', '.');
+
+    return parseFloat(cleanValue) || 0;
+  };
+
   const filteredData = useMemo(() => {
     if (!data) return [];
 
     return data.filter((item) => {
       const matchCliente = !filters.cliente ||
-        item.cliente.toLowerCase().includes(filters.cliente.toLowerCase());
+        item.CLIENTE.toLowerCase().includes(filters.cliente.toLowerCase());
 
-      const matchRps = !filters.rps ||
-        item.rps.toLowerCase().includes(filters.rps.toLowerCase());
+      const matchBL = !filters.bl_awb ||
+        item["BL_AWB_N"].toLowerCase().includes(filters.bl_awb.toLowerCase());
 
-      const matchFatura = !filters.n_fatura ||
-        item.n_fatura.toLowerCase().includes(filters.n_fatura.toLowerCase());
+      const matchLote = !filters.lote ||
+        item.LOTE?.toLowerCase().includes(filters.lote.toLowerCase());
 
-      const matchDI = !filters.n_di ||
-        item.n_di?.toLowerCase().includes(filters.n_di.toLowerCase());
+      const matchContainer = !filters.container ||
+        String(item.CONTAINER)?.includes(filters.container);
 
-      const matchLote = !filters.n_lote ||
-        item.n_lote?.toLowerCase().includes(filters.n_lote.toLowerCase());
+      const modalidadesItem = Array.isArray(item.MODALIDADE)
+        ? item.MODALIDADE.map(m => m.toLowerCase())
+        : (item.MODALIDADE ?? "")
+          .toLowerCase()
+          .split(",")
+          .map(s => s.trim());
 
-      const matchModalidade = !filters.modalidade_txt ||
-        item.modalidade_txt?.toLowerCase().includes(filters.modalidade_txt.toLowerCase());
+      const matchModalidade =
+        filters.MODALIDADE.length === 0 ||
+        filters.MODALIDADE.some((mod) =>
+          modalidadesItem.includes(mod.toLowerCase())
+        );
+
+      const matchDTA = !filters.dta ||
+        item["N_DTA"]?.toLowerCase().includes(filters.dta.toLowerCase());
 
       const matchData = isDateInRange(
-        item.dt_fatura, 
-        filters.dt_fatura_inicio,
-        filters.dt_fatura_fim
+        item.ENTRADA,
+        filters.dt_entrada_inicio,
+        filters.dt_entrada_fim
       );
 
-      return matchCliente && matchFatura && matchRps &&
-        matchDI && matchLote && matchModalidade && matchData;
+      return matchCliente && matchBL && matchLote &&
+        matchContainer && matchModalidade && matchDTA && matchData;
     });
   }, [data, filters]);
 
@@ -142,20 +162,21 @@ export function CutOff() {
   const metricas = useMemo(() => {
     if (!filteredData || filteredData.length === 0) {
       return {
-        totalFaturado: 0,
-        quantidadeRPS: 0,
+        totalSubtotal: 0,
         totalISS: 0,
-        totalOutrosServicos: 0
+        totalLiquido: 0,
+        quantidadeRegistros: 0
       };
     }
 
     return {
-      totalFaturado: filteredData.reduce((acc, item) => acc + (Number(item.valor_fatura) || 0), 0),
-      quantidadeRPS: filteredData.filter(item => item.rps).length,
-      totalISS: filteredData.reduce((acc, item) => acc + (Number(item.iss_valor) || 0), 0),
-      totalOutrosServicos: filteredData.reduce((acc, item) =>
-        acc + ((item.quantidade || 0) * (item.valor || 0)), 0
-      )
+      totalSubtotal: filteredData.reduce((acc, item) =>
+        acc + parseNumericValue(item["SUB-TOTAL"]), 0),
+      totalISS: filteredData.reduce((acc, item) =>
+        acc + parseNumericValue(item["VALOR ISS"]), 0),
+      totalLiquido: filteredData.reduce((acc, item) =>
+        acc + parseNumericValue(item["VALOR LIQUIDO"]), 0),
+      quantidadeRegistros: filteredData.length
     };
   }, [filteredData]);
 
@@ -177,14 +198,16 @@ export function CutOff() {
           filteredData={filteredData}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
             <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
               💰
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Faturado</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalFaturado)}</p>
+              <p className="text-sm text-gray-500">Total Subtotal</p>
+              <p className="text-xl font-bold text-gray-900">
+                {formatarMoeda(metricas.totalSubtotal)}
+              </p>
             </div>
           </div>
 
@@ -193,8 +216,10 @@ export function CutOff() {
               📄
             </div>
             <div>
-              <p className="text-sm text-gray-500">Quantidade RPS</p>
-              <p className="text-xl font-bold text-gray-900">{metricas.quantidadeRPS}</p>
+              <p className="text-sm text-gray-500">Quantidade Registros</p>
+              <p className="text-xl font-bold text-gray-900">
+                {metricas.quantidadeRegistros}
+              </p>
             </div>
           </div>
 
@@ -203,8 +228,10 @@ export function CutOff() {
               📊
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total ISS 5%</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalISS)}</p>
+              <p className="text-sm text-gray-500">Total ISS</p>
+              <p className="text-xl font-bold text-gray-900">
+                {formatarMoeda(metricas.totalISS)}
+              </p>
             </div>
           </div>
 
@@ -213,11 +240,13 @@ export function CutOff() {
               🔧
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Outros Serviços</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalOutrosServicos)}</p>
+              <p className="text-sm text-gray-500">Total Líquido</p>
+              <p className="text-xl font-bold text-gray-900">
+                {formatarMoeda(metricas.totalLiquido)}
+              </p>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <FaturamentoTable
           data={filteredData}

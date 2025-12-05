@@ -22,16 +22,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
 
 interface Props {
-  data: FaturamentoDetalhado[];
+  data: TypeBillingCutOff[];
   isLoading: boolean;
   itemsPerPage?: number;
 }
 
 type ColumnConfig = {
-  id: string;
+  id: keyof TypeBillingCutOff;
   label: string;
   visible: boolean;
   width: number;
@@ -39,101 +39,105 @@ type ColumnConfig = {
 };
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: "CLIENTE", label: "CLIENTE", visible: false, width: 120, minWidth: 80 },
-  { id: "ENTRADA", label: "ENTRADA", visible: false, width: 120, minWidth: 80 },
-  { id: "BL_AWB_Nº", label: "BL / AWB Nº", visible: false, width: 120, minWidth: 80 },
-  { id: "LOTE", label: "LOTE", visible: false, width: 120, minWidth: 80 },
-  { id: "Nº_DTA", label: "Nº DTA", visible: false, width: 120, minWidth: 80 },
-  { id: "CONTAINER", label: "CONTAINER", visible: false, width: 120, minWidth: 80 },
-  { id: "MODALIDADE", label: "MODALIDADE", visible: false, width: 120, minWidth: 80 },
-  { id: "CIF_R$_DTA", label: "CIF (R$) DTA", visible: false, width: 120, minWidth: 80 },
-  { id: "DTA_COBERTURA", label: "DTA COBERTURA", visible: false, width: 120, minWidth: 80 },
-  { id: "PER", label: "PER", visible: false, width: 120, minWidth: 80 },
-  { id: "TAXA_DOLAR", label: "TAXA DOLAR", visible: false, width: 120, minWidth: 80 },
-  { id: "PESO", label: "PESO", visible: false, width: 120, minWidth: 80 },
-  { id: "CUBAGEM", label: "CUBAGEM", visible: false, width: 120, minWidth: 80 },
-  { id: "ARMAZENAGEM", label: "ARMAZENAGEM", visible: false, width: 120, minWidth: 80 },
-  { id: "ABATIMENTO_DO_VALOR_COBRADO_ANTECIPADO", label: "ABATIMENTO DO VALOR COBRADO ANTECIPADO", visible: false, width: 120, minWidth: 80 },
-  { id: "ADICIONAL_DE_VISTORIA_RECEITA_FEDERAL", label: "ADICIONAL DE VISTORIA RECEITA FEDERAL", visible: false, width: 120, minWidth: 80 },
-  { id: "ADICIONAL_PERICULOSIDADE", label: "ADICIONAL PERICULOSIDADE", visible: false, width: 120, minWidth: 80 },
-  { id: "ALUGUEL_DE_CARRETA_CONTAINER", label: "ALUGUEL DE CARRETA / CONTAINER", visible: false, width: 120, minWidth: 80 },
-  { id: "ALUGUEL_DE_CONTAINER", label: "ALUGUEL DE CONTAINER", visible: false, width: 120, minWidth: 80 },
-  { id: "ALUGUEL_DE_VEICULO", label: "ALUGUEL DE VEICULO", visible: false, width: 120, minWidth: 80 },
-  { id: "AVERBACAO_DE_DA", label: "AVERBAÇÃO DE  D.A", visible: false, width: 120, minWidth: 80 },
-  { id: "CANCELAMENTO_DE_REGISTRO_DTA", label: "CANCELAMENTO DE REGISTRO DTA", visible: false, width: 120, minWidth: 80 },
-  { id: "CAPATAZIA_REEMBOLSO_DE_TX_PAGA", label: "CAPATAZIA-REEMBOLSO DE TX PAGA", visible: false, width: 120, minWidth: 80 },
-  { id: "CARGA_DIFICIL_MANUSEIO", label: "CARGA DIFICIL MANUSEIO", visible: false, width: 120, minWidth: 80 },
-  { id: "COLETA_DO_CNTR_VAZIO", label: "COLETA DO CNTR VAZIO", visible: false, width: 120, minWidth: 80 },
-  { id: "COMPLEMENTO_DE_FATURAMENTO", label: "COMPLEMENTO DE FATURAMENTO", visible: false, width: 120, minWidth: 80 },
-  { id: "CONSUMO_DE_ENERGIA", label: "CONSUMO DE ENERGIA", visible: false, width: 120, minWidth: 80 },
-  { id: "DESCARTE_DE_EMBALAGEM", label: "DESCARTE DE EMBALAGEM", visible: false, width: 120, minWidth: 80 },
-  { id: "DESCONTO", label: "DESCONTO", visible: false, width: 120, minWidth: 80 },
-  { id: "DESOVA_DE_CONTAINER_CONEXOS", label: "DESOVA DE CONTAINER (CONEXOS)", visible: false, width: 120, minWidth: 80 },
-  { id: "DESUNITIZACAO_DESOVA_EXP", label: "DESUNITIZACAO (DESOVA) EXP", visible: false, width: 120, minWidth: 80 },
-  { id: "DESUNITIZACAO_DE_CONTAINER_DESOVA", label: "DESUNITIZACAO DE CONTAINER (DESOVA)", visible: false, width: 120, minWidth: 80 },
-  { id: "DESUNITIZACAO_DE_CONTAINER_DESOVA_TRANSBORDO", label: "DESUNITIZACAO DE CONTAINER (DESOVA/TRANSBORDO)", visible: false, width: 120, minWidth: 80 },
-  { id: "DEVOLUCAO_DE_CONTAINER_VAZIO", label: "DEVOLUCAO DE CONTAINER VAZIO", visible: false, width: 120, minWidth: 80 },
-  { id: "EMISSAO_DE_DAT", label: "EMISSAO DE DAT", visible: false, width: 120, minWidth: 80 },
-  { id: "EMISSAO_DE_DTA", label: "EMISSAO DE DTA", visible: false, width: 120, minWidth: 80 },
-  { id: "ESTADIA_DE_VEICULO_DIARIA", label: "ESTADIA DE VEICULO (DIARIA)", visible: false, width: 120, minWidth: 80 },
-  { id: "FORNECIMENTO_DE_ENERGIA", label: "FORNECIMENTO DE ENERGIA", visible: false, width: 120, minWidth: 80 },
-  { id: "FUMIGACAO_DE_CARGA_PALLETS_CAIXAS", label: "FUMIGACAO DE CARGA (PALLETS/CAIXAS)", visible: false, width: 120, minWidth: 80 },
-  { id: "FUMIGACAO_DE_CONTAINER_20", label: "FUMIGACAO DE CONTAINER (20)", visible: false, width: 120, minWidth: 80 },
-  { id: "FUMIGACAO_DE_CONTAINER_40", label: "FUMIGACAO DE CONTAINER (40)", visible: false, width: 120, minWidth: 80 },
-  { id: "GERENCIAMENTO_DE_RISCO", label: "GERENCIAMENTO DE RISCO", visible: false, width: 120, minWidth: 80 },
-  { id: "GRIS", label: "GRIS", visible: false, width: 120, minWidth: 80 },
-  { id: "GRIS_2", label: "GRIS 2", visible: false, width: 120, minWidth: 80 },
-  { id: "INFRAESTRUTURA_PORTUARIA", label: "INFRAESTRUTURA PORTUARIA", visible: false, width: 120, minWidth: 80 },
-  { id: "LACRE", label: "LACRE", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_AREA_MERC_PERIG_TOX_INFLAM_CORROS", label: "LOCAÇÃO ÁREA MERC PERIG./TOX./INFLAM./CORROS.", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_DE_AREA_COMPLEMENTO", label: "LOCAÇÃO DE ÁREA - COMPLEMENTO", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_DE_AREA_PARA_CARGA_SOLTA", label: "LOCAÇÃO DE ÁREA PARA CARGA SOLTA", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_DE_AREA_PARA_CONTAINER", label: "LOCAÇÃO DE ÁREA PARA CONTÊINER", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_DE_CONTAINER_TRANSBORDO", label: "LOCACAO DE CONTAINER (TRANSBORDO)", visible: false, width: 120, minWidth: 80 },
-  { id: "LOCACAO_DE_ESPACO_CONTAINER", label: "LOCACAO DE ESPACO / CONTAINER", visible: false, width: 120, minWidth: 80 },
-  { id: "MANIFESTACAO_DA_DAT", label: "MANIFESTACAO DA DAT", visible: false, width: 120, minWidth: 80 },
-  { id: "MANUSEIO_DE_CARGA", label: "MANUSEIO DE CARGA", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CARGA", label: "MOVIMENTACAO  DE CARGA", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_CARGA_EXP", label: "MOVIMENTAÇÃO CARGA EXP.", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_EXP", label: "MOVIMENTACAO DE CONTAINER ( EXP)", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_CONEXOS", label: "MOVIMENTACAO DE CONTAINER (CONEXOS)", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_IN_OUT", label: "MOVIMENTACAO DE CONTAINER (IN/OUT)", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_IN_OUT_EXP", label: "MOVIMENTACAO DE CONTAINER (IN/OUT) EXP", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_TRANSBORDO", label: "MOVIMENTACAO DE CONTAINER (TRANSBORDO)", visible: false, width: 120, minWidth: 80 },
-  { id: "MOVIMENTACAO_DE_CONTAINER_IN_OUT_TRANSBORDO", label: "MOVIMENTACAO DE CONTAINER IN/OUT ( TRANSBORDO)", visible: false, width: 120, minWidth: 80 },
-  { id: "MULTA_REFERENTE_A_PROCESSO", label: "MULTA REFERENTE A PROCESSO", visible: false, width: 120, minWidth: 80 },
-  { id: "PERNOITE_DE_VEICULO", label: "PERNOITE DE VEICULO", visible: false, width: 120, minWidth: 80 },
-  { id: "PESAGEM", label: "PESAGEM", visible: false, width: 120, minWidth: 80 },
-  { id: "PUXE_CONEXOS", label: "PUXE (CONEXOS)", visible: false, width: 120, minWidth: 80 },
-  { id: "RETORNO_DO_CAVALO", label: "RETORNO DO CAVALO", visible: false, width: 120, minWidth: 80 },
-  { id: "SEGURO_TRANSPORTE_DE_CARGA", label: "SEGURO TRANSPORTE DE CARGA", visible: false, width: 120, minWidth: 80 },
-  { id: "SERVICO_ADMINISTRATIVO", label: "SERVICO ADMINISTRATIVO", visible: false, width: 120, minWidth: 80 },
-  { id: "TARIFA_DE_AVERBACAO", label: "TARIFA DE AVERBACAO", visible: false, width: 120, minWidth: 80 },
-  { id: "TARIFA_DE_DESPACHANTE", label: "TARIFA DE DESPACHANTE", visible: false, width: 120, minWidth: 80 },
-  { id: "TARIFA_MINIMA_DE_EMISSAO_DE_NOTA_FISCAL", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL", visible: false, width: 120, minWidth: 80 },
-  { id: "TARIFA_MINIMA_DE_EMISSAO_DE_NOTA_FISCAL_EXP", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL EXP", visible: false, width: 120, minWidth: 80 },
-  { id: "TARIFA_MINIMA_DE_EMISSAO_DE_NOTA_FISCAL_POR_CNTR", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL POR CNTR", visible: false, width: 120, minWidth: 80 },
-  { id: "TAXA_ADMINISTRATIVA", label: "TAXA ADMINISTRATIVA", visible: false, width: 120, minWidth: 80 },
-  { id: "TAXA_DE_ADMINISTRACAO_PARA_ARM_DE_MEDICAMENTOS", label: "TAXA DE ADMINISTRACAO PARA ARM.. DE MEDICAMENTOS", visible: false, width: 120, minWidth: 80 },
-  { id: "TAXA_DE_CONSIGNACAO_POR_DA", label: "TAXA DE CONSIGNACAO POR DA", visible: false, width: 120, minWidth: 80 },
-  { id: "TAXA_DE_LACRE", label: "TAXA DE LACRE", visible: false, width: 120, minWidth: 80 },
-  { id: "TRANSPORTE_DE_CARGA_CONTAINER_DTA", label: "TRANSPORTE DE CARGA/CONTAINER DTA", visible: false, width: 120, minWidth: 80 },
-  { id: "TRANSPORTE_DE_CARGA_CONTAINER_EXP", label: "TRANSPORTE DE CARGA/CONTAINER EXP", visible: false, width: 120, minWidth: 80 },
-  { id: "TRANSPORTE_DE_CARGA_CONTAINER_DI", label: "TRANSPORTE DE CARGA/CONTAINER/ DI", visible: false, width: 120, minWidth: 80 },
-  { id: "TRANSPORTE_DE_CARGAS_ESPECIAIS", label: "TRANSPORTE DE CARGAS ESPECIAIS", visible: false, width: 120, minWidth: 80 },
-  { id: "TRANSPORTE_INTERNO_DE_CONTAINER", label: "TRANSPORTE INTERNO  DE CONTAINER", visible: false, width: 120, minWidth: 80 },
-  { id: "TROCA_DE_PALLET", label: "TROCA DE PALLET", visible: false, width: 120, minWidth: 80 },
-  { id: "UNITIZACAO_OVA", label: "UNITIZACAO / OVA", visible: false, width: 120, minWidth: 80 },
-  { id: "UNITIZACAO_DE_CONTAINER_OVA_TRANSBORDO", label: "UNITIZACAO DE CONTAINER (OVA/TRANSBORDO)", visible: false, width: 120, minWidth: 80 },
-  { id: "SUB_TOTAL", label: "SUB-TOTAL", visible: false, width: 120, minWidth: 80 },
-  { id: "VALOR_ISS", label: "VALOR ISS", visible: false, width: 120, minWidth: 80 },
-  { id: "VALOR_LIQUIDO", label: "VALOR LÍQUIDO", visible: false, width: 120, minWidth: 80 }
+  { id: "CLIENTE", label: "Cliente", visible: true, width: 200, minWidth: 150 },
+  { id: "ENTRADA", label: "Data Entrada", visible: true, width: 120, minWidth: 100 },
+  { id: "BL_AWB_N", label: "BL / AWB Nº", visible: true, width: 150, minWidth: 120 },
+  { id: "LOTE", label: "Lote", visible: true, width: 120, minWidth: 80 },
+  { id: "N_DTA", label: "Nº DTA", visible: true, width: 120, minWidth: 80 },
+  { id: "CONTAINER", label: "Container", visible: true, width: 120, minWidth: 80 },
+  { id: "MODALIDADE", label: "Modalidade", visible: true, width: 120, minWidth: 100 },
+  { id: "CIF_DTA", label: "CIF (R$) DTA", visible: false, width: 120, minWidth: 100 },
+  { id: "DTA COBERTURA", label: "DTA Cobertura", visible: false, width: 120, minWidth: 100 },
+  { id: "PER", label: "PER", visible: false, width: 80, minWidth: 60 },
+  { id: "TAXA DOLAR", label: "Taxa Dólar", visible: false, width: 100, minWidth: 80 },
+  { id: "PESO", label: "Peso", visible: false, width: 100, minWidth: 80 },
+  { id: "CUBAGEM", label: "Cubagem", visible: false, width: 100, minWidth: 80 },
+  { id: "ARMAZENAGEM", label: "Armazenagem", visible: false, width: 120, minWidth: 100 },
+  { id: "ABATIMENTO DO VALOR COBRADO ANTECIPADO", label: "ABATIMENTO DO VALOR COBRADO ANTECIPADO", visible: false, width: 120, minWidth: 100 },
+  { id: "ADICIONAL PERICULOSIDADE", label: "ADICIONAL PERICULOSIDADE", visible: false, width: 120, minWidth: 100 },
+  { id: "ALUGUEL DE CARRETA / CONTAINER", label: "ALUGUEL DE CARRETA / CONTAINER", visible: false, width: 120, minWidth: 100 },
+  { id: "ALUGUEL DE CONTAINER", label: "ALUGUEL DE CONTAINER", visible: false, width: 120, minWidth: 100 },
+  { id: "ALUGUEL DE VEICULO", label: "ALUGUEL DE VEICULO", visible: false, width: 120, minWidth: 100 },
+  { id: "AVERBAÇÃO DE  D.A", label: "AVERBAÇÃO DE  D.A", visible: false, width: 120, minWidth: 100 },
+  { id: "CANCELAMENTO DE REGISTRO DTA", label: "CANCELAMENTO DE REGISTRO DTA", visible: false, width: 120, minWidth: 100 },
+  { id: "CAPATAZIA-REEMBOLSO DE TX PAGA", label: "CAPATAZIA-REEMBOLSO DE TX PAGA", visible: false, width: 120, minWidth: 100 },
+  { id: "CARGA DIFICIL MANUSEIO", label: "CARGA DIFICIL MANUSEIO", visible: false, width: 120, minWidth: 100 },
+  { id: "COLETA DO CNTR VAZIO", label: "COLETA DO CNTR VAZIO", visible: false, width: 120, minWidth: 100 },
+  { id: "COMPLEMENTO DE FATURAMENTO", label: "COMPLEMENTO DE FATURAMENTO", visible: false, width: 120, minWidth: 100 },
+  { id: "CONSUMO DE ENERGIA", label: "CONSUMO DE ENERGIA", visible: false, width: 120, minWidth: 100 },
+  { id: "DESCARTE DE EMBALAGEM", label: "DESCARTE DE EMBALAGEM", visible: false, width: 120, minWidth: 100 },
+  { id: "DESCONTO", label: "DESCONTO", visible: false, width: 120, minWidth: 100 },
+  { id: "DESOVA DE CONTAINER (CONEXOS)", label: "DESOVA DE CONTAINER (CONEXOS)", visible: false, width: 120, minWidth: 100 },
+  { id: "DESUNITIZACAO (DESOVA) EXP", label: "DESUNITIZACAO (DESOVA) EXP", visible: false, width: 120, minWidth: 100 },
+  { id: "DESUNITIZACAO DE CONTAINER (DESOVA)", label: "DESUNITIZACAO DE CONTAINER (DESOVA)", visible: false, width: 120, minWidth: 100 },
+  { id: "DEVOLUCAO DE CONTAINER VAZIO", label: "DEVOLUCAO DE CONTAINER VAZIO", visible: false, width: 120, minWidth: 100 },
+  { id: "EMISSAO DE DAT", label: "EMISSAO DE DAT", visible: false, width: 120, minWidth: 100 },
+  { id: "EMISSAO DE DTA", label: "EMISSAO DE DTA", visible: false, width: 120, minWidth: 100 },
+  { id: "ESTADIA DE VEICULO (DIARIA)", label: "ESTADIA DE VEICULO (DIARIA)", visible: false, width: 120, minWidth: 100 },
+  { id: "FORNECIMENTO DE ENERGIA", label: "FORNECIMENTO DE ENERGIA", visible: false, width: 120, minWidth: 100 },
+  { id: "FUMIGACAO DE CARGA (PALLETS/CAIXAS)", label: "FUMIGACAO DE CARGA (PALLETS/CAIXAS)", visible: false, width: 120, minWidth: 100 },
+  { id: "FUMIGACAO DE CONTAINER (20)", label: "FUMIGACAO DE CONTAINER (20)", visible: false, width: 120, minWidth: 100 },
+  { id: "FUMIGACAO DE CONTAINER (40)", label: "FUMIGACAO DE CONTAINER (40)", visible: false, width: 120, minWidth: 100 },
+  { id: "GERENCIAMENTO DE RISCO", label: "GERENCIAMENTO DE RISCO", visible: false, width: 120, minWidth: 100 },
+  { id: "GRIS", label: "GRIS", visible: false, width: 120, minWidth: 100 },
+  { id: "GRIS 2", label: "GRIS 2", visible: false, width: 120, minWidth: 100 },
+  { id: "INFRAESTRUTURA PORTUARIA", label: "INFRAESTRUTURA PORTUARIA", visible: false, width: 120, minWidth: 100 },
+  { id: "LACRE", label: "LACRE", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCAÇÃO ÁREA MERC PERIG./TOX./INFLAM./CORROS.", label: "LOCAÇÃO ÁREA MERC PERIG./TOX./INFLAM./CORROS.", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCAÇÃO DE ÁREA - COMPLEMENTO", label: "LOCAÇÃO DE ÁREA - COMPLEMENTO", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCAÇÃO DE ÁREA PARA CARGA SOLTA", label: "LOCAÇÃO DE ÁREA PARA CARGA SOLTA", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCAÇÃO DE ÁREA PARA CONTÊINER", label: "LOCAÇÃO DE ÁREA PARA CONTÊINER", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCACAO DE CONTAINER (TRANSBORDO)", label: "GRIS", visible: false, width: 120, minWidth: 100 },
+  { id: "LOCACAO DE ESPACO / CONTAINER", label: "LOCACAO DE ESPACO / CONTAINER", visible: false, width: 120, minWidth: 100 },
+  { id: "MANIFESTACAO DA DAT", label: "MANIFESTACAO DA DAT", visible: false, width: 120, minWidth: 100 },
+  { id: "MANUSEIO DE CARGA", label: "MANUSEIO DE CARGA", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO  DE CARGA", label: "MOVIMENTACAO  DE CARGA", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTAÇÃO CARGA EXP.", label: "GRIS", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER ( EXP)", label: "MOVIMENTACAO DE CONTAINER ( EXP)", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER (CONEXOS)", label: "MOVIMENTACAO DE CONTAINER (CONEXOS)", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER (IN/OUT)", label: "MOVIMENTACAO DE CONTAINER (IN/OUT)", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER (IN/OUT) EXP", label: "MOVIMENTACAO DE CONTAINER (IN/OUT) EXP", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER (TRANSBORDO)", label: "MOVIMENTACAO DE CONTAINER (TRANSBORDO)", visible: false, width: 120, minWidth: 100 },
+  { id: "MOVIMENTACAO DE CONTAINER IN/OUT ( TRANSBORDO)", label: "MOVIMENTACAO DE CONTAINER IN/OUT ( TRANSBORDO)", visible: false, width: 120, minWidth: 100 },
+  { id: "MULTA REFERENTE A PROCESSO", label: "MULTA REFERENTE A PROCESSO", visible: false, width: 120, minWidth: 100 },
+  { id: "PERNOITE DE VEICULO", label: "PERNOITE DE VEICULO", visible: false, width: 120, minWidth: 100 },
+  { id: "PESAGEM", label: "PESAGEM", visible: false, width: 120, minWidth: 100 },
+  { id: "PUXE (CONEXOS)", label: "PUXE (CONEXOS)", visible: false, width: 120, minWidth: 100 },
+  { id: "RETORNO DO CAVALO", label: "RETORNO DO CAVALO", visible: false, width: 120, minWidth: 100 },
+  { id: "SEGURO TRANSPORTE DE CARGA", label: "SEGURO TRANSPORTE DE CARGA", visible: false, width: 120, minWidth: 100 },
+  { id: "SERVICO ADMINISTRATIVO", label: "SERVICO ADMINISTRATIVO", visible: false, width: 120, minWidth: 100 },
+  { id: "TARIFA DE AVERBACAO", label: "TARIFA DE AVERBACAO", visible: false, width: 120, minWidth: 100 },
+  { id: "TARIFA DE DESPACHANTE", label: "TARIFA DE DESPACHANTE", visible: false, width: 120, minWidth: 100 },
+  { id: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL", visible: false, width: 120, minWidth: 100 },
+  { id: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL EXP", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL EXP", visible: false, width: 120, minWidth: 100 },
+  { id: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL POR CNTR", label: "TARIFA MINIMA DE EMISSAO DE NOTA FISCAL POR CNTR", visible: false, width: 120, minWidth: 100 },
+  { id: "TAXA ADMINISTRATIVA", label: "TAXA ADMINISTRATIVA", visible: false, width: 120, minWidth: 100 },
+  { id: "TAXA DE ADMINISTRACAO PARA ARM.. DE MEDICAMENTOS", label: "TAXA DE ADMINISTRACAO PARA ARM.. DE MEDICAMENTOS", visible: false, width: 120, minWidth: 100 },
+  { id: "TAXA DE CONSIGNACAO POR DA", label: "TAXA DE CONSIGNACAO POR DA", visible: false, width: 120, minWidth: 100 },
+  { id: "TAXA DE LACRE", label: "TAXA DE LACRE", visible: false, width: 120, minWidth: 100 },
+  { id: "TRANSPORTE DE CARGA/CONTAINER DTA", label: "TRANSPORTE DE CARGA/CONTAINER DTA", visible: false, width: 120, minWidth: 100 },
+  { id: "TRANSPORTE DE CARGA/CONTAINER EXP", label: "TRANSPORTE DE CARGA/CONTAINER EXP", visible: false, width: 120, minWidth: 100 },
+  { id: "TRANSPORTE DE CARGA/CONTAINER/ DI", label: "TRANSPORTE DE CARGA/CONTAINER/ DI", visible: false, width: 120, minWidth: 100 },
+  { id: "TRANSPORTE DE CARGAS ESPECIAIS", label: "TRANSPORTE DE CARGAS ESPECIAIS", visible: false, width: 120, minWidth: 100 },
+  { id: "TRANSPORTE INTERNO  DE CONTAINER", label: "TRANSPORTE INTERNO  DE CONTAINER", visible: false, width: 120, minWidth: 100 },
+  { id: "TROCA DE PALLET", label: "TROCA DE PALLET", visible: false, width: 120, minWidth: 100 },
+  { id: "UNITIZACAO / OVA", label: "UNITIZACAO / OVA", visible: false, width: 120, minWidth: 100 },
+  { id: "UNITIZACAO DE CONTAINER (OVA/TRANSBORDO)", label: "UNITIZACAO DE CONTAINER (OVA/TRANSBORDO)", visible: false, width: 120, minWidth: 100 },
+  { id: "SUB-TOTAL", label: "Sub-Total", visible: true, width: 120, minWidth: 100 },
+  { id: "VALOR ISS", label: "Valor ISS", visible: true, width: 120, minWidth: 100 },
+  { id: "VALOR LIQUIDO", label: "Valor Líquido", visible: true, width: 140, minWidth: 120 },
 ];
 
 const SKELETON_ROWS_COUNT = 10;
 
 const formatCurrency = (value: string | number): string => {
-  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (!value || value === '' || value === '0' || value === 0) return "R$ 0,00";
+
+  const cleanValue = String(value).replace(/[^\d,.-]/g, '').replace(',', '.');
+  const num = parseFloat(cleanValue);
+
+  if (isNaN(num)) return "R$ 0,00";
+
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -141,43 +145,46 @@ const formatCurrency = (value: string | number): string => {
 };
 
 const formatDate = (date: string): string => {
-  if (!date) return "";
-  return new Date(date).toLocaleDateString("pt-BR");
+  // Garante que a data seja interpretada como local, não UTC
+  const d = new Date(date.includes('T') ? date.split('T')[0] : date);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
 };
 
-const getCellValue = (item: FaturamentoDetalhado, columnId: string): string | number => {
-  const value = item[columnId as keyof FaturamentoDetalhado];
-  
-  switch (columnId) {
-    case "valor_fatura":
-    case "valor_servicos":
-    case "valor_cif":
-    case "iss_valor":
-    case "iii_valor":
-    case "valor":
-      return value ? formatCurrency(value) : "R$ 0,00";
-    case "dt_fatura":
-    case "dt_vencimento":
-    case "dt_entrada":
-    case "dt_periodo_f":
-      return value ? formatDate(value as string) : "";
-    case "quantidade":
-    case "qt_volumes":
-    case "pes_bruto":
-    case "m3":
-      return value || "0";
-    default:
-      return value || "";
+const getCellValue = (item: TypeBillingCutOff, columnId: keyof TypeBillingCutOff): string => {
+  const value = item[columnId];
+
+  const currencyColumns: (keyof TypeBillingCutOff)[] = [
+    "CIF_DTA", "SUB-TOTAL", "VALOR ISS", "VALOR LIQUIDO",
+    "ARMAZENAGEM", "TAXA DOLAR"
+  ];
+
+  const dateColumns: (keyof TypeBillingCutOff)[] = ["ENTRADA", "DTA COBERTURA"];
+
+  if (currencyColumns.includes(columnId)) {
+    return formatCurrency(value);
   }
+
+  if (dateColumns.includes(columnId)) {
+    return formatDate(String(value || ""));
+  }
+
+  if (columnId === "CONTAINER" || columnId === "PER") {
+    return String(value || "0");
+  }
+
+  return String(value || "");
 };
 
 const TableSkeletonRow = ({ visibleColumns }: { visibleColumns: ColumnConfig[] }) => (
   <TableRow className="animate-pulse border-t">
     {visibleColumns.map((col) => (
       <TableCell key={col.id} className="p-2">
-        <Skeleton 
-          className="h-4 rounded" 
-          style={{ 
+        <Skeleton
+          className="h-4 rounded"
+          style={{
             width: `${Math.floor(Math.random() * 40 + 50)}%`,
           }}
         />
@@ -234,7 +241,7 @@ const LoadingState = () => (
 interface ResizableHeaderProps {
   column: ColumnConfig;
   isResizing: boolean;
-  onMouseDown: (e: React.MouseEvent, columnId: string) => void;
+  onMouseDown: (e: React.MouseEvent, columnId: keyof TypeBillingCutOff) => void;
 }
 
 const ResizableHeader = ({ column, isResizing, onMouseDown }: ResizableHeaderProps) => (
@@ -272,8 +279,8 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
       Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
     </div>
     <div className="flex items-center gap-2">
-      <Button 
-        onClick={onPrev} 
+      <Button
+        onClick={onPrev}
         disabled={currentPage === 1}
         variant="outline"
         size="sm"
@@ -283,8 +290,8 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
       <span className="text-sm text-gray-600 px-2">
         Página {currentPage} de {totalPages}
       </span>
-      <Button 
-        onClick={onNext} 
+      <Button
+        onClick={onNext}
         disabled={currentPage === totalPages}
         variant="outline"
         size="sm"
@@ -298,9 +305,14 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
 export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
-  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
-  
-  const resizeRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
+  const [resizingColumn, setResizingColumn] = useState<keyof TypeBillingCutOff | null>(null);
+    const [lastSearchTime, setLastSearchTime] = useState<string | null>(null);
+
+  const resizeRef = useRef<{
+    columnId: keyof TypeBillingCutOff;
+    startX: number;
+    startWidth: number
+  } | null>(null);
 
   const totalPages = useMemo(
     () => Math.ceil(data.length / itemsPerPage),
@@ -312,12 +324,12 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     return data.slice(start, start + itemsPerPage);
   }, [currentPage, data, itemsPerPage]);
 
-  const visibleColumns = useMemo(() => 
+  const visibleColumns = useMemo(() =>
     columns.filter(col => col.visible),
     [columns]
   );
 
-  const toggleColumnVisibility = useCallback((columnId: string) => {
+  const toggleColumnVisibility = useCallback((columnId: keyof TypeBillingCutOff) => {
     setColumns(prev =>
       prev.map(col =>
         col.id === columnId ? { ...col, visible: !col.visible } : col
@@ -325,7 +337,7 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     );
   }, []);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, columnId: string) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, columnId: keyof TypeBillingCutOff) => {
     e.preventDefault();
     e.stopPropagation();
     const column = columns.find(col => col.id === columnId);
@@ -339,12 +351,12 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     setResizingColumn(columnId);
   }, [columns]);
 
-  const handlePrev = useCallback(() => 
+  const handlePrev = useCallback(() =>
     setCurrentPage(prev => Math.max(prev - 1, 1)),
     []
   );
 
-  const handleNext = useCallback(() => 
+  const handleNext = useCallback(() =>
     setCurrentPage(prev => Math.min(prev + 1, totalPages)),
     [totalPages]
   );
@@ -396,6 +408,13 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <CardTitle>Faturamento</CardTitle>
+
+          {lastSearchTime && !isLoading && (
+            <span className="text-xs text-gray-500">
+              Última consulta: {lastSearchTime}
+            </span>
+          )}
+
           {isLoading && (
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -403,12 +422,12 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
             </div>
           )}
         </div>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
               <Settings className="w-4 h-4" />
-              Colunas
+              Colunas ({visibleColumns.length}/{columns.length})
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 max-h-96 overflow-y-auto">
@@ -455,23 +474,24 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
                     <TableSkeleton visibleColumns={visibleColumns} />
                   ) : (
                     paginatedData.map((item, index) => (
-                      <TableRow 
-                        key={`${item.n_fatura}-${item.rps}-${index}`}
+                      <TableRow
+                        key={`${item.CLIENTE}-${item["BL_AWB_N"]}-${index}`}
                         className="border-t hover:bg-gray-50 transition-colors"
                       >
                         {visibleColumns.map((column) => (
                           <TableCell
                             key={column.id}
-                            className={`p-2 whitespace-nowrap ${
-                              ['valor_fatura', 'valor_servicos'].includes(column.id) ? 'font-semibold' : ''
-                            } ${column.id === 'cliente' ? 'font-medium' : ''}`}
-                            style={{ 
+                            className={`p-2 whitespace-nowrap ${['SUB-TOTAL', 'VALOR ISS', 'VALOR LÃQUIDO'].includes(column.id)
+                              ? 'font-semibold'
+                              : ''
+                              } ${column.id === 'CLIENTE' ? 'font-medium' : ''}`}
+                            style={{
                               width: `${column.width}px`,
                               maxWidth: `${column.width}px`,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis'
                             }}
-                            title={String(getCellValue(item, column.id))}
+                            title={getCellValue(item, column.id)}
                           >
                             {getCellValue(item, column.id)}
                           </TableCell>

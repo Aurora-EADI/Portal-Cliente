@@ -2,22 +2,22 @@
 
 import { Download, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
+import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { useState } from "react";
 
-interface Props {
-  data: FaturamentoDetalhado[];
+interface Props<T extends object> {
+  data: T[];
   disabled?: boolean;
-  dt_fatura_inicio?: string;
-  dt_fatura_fim?: string;
+  dt_entrada_inicio?: string;
+  dt_entrada_fim?: string;
 }
 
-export function ExportExcelButton({
+export function ExportExcelButton<T extends object>({
   data,
   disabled,
-  dt_fatura_inicio,
-  dt_fatura_fim,
-}: Props) {
+  dt_entrada_inicio,
+  dt_entrada_fim,
+}: Props<T>) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Funções auxiliares (mantidas)
@@ -109,9 +109,9 @@ export function ExportExcelButton({
 
       let fileName = "faturamento";
 
-      if (dt_fatura_inicio && dt_fatura_fim) {
-        const dataInicio = formatDateForFilename(dt_fatura_inicio);
-        const dataFim = formatDateForFilename(dt_fatura_fim);
+      if (dt_entrada_inicio && dt_entrada_fim) {
+        const dataInicio = formatDateForFilename(dt_entrada_inicio);
+        const dataFim = formatDateForFilename(dt_entrada_fim);
 
         if (dataInicio && dataFim) {
           fileName += `_${dataInicio}_a_${dataFim}`;

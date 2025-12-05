@@ -9,18 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Search, X, Calendar } from "lucide-react";
 import { CustomButton } from "@/components/ui/CustomButton";
 import { ExportExcelButton } from "./ExportExcelButton";
-import { FaturamentoDetalhado } from "@/services/faturamento/type/type_faturamentoDetalhado";
-
-interface FiltersProps {
-  cliente: string;
-  n_fatura: string;
-  n_di: string;
-  n_lote: string;
-  modalidade_txt: string;
-  rps: string;
-  dt_fatura_inicio: string;
-  dt_fatura_fim: string;
-}
+import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
+import { FiltersProps } from '../Dashboard';
+import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
 
 interface ClienteOption {
   cliente: string;
@@ -31,7 +22,7 @@ interface Props {
   setFilters: React.Dispatch<React.SetStateAction<FiltersProps>>;
   onFetch: () => void;
   clientes?: ClienteOption[];
-  filteredData?: FaturamentoDetalhado[];
+  filteredData?: TypeBillingCutOff[];
 }
 
 export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = [], filteredData = [] }: Props) {
@@ -40,7 +31,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
   const [filteredClientes, setFilteredClientes] = useState<ClienteOption[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
-
+  const [modalidades, setModalidades] = useState<string[]>([]);
 
   useEffect(() => {
     setSearchTerm(filters.cliente);
@@ -87,13 +78,17 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
     setSearchTerm("");
     setFilters({
       cliente: "",
+      bl_awb: "",
+      lote: "",
+      container: "",
+      dta: "",
+      dt_entrada_inicio: "",
+      dt_entrada_fim: "",
       n_fatura: "",
       n_di: "",
       n_lote: "",
-      modalidade_txt: "",
+      MODALIDADE: [],
       rps: "",
-      dt_fatura_inicio: "",
-      dt_fatura_fim: ""
     });
   };
 
@@ -115,11 +110,11 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
   // Validar se data fim é maior que data início
   const handleDateInicioChange = (value: string) => {
     setFilters((prev) => {
-      const newFilters = { ...prev, dt_fatura_inicio: value };
+      const newFilters = { ...prev, dt_entrada_inicio: value };
 
       // Se já existe data fim e a nova data início é maior, limpa data fim
-      if (prev.dt_fatura_fim && value && value > prev.dt_fatura_fim) {
-        newFilters.dt_fatura_fim = "";
+      if (prev.dt_entrada_fim && value && value > prev.dt_entrada_fim) {
+        newFilters.dt_entrada_fim = "";
       }
 
       return newFilters;
@@ -128,11 +123,11 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
 
   const handleDateFimChange = (value: string) => {
     setFilters((prev) => {
-      const newFilters = { ...prev, dt_fatura_fim: value };
+      const newFilters = { ...prev, dt_entrada_fim: value };
 
       // Se já existe data início e a nova data fim é menor, limpa data início
-      if (prev.dt_fatura_inicio && value && value < prev.dt_fatura_inicio) {
-        newFilters.dt_fatura_inicio = "";
+      if (prev.dt_entrada_inicio && value && value < prev.dt_entrada_inicio) {
+        newFilters.dt_entrada_inicio = "";
       }
 
       return newFilters;
@@ -146,10 +141,10 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
       filters.n_fatura ||
       filters.n_di ||
       filters.n_lote ||
-      filters.modalidade_txt ||
+      filters.MODALIDADE ||
       filters.rps ||
-      filters.dt_fatura_inicio ||
-      filters.dt_fatura_fim
+      filters.dt_entrada_inicio ||
+      filters.dt_entrada_fim
     );
   };
 
@@ -196,9 +191,9 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     <Input
                       type="date"
-                      value={filters.dt_fatura_inicio || ""}
+                      value={filters.dt_entrada_inicio || ""}
                       onChange={(e) => handleDateInicioChange(e.target.value)}
-                      max={filters.dt_fatura_fim || undefined}
+                      max={filters.dt_entrada_fim || undefined}
                       className="pl-10"
                     />
                   </div>
@@ -210,22 +205,22 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     <Input
                       type="date"
-                      value={filters.dt_fatura_fim || ""}
+                      value={filters.dt_entrada_fim || ""}
                       onChange={(e) => handleDateFimChange(e.target.value)}
-                      min={filters.dt_fatura_inicio || undefined}
+                      min={filters.dt_entrada_inicio || undefined}
                       className="pl-10"
                     />
                   </div>
                 </div>
               </div>
 
-              {(filters.dt_fatura_inicio || filters.dt_fatura_fim) && (
+              {(filters.dt_entrada_inicio || filters.dt_entrada_fim) && (
                 <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md border border-blue-200 mt-3">
                   <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
                   <span className="text-sm text-blue-900 flex-1">
-                    {filters.dt_fatura_inicio && formatDateDisplay(filters.dt_fatura_inicio)}
-                    {filters.dt_fatura_inicio && filters.dt_fatura_fim && " até "}
-                    {filters.dt_fatura_fim && formatDateDisplay(filters.dt_fatura_fim)}
+                    {filters.dt_entrada_inicio && formatDateDisplay(filters.dt_entrada_inicio)}
+                    {filters.dt_entrada_inicio && filters.dt_entrada_fim && " até "}
+                    {filters.dt_entrada_fim && formatDateDisplay(filters.dt_entrada_fim)}
                   </span>
                   <button
                     onClick={clearDateRange}
@@ -286,20 +281,23 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
               </div>
 
               <div>
-                <Label className="text-sm font-medium mb-2 block">Modalidade</Label>
-                <Input
-                  placeholder="Ex: Marítimo, Aéreo"
-                  value={filters.modalidade_txt}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, modalidade_txt: e.target.value }))
-                  }
-                />
+                <div>
+                  <SelectModalidadeMulti
+                    value={modalidades}
+                    onChange={(values) => {
+                      setModalidades(values);
+                      setFilters((prev) => ({
+                        ...prev,
+                        MODALIDADE: values // ou salve como array, se preferir
+                      }));
+                    }}
+                  />
+                </div>
               </div>
 
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Nº RPS */}
+            {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label className="text-sm font-medium mb-2 block">Nº RPS</Label>
                 <Input
@@ -342,7 +340,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                   }
                 />
               </div>
-            </div>
+            </div> */}
 
 
           </div>
@@ -361,11 +359,9 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
               <ExportExcelButton data={filteredData} />
             </div>
 
-
             <CustomButton
 
               icon={<Search className="w-4 h-4" />}
-              disabled={!filters.dt_fatura_inicio || !filters.dt_fatura_fim}
               onClick={onFetch}
             >
               Buscar Dados

@@ -7,36 +7,56 @@ const httpClient = axios.create({
   },
 });
 
-// Interceptor para adicionar token JWT em todas as requisições
+/**
+ * -----------------------------
+ * REQUEST INTERCEPTOR
+ * Adiciona o Authorization Bearer
+ * -----------------------------
+ */
 httpClient.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      const authSession = localStorage.getItem('auth_session');
-      if (authSession) {
-        const user = JSON.parse(authSession);
-        const token = localStorage.getItem('access_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+      const token = localStorage.getItem('access_token');
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor para tratar erros de autenticação
+/**
+ * -----------------------------
+ * RESPONSE INTERCEPTOR
+ * Trata 401 e redireciona logout
+ * -----------------------------
+ */
 httpClient.interceptors.response.use(
   (response) => response,
+
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado ou inválido
-      if (typeof window !== 'undefined') {
+    const status = error.response?.status;
+    const url = error.config?.url ?? '';
+
+    // Se for 401 e NÃO for login, força logout
+    if (status === 401) {
+      const isLoginRequest = url.includes('/auth/login');
+
+      if (!isLoginRequest && typeof window !== 'undefined') {
         localStorage.removeItem('auth_session');
         localStorage.removeItem('access_token');
-        window.location.href = '/login';
+
+        const currentPath = window.location.pathname;
+
+        if (currentPath !== '/' && currentPath !== '/login') {
+          window.location.href = '/';
+        }
       }
     }
+
     return Promise.reject(error);
   }
 );

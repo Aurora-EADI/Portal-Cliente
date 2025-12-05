@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLogin } from '../../hooks/useAuth';
 import { UserRole } from '../../types';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -14,12 +15,20 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
 export function Login() {
-  const { mutate: login, isPending: isLoading } = useLogin();
+  const router = useRouter();
+  const { mutate: login, isPending: isLoading, isSuccess } = useLogin();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // ✅ Redireciona após login bem-sucedido
+  useEffect(() => {
+    if (isSuccess) {
+      router.push('/dashboard');
+    }
+  }, [isSuccess, router]);
 
   const handleLogin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -34,17 +43,40 @@ export function Login() {
     const role = email.includes('admin') ? UserRole.ADMIN : UserRole.SUPPLIER;
 
     login({ email, password, role }, {
-      onError: (err) => {
-        setError(err.message || 'Erro ao tentar login.');
+      onError: (err: any) => {
+
+        setError(err.message || 'E-mail ou senha incorretos. Tente novamente.');
       }
     });
   };
 
+  // ✅ Preenche e já faz login automático (melhor UX)
   const prefillAdmin = () => {
     setError('');
-    setEmail('admin@docflow.com');
-    setPassword('123456');
+    const adminEmail = 'admin@docflow.com';
+    const adminPassword = '123456';
+    
+    setEmail(adminEmail);
+    setPassword(adminPassword);
+
+    // Faz login automaticamente
+    login({ 
+      email: adminEmail, 
+      password: adminPassword, 
+      role: UserRole.ADMIN 
+    }, {
+      onError: (err: any) => {
+        setError(err.message || 'Erro ao tentar login demo.');
+      }
+    });
   };
+
+  // ✅ Limpa erro quando usuário começa a digitar (melhor UX)
+  useEffect(() => {
+    if (error && (email || password)) {
+      setError('');
+    }
+  }, [email, password]);
 
   return (
     <div className="min-h-screen flex">
@@ -116,6 +148,7 @@ export function Login() {
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -130,12 +163,14 @@ export function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pr-10"
+                      disabled={isLoading}
                     />
 
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
                     >
                       {showPassword ? (
                         <EyeOff size={18} />
@@ -147,7 +182,7 @@ export function Login() {
                 </div>
 
                 <div className="flex justify-end">
-                  <Button variant="link" className="p-0 text-primary-600 text-sm">
+                  <Button variant="link" className="p-0 text-primary-600 text-sm" disabled={isLoading}>
                     Esqueceu sua senha?
                   </Button>
                 </div>
@@ -181,8 +216,16 @@ export function Login() {
                   size="sm"
                   className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
                   onClick={prefillAdmin}
+                  disabled={isLoading}
                 >
-                  Demo Admin
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="animate-spin mr-2" size={16} />
+                      Conectando...
+                    </>
+                  ) : (
+                    "Demo Admin"
+                  )}
                 </Button>
               </div>
 

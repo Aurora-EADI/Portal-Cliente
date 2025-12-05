@@ -27,6 +27,7 @@ import { UserModuleAccessModule } from 'src/user-module-access/user-module-acces
     UserModule,
     PermissionsModule,
     ActivitiesModule,
+    UserModuleAccessModule,
     UserModuleAccessModule
   ],
 })
