@@ -1,45 +1,19 @@
 "use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
-import { UserRole } from '@/types'
+import { RouteGuard } from '@/components/guards/RouteGuard'
 import { FaturamentoPage } from '@/components/pages/faturamento/Dashboard'
 import { Header } from '@/components/layout/Header'
 
-export default function AdminPage() {
-  const { currentUser, isLoading } = useAuthContext()
-  const router = useRouter()
-
-  // useEffect(() => { 
-  //   if (isLoading) return
-
-  //   if (!currentUser) {
-  //     router.push('/')
-  //   } else if (currentUser.role !== UserRole.ADMIN) {
-  //     router.push('/supplier')
-  //   }
-  // }, [currentUser, isLoading, router])
-
-  if (isLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  // if (!currentUser || currentUser.role !== UserRole.ADMIN) {
-  //   return null
-  // }
-
+export default function FaturamentoPageRoute() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
-      <Layout>
-        <FaturamentoPage />
-      </Layout>
-    </div>
+    <RouteGuard route="/faturamento">
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Layout>
+          <FaturamentoPage />
+        </Layout>
+      </div>
+    </RouteGuard>
   )
 }

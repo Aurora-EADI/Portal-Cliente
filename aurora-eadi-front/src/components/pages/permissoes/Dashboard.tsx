@@ -35,6 +35,7 @@ interface Module {
   id: string;
   name: string;
   description: string;
+  route?: string;
   icon?: string;
   activities?: Activity[];
 }
@@ -42,6 +43,7 @@ interface Module {
 interface ModuleFormData {
   name: string;
   description: string;
+  route: string;
   icon: string;
 }
 
@@ -55,6 +57,7 @@ export function PermissoesDashboard() {
   const [formData, setFormData] = useState<ModuleFormData>({
     name: "",
     description: "",
+    route: "",
     icon: "Package",
   });
 
@@ -86,6 +89,21 @@ export function PermissoesDashboard() {
       return;
     }
 
+    if (!formData.route.trim()) {
+      setError('A rota do módulo é obrigatória');
+      return;
+    }
+
+    if (!formData.route.startsWith('/')) {
+      setError('A rota deve começar com "/" (ex: /faturamento)');
+      return;
+    }
+
+    if (!/^\/[a-z0-9-]+$/.test(formData.route)) {
+      setError('A rota deve conter apenas letras minúsculas, números e hífens após a "/" inicial');
+      return;
+    }
+
     try {
       setIsSaving(true);
       setError(null);
@@ -93,11 +111,12 @@ export function PermissoesDashboard() {
       const response = await api.post('/modules', {
         name: formData.name.trim(),
         description: formData.description.trim(),
+        route: formData.route.trim(),
         icon: formData.icon,
       });
 
       setModules((prev) => [...prev, response.data]);
-      setFormData({ name: "", description: "", icon: "Package" });
+      setFormData({ name: "", description: "", route: "", icon: "Package" });
       setIsAdding(false);
     } catch (err: any) {
       console.error('Erro ao criar módulo:', err);
@@ -132,7 +151,7 @@ export function PermissoesDashboard() {
   };
 
   const handleCancel = () => {
-    setFormData({ name: "", description: "", icon: "Package" });
+    setFormData({ name: "", description: "", route: "", icon: "Package" });
     setIsAdding(false);
     setError(null);
   };
@@ -236,6 +255,55 @@ export function PermissoesDashboard() {
                     {formData.description.length}/500 caracteres
                   </p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rota do Módulo <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="/faturamento"
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                        formData.route && !formData.route.startsWith('/')
+                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                          : formData.route && /^\/[a-z0-9-]+$/.test(formData.route)
+                          ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
+                          : 'border-gray-300 focus:ring-orange-500 focus:border-transparent'
+                      }`}
+                      value={formData.route}
+                      onChange={(e) =>
+                        setFormData({ ...formData, route: e.target.value.toLowerCase() })
+                      }
+                      disabled={isSaving}
+                      maxLength={50}
+                    />
+                    {formData.route && /^\/[a-z0-9-]+$/.test(formData.route) && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
+                        ✓
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <p className="text-xs text-blue-800 font-medium mb-1 flex items-center">
+                      <AlertCircle className="w-3 h-3 mr-1" />
+                      Formato obrigatório da rota:
+                    </p>
+                    <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
+                      <li>
+                        Deve <strong>começar com "/"</strong> (ex: <code className="bg-blue-100 px-1 rounded">/faturamento</code>)
+                      </li>
+                      <li>
+                        Apenas <strong>letras minúsculas</strong>, <strong>números</strong> e <strong>hífens</strong>
+                      </li>
+                      <li>
+                        Sem espaços, acentos ou caracteres especiais
+                      </li>
+                      <li>
+                        Exemplos válidos: <code className="bg-blue-100 px-1 rounded">/permissoes</code>, <code className="bg-blue-100 px-1 rounded">/gestao-usuarios</code>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -335,6 +403,15 @@ export function PermissoesDashboard() {
                 <p className="text-sm text-gray-500 leading-relaxed min-h-[40px]">
                   {module.description || "Sem descrição"}
                 </p>
+
+                {/* Route Info */}
+                {module.route && (
+                  <div className="mt-3 flex items-center text-xs">
+                    <code className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-mono">
+                      {module.route}
+                    </code>
+                  </div>
+                )}
 
                 {/* Activities Count */}
                 {module.activities && module.activities.length > 0 && (

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength, Matches } from 'class-validator';
 
 export class CreateModuleDto {
   @IsString()
@@ -12,12 +12,15 @@ export class CreateModuleDto {
   description?: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty({ message: 'A rota do módulo é obrigatória' })
   @MaxLength(100, { message: 'A rota deve ter no máximo 100 caracteres' })
-  route?: string;
+  @Matches(/^\/[a-z0-9-]+$/, {
+    message: 'A rota deve começar com "/" e conter apenas letras minúsculas, números e hífens (ex: /faturamento)',
+  })
+  route: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty({ message: 'O ícone do módulo é obrigatório' })
   @MaxLength(50, { message: 'O nome do ícone deve ter no máximo 50 caracteres' })
-  icon?: string;
+  icon: string;
 }

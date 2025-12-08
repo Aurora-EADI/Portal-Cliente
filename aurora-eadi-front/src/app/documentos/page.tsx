@@ -1,45 +1,19 @@
 "use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
+import { RouteGuard } from '@/components/guards/RouteGuard'
 import { AdminDashboard } from '@/components/pages/documentos/Dashboard'
-import { UserRole } from '@/types'
 import { Header } from '@/components/layout/Header'
 
-export default function AdminPage() {
-  const { currentUser, isLoading } = useAuthContext()
-  const router = useRouter()
-
-  // useEffect(() => { 
-  //   if (isLoading) return
-
-  //   if (!currentUser) {
-  //     router.push('/')
-  //   } else if (currentUser.role !== UserRole.ADMIN) {
-  //     router.push('/')
-  //   }
-  // }, [currentUser, isLoading, router])
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  // if (!currentUser || currentUser.role !== UserRole.ADMIN) {
-  //   return null
-  // }
-
+export default function DocumentosPageRoute() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
-      <Layout>
-        <AdminDashboard />
-      </Layout>
-    </div>
+    <RouteGuard route="/documentos">
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Layout>
+          <AdminDashboard />
+        </Layout>
+      </div>
+    </RouteGuard>
   )
 }
