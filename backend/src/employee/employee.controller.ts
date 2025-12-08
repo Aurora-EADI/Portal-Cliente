@@ -18,7 +18,7 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 
 @Controller('employees')
 @UseGuards(JwtAuthGuard, RolesGuard)

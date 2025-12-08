@@ -28,6 +28,8 @@ export class ModulesService {
       data: {
         name: createModuleDto.name,
         description: createModuleDto.description,
+        route: createModuleDto.route,
+        icon: createModuleDto.icon,
       },
     });
   }

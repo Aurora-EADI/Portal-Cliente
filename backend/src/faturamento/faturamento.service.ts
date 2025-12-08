@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 // import { PrismaPostgresService as PrismaService } from 'src/prisma/prisma.service';
 import { PrismaSqlServerService as PrismaService } from 'src/prisma/prisma.service';
-import { Faturamento, Prisma } from '@prisma/client';
+import { Faturamento, Prisma } from '@prisma/client-postgres';
 import { TypeDetailedBilling } from './type/DetailedBilling.type'
 import { TypeBillingCutOff } from './type/BillingCutOff.type';
 

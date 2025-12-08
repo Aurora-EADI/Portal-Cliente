@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 import { UserModuleAccessService } from './user-module-access.service';
 import { ToggleModuleDto } from './dto/toggle-module.dto';
 import { BulkAssignModulesDto } from './dto/bulk-assign-modules.dto';

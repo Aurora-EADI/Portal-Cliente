@@ -10,4 +10,14 @@ export class CreateModuleDto {
   @IsOptional()
   @MaxLength(500, { message: 'A descrição deve ter no máximo 500 caracteres' })
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100, { message: 'A rota deve ter no máximo 100 caracteres' })
+  route?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50, { message: 'O nome do ícone deve ter no máximo 50 caracteres' })
+  icon?: string;
 }

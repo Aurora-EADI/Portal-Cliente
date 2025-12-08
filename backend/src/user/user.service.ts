@@ -9,7 +9,7 @@ import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.servic
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 import {
   UserActivityResponse,
   UserPermissionResponse,

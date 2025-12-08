@@ -17,7 +17,7 @@ import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 
 @Controller('suppliers')
 @UseGuards(JwtAuthGuard, RolesGuard)

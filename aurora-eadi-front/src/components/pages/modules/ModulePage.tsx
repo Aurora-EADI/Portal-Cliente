@@ -4,25 +4,49 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { ModuleCard } from './ModuleCard';
-import { Truck, FileText, ShoppingCart, AlertCircle } from 'lucide-react';
+import {
+  Truck,
+  FileText,
+  ShoppingCart,
+  Shield,
+  Package,
+  Users,
+  BarChart3,
+  Settings,
+  CreditCard,
+  Briefcase,
+  Calendar,
+  MessageSquare,
+  Mail,
+  Bell,
+  LayoutDashboard,
+  Layers,
+  Wrench,
+  Database,
+  AlertCircle,
+} from 'lucide-react';
 import { modulesService, Module } from '@/services/modules/modules.service';
 
-// Mapeamento de ícones (pode ser expandido conforme necessário)
-const MODULE_ICONS: Record<string, any> = {
-  'Logística & Operações': Truck,
-  'Logística': Truck,
-  'Faturamento': ShoppingCart,
-  'Gestão de Documentos': FileText,
-  'Permissões': FileText,
-};
-
-// Mapeamento de rotas (pode vir do backend futuramente)
-const MODULE_ROUTES: Record<string, string> = {
-  'Logística & Operações': '/logistics',
-  'Logística': '/logistics',
-  'Faturamento': '/faturamento',
-  'Gestão de Documentos': '/documentos',
-  'Permissões': '/permissoes',
+// 🆕 Mapeamento de string (do backend) para componente React de ícone
+const ICON_COMPONENTS: Record<string, React.ElementType> = {
+  'Truck': Truck,
+  'FileText': FileText,
+  'ShoppingCart': ShoppingCart,
+  'Shield': Shield,
+  'Package': Package,
+  'Users': Users,
+  'BarChart3': BarChart3,
+  'Settings': Settings,
+  'CreditCard': CreditCard,
+  'Briefcase': Briefcase,
+  'Calendar': Calendar,
+  'MessageSquare': MessageSquare,
+  'Mail': Mail,
+  'Bell': Bell,
+  'LayoutDashboard': LayoutDashboard,
+  'Layers': Layers,
+  'Wrench': Wrench,
+  'Database': Database,
 };
 
 export function ModulesPage() {
@@ -60,15 +84,19 @@ export function ModulesPage() {
     }
   }, [currentUser]);
 
-  const handleModuleClick = (moduleName: string) => {
-    const route = MODULE_ROUTES[moduleName];
-    if (route) {
-      router.push(route);
+  // ✅ NOVA IMPLEMENTAÇÃO - Usa rota do backend
+  const handleModuleClick = (module: Module) => {
+    if (module.route) {
+      router.push(module.route);
+    } else {
+      console.warn(`Módulo ${module.name} não tem rota configurada`);
     }
   };
 
-  const getModuleIcon = (moduleName: string) => {
-    return MODULE_ICONS[moduleName] || FileText;
+  // ✅ NOVA IMPLEMENTAÇÃO - Usa ícone do backend
+  const getModuleIcon = (iconName?: string): React.ElementType => {
+    if (!iconName) return FileText; // Ícone padrão
+    return ICON_COMPONENTS[iconName] || FileText;
   };
 
   if (isLoading) {
@@ -124,18 +152,16 @@ export function ModulesPage() {
         {modules.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {modules.map((module) => {
-              const Icon = getModuleIcon(module.name);
-              // ✅ Usa isEnabled do backend (não mais roles hardcoded)
-              // Se o módulo está na lista, é porque isEnabled=true (filtrado na linha 54)
+              const Icon = getModuleIcon(module.icon); // 🆕 Ícone dinâmico do backend
 
               return (
                 <ModuleCard
                   key={module.id}
-                  icon={Icon}
-                  title={module.name}
-                  description={module.description}
-                  onClick={() => handleModuleClick(module.name)}
-                  disabled={false} // Sempre habilitado pois já foi filtrado por isEnabled
+                  icon={Icon}                            // 🆕 Do backend
+                  title={module.name}                    // Do backend
+                  description={module.description}        // Do backend
+                  onClick={() => handleModuleClick(module)} // 🆕 Usa route do backend
+                  disabled={false}                       // Sempre habilitado (já filtrado)
                 />
               );
             })}

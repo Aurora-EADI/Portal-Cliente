@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 import { UserActivityAccessService } from './user-activity-access.service';
 import { ToggleActivityDto } from './dto/toggle-activity.dto';
 import { BulkConfigureActivitiesDto } from './dto/bulk-configure-activities.dto';

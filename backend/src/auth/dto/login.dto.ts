@@ -1,5 +1,5 @@
 import { IsEmail, IsNotEmpty, IsEnum } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client-postgres';
 
 /**
  * DTO para Login

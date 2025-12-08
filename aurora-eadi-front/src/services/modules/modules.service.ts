@@ -4,6 +4,8 @@ export interface Module {
   id: number;
   name: string;
   description: string;
+  route?: string; // 🆕 Rota do frontend (ex: /logistics)
+  icon?: string; // 🆕 Nome do ícone Lucide React (ex: Truck)
   createdAt: string;
   updatedAt: string;
   active: boolean;
@@ -46,6 +48,8 @@ export interface Permission {
 export interface CreateModuleDto {
   name: string;
   description: string;
+  route?: string;
+  icon?: string;
 }
 
 export const modulesService = {

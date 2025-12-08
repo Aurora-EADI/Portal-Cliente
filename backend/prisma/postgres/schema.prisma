@@ -120,8 +120,10 @@ model Permission {
 // 2. Macro-Módulos (O que aparece nos Cards grandes)
 model Module {
   id          Int     @id @default(autoincrement())
-  name        String  @unique // Ex: Logística
+  name        String  @unique 
   description String?
+  route       String? 
+  icon        String? 
   active      Boolean @default(true)
 
   activities Activity[]

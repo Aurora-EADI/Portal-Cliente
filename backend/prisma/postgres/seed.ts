@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client';
+import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client-postgres';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -127,11 +127,71 @@ async function main() {
     create: { key: 'LOG_VIEW_FLEET', description: 'Ver frota', category: 'LOGISTICS' },
   });
 
-  // Módulo (usaremos o ID 1 como padrão se o provider permitir, senão será autoincrement)
+  // ============================================
+  // MÓDULOS COM ROTAS E ÍCONES
+  // ============================================
   const modLogistica = await prisma.module.upsert({
-    where: { name: 'Logística & Operações' },
-    update: {},
-    create: { name: 'Logística & Operações', description: 'Gestão de frotas' },
+    where: { name: 'Logística' },
+    update: {
+      route: '/logistics',
+      icon: 'Truck',
+      description: 'Gestão de frota, rotas e entregas',
+    },
+    create: {
+      name: 'Logística',
+      description: 'Gestão de frota, rotas e entregas',
+      route: '/logistics',
+      icon: 'Truck',
+      active: true,
+    },
+  });
+
+  const modFaturamento = await prisma.module.upsert({
+    where: { name: 'Faturamento' },
+    update: {
+      route: '/faturamento',
+      icon: 'ShoppingCart',
+      description: 'Gestão de faturas e pagamentos',
+    },
+    create: {
+      name: 'Faturamento',
+      description: 'Gestão de faturas e pagamentos',
+      route: '/faturamento',
+      icon: 'ShoppingCart',
+      active: true,
+    },
+  });
+
+  const modDocumentos = await prisma.module.upsert({
+    where: { name: 'Gestão de Documentos' },
+    update: {
+      route: '/documentos',
+      icon: 'FileText',
+      description: 'Controle de documentos',
+    },
+    create: {
+      name: 'Gestão de Documentos',
+      description: 'Controle de documentos',
+      route: '/documentos',
+      icon: 'FileText',
+      active: true,
+    },
+  });
+
+  const modPermissoes = await prisma.module.upsert({
+    where: { name: 'Permissões' },
+    update: {
+      route: '/permissoes',
+      icon: 'Shield',
+      description: 'Gestão de acessos e permissões',
+    },
+    create: {
+      name: 'Permissões',
+      description: 'Gestão de acessos e permissões',
+      route: '/permissoes',
+      icon: 'Shield',
+      active: true,
+    },
   });
 
   // Atividade e Vínculo (Mantendo o Módulo)
@@ -153,55 +213,68 @@ async function main() {
   // ============================================
   // 4. CONCESSÃO DE ACESSO PARA O TESTE
   // ============================================
-  
-  // HABILITA o acesso ao Módulo de Logística para o Usuário LIBERADO
-  await prisma.userModuleAccess.upsert({
-    where: {
-      userId_moduleId: {
-        userId: userLiberado.id,
-        moduleId: modLogistica.id,
+
+  // Lista de todos os módulos
+  const allModules = [modLogistica, modFaturamento, modDocumentos, modPermissoes];
+
+  // ADMIN: Libera acesso a TODOS os módulos
+  for (const module of allModules) {
+    await prisma.userModuleAccess.upsert({
+      where: {
+        userId_moduleId: {
+          userId: admin.id,
+          moduleId: module.id,
+        },
       },
-    },
-    update: { isEnabled: true },
-    create: {
-      userId: userLiberado.id,
-      moduleId: modLogistica.id,
-      isEnabled: true, // Acesso concedido!
-    },
-  });
+      update: { isEnabled: true },
+      create: {
+        userId: admin.id,
+        moduleId: module.id,
+        isEnabled: true,
+      },
+    });
+  }
+
+  // USER LIBERADO: Libera acesso a TODOS os módulos
+  for (const module of allModules) {
+    await prisma.userModuleAccess.upsert({
+      where: {
+        userId_moduleId: {
+          userId: userLiberado.id,
+          moduleId: module.id,
+        },
+      },
+      update: { isEnabled: true },
+      create: {
+        userId: userLiberado.id,
+        moduleId: module.id,
+        isEnabled: true,
+      },
+    });
+  }
 
   console.log('\n🔍 VERIFICANDO DADOS CRIADOS:');
-console.log('User Liberado ID:', userLiberado.id);
-console.log('Módulo Logística ID:', modLogistica.id);
+  console.log('Admin ID:', admin.id);
+  console.log('User Liberado ID:', userLiberado.id);
+  console.log('Módulos criados:', allModules.length);
 
-// Verificar se o acesso foi criado
-const accessCheck = await prisma.userModuleAccess.findUnique({
-  where: {
-    userId_moduleId: {
-      userId: userLiberado.id,
-      moduleId: modLogistica.id,
-    },
-  },
-  include: {
-    module: {
-      include: {
-        activities: {
-          include: {
-            permissions: {
-              include: { permission: true }
-            }
-          }
-        }
-      }
-    }
-  }
-});
+  // Verificar acessos do Admin
+  const adminAccesses = await prisma.userModuleAccess.count({
+    where: { userId: admin.id },
+  });
+
+  // Verificar acessos do User Liberado
+  const userAccesses = await prisma.userModuleAccess.count({
+    where: { userId: userLiberado.id },
+  });
+
+  console.log('Acessos do Admin:', adminAccesses);
+  console.log('Acessos do User Liberado:', userAccesses);
 
   // O userBloqueado (employee@docflow.com) FICA SEM o registro UserModuleAccess,
   // resultando em isEnabled: false (ou acesso inexistente), que é o comportamento
   // que o PermissionsGuard irá bloquear.
-  console.log('UserModuleAccess criado:', JSON.stringify(accessCheck, null, 2));
-  console.log('✔️ Permissão de Módulo concedida ao Usuário Liberado.');
+  console.log('✔️ Permissões de Módulos concedidas ao Admin e ao Usuário Liberado.');
 
   // ============================================
   // 5. LOG FINAL

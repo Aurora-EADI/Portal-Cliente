@@ -90,6 +90,8 @@ export class UserModuleAccessService {
         id: module.id,
         name: module.name,
         description: module.description,
+        route: module.route,
+        icon: module.icon,
         isEnabled,
         userModuleAccessId: access?.id ?? null,
         activities,
