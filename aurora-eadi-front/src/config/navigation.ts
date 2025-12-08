@@ -32,7 +32,7 @@ export const navigationContexts: NavigationContext[] = [
     ],
     allowedRoles: [UserRole.ADMIN],
   },
-  
+
   // Navegação para a página de Faturamento
   {
     basePath: '/faturamento',
@@ -70,10 +70,20 @@ export const navigationContexts: NavigationContext[] = [
         icon: FileText,
         path: '/permissoes',
       },
-       {
+      {
         label: 'Atividades e Vinculos',
         icon: FileText,
-        path: '/vinculos',
+        path: '/permissoes/atividades',
+      },
+      {
+        label: 'Cadastro de Usuários',
+        icon: FileText,
+        path: '/permissoes/usuario',
+      },
+      {
+        label: 'Gestão de Permissões',
+        icon: FileText,
+        path: '/permissoes/gestao',
       },
     ],
     allowedRoles: [UserRole.ADMIN],
@@ -96,7 +106,7 @@ export const navigationContexts: NavigationContext[] = [
 // Função para obter os itens de navegação baseado no path atual
 export const getNavigationByPath = (currentPath: string): NavItem[] => {
   // Encontrar o contexto que corresponde ao path atual
-  const context = navigationContexts.find(ctx => 
+  const context = navigationContexts.find(ctx =>
     currentPath.startsWith(ctx.basePath)
   );
 
@@ -117,12 +127,12 @@ export const getNavigationByPath = (currentPath: string): NavItem[] => {
 
 // Função para verificar se usuário pode acessar o contexto
 export const canAccessContext = (currentPath: string, userRole: UserRole): boolean => {
-  const context = navigationContexts.find(ctx => 
+  const context = navigationContexts.find(ctx =>
     currentPath.startsWith(ctx.basePath)
   );
 
   if (!context || !context.allowedRoles) {
-    return true; 
+    return true;
   }
 
   return context.allowedRoles.includes(userRole);
