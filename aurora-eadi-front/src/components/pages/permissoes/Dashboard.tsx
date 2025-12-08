@@ -1,8 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Package, AlertCircle, X, Activity } from "lucide-react";
+import { 
+  Plus, Trash2, Package, Truck, FileText, Users, BarChart3, Settings,
+  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail, 
+  Bell, Shield, LayoutDashboard, Layers, Wrench, Database, AlertCircle, X, Activity
+} from "lucide-react";
 import { api } from "@/lib/api";
+
+// Mapa de ícones disponíveis
+const ICON_MAP: Record<string, React.ElementType> = {
+  Package, Truck, FileText, Users, BarChart3, Settings,
+  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail, 
+  Bell, Shield, LayoutDashboard, Layers, Wrench, Database
+};
 
 // Types
 interface Activity {
@@ -24,12 +35,14 @@ interface Module {
   id: string;
   name: string;
   description: string;
+  icon?: string;
   activities?: Activity[];
 }
 
 interface ModuleFormData {
   name: string;
   description: string;
+  icon: string;
 }
 
 export function PermissoesDashboard() {
@@ -42,6 +55,7 @@ export function PermissoesDashboard() {
   const [formData, setFormData] = useState<ModuleFormData>({
     name: "",
     description: "",
+    icon: "Package",
   });
 
   // Carrega módulos do backend
@@ -79,10 +93,11 @@ export function PermissoesDashboard() {
       const response = await api.post('/modules', {
         name: formData.name.trim(),
         description: formData.description.trim(),
+        icon: formData.icon,
       });
 
       setModules((prev) => [...prev, response.data]);
-      setFormData({ name: "", description: "" });
+      setFormData({ name: "", description: "", icon: "Package" });
       setIsAdding(false);
     } catch (err: any) {
       console.error('Erro ao criar módulo:', err);
@@ -117,16 +132,22 @@ export function PermissoesDashboard() {
   };
 
   const handleCancel = () => {
-    setFormData({ name: "", description: "" });
+    setFormData({ name: "", description: "", icon: "Package" });
     setIsAdding(false);
     setError(null);
+  };
+
+  // Helper para renderizar o ícone dinamicamente
+  const renderIcon = (iconName?: string) => {
+    const IconComponent = iconName && ICON_MAP[iconName] ? ICON_MAP[iconName] : Package;
+    return <IconComponent className="w-6 h-6" />;
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
           <p className="mt-4 text-gray-500">Carregando módulos...</p>
         </div>
       </div>
@@ -137,7 +158,7 @@ export function PermissoesDashboard() {
     <div className="space-y-6">
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
           <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-sm font-medium text-red-800">Erro</h3>
@@ -157,12 +178,12 @@ export function PermissoesDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Módulos</h1>
-          <p className="text-gray-500 mt-1">Gerencie os módulos e permissões do sistema</p>
+          <p className="text-gray-500 mt-1">Gerencie os macro-módulos e permissões do sistema</p>
         </div>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-all shadow-sm hover:shadow text-sm font-medium"
+            className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-all shadow-sm hover:shadow text-sm font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
             Novo Módulo
@@ -172,13 +193,13 @@ export function PermissoesDashboard() {
 
       {/* Form */}
       {isAdding && (
-        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-primary-500 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
           <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-            <Package className="w-5 h-5 mr-2 text-primary-600" />
+            <Package className="w-5 h-5 mr-2 text-orange-600" />
             Cadastrar Novo Módulo
           </h3>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 gap-5">
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,13 +208,12 @@ export function PermissoesDashboard() {
                   <input
                     type="text"
                     placeholder="Ex: Financeiro, Logística, RH"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                     disabled={isSaving}
-                    required
                     maxLength={100}
                   />
                 </div>
@@ -203,7 +223,7 @@ export function PermissoesDashboard() {
                   </label>
                   <textarea
                     placeholder="Breve descrição da finalidade deste módulo..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                     rows={3}
                     value={formData.description}
                     onChange={(e) =>
@@ -217,6 +237,38 @@ export function PermissoesDashboard() {
                   </p>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ícone de Identificação
+                </label>
+                <div className="grid grid-cols-6 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-[200px] overflow-y-auto">
+                  {Object.keys(ICON_MAP).map((iconKey) => {
+                    const IconComp = ICON_MAP[iconKey];
+                    const isSelected = formData.icon === iconKey;
+                    return (
+                      <button
+                        key={iconKey}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, icon: iconKey })}
+                        disabled={isSaving}
+                        className={`
+                          flex items-center justify-center p-2 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                          ${isSelected 
+                            ? 'bg-orange-600 text-white shadow-md scale-110' 
+                            : 'bg-white text-gray-500 hover:bg-orange-100 hover:text-orange-600 border border-gray-200'}
+                        `}
+                        title={iconKey}
+                      >
+                        <IconComp className="w-5 h-5" />
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Selecione um ícone que melhor represente este módulo.
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
@@ -229,7 +281,8 @@ export function PermissoesDashboard() {
                 Cancelar
               </button>
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={isSaving}
               >
@@ -246,7 +299,7 @@ export function PermissoesDashboard() {
                 )}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
 
@@ -260,10 +313,10 @@ export function PermissoesDashboard() {
             >
               <div>
                 <div className="flex justify-between items-start mb-3">
-                  <div className="p-2 bg-primary-100 rounded-lg text-primary-600">
-                    <Package className="w-6 h-6" />
+                  <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                    {renderIcon(module.icon)}
                   </div>
-                  {/* <button
+                  <button
                     onClick={() => handleDelete(module.id)}
                     className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Excluir módulo"
@@ -274,7 +327,7 @@ export function PermissoesDashboard() {
                     ) : (
                       <Trash2 className="w-4 h-4" />
                     )}
-                  </button> */}
+                  </button>
                 </div>
                 <h3 className="font-bold text-lg text-gray-900 mb-1">
                   {module.name}
@@ -316,7 +369,7 @@ export function PermissoesDashboard() {
           </p>
           <button
             onClick={() => setIsAdding(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-sm text-sm font-medium"
+            className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors shadow-sm text-sm font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
             Criar Primeiro Módulo

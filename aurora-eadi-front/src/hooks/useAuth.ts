@@ -10,8 +10,8 @@ export const useLogin = () => {
     mutationFn: async ({ email, password, role }: { email: string; password: string; role: UserRole }) => {
       return await authService.login(email, password, role);
     },
-    onSuccess: (user) => {
-      loginUser(user);
+    onSuccess: async (user) => {
+      await loginUser(user);
     },
     onError: (error: any) => {
       // Captura o erro para não quebrar a aplicação

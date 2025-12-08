@@ -643,7 +643,7 @@ export const userActivityAccessService = {
     };
   }> {
     const response = await api.put(
-      `/user-activity-access/${userId}/${moduleId}/activity/${activityId}/toggle`,
+      `/user-activity-access/${userId}/module/${moduleId}/activity/${activityId}`,
       data
     );
     return response.data;
@@ -663,7 +663,7 @@ export const userActivityAccessService = {
     }>;
   }> {
     const response = await api.post(
-      `/user-activity-access/${userId}/${moduleId}/activities/bulk`,
+      `/user-activity-access/${userId}/module/${moduleId}/bulk`,
       data
     );
     return response.data;

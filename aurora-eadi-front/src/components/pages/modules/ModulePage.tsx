@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { ModuleCard } from './ModuleCard';
 import { Truck, FileText, ShoppingCart, AlertCircle } from 'lucide-react';
-import { UserRole } from '@/types/';
 import { modulesService, Module } from '@/services/modules/modules.service';
 
 // Mapeamento de ícones (pode ser expandido conforme necessário)
 const MODULE_ICONS: Record<string, any> = {
   'Logística & Operações': Truck,
+  'Logística': Truck,
   'Faturamento': ShoppingCart,
   'Gestão de Documentos': FileText,
   'Permissões': FileText,
@@ -19,17 +19,10 @@ const MODULE_ICONS: Record<string, any> = {
 // Mapeamento de rotas (pode vir do backend futuramente)
 const MODULE_ROUTES: Record<string, string> = {
   'Logística & Operações': '/logistics',
+  'Logística': '/logistics',
   'Faturamento': '/faturamento',
   'Gestão de Documentos': '/documentos',
   'Permissões': '/permissoes',
-};
-
-// Mapeamento de roles permitidas por módulo
-const MODULE_ROLES: Record<string, UserRole[]> = {
-  'Logística & Operações': [UserRole.ADMIN],
-  'Faturamento': [UserRole.ADMIN],
-  'Gestão de Documentos': [UserRole.ADMIN],
-  'Permissões': [UserRole.ADMIN],
 };
 
 export function ModulesPage() {
@@ -72,11 +65,6 @@ export function ModulesPage() {
     if (route) {
       router.push(route);
     }
-  };
-
-  const canAccessModule = (moduleName: string) => {
-    const allowedRoles = MODULE_ROLES[moduleName];
-    return currentUser && allowedRoles && allowedRoles.includes(currentUser.role);
   };
 
   const getModuleIcon = (moduleName: string) => {
@@ -137,8 +125,9 @@ export function ModulesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {modules.map((module) => {
               const Icon = getModuleIcon(module.name);
-              const canAccess = canAccessModule(module.name);
-              
+              // ✅ Usa isEnabled do backend (não mais roles hardcoded)
+              // Se o módulo está na lista, é porque isEnabled=true (filtrado na linha 54)
+
               return (
                 <ModuleCard
                   key={module.id}
@@ -146,7 +135,7 @@ export function ModulesPage() {
                   title={module.name}
                   description={module.description}
                   onClick={() => handleModuleClick(module.name)}
-                  disabled={!canAccess}
+                  disabled={false} // Sempre habilitado pois já foi filtrado por isEnabled
                 />
               );
             })}

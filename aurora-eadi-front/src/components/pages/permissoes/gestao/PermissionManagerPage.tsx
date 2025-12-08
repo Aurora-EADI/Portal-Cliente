@@ -31,6 +31,7 @@ import {
   modulesService,
   activitiesService,
   userModuleAccessService,
+  userActivityAccessService,
   type User,
   type Module,
   type Activity,
@@ -178,6 +179,43 @@ export function PermissionManagerPage() {
       );
 
       await Promise.all(modulePromises.filter(Boolean));
+
+      // Salva atividades alteradas para cada módulo habilitado
+      const activityPromises = modules
+        .filter((module) => localPermissions.moduleEnabled[module.id] ?? false)
+        .map(async (module) => {
+          const moduleActivities = activities.filter(
+            (a) => a.moduleId === module.id
+          );
+
+          // Identifica as atividades que foram alteradas
+          const changedActivities = moduleActivities
+            .filter((activity) => {
+              // Pula atividades obrigatórias (já são criadas automaticamente pelo backend)
+              if (activity.isMandatory) return false;
+
+              const moduleStatus = userAccessStatus?.modules.find((m) => m.id === module.id);
+              const currentState = moduleStatus?.activities.find((a) => a.id === activity.id)?.isActive ?? false;
+              const localState = localPermissions.activityEnabled[activity.id] ?? false;
+
+              return currentState !== localState;
+            })
+            .map((activity) => ({
+              activityId: activity.id,
+              isEnabled: localPermissions.activityEnabled[activity.id] ?? false,
+            }));
+
+          // Envia requisição bulk apenas se houver mudanças
+          if (changedActivities.length > 0) {
+            return userActivityAccessService.configureBulkActivities(
+              selectedUserId,
+              module.id,
+              { activities: changedActivities }
+            );
+          }
+        });
+
+      await Promise.all(activityPromises.filter(Boolean));
 
       // Recarrega as permissões
       await fetchUserPermissions(selectedUserId);
