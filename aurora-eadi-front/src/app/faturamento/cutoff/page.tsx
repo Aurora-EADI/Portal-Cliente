@@ -1,45 +1,22 @@
 "use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuthContext } from '@/context/AuthContext'
 import { Layout } from '@/components/layout/Layout'
-import { UserRole } from '@/types'
+import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard'
 import { CutOff } from '@/components/pages/faturamento/cutoff/Dashboard'
 import { Header } from '@/components/layout/Header'
 
 export default function FaturamentoCutOff() {
-  const { currentUser, isLoading } = useAuthContext()
-  const router = useRouter()
-
-  // useEffect(() => { 
-  //   if (isLoading) return
-
-  //   if (!currentUser) {
-  //     router.push('/')
-  //   } else if (currentUser.role !== UserRole.ADMIN) {
-  //     router.push('/supplier')
-  //   }
-  // }, [currentUser, isLoading, router])
-
-  if (isLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
-  }
-
-  // if (!currentUser || currentUser.role !== UserRole.ADMIN) {
-  //   return null
-  // }
-
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
-      <Layout>
-        <CutOff />
-      </Layout>
-    </div>
+    <PermissionRouteGuard
+      moduleRoute="/faturamento"
+      requiredPermissions={['FAT_VIEW_CUTOFF']}
+    >
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Layout>
+          <CutOff />
+        </Layout>
+      </div>
+    </PermissionRouteGuard>
   )
 }

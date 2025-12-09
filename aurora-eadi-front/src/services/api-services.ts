@@ -118,6 +118,7 @@ export interface Module {
   description: string;
   active?: boolean;
   activities?: ModuleActivity[];
+  icon?: string;
 }
 
 export interface CreateModuleDto {

@@ -71,10 +71,16 @@ export class UserModuleAccessService {
           (aa) => aa.activityId === activity.id,
         );
 
-        // Define se está ativa: se for mandatory fica ativa, senão verifica o toggle
-        let isActive = activity.isMandatory;
-        if (activityAccess) {
-          isActive = activityAccess.isEnabled;
+        // Define se está ativa:
+        // - Obrigatórias (isMandatory=true): SEMPRE ativas quando módulo habilitado
+        // - Opcionais (isMandatory=false): só ativas se tiver registro explícito com isEnabled=true
+        let isActive: boolean;
+        if (activity.isMandatory) {
+          // Atividades obrigatórias sempre ficam ativas (não podem ser desabilitadas)
+          isActive = true;
+        } else {
+          // Atividades opcionais: só ativas se tiver registro com isEnabled=true
+          isActive = activityAccess?.isEnabled ?? false;
         }
 
         return {

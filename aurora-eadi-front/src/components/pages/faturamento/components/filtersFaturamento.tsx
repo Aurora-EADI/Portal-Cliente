@@ -11,6 +11,7 @@ import { CustomButton } from "@/components/ui/CustomButton";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
+import { PermissionRouteGuard } from "@/components/guards/PermissionRouteGuard";
 
 interface FiltersProps {
   cliente: string;
@@ -289,15 +290,15 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
 
               <div>
                 <SelectModalidadeMulti
-                    value={modalidades}
-                    onChange={(values) => {
-                      setModalidades(values);
-                      setFilters((prev) => ({
-                        ...prev,
-                        modalidade_txt: values
-                      }));
-                    }}
-                  />
+                  value={modalidades}
+                  onChange={(values) => {
+                    setModalidades(values);
+                    setFilters((prev) => ({
+                      ...prev,
+                      modalidade_txt: values
+                    }));
+                  }}
+                />
               </div>
 
             </div>
@@ -362,7 +363,9 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                 Limpar Filtros
               </Button>
 
-              <ExportExcelButton data={filteredData} />
+              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento" requiredPermissions={['FAT_EXPORT_CUTOFF']}>
+                <ExportExcelButton data={filteredData} />
+              </PermissionRouteGuard>
             </div>
 
 

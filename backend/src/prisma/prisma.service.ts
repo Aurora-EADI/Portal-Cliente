@@ -12,7 +12,7 @@ export class PrismaPostgresService extends PrismaClientPostgres implements OnMod
 @Injectable()
 export class PrismaSqlServerService extends PrismaClientSqlServer implements OnModuleInit {
   async onModuleInit() {
-    // await this.$connect();
+    await this.$connect();
   }
 }
 

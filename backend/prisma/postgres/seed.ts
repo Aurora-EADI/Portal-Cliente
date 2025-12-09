@@ -120,11 +120,77 @@ async function main() {
   // 3. ESTRUTURA RBAC
   // ============================================
 
-  // Permissão Técnica
+  // ============================================
+  // PERMISSÕES TÉCNICAS
+  // ============================================
+
+  // Permissões de Logística
   const pViewFleet = await prisma.permission.upsert({
     where: { key: 'LOG_VIEW_FLEET' },
     update: {},
     create: { key: 'LOG_VIEW_FLEET', description: 'Ver frota', category: 'LOGISTICS' },
+  });
+
+  // Permissões de Faturamento
+  const pFatViewDash = await prisma.permission.upsert({
+    where: { key: 'FAT_VIEW_DASH' },
+    update: {},
+    create: {
+      key: 'FAT_VIEW_DASH',
+      description: 'Visualizar dashboard de faturamento',
+      category: 'FATURAMENTO'
+    },
+  });
+
+  const pFatViewDet = await prisma.permission.upsert({
+    where: { key: 'FAT_VIEW_DET' },
+    update: {},
+    create: {
+      key: 'FAT_VIEW_DET',
+      description: 'Visualizar faturamento detalhado',
+      category: 'FATURAMENTO'
+    },
+  });
+
+  const pFatViewCutoff = await prisma.permission.upsert({
+    where: { key: 'FAT_VIEW_CUTOFF' },
+    update: {},
+    create: {
+      key: 'FAT_VIEW_CUTOFF',
+      description: 'Visualizar relatório de Cut-Off',
+      category: 'FATURAMENTO'
+    },
+  });
+
+  const pFatExportCutoff = await prisma.permission.upsert({
+    where: { key: 'FAT_EXPORT_CUTOFF' },
+    update: {},
+    create: {
+      key: 'FAT_EXPORT_CUTOFF',
+      description: 'Exportar relatório de Cut-Off para Excel',
+      category: 'FATURAMENTO'
+    },
+  });
+
+  // Permissões de Permissões (Admin)
+  const pPermManageUsers = await prisma.permission.upsert({
+    where: { key: 'PERM_MANAGE_USERS' },
+    update: {},
+    create: {
+      key: 'PERM_MANAGE_USERS',
+      description: 'Gerenciar usuários e acessos',
+      category: 'PERMISSIONS'
+    },
+  });
+
+  const pPermManageModules = await prisma.permission.upsert({
+    where: { key: 'PERM_MANAGE_MODULES' },
+    update: {},
+    create: {
+      key: 'PERM_MANAGE_MODULES',
+      description: 'Gerenciar módulos do sistema',
+      category: 'PERMISSIONS'
+    },
   });
 
   // ============================================
@@ -194,12 +260,17 @@ async function main() {
     },
   });
 
-  // Atividade e Vínculo (Mantendo o Módulo)
-  await prisma.activity.upsert({
+  // ============================================
+  // ATIVIDADES E VINCULAÇÃO COM PERMISSÕES
+  // ============================================
+
+  // Atividades de Logística
+  const actViewFleet = await prisma.activity.upsert({
     where: { moduleId_name: { moduleId: modLogistica.id, name: 'Visualizar Frota' } },
     update: {},
     create: {
       name: 'Visualizar Frota',
+      description: 'Visualizar informações da frota',
       moduleId: modLogistica.id,
       isMandatory: true,
       permissions: {
@@ -207,8 +278,94 @@ async function main() {
       }
     }
   });
-  
-  console.log('✔️ Estrutura RBAC (Módulo/Permissão) criada.');
+
+  // Atividades de Faturamento
+  const actFatDashboard = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modFaturamento.id, name: 'Visualizar Dashboard' } },
+    update: {},
+    create: {
+      name: 'Visualizar Dashboard',
+      description: 'Visualizar dashboard de faturamento',
+      moduleId: modFaturamento.id,
+      isMandatory: true,
+      permissions: {
+        create: { permissionId: pFatViewDash.id }
+      }
+    }
+  });
+
+  const actFatDetalhado = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modFaturamento.id, name: 'Visualizar Faturamento Detalhado' } },
+    update: {},
+    create: {
+      name: 'Visualizar Faturamento Detalhado',
+      description: 'Acesso ao faturamento detalhado com todas as informações',
+      moduleId: modFaturamento.id,
+      isMandatory: false,
+      permissions: {
+        create: { permissionId: pFatViewDet.id }
+      }
+    }
+  });
+
+  const actFatCutoff = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modFaturamento.id, name: 'Gerar Relatório Cut-Off' } },
+    update: {},
+    create: {
+      name: 'Gerar Relatório Cut-Off',
+      description: 'Visualizar e gerar relatórios de cut-off',
+      moduleId: modFaturamento.id,
+      isMandatory: false,
+      permissions: {
+        create: { permissionId: pFatViewCutoff.id }
+      }
+    }
+  });
+
+  const actFatExportCutoff = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modFaturamento.id, name: 'Exportar Relatório Cut-Off' } },
+    update: {},
+    create: {
+      name: 'Exportar Relatório Cut-Off',
+      description: 'Exportar relatório de cut-off para Excel',
+      moduleId: modFaturamento.id,
+      isMandatory: false,
+      permissions: {
+        create: { permissionId: pFatExportCutoff.id }
+      }
+    }
+  });
+
+  // Atividades de Permissões (Admin)
+  const actPermUsers = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modPermissoes.id, name: 'Gerenciar Usuários' } },
+    update: {},
+    create: {
+      name: 'Gerenciar Usuários',
+      description: 'Gerenciar usuários e seus acessos aos módulos',
+      moduleId: modPermissoes.id,
+      isMandatory: true,
+      permissions: {
+        create: { permissionId: pPermManageUsers.id }
+      }
+    }
+  });
+
+  const actPermModules = await prisma.activity.upsert({
+    where: { moduleId_name: { moduleId: modPermissoes.id, name: 'Gerenciar Módulos' } },
+    update: {},
+    create: {
+      name: 'Gerenciar Módulos',
+      description: 'Criar e gerenciar módulos do sistema',
+      moduleId: modPermissoes.id,
+      isMandatory: true,
+      permissions: {
+        create: { permissionId: pPermManageModules.id }
+      }
+    }
+  });
+
+  console.log('✔️ Estrutura RBAC (Módulos/Atividades/Permissões) criada.');
 
   // ============================================
   // 4. CONCESSÃO DE ACESSO PARA O TESTE
@@ -217,7 +374,9 @@ async function main() {
   // Lista de todos os módulos
   const allModules = [modLogistica, modFaturamento, modDocumentos, modPermissoes];
 
-  // ADMIN: Libera acesso a TODOS os módulos
+  // ============================================
+  // ADMIN: Libera acesso a TODOS os módulos e TODAS as atividades
+  // ============================================
   for (const module of allModules) {
     await prisma.userModuleAccess.upsert({
       where: {
@@ -235,7 +394,9 @@ async function main() {
     });
   }
 
+  // ============================================
   // USER LIBERADO: Libera acesso a TODOS os módulos
+  // ============================================
   for (const module of allModules) {
     await prisma.userModuleAccess.upsert({
       where: {
@@ -251,6 +412,47 @@ async function main() {
         isEnabled: true,
       },
     });
+  }
+
+  // ============================================
+  // JOÃO (Supplier): Acesso APENAS ao Faturamento
+  // Cenário de teste: Tem acesso ao módulo, mas NÃO a todas as atividades
+  // ============================================
+
+  // Busca o usuário João
+  const joao = await prisma.user.findUnique({
+    where: { email: 'joao@tech.com' },
+  });
+
+  if (joao) {
+    // Libera o MÓDULO de Faturamento para João
+    const joaoFaturamentoAccess = await prisma.userModuleAccess.upsert({
+      where: {
+        userId_moduleId: {
+          userId: joao.id,
+          moduleId: modFaturamento.id,
+        },
+      },
+      update: { isEnabled: true },
+      create: {
+        userId: joao.id,
+        moduleId: modFaturamento.id,
+        isEnabled: true,
+      },
+    });
+
+    // ✅ LIBERAR: Apenas Dashboard (obrigatória)
+    // Dashboard já é criada automaticamente pelo toggleModule porque isMandatory = true
+
+    // ❌ BLOQUEAR: Faturamento Detalhado (NÃO criar registro = bloqueado)
+    // ❌ BLOQUEAR: Gerar Relatório Cut-Off (NÃO criar registro = bloqueado)
+    // ❌ BLOQUEAR: Exportar Relatório Cut-Off (NÃO criar registro = bloqueado)
+
+    // NOTA: Para liberar atividades opcionais posteriormente, use a rota:
+    // PUT /api/user-activity-access/:userModuleAccessId/toggle/:activityId
+
+    console.log('✔️ João liberado para: Faturamento > Dashboard (apenas obrigatória)');
+    console.log('❌ João bloqueado para: Faturamento Detalhado, Cut-Off e Exportação');
   }
 
   console.log('\n🔍 VERIFICANDO DADOS CRIADOS:');

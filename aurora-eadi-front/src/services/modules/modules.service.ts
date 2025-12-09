@@ -29,7 +29,9 @@ export interface Activity {
   name: string;
   description: string;
   moduleId: number;
-  permissions?: ActivityPermission[];
+  isActive: boolean;
+  permissions?: string[];
+  activityPermissions?: ActivityPermission[];
 }
 
 export interface ActivityPermission {

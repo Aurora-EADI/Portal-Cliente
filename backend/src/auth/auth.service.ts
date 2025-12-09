@@ -106,10 +106,16 @@ export class AuthService {
           (a) => a.activityId === activity.id,
         );
 
-        // Define se a atividade está ativa
-        let isActive = activity.isMandatory;
-        if (specificAccess) {
-          isActive = specificAccess.isEnabled;
+        // Define se a atividade está ativa:
+        // - Obrigatórias (isMandatory=true): SEMPRE ativas quando módulo habilitado
+        // - Opcionais (isMandatory=false): só ativas se tiver registro explícito com isEnabled=true
+        let isActive: boolean;
+        if (activity.isMandatory) {
+          // Atividades obrigatórias sempre ficam ativas (não podem ser desabilitadas)
+          isActive = true;
+        } else {
+          // Atividades opcionais: só ativas se tiver registro com isEnabled=true
+          isActive = specificAccess?.isEnabled ?? false;
         }
 
         // Extrai as chaves de permissão técnicas (ex: LOG_VIEW_FLEET)

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Plus,
   Trash2,
   Key,
   AlertCircle,
@@ -13,6 +12,7 @@ import {
   ArrowRight,
   Database,
 } from "lucide-react";
+import * as Icons from 'lucide-react';
 import { modulesService, activitiesService, permissionsService } from "@/services/api-services";
 import type { Module, Activity, Permission } from "@/services/api-services";
 
@@ -200,6 +200,18 @@ export function ActivityRegistry() {
       </div>
     );
   }
+
+  // Componente helper para renderizar ícone dinâmico
+  const DynamicIcon = ({ iconName, ...props }: { iconName: string;[key: string]: any }) => {
+    const IconComponent = Icons[iconName as keyof typeof Icons] as React.ComponentType<any>;
+
+    if (!IconComponent) {
+      // Fallback para um ícone padrão caso o nome não seja encontrado
+      return <Icons.Package {...props} />;
+    }
+
+    return <IconComponent {...props} />;
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

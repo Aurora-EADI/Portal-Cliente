@@ -53,7 +53,7 @@ export function Login() {
   // ✅ Preenche e já faz login automático (melhor UX)
   const prefillAdmin = () => {
     setError('');
-    const adminEmail = 'admin@docflow.com';
+    const adminEmail = 'admin@aurora.com.br';
     const adminPassword = '123456';
     
     setEmail(adminEmail);

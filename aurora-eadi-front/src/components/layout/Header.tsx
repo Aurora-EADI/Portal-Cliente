@@ -17,7 +17,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
   const handleLogout = () => logoutUser();
 
   const userDisplay =
-    currentUser.role === 'ADMIN' ? 'Admin User' : currentUser.name;
+    currentUser.role === 'ADMIN' ? currentUser.name : currentUser.name;
 
   return (
     <header

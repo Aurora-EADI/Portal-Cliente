@@ -1,10 +1,11 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
   label: string;
   icon: React.ComponentType<{ size?: number }>;
   path: string;
+  requiredPermissions?: string[]; // Permissões necessárias para acessar esta rota
 }
 
 // Definir navegação para cada contexto/página
@@ -46,11 +47,13 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Faturamento Detalhado',
         icon: FileBarChart,
         path: '/faturamento',
+        requiredPermissions: ['FAT_VIEW_DETALHADO'], // Requer permissão para visualizar faturamento detalhado
       },
       {
         label: 'Relatório CutOff',
         icon: FileBarChart,
         path: '/faturamento/cutoff',
+        requiredPermissions: ['FAT_VIEW_CUTOFF'], // Requer permissão para visualizar relatório cutoff
       },
     ],
     allowedRoles: [UserRole.ADMIN],
@@ -72,17 +75,17 @@ export const navigationContexts: NavigationContext[] = [
       },
       {
         label: 'Atividades e Vinculos',
-        icon: FileText,
+        icon: ListChecks,
         path: '/permissoes/atividades',
       },
       {
         label: 'Cadastro de Usuários',
-        icon: FileText,
+        icon: UserPlus,
         path: '/permissoes/usuario',
       },
       {
         label: 'Gestão de Permissões',
-        icon: FileText,
+        icon: ShieldCheck,
         path: '/permissoes/gestao',
       },
     ],

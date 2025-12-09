@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { AlertCircle, ShieldOff, ArrowLeft } from 'lucide-react';
+import { Logo } from '../ui/Logo';
 
 interface RouteGuardProps {
   route: string;
@@ -64,6 +65,7 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+        <Logo src="/aurora-MANAUS_logo_principal.png" size="sm" />
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-red-100 p-3">
               <ShieldOff className="w-8 h-8 text-red-600" />

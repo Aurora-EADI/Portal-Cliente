@@ -136,6 +136,7 @@ model Module {
 model Activity {
   id          Int     @id @default(autoincrement())
   name        String // Ex: Visualizar Frota
+  description String? // Descrição da atividade (opcional)
   moduleId    Int
   isMandatory Boolean @default(false) // Se true, ao ganhar o módulo, ganha a atividade
 

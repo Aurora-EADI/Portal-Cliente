@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LogOut, Menu, ChevronLeft } from 'lucide-react';
 import { UserRole } from '@/types';
-import { getNavigationByPath } from '@/config/navigation';
+import { useNavigationWithPermissions } from '@/hooks/useNavigationWithPermissions';
 
 interface SidebarItemProps {
   label: string;
@@ -45,9 +45,10 @@ export const Sidebar: React.FC = () => {
 
   const [collapsed, setCollapsed] = useState(false);
 
-  if (!currentUser) return null;
+  // Obtém itens de navegação filtrados por permissões
+  const navigationItems = useNavigationWithPermissions();
 
-  const navigationItems = getNavigationByPath(pathname);
+  if (!currentUser) return null;
 
   const isActive = (path: string) => pathname === path;
 
