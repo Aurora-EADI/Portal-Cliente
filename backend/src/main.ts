@@ -4,26 +4,29 @@ import { AppModule } from './App/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  
+  // CORS - usar variável de ambiente
   app.enableCors({
-    origin: 'http://localhost:3000', // URL do frontend
-    credentials: true, // Permite envio de cookies
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    credentials: true,
   });
-
+  
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Remove propriedades não definidas no DTO
-      forbidNonWhitelisted: true, // Lança erro se houver props extras
-      transform: true, // Transforma os dados para o tipo do DTO
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
-
-  app.setGlobalPrefix('api'); // Todas as rotas começam com /apis
-
-  const port = process.env.PORT || 3333;
-  await app.listen(port);
-
-  console.log('🚀 Servidor rodando em http://localhost:' + port);
+  
+  app.setGlobalPrefix('api');
+  
+  const port = process.env.PORT || 5000;
+  
+  // IMPORTANTE: Ouvir em 0.0.0.0 para funcionar no Docker
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`🚀 Servidor rodando em http://localhost:${port}`);
 }
 
 bootstrap();

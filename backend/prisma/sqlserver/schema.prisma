@@ -4,8 +4,9 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../../node_modules/@prisma/client-sqlserver"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
+  output        = "../../node_modules/@prisma/client-sqlserver"
 }
 
 // Schema vazio - use apenas $queryRaw para consultas

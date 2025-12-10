@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 // import { PrismaPostgresService as PrismaService } from 'src/prisma/prisma.service';
 import { PrismaSqlServerService as PrismaService } from 'src/prisma/prisma.service';
 import { Faturamento, Prisma } from '@prisma/client-postgres';
@@ -9,8 +9,17 @@ import { TypeBillingCutOff } from './type/BillingCutOff.type';
 export class FaturamentoService {
   constructor(private prisma: PrismaService) { }
 
+  private checkSqlServerConnection() {
+    if (!this.prisma.isConnected()) {
+      throw new HttpException(
+        'SQL Server (Siaum) not available. Legacy billing data is currently unavailable.',
+        HttpStatus.SERVICE_UNAVAILABLE
+      );
+    }
+  }
 
   async findAll(dataInicio?: Date, dataFim?: Date): Promise<TypeDetailedBilling[]> {
+    this.checkSqlServerConnection();
 
     const toSqlString = (d?: Date) => {
       if (!d) return null;
@@ -28,6 +37,7 @@ export class FaturamentoService {
   }
 
   async getDetailBillingCutOff() {
+    this.checkSqlServerConnection();
 
     return this.prisma.$queryRaw<TypeBillingCutOff[]>(Prisma.sql`
     EXEC stpRelatorio_Servicos_Pivot;
