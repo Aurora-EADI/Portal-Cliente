@@ -24,6 +24,7 @@ export class UserModuleAccessService {
         name: true,
         email: true,
         role: true,
+        companyId: true
       },
     });
 

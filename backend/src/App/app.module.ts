@@ -12,6 +12,8 @@ import { PermissionsModule } from 'src/permissions/permissions.module';
 import { ActivitiesModule } from 'src/activities/activities.module';
 import { UserModuleAccessModule } from 'src/user-module-access/user-module-access.module';
 import { UserActivityAccessModule } from 'src/user-activity-access/user-activity-access.module';
+import { DocumentsModule } from 'src/documents/documents.module';
+import { CompaniesModule } from 'src/companies/companies.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { UserActivityAccessModule } from 'src/user-activity-access/user-activity
     ActivitiesModule,
     UserModuleAccessModule,
     UserActivityAccessModule,
+    DocumentsModule,
+    CompaniesModule,
   ],
 })
 export class AppModule {}

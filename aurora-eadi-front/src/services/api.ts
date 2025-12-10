@@ -139,13 +139,19 @@ export const documentService = {
   /**
    * Faz upload de documento
    */
-  upload: async (file: File, name: string, user: User): Promise<Document> => {
+  upload: async (file: File, name: string, user: User, dateIssue?: string, dateExpiration?: string): Promise<Document> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('name', name);
       if (user.companyId) {
         formData.append('companyId', user.companyId);
+      }
+      if (dateIssue) {
+        formData.append('dateIssue', dateIssue);
+      }
+      if (dateExpiration) {
+        formData.append('dateExpiration', dateExpiration);
       }
 
       const response = await httpClient.post('/documents/upload', formData, {
@@ -179,6 +185,27 @@ export const documentService = {
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
       let message = 'Erro ao atualizar status do documento';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  /**
+   * Busca URL de download do documento
+   */
+  getDownloadUrl: async (id: string): Promise<string> => {
+    try {
+      const response = await httpClient.get(`/documents/${id}/download`);
+      return response.data.url;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar URL de download';
 
       if (typeof backendMessage === 'string') {
         message = backendMessage;

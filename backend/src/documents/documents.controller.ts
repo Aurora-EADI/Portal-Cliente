@@ -1,0 +1,59 @@
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { DocumentsService } from './documents.service';
+import { UploadDocumentDto } from './dto/upload-document.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
+import { Roles } from '../common/decorators/roles.decorator';
+import { UserRole } from '@prisma/client-postgres';
+
+@Controller('documents')
+@UseGuards(JwtAuthGuard)
+export class DocumentsController {
+  constructor(private readonly documentsService: DocumentsService) { }
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UploadDocumentDto,
+    @Request() req,
+  ) {
+    // Tente req.user.id ao invés de req.user.userId
+    return this.documentsService.uploadDocument(file, dto, req.user.id);
+  }
+
+  @Get()
+  @Roles(UserRole.ADMIN)
+  async findAll() {
+    return this.documentsService.findAll();
+  }
+
+  @Get('company/:companyId')
+  async findByCompany(@Param('companyId') companyId: string) {
+    return this.documentsService.findByCompany(companyId);
+  }
+
+  @Patch(':id/status')
+  @Roles(UserRole.ADMIN)
+  async updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto) {
+    return this.documentsService.updateStatus(id, dto);
+  }
+
+  @Get(':id/download')
+  async getDownloadUrl(@Param('id') id: string) {
+    const url = await this.documentsService.getFileUrl(id);
+    return { url };
+  }
+}

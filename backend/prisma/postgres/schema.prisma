@@ -84,13 +84,15 @@ model User {
 
 model Document {
   id              String         @id @default(uuid())
-  name            String // Nome/Descrição do documento
-  fileType        String // Tipo do arquivo (pdf, jpg, png)
-  fileUrl         String // URL ou caminho do arquivo armazenado
-  status          DocumentStatus @default(PENDING) // Status inicial: pendente
-  rejectionReason String? // Motivo da reprovação (se aplicável)
-  uploadedAt      DateTime       @default(now()) // Data do upload
-  updatedAt       DateTime       @updatedAt // Data da última atualização
+  name            String 
+  fileType        String 
+  fileUrl         String 
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  dateIssue       DateTime? 
+  dateExpiration  DateTime?
+  uploadedAt      DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   // Chaves estrangeiras
   userId    String // ID do usuário que enviou

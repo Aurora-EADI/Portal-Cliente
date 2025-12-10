@@ -52,6 +52,8 @@ export interface Document {
   uploadedAt: string
   status: DocumentStatus
   rejectionReason?: string
+  dateIssue?: string
+  dateExpiration?: string
 }
 
 export interface CreateCompanyDTO extends Omit<Company, 'id' | 'createdAt' | 'status'> {}

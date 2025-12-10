@@ -1,0 +1,66 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaPostgresService } from '../prisma/prisma.service';
+import { CompanyStatus } from '@prisma/client-postgres';
+
+@Injectable()
+export class CompaniesService {
+  constructor(private prisma: PrismaPostgresService) {}
+
+  /**
+   * Busca todas as empresas com seus responsáveis
+   */
+  async getAllWithResponsible() {
+    const companies = await this.prisma.company.findMany({
+      include: {
+        users: {
+          where: {
+            role: 'SUPPLIER', // Busca apenas o usuário responsável (SUPPLIER)
+          },
+          take: 1, // Pega apenas o primeiro responsável
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Formata o retorno para o formato esperado pelo frontend
+    return companies.map((company) => ({
+      company: {
+        id: company.id,
+        cnpj: company.cnpj,
+        fantasyName: company.fantasyName,
+        socialReason: company.socialReason,
+        zipCode: company.zipCode,
+        address: company.address,
+        number: company.number,
+        complement: company.complement,
+        neighborhood: company.neighborhood,
+        city: company.city,
+        state: company.state,
+        phone: company.phone,
+        status: company.status,
+        createdAt: company.createdAt.toISOString(),
+      },
+      responsible: company.users[0]
+        ? {
+            id: company.users[0].id,
+            name: company.users[0].name,
+            email: company.users[0].email,
+            role: company.users[0].role,
+            companyId: company.users[0].companyId,
+          }
+        : null,
+    }));
+  }
+
+  /**
+   * Atualiza o status de uma empresa
+   */
+  async updateStatus(id: string, status: CompanyStatus) {
+    return this.prisma.company.update({
+      where: { id },
+      data: { status },
+    });
+  }
+}

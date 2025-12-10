@@ -12,6 +12,8 @@ export function SupplierDashboard() {
 
   const [docName, setDocName] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [dateIssue, setDateIssue] = useState('');
+  const [dateExpiration, setDateExpiration] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
@@ -19,12 +21,14 @@ export function SupplierDashboard() {
 
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !docName || !currentUser) return;
+    if (!file || !docName || !currentUser || !dateIssue || !dateExpiration) return;
 
-    upload({ file, name: docName, user: currentUser }, {
+    upload({ file, name: docName, user: currentUser, dateIssue, dateExpiration }, {
       onSuccess: () => {
         setFile(null);
         setDocName('');
+        setDateIssue('');
+        setDateExpiration('');
         const input = document.getElementById('file-upload') as HTMLInputElement;
         if (input) input.value = '';
       }
@@ -44,39 +48,67 @@ export function SupplierDashboard() {
           <UploadCloud className="text-primary-600" size={20} />
           Novo Envio
         </h2>
-        <form onSubmit={handleUpload} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div className="md:col-span-5">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Documento</label>
-            <input 
-              type="text" 
-              value={docName}
-              onChange={e => setDocName(e.target.value)}
-              placeholder="Ex: Contrato Social" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-              required
-              disabled={isUploading}
-            />
+        <form onSubmit={handleUpload} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-12">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Documento</label>
+              <input
+                type="text"
+                value={docName}
+                onChange={e => setDocName(e.target.value)}
+                placeholder="Ex: Contrato Social"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                required
+                disabled={isUploading}
+              />
+            </div>
           </div>
-          <div className="md:col-span-5">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Arquivo (PDF, JPG, PNG)</label>
-            <input 
-              id="file-upload"
-              type="file" 
-              accept=".pdf,.jpg,.jpeg,.png"
-              onChange={handleFileChange}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-              required
-              disabled={isUploading}
-            />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Emissão</label>
+              <input
+                type="date"
+                value={dateIssue}
+                onChange={e => setDateIssue(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={isUploading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Validade</label>
+              <input
+                type="date"
+                value={dateExpiration}
+                onChange={e => setDateExpiration(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                disabled={isUploading}
+              />
+            </div>
           </div>
-          <div className="md:col-span-2">
-            <button 
-              type="submit" 
-              disabled={isUploading || !file}
-              className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-200/50 flex items-center justify-center"
-            >
-              {isUploading ? <Loader2 className="animate-spin" size={18} /> : 'Enviar'}
-            </button>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div className="md:col-span-10">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Arquivo (PDF, JPG, PNG)</label>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                required
+                disabled={isUploading}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <button
+                type="submit"
+                disabled={isUploading || !file}
+                className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-200/50 flex items-center justify-center"
+              >
+                {isUploading ? <Loader2 className="animate-spin" size={18} /> : 'Enviar'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -92,7 +124,9 @@ export function SupplierDashboard() {
             <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4">Documento</th>
-                <th className="px-6 py-4">Data</th>
+                <th className="px-6 py-4">Enviado em</th>
+                <th className="px-6 py-4">Data Emissão</th>
+                <th className="px-6 py-4">Data Validade</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Detalhes</th>
               </tr>
@@ -100,13 +134,13 @@ export function SupplierDashboard() {
             <tbody className="divide-y divide-gray-100">
               {isLoadingDocs ? (
                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                        <div className="flex justify-center"><Loader2 className="animate-spin text-primary-500" /></div>
                     </td>
                  </tr>
               ) : documents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                     Nenhum documento enviado ainda.
                   </td>
                 </tr>
@@ -119,6 +153,12 @@ export function SupplierDashboard() {
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500">
+                      {doc.dateIssue ? new Date(doc.dateIssue).toLocaleDateString('pt-BR') : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500">
+                      {doc.dateExpiration ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR') : '-'}
                     </td>
                     <td className="px-6 py-4">
                       <Badge status={doc.status} context="document" />

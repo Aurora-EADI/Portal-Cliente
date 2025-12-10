@@ -4,7 +4,7 @@ import { useSuppliers, useUpdateCompanyStatus } from '../../../hooks/useSupplier
 import { useDocuments, useUpdateDocumentStatus } from '../../../hooks/useDocuments';
 import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus } from '../../../types';
-import { CompanyWithResponsible } from '../../../services/api';
+import { CompanyWithResponsible, documentService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon, AlertCircle, Users, UserCheck, Clock, Loader2 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -35,7 +35,7 @@ export function AdminDashboard() {
     return (
       company.fantasyName.toLowerCase().includes(term) ||
       company.cnpj.includes(term) ||
-      responsible.name.toLowerCase().includes(term)
+      (responsible && responsible.name.toLowerCase().includes(term))
     );
   });
 
@@ -73,6 +73,16 @@ export function AdminDashboard() {
       updateDoc({ id: rejectingDoc.id, status: DocumentStatus.REJECTED, reason: rejectionReason });
       setRejectingDoc(null);
       setRejectionReason('');
+    }
+  };
+
+  const handleDownload = async (docId: string) => {
+    try {
+      const url = await documentService.getDownloadUrl(docId);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Erro ao fazer download:', error);
+      alert('Erro ao fazer download do documento');
     }
   };
 
@@ -168,7 +178,7 @@ export function AdminDashboard() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-gray-600">
                         <UserIcon size={14} className="text-gray-400"/>
-                        {responsible.name}
+                        {responsible ? responsible.name : '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -289,6 +299,8 @@ export function AdminDashboard() {
                     <tr>
                       <th className="px-6 py-3">Documento</th>
                       <th className="px-6 py-3">Enviado em</th>
+                      <th className="px-6 py-3">Data Emissão</th>
+                      <th className="px-6 py-3">Data Validade</th>
                       <th className="px-6 py-3">Status</th>
                       <th className="px-6 py-3 text-right">Ações</th>
                     </tr>
@@ -296,7 +308,7 @@ export function AdminDashboard() {
                   <tbody className="divide-y divide-gray-100">
                     {selectedDocs.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-400">
                           Nenhum documento enviado.
                         </td>
                       </tr>
@@ -312,6 +324,12 @@ export function AdminDashboard() {
                           <td className="px-6 py-4 text-gray-500">
                             {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
                           </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {doc.dateIssue ? new Date(doc.dateIssue).toLocaleDateString('pt-BR') : '-'}
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {doc.dateExpiration ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR') : '-'}
+                          </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                                 <Badge status={doc.status} context="document" />
@@ -324,19 +342,17 @@ export function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end items-center gap-2">
-                              <a 
-                                href={doc.fileUrl} 
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                onClick={() => handleDownload(doc.id)}
                                 className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-600 rounded-md transition-colors"
                                 title="Download"
                               >
                                 <Download size={18} />
-                              </a>
+                              </button>
 
                               {doc.status === DocumentStatus.PENDING && (
                                 <>
-                                  <button 
+                                  <button
                                     onClick={() => handleApprove(doc)}
                                     disabled={isUpdatingDoc}
                                     className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors"
@@ -344,7 +360,7 @@ export function AdminDashboard() {
                                   >
                                     <Check size={18} />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => { setRejectingDoc(doc); setRejectionReason(''); }}
                                     disabled={isUpdatingDoc}
                                     className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
