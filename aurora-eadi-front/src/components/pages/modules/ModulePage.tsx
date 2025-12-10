@@ -157,11 +157,11 @@ export function ModulesPage() {
               return (
                 <ModuleCard
                   key={module.id}
-                  icon={Icon}                            // 🆕 Do backend
-                  title={module.name}                    // Do backend
-                  description={module.description}        // Do backend
-                  onClick={() => handleModuleClick(module)} // 🆕 Usa route do backend
-                  disabled={false}                       // Sempre habilitado (já filtrado)
+                  icon={Icon}                            
+                  title={module.name}                   
+                  description={module.description}       
+                  onClick={() => handleModuleClick(module)} 
+                  disabled={false}                      
                 />
               );
             })}

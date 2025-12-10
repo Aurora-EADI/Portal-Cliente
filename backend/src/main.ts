@@ -21,7 +21,7 @@ async function bootstrap() {
   
   app.setGlobalPrefix('api');
   
-  const port = process.env.PORT || 5000;
+  const port = process.env.PORT || 3333;
   
   // IMPORTANTE: Ouvir em 0.0.0.0 para funcionar no Docker
   await app.listen(port, '0.0.0.0');

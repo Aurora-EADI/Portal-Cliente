@@ -30,6 +30,11 @@ export const navigationContexts: NavigationContext[] = [
         icon: Shield,
         path: '/documentos',
       },
+       {
+        label: 'Empresa Documentos',
+        icon: Shield,
+        path: '/documentos/empresa',
+      },
     ],
     allowedRoles: [UserRole.ADMIN],
   },
@@ -47,13 +52,13 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Faturamento Detalhado',
         icon: FileBarChart,
         path: '/faturamento',
-        requiredPermissions: ['FAT_VIEW_DETALHADO'], // Requer permissão para visualizar faturamento detalhado
+        requiredPermissions: ['FAT_VIEW_DETALHADO'],
       },
       {
         label: 'Relatório CutOff',
         icon: FileBarChart,
         path: '/faturamento/cutoff',
-        requiredPermissions: ['FAT_VIEW_CUTOFF'], // Requer permissão para visualizar relatório cutoff
+        requiredPermissions: ['FAT_VIEW_CUTOFF'],
       },
     ],
     allowedRoles: [UserRole.ADMIN],

@@ -111,7 +111,7 @@ export function SupplierDashboard() {
                   </td>
                 </tr>
               ) : (
-                documents.map(doc => (
+                documents.map((doc: any) => (
                   <tr key={doc.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
                       <FileText size={16} className={doc.fileType === 'pdf' ? "text-red-500" : "text-blue-500"} />

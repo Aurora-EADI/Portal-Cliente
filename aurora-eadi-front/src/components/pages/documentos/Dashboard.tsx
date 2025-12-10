@@ -4,6 +4,7 @@ import { useSuppliers, useUpdateCompanyStatus } from '../../../hooks/useSupplier
 import { useDocuments, useUpdateDocumentStatus } from '../../../hooks/useDocuments';
 import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus } from '../../../types';
+import { CompanyWithResponsible } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon, AlertCircle, Users, UserCheck, Clock, Loader2 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -24,8 +25,8 @@ export function AdminDashboard() {
   const [rejectingDoc, setRejectingDoc] = useState<Document | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const pendingCompanies = suppliers.filter(s => s.company.status === CompanyStatus.PENDING).length;
-  const activeCompanies = suppliers.filter(s => s.company.status === CompanyStatus.ACTIVE).length;
+  const pendingCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.PENDING).length;
+  const activeCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.ACTIVE).length;
   const totalCompanies = suppliers.length;
 
 

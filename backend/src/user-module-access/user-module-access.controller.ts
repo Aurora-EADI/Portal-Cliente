@@ -31,7 +31,6 @@ export class UserModuleAccessController {
    * DIFERENTE de GET /users/:id/modules (que só lista os que têm acesso)
    */
   @Get(':userId')
-  @Roles(UserRole.ADMIN)
   async getUserModulesWithAccessStatus(@Param('userId') userId: string) {
     return this.userModuleAccessService.getUserModulesWithAccessStatus(userId);
   }

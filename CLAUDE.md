@@ -23,7 +23,7 @@ npm run lint       # Run ESLint
 
 ### Backend (backend/)
 ```bash
-npm run start:dev    # Start NestJS with hot reload on port 3333
+npm run dev          # Start NestJS with hot reload on port 3333
 npm run build        # Build for production
 npm run start:prod   # Run production build
 npm start            # Run built code
