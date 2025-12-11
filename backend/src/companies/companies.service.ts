@@ -6,6 +6,10 @@ import { CompanyStatus } from '@prisma/client-postgres';
 export class CompaniesService {
   constructor(private prisma: PrismaPostgresService) {}
 
+
+  async getAll(){
+    return this.prisma.company.findMany()
+  }
   /**
    * Busca todas as empresas com seus responsáveis
    */

@@ -18,6 +18,12 @@ import { UserRole } from '@prisma/client-postgres';
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
+  @Get()
+  @Roles(UserRole.ADMIN)
+  getAll(){
+    return this.companiesService.getAll()
+  }
+
   @Get('with-responsible')
   @Roles(UserRole.ADMIN)
   async getAllWithResponsible() {

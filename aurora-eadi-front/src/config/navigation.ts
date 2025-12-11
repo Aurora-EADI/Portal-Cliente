@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -92,6 +92,11 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Gestão de Permissões',
         icon: ShieldCheck,
         path: '/permissoes/gestao',
+      },
+      {
+        label: 'Cadastro Fornecedor',
+        icon: Building,
+        path: '/permissoes/companies',
       },
     ],
     allowedRoles: [UserRole.ADMIN],

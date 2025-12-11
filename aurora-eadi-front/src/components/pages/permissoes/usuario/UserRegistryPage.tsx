@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   Check,
   AlertCircle,
+  Edit,
 } from "lucide-react";
 import {
   usersService,
@@ -19,7 +20,9 @@ import {
   type CreateUserDto,
   type Company,
   UserRole,
+  companiesService,
 } from "@/services/api-services";
+import { EditUserModal } from './EditUserModal';
 
 export function UserRegistryPage() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -29,6 +32,9 @@ export function UserRegistryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
 
   const [formData, setFormData] = useState<CreateUserDto>({
     name: "",
@@ -49,22 +55,18 @@ export function UserRegistryPage() {
       setIsLoading(true);
       setError(null);
 
-      // TODO: Adicionar endpoint de companies quando existir
-      // const [usersData, companiesData] = await Promise.all([
-      //   usersService.findAll(),
-      //   companiesService.findAll(),
-      // ]);
-
-      const usersData = await usersService.findAll();
+      const [usersData, companiesData] = await Promise.all([
+        usersService.findAll(),
+        companiesService.findAll(),
+      ]);
 
       setUsers(usersData);
-      // setCompanies(companiesData);
-      setCompanies([]); // Temporário até ter endpoint de companies
+      setCompanies(companiesData);
     } catch (err: any) {
       console.error("Erro ao carregar dados:", err);
       setError(
         err.response?.data?.message ||
-          "Erro ao carregar dados. Verifique sua conexão."
+        "Erro ao carregar dados. Verifique sua conexão."
       );
     } finally {
       setIsLoading(false);
@@ -185,6 +187,54 @@ export function UserRegistryPage() {
     );
   }
 
+  const handleEdit = (user: UserType) => {
+    setEditingUser(user);
+    setIsEditModalOpen(true);
+    setError(null);
+  };
+
+  const handleUpdateUser = async (data: any) => {
+    if (!editingUser) return;
+
+    // Validação de email duplicado
+    const emailExists = users.some(
+      (u) => u.id !== editingUser.id && u.email.toLowerCase() === data.email.toLowerCase()
+    );
+    if (emailExists) {
+      setError("Este e-mail já está cadastrado no sistema.");
+      throw new Error("Email já existe");
+    }
+
+    // Validação de empresa obrigatória
+    if (
+      (data.role === UserRole.SUPPLIER || data.role === UserRole.EMPLOYEE) &&
+      !data.companyId
+    ) {
+      setError("A seleção de Empresa é obrigatória para Funcionários e Fornecedores.");
+      throw new Error("Empresa obrigatória");
+    }
+
+    // Atualizar usuário
+    const updatedUser: UserType = {
+      ...editingUser,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      position: data.position,
+      company: data.companyId ? companies.find((c) => c.id === data.companyId) : undefined,
+    };
+
+    // Chamar API aqui: await usersService.update(editingUser.id, data);
+
+    setUsers((prev) =>
+      prev.map((user) => (user.id === editingUser.id ? updatedUser : user))
+    );
+
+    setIsEditModalOpen(false);
+    setEditingUser(null);
+    setError(null);
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Error Alert */}
@@ -207,20 +257,18 @@ export function UserRegistryPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-gray-500 text-sm">
-            Gerencie o acesso de colaboradores e fornecedores.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Cadastro de Usuário</h1>
+          <p className="text-gray-500 mt-1">Gerencie os cadastros de usuário.</p>
         </div>
         <button
           onClick={() => {
             setIsAdding(!isAdding);
             setError(null);
           }}
-          className={`flex items-center px-4 py-2 text-white rounded-md transition-colors shadow-sm text-sm font-medium ${
-            isAdding
-              ? "bg-gray-500 hover:bg-gray-600"
-              : "bg-primary-600 hover:bg-primary-700"
-          }`}
+          className={`flex items-center px-4 py-2 text-white rounded-md transition-colors shadow-sm text-sm font-medium ${isAdding
+            ? "bg-gray-500 hover:bg-gray-600"
+            : "bg-primary-600 hover:bg-primary-700"
+            }`}
         >
           {isAdding ? (
             "Cancelar"
@@ -367,8 +415,8 @@ export function UserRegistryPage() {
                   Empresa Vinculada
                   {(formData.role === UserRole.EMPLOYEE ||
                     formData.role === UserRole.SUPPLIER) && (
-                    <span className="text-red-500 ml-1">*</span>
-                  )}
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
                 </label>
                 <div className="relative">
                   <select
@@ -385,7 +433,7 @@ export function UserRegistryPage() {
                     <option value="">Selecione uma empresa...</option>
                     {companies.map((comp) => (
                       <option key={comp.id} value={comp.id}>
-                        {comp.fantasyName} ({comp.cnpj})
+                        {comp.fantasyName}
                       </option>
                     ))}
                   </select>
@@ -435,17 +483,27 @@ export function UserRegistryPage() {
               key={user.id}
               className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition-shadow group relative"
             >
-              <button
-                onClick={() => handleDelete(user.id)}
-                disabled={deletingId === user.id}
-                className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deletingId === user.id ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </button>
+              <div className="flex">
+                <button
+                  onClick={() => handleEdit(user)}
+                  className="absolute top-4 right-12 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Editar usuário"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => handleDelete(user.id)}
+                  disabled={deletingId === user.id}
+                  className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingId === user.id ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
 
               <div className="flex items-center space-x-4 mb-4">
                 <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-xl border-2 border-white shadow-sm">
@@ -509,6 +567,19 @@ export function UserRegistryPage() {
           </button>
         </div>
       )}
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        user={editingUser}
+        companies={companies}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingUser(null);
+          setError(null);
+        }}
+        onSave={handleUpdateUser}
+        error={error}
+        onClearError={() => setError(null)}
+      />
     </div>
   );
 }

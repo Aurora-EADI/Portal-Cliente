@@ -344,6 +344,36 @@ export interface ActivityUsageStats {
   }>;
 }
 
+// ==================== COMPANIES ACCESS TYPES ====================
+export interface Company {
+  id: number;
+  cnpj: string;
+  fantasyName: string;
+  socialReason: string;
+  zipCode: string;
+  address: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  phone: string;
+  status?: 'ACTIVE' | 'INACTIVE' | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+// ==================== COMPANIES SERVICE ====================
+
+export const companiesService = {
+
+  async findAll(): Promise<Company[]> {
+    const response = await api.get("/companies");
+    return response.data;
+  },
+}
+
 // ==================== USERS SERVICE ====================
 
 export const usersService = {
