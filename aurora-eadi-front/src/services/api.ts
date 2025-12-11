@@ -1,4 +1,4 @@
-import httpClient from './httpClient';
+import { api } from '@/lib/api';
 import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus } from '@/types';
 
 const validRoles = Object.values(UserRole);
@@ -17,7 +17,7 @@ export const authService = {
     }
 
     try {
-      const response = await httpClient.post('/auth/login', { email, password, role });
+      const response = await api.post('/auth/login', { email, password, role });
 
       if (response.data.access_token) {
         localStorage.setItem('access_token', response.data.access_token);
@@ -46,7 +46,7 @@ export const authService = {
    */
   register: async (payload: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
     try {
-      const response = await httpClient.post('/auth/register', payload);
+      const response = await api.post('/auth/register', payload);
       return response.data.user;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -70,7 +70,7 @@ export const authService = {
    */
   getProfile: async () => {
     try {
-      const response = await httpClient.get('/auth/me');
+      const response = await api.get('/auth/me');
       return response.data.user;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -99,7 +99,7 @@ export const documentService = {
    */
   getAll: async (): Promise<Document[]> => {
     try {
-      const response = await httpClient.get('/documents');
+      const response = await api.get('/documents');
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -120,7 +120,7 @@ export const documentService = {
    */
   getByCompany: async (companyId: string): Promise<Document[]> => {
     try {
-      const response = await httpClient.get(`/documents/company/${companyId}`);
+      const response = await api.get(`/documents/company/${companyId}`);
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -145,7 +145,7 @@ export const documentService = {
       formData.append('file', file);
       formData.append('name', name);
       if (user.companyId) {
-        formData.append('companyId', user.companyId);
+        formData.append('companyId', String(user.companyId));
       }
       if (dateIssue) {
         formData.append('dateIssue', dateIssue);
@@ -154,7 +154,7 @@ export const documentService = {
         formData.append('dateExpiration', dateExpiration);
       }
 
-      const response = await httpClient.post('/documents/upload', formData, {
+      const response = await api.post('/documents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -180,7 +180,7 @@ export const documentService = {
    */
   updateStatus: async (id: string, status: DocumentStatus, reason?: string): Promise<Document> => {
     try {
-      const response = await httpClient.patch(`/documents/${id}/status`, { status, rejectionReason: reason });
+      const response = await api.patch(`/documents/${id}/status`, { status, rejectionReason: reason });
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -201,7 +201,7 @@ export const documentService = {
    */
   getDownloadUrl: async (id: string): Promise<string> => {
     try {
-      const response = await httpClient.get(`/documents/${id}/download`);
+      const response = await api.get(`/documents/${id}/download`);
       return response.data.url;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -235,7 +235,7 @@ export const companyService = {
    */
   getAllWithResponsible: async (): Promise<CompanyWithResponsible[]> => {
     try {
-      const response = await httpClient.get('/companies/with-responsible');
+      const response = await api.get('/companies/with-responsible');
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -256,7 +256,7 @@ export const companyService = {
    */
   updateStatus: async (id: string, status: CompanyStatus): Promise<Company> => {
     try {
-      const response = await httpClient.patch(`/companies/${id}/status`, { status });
+      const response = await api.patch(`/companies/${id}/status`, { status });
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;

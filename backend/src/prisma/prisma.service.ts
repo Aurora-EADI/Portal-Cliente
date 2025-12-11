@@ -16,7 +16,7 @@ export class PrismaSqlServerService extends PrismaClientSqlServer implements OnM
 
   async onModuleInit() {
     try {
-      // await this.$connect();
+      await this.$connect();
       this.connected = true;
       this.logger.log('SQL Server connected successfully');
     } catch (error) {

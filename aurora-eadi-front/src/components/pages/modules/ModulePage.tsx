@@ -25,7 +25,8 @@ import {
   Database,
   AlertCircle,
 } from 'lucide-react';
-import { modulesService, Module } from '@/services/modules/modules.service';
+import { userModuleAccessService } from '@/services/access/user-module-access.service';
+import { ModuleAccess } from '@/types/access-control';
 
 // 🆕 Mapeamento de string (do backend) para componente React de ícone
 const ICON_COMPONENTS: Record<string, React.ElementType> = {
@@ -52,8 +53,8 @@ const ICON_COMPONENTS: Record<string, React.ElementType> = {
 export function ModulesPage() {
   const router = useRouter();
   const { currentUser } = useAuthContext();
-  
-  const [modules, setModules] = useState<Module[]>([]);
+
+  const [modules, setModules] = useState<ModuleAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,13 +64,13 @@ export function ModulesPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await modulesService.getAll(currentUser!.id);
+        const data = await userModuleAccessService.getUserModulesWithAccessStatus(currentUser!.id);
 
         console.log('Módulos carregados:', data);
-        
+
         // ✅ Filtra apenas módulos ativos (active = true)
         const activeModules = data.modules.filter(module => module.isEnabled === true);
-        
+
         setModules(activeModules);
       } catch (err: any) {
         console.error('Erro ao carregar módulos:', err);
@@ -85,7 +86,7 @@ export function ModulesPage() {
   }, [currentUser]);
 
   // ✅ NOVA IMPLEMENTAÇÃO - Usa rota do backend
-  const handleModuleClick = (module: Module) => {
+  const handleModuleClick = (module: ModuleAccess) => {
     if (module.route) {
       router.push(module.route);
     } else {
@@ -126,11 +127,11 @@ export function ModulesPage() {
         {/* Data Atual */}
         <div className="mb-8 text-center">
           <p className="text-sm text-gray-500 uppercase tracking-wide">
-            {new Date().toLocaleDateString('pt-BR', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            {new Date().toLocaleDateString('pt-BR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
             })}
           </p>
         </div>
@@ -157,11 +158,11 @@ export function ModulesPage() {
               return (
                 <ModuleCard
                   key={module.id}
-                  icon={Icon}                            
-                  title={module.name}                   
-                  description={module.description}       
-                  onClick={() => handleModuleClick(module)} 
-                  disabled={false}                      
+                  icon={Icon}
+                  title={module.name}
+                  description={module.description}
+                  onClick={() => handleModuleClick(module)}
+                  disabled={false}
                 />
               );
             })}

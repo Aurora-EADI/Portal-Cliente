@@ -1,11 +1,16 @@
-import axios from "axios";
-import { companyType } from "./type"
-const api = axios.create({
-  baseURL: `http://localhost:${process.env.PORT}/api`,
-});
+import { api } from "@/lib/api";
+import { Company, CreateCompanyDTO } from "@/types/company";
 
-export async function getCompanies(): Promise<companyType[]>{
-  const { data } = await api.get("/companies", {});
+export const companiesService = {
+  async findAll(): Promise<Company[]> {
+    const response = await api.get("/companies");
+    return response.data;
+  },
+};
 
-  return data;
+export const registerCompanies = {
+  create: async (data: CreateCompanyDTO) => {
+    const response = await api.post("/companies", data);
+    return response.data
+  }
 }

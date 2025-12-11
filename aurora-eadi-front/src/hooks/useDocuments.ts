@@ -13,7 +13,7 @@ export const useDocuments = (user: User | null) => {
       if (user.role === 'ADMIN') {
         return await documentService.getAll();
       } else if (user.companyId) {
-        return await documentService.getByCompany(user.companyId);
+        return await documentService.getByCompany(String(user.companyId));
       }
       return [];
     },

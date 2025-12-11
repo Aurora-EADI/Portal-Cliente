@@ -16,12 +16,11 @@ import {
 } from "lucide-react";
 import {
   usersService,
-  type User as UserType,
-  type CreateUserDto,
-  type Company,
-  UserRole,
-  companiesService,
-} from "@/services/api-services";
+} from "@/services/users/users.service";
+import type { User as UserType, CreateUserDto } from "@/types/user";
+import type { Company } from "@/types/company";
+import { UserRole } from "@/types/auth";
+import { companiesService } from "@/services/companies/companies.service";
 import { EditUserModal } from './EditUserModal';
 
 export function UserRegistryPage() {

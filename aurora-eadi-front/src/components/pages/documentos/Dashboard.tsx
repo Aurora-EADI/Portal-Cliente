@@ -9,18 +9,18 @@ import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon,
 
 export function AdminDashboard() {
   const { currentUser } = useAuthContext();
-  
+
   // Queries
   const { data: suppliers = [] } = useSuppliers();
   const { data: documents = [] } = useDocuments(currentUser);
-  
+
   // Mutations
   const { mutate: updateCompany, isPending: isUpdatingCompany } = useUpdateCompanyStatus();
   const { mutate: updateDoc, isPending: isUpdatingDoc } = useUpdateDocumentStatus();
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
-  
+
   // Rejection State
   const [rejectingDoc, setRejectingDoc] = useState<Document | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -40,11 +40,11 @@ export function AdminDashboard() {
   });
 
 
-  const selectedData = selectedSupplierId 
-    ? suppliers.find(s => s.company.id === selectedSupplierId)
+  const selectedData = selectedSupplierId
+    ? suppliers.find(s => String(s.company.id) === selectedSupplierId)
     : null;
-  
-  const selectedDocs = selectedSupplierId 
+
+  const selectedDocs = selectedSupplierId
     ? documents.filter(d => d.companyId === selectedSupplierId)
     : [];
 
@@ -88,7 +88,7 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
+
       {/* Header */}
       <header>
         <h1 className="text-2xl font-bold text-gray-900">Painel Administrativo</h1>
@@ -130,9 +130,9 @@ export function AdminDashboard() {
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar fornecedor por Razão Social, CNPJ ou Responsável..." 
+          <input
+            type="text"
+            placeholder="Buscar fornecedor por Razão Social, CNPJ ou Responsável..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -161,7 +161,7 @@ export function AdminDashboard() {
               </tr>
             ) : (
               filteredSuppliers.map(({ company, responsible }) => {
-                const docStats = getDocStats(company.id);
+                const docStats = getDocStats(String(company.id));
                 return (
                   <tr key={company.id} className={`hover:bg-gray-50 transition-colors group ${company.status === CompanyStatus.PENDING ? 'bg-orange-50/30' : ''}`}>
                     <td className="px-6 py-4">
@@ -177,7 +177,7 @@ export function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-gray-600">
-                        <UserIcon size={14} className="text-gray-400"/>
+                        <UserIcon size={14} className="text-gray-400" />
                         {responsible ? responsible.name : '-'}
                       </div>
                     </td>
@@ -186,18 +186,18 @@ export function AdminDashboard() {
                         <Badge status={company.status} context="company" />
                         {company.status === CompanyStatus.PENDING && (
                           <div className="flex gap-2">
-                            <button 
+                            <button
                               title="Autorizar Acesso"
                               disabled={isUpdatingCompany}
-                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(company.id, CompanyStatus.ACTIVE); }}
+                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(String(company.id), CompanyStatus.ACTIVE); }}
                               className="p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 hover:shadow-md transition-all disabled:opacity-50"
                             >
                               <Check size={16} />
                             </button>
-                            <button 
+                            <button
                               title="Recusar Acesso"
                               disabled={isUpdatingCompany}
-                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(company.id, CompanyStatus.REJECTED); }}
+                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(String(company.id), CompanyStatus.REJECTED); }}
                               className="p-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 hover:shadow-md transition-all disabled:opacity-50"
                             >
                               <X size={16} />
@@ -208,17 +208,17 @@ export function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 text-gray-600">
                       {docStats.hasPending ? (
-                         <span className="text-yellow-600 font-medium flex items-center gap-1">
-                           <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                           {docStats.pending} pendentes
-                         </span>
+                        <span className="text-yellow-600 font-medium flex items-center gap-1">
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                          {docStats.pending} pendentes
+                        </span>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => setSelectedSupplierId(company.id)}
+                      <button
+                        onClick={() => setSelectedSupplierId(String(company.id))}
                         className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
                       >
                         <Eye size={16} />
@@ -237,29 +237,29 @@ export function AdminDashboard() {
       {selectedData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedSupplierId(null)} />
-          
+
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 zoom-in-95 duration-300">
-            
+
             {/* Header */}
             <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
               <div className="flex gap-4">
-                 <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-primary-600 shadow-sm">
-                    <Building2 size={24} />
-                 </div>
-                 <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-gray-900">{selectedData.company.fantasyName}</h2>
-                      <Badge status={selectedData.company.status} context="company" />
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">{selectedData.company.socialReason}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
-                      <span>CNPJ: {selectedData.company.cnpj}</span>
-                      <span>•</span>
-                      <span>{selectedData.company.city} - {selectedData.company.state}</span>
-                    </div>
-                 </div>
+                <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-primary-600 shadow-sm">
+                  <Building2 size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900">{selectedData.company.fantasyName}</h2>
+                    <Badge status={selectedData.company.status} context="company" />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">{selectedData.company.socialReason}</p>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                    <span>CNPJ: {selectedData.company.cnpj}</span>
+                    <span>•</span>
+                    <span>{selectedData.company.city} - {selectedData.company.state}</span>
+                  </div>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedSupplierId(null)}
                 className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
               >
@@ -278,8 +278,8 @@ export function AdminDashboard() {
                       <p className="text-sm text-orange-700">Esta empresa aguarda liberação para acessar o sistema.</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => handleCompanyAuthorization(selectedData.company.id, CompanyStatus.ACTIVE)}
+                  <button
+                    onClick={() => handleCompanyAuthorization(String(selectedData.company.id), CompanyStatus.ACTIVE)}
                     disabled={isUpdatingCompany}
                     className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
                   >
@@ -332,12 +332,12 @@ export function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
-                                <Badge status={doc.status} context="document" />
-                                {doc.status === DocumentStatus.REJECTED && (
-                                    <div className="text-red-500 cursor-help" title={doc.rejectionReason}>
-                                        <AlertCircle size={16} />
-                                    </div>
-                                )}
+                              <Badge status={doc.status} context="document" />
+                              {doc.status === DocumentStatus.REJECTED && (
+                                <div className="text-red-500 cursor-help" title={doc.rejectionReason}>
+                                  <AlertCircle size={16} />
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -399,13 +399,13 @@ export function AdminDashboard() {
               autoFocus
             />
             <div className="flex justify-end gap-3 mt-6">
-              <button 
+              <button
                 onClick={() => setRejectingDoc(null)}
                 className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={handleRejectSubmit}
                 disabled={!rejectionReason.trim() || isUpdatingDoc}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

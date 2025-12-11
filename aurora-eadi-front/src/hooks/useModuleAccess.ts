@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { modulesService, Module } from '@/services/modules/modules.service';
+import { userModuleAccessService } from '@/services/access/user-module-access.service';
+import { ModuleAccess } from '@/types/access-control';
 
 interface ModuleAccessResult {
   isLoading: boolean;
   hasAccess: boolean;
-  module: Module | null;
+  module: ModuleAccess | null;
   error: string | null;
 }
 
@@ -18,7 +19,7 @@ export function useModuleAccess(route: string): ModuleAccessResult {
   const { currentUser } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [module, setModule] = useState<Module | null>(null);
+  const [module, setModule] = useState<ModuleAccess | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useModuleAccess(route: string): ModuleAccessResult {
         setError(null);
 
         // Busca todos os módulos do usuário
-        const response = await modulesService.getAll(currentUser.id);
+        const response = await userModuleAccessService.getUserModulesWithAccessStatus(currentUser.id);
 
         // Encontra o módulo pela rota
         const foundModule = response.modules.find(

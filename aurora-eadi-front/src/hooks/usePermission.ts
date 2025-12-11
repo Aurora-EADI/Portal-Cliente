@@ -5,21 +5,6 @@ interface UsePermissionResult {
   isLoading: boolean;
 }
 
-/**
- * Hook para verificar se o usuário tem uma permissão específica
- * @param moduleRoute - Rota do módulo (ex: /faturamento)
- * @param permissionKey - Chave da permissão (ex: FAT_VIEW_CUTOFF)
- * @returns hasPermission e isLoading
- *
- * @example
- * const { hasPermission } = usePermission('/faturamento', 'FAT_VIEW_CUTOFF');
- *
- * return (
- *   <div>
- *     {hasPermission && <CutoffReportButton />}
- *   </div>
- * );
- */
 export function usePermission(
   moduleRoute: string,
   permissionKey: string

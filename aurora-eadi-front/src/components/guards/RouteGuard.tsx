@@ -11,11 +11,6 @@ interface RouteGuardProps {
   children: React.ReactNode;
 }
 
-/**
- * Componente que protege rotas verificando se o usuário tem acesso ao módulo
- * @param route - Rota do módulo (ex: /permissoes)
- * @param children - Conteúdo da página a ser renderizado se tiver acesso
- */
 export function RouteGuard({ route, children }: RouteGuardProps) {
   const router = useRouter();
   const { isLoading, hasAccess, module, error } = useModuleAccess(route);
@@ -93,7 +88,5 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
       </div>
     );
   }
-
-  // Has access - render children
   return <>{children}</>;
 }

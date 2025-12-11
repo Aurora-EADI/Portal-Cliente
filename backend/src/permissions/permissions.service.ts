@@ -12,10 +12,7 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Lista todas as permissões técnicas
-   * @param category - Filtro opcional por categoria
-   */
+
   async findAll(category?: string) {
     const where = category ? { category } : {};
 
@@ -52,9 +49,6 @@ export class PermissionsService {
     }));
   }
 
-  /**
-   * Busca uma permissão específica por ID
-   */
   async findOne(id: number) {
     const permission = await this.prisma.permission.findUnique({
       where: { id },
@@ -93,9 +87,6 @@ export class PermissionsService {
     };
   }
 
-  /**
-   * Busca uma permissão por chave (key)
-   */
   async findByKey(key: string) {
     const permission = await this.prisma.permission.findUnique({
       where: { key },
@@ -108,9 +99,6 @@ export class PermissionsService {
     return permission;
   }
 
-  /**
-   * Cria uma nova permissão técnica
-   */
   async create(createPermissionDto: CreatePermissionDto) {
     const { key, description, category } = createPermissionDto;
 

@@ -1,18 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaPostgresService } from '../prisma/prisma.service';
 import { CompanyStatus } from '@prisma/client-postgres';
+import { CreateCompanyDto } from './dto/create-companies.dto';
 
 @Injectable()
 export class CompaniesService {
   constructor(private prisma: PrismaPostgresService) {}
 
+  async create(createCompaniesDTO: CreateCompanyDto){
+    return this.prisma.company.create({
+      data: createCompaniesDTO
+    })
+  }
 
   async getAll(){
     return this.prisma.company.findMany()
   }
-  /**
-   * Busca todas as empresas com seus responsáveis
-   */
+
   async getAllWithResponsible() {
     const companies = await this.prisma.company.findMany({
       include: {
@@ -58,9 +62,6 @@ export class CompaniesService {
     }));
   }
 
-  /**
-   * Atualiza o status de uma empresa
-   */
   async updateStatus(id: string, status: CompanyStatus) {
     return this.prisma.company.update({
       where: { id },

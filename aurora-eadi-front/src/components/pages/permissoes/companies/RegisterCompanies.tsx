@@ -3,13 +3,15 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Building2, User as UserIcon, CheckCircle, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useRegister } from '@/hooks/useAuth';
 
 export function RegisterCompanies() {
   const router = useRouter();
+  const { mutate: register, isPending: Loading } = useRegister();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
-  
+
   // User Data
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
@@ -29,56 +31,24 @@ export function RegisterCompanies() {
   const [state, setState] = useState('');
   const [phone, setPhone] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (password !== confirmPassword) {
       alert("As senhas não conferem.");
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // Substitua pela sua chamada de API
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company: { 
-            cnpj, 
-            fantasyName, 
-            socialReason, 
-            zipCode: cep, 
-            address, 
-            number, 
-            complement, 
-            neighborhood, 
-            city, 
-            state, 
-            phone 
-          },
-          user: { 
-            name: userName, 
-            email: userEmail, 
-            password 
-          }
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao realizar cadastro');
+    register({
+      company: { cnpj, fantasyName, socialReason, zipCode: cep, address, number, complement, neighborhood, city, state, phone },
+      user: { name: userName, email: userEmail, password }
+    }, {
+      onSuccess: () => {
+        setIsSuccess(true);
+      },
+      onError: (err) => {
+        alert(err.message);
       }
-
-      setIsSuccess(true);
-    } catch (err: any) {
-      alert(err.message || 'Erro ao realizar cadastro');
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   if (isSuccess) {
@@ -89,13 +59,12 @@ export function RegisterCompanies() {
             <CheckCircle size={32} />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Cadastro Realizado!</h2>
-          <p className="text-gray-600 mb-8">
-            Seus dados foram enviados para análise. Você receberá a confirmação assim que o administrador liberar seu acesso.
-          </p>
+
           <button
+            onClick={() => router.push("/permissoes")}
             className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
           >
-            Voltar para Login
+            Voltar
           </button>
         </div>
       </div>
@@ -105,7 +74,7 @@ export function RegisterCompanies() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <button 
+        <button
           className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -119,7 +88,7 @@ export function RegisterCompanies() {
           </div>
 
           <div className="p-8">
-            
+
             {/* Progress Indicator */}
             <div className="flex items-center mb-8">
               <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${step >= 1 ? 'bg-blue-50 border-blue-500 text-blue-600' : 'border-gray-300 text-gray-300'}`}>
@@ -134,15 +103,15 @@ export function RegisterCompanies() {
             {step === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Dados do Usuário e Senha</h3>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome Completo
                     <span className="text-red-500 ml-1">*</span>
                   </label>
-                  <input 
+                  <input
                     required
-                    type="text" 
+                    type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
@@ -155,16 +124,16 @@ export function RegisterCompanies() {
                     E-mail Corporativo
                     <span className="text-red-500 ml-1">*</span>
                   </label>
-                  <input 
+                  <input
                     required
-                    type="email" 
+                    type="email"
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                     placeholder="seu@email.com"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -173,9 +142,9 @@ export function RegisterCompanies() {
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      <input 
+                      <input
                         required
-                        type="password" 
+                        type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
@@ -193,16 +162,15 @@ export function RegisterCompanies() {
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                      <input 
+                      <input
                         required
-                        type="password" 
+                        type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 outline-none transition ${
-                          confirmPassword && password !== confirmPassword 
-                            ? 'border-red-300 focus:ring-red-200' 
+                        className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 outline-none transition ${confirmPassword && password !== confirmPassword
+                            ? 'border-red-300 focus:ring-red-200'
                             : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
-                        }`}
+                          }`}
                         placeholder="••••••••"
                       />
                     </div>
@@ -228,20 +196,20 @@ export function RegisterCompanies() {
             {step === 2 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Dados da Empresa</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       CNPJ
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={cnpj} 
-                      onChange={e => setCnpj(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
-                      placeholder="00.000.000/0000-00" 
+                    <input
+                      required
+                      value={cnpj}
+                      onChange={e => setCnpj(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                      placeholder="00.000.000/0000-00"
                     />
                   </div>
 
@@ -250,12 +218,12 @@ export function RegisterCompanies() {
                       Razão Social
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={socialReason} 
-                      onChange={e => setSocialReason(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={socialReason}
+                      onChange={e => setSocialReason(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="Empresa Ltda"
                     />
                   </div>
@@ -265,12 +233,12 @@ export function RegisterCompanies() {
                       Nome Fantasia
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={fantasyName} 
-                      onChange={e => setFantasyName(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={fantasyName}
+                      onChange={e => setFantasyName(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="Nome Fantasia"
                     />
                   </div>
@@ -280,12 +248,12 @@ export function RegisterCompanies() {
                       CEP
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={cep} 
-                      onChange={e => setCep(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={cep}
+                      onChange={e => setCep(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="00000-000"
                     />
                   </div>
@@ -295,12 +263,12 @@ export function RegisterCompanies() {
                       Telefone
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={phone} 
-                      onChange={e => setPhone(e.target.value)} 
-                      type="tel" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      type="tel"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="(00) 00000-0000"
                     />
                   </div>
@@ -310,12 +278,12 @@ export function RegisterCompanies() {
                       Endereço
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={address} 
-                      onChange={e => setAddress(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={address}
+                      onChange={e => setAddress(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="Rua, Avenida, etc"
                     />
                   </div>
@@ -325,12 +293,12 @@ export function RegisterCompanies() {
                       Número
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={number} 
-                      onChange={e => setNumber(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={number}
+                      onChange={e => setNumber(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="123"
                     />
                   </div>
@@ -339,11 +307,11 @@ export function RegisterCompanies() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Complemento
                     </label>
-                    <input 
-                      value={complement} 
-                      onChange={e => setComplement(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      value={complement}
+                      onChange={e => setComplement(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="Apto, Sala, etc"
                     />
                   </div>
@@ -353,12 +321,12 @@ export function RegisterCompanies() {
                       Bairro
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={neighborhood} 
-                      onChange={e => setNeighborhood(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={neighborhood}
+                      onChange={e => setNeighborhood(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="Centro"
                     />
                   </div>
@@ -368,12 +336,12 @@ export function RegisterCompanies() {
                       Cidade
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={city} 
-                      onChange={e => setCity(e.target.value)} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" 
+                    <input
+                      required
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="São Paulo"
                     />
                   </div>
@@ -383,13 +351,13 @@ export function RegisterCompanies() {
                       UF
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input 
-                      required 
-                      value={state} 
-                      onChange={e => setState(e.target.value.toUpperCase())} 
-                      type="text" 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition uppercase" 
-                      maxLength={2} 
+                    <input
+                      required
+                      value={state}
+                      onChange={e => setState(e.target.value.toUpperCase())}
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition uppercase"
+                      maxLength={2}
                       placeholder="SP"
                     />
                   </div>

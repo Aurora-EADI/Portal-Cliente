@@ -1,10 +1,11 @@
 // src/auth/auth.service.ts
 
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import {
   ActivityPermissions,
   ModuleData,
@@ -57,10 +58,93 @@ export class AuthService {
   }
 
   /**
-   * Busca todas as permissões e módulos ativos do usuário
-   * @param userId - ID do usuário
-   * @returns Módulos e array de permissões
+   * Realiza o registro de um novo usuário e empresa
    */
+  async register(registerDto: RegisterDto) {
+    const { company, user } = registerDto;
+
+    // Remove formatação do CNPJ para verificação (mantém apenas números)
+    const cnpjNumbers = company.cnpj.replace(/\D/g, '');
+
+    // Verifica se o email já existe
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: user.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email já cadastrado no sistema');
+    }
+
+    // Verifica se o CNPJ já existe (busca pelo CNPJ sem formatação)
+    const existingCompany = await this.prisma.company.findFirst({
+      where: {
+        cnpj: {
+          contains: cnpjNumbers,
+        },
+      },
+    });
+
+    if (existingCompany) {
+      throw new ConflictException('CNPJ já cadastrado no sistema');
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // Cria empresa e usuário em uma transação
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // Cria a empresa com status PENDING
+      const newCompany = await prisma.company.create({
+        data: {
+          cnpj: company.cnpj,
+          fantasyName: company.fantasyName,
+          socialReason: company.socialReason,
+          zipCode: company.zipCode,
+          address: company.address,
+          number: company.number,
+          complement: company.complement,
+          neighborhood: company.neighborhood,
+          city: company.city,
+          state: company.state,
+          phone: company.phone,
+          status: 'PENDING', // Aguardando aprovação do admin
+        },
+      });
+
+      // Cria o usuário vinculado à empresa com role SUPPLIER
+      const newUser = await prisma.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          password: hashedPassword,
+          role: 'SUPPLIER', // Usuário que registra a empresa é SUPPLIER
+          companyId: newCompany.id,
+        },
+        include: {
+          company: true,
+        },
+      });
+
+      return newUser;
+    });
+
+    // Gera token JWT
+    const payload = {
+      sub: result.id,
+      email: result.email,
+      role: result.role,
+      companyId: result.companyId,
+    };
+
+    const { password: _, ...userWithoutPassword } = result;
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: userWithoutPassword,
+      message: 'Cadastro realizado com sucesso. Aguardando aprovação do administrador.',
+    };
+  }
+
   async getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
     console.log(`[AUTH SERVICE] Buscando permissões para User ID: ${userId}`);
 
@@ -158,4 +242,6 @@ export class AuthService {
       permissions: finalPermissions,
     };
   }
+
+  
 }

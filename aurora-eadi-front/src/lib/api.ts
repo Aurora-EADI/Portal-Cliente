@@ -8,12 +8,10 @@ export const api = axios.create({
   },
 });
 
-/**
- * -------------------------------
- * REQUEST INTERCEPTOR
- * Adiciona token quando existir
- * -------------------------------
- */
+
+  // REQUEST INTERCEPTOR
+  // Adiciona token quando existir
+
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
@@ -29,12 +27,10 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-/**
- * -------------------------------
- * RESPONSE INTERCEPTOR
- * Trata 401 e limpa sessão
- * -------------------------------
- */
+
+  // RESPONSE INTERCEPTOR
+  // Trata 401 e limpa sessão
+
 api.interceptors.response.use(
   (response) => response,
 

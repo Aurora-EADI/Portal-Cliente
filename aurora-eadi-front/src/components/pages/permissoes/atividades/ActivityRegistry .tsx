@@ -13,8 +13,12 @@ import {
   Database,
 } from "lucide-react";
 import * as Icons from 'lucide-react';
-import { modulesService, activitiesService, permissionsService } from "@/services/api-services";
-import type { Module, Activity, Permission } from "@/services/api-services";
+import { modulesService } from "@/services/modules/modules.service";
+import { activitiesService } from "@/services/activities/activities.service";
+import { permissionsService } from "@/services/permissions/permissions.service";
+import type { Module } from "@/types/module";
+import type { Activity } from "@/types/activity";
+import type { Permission } from "@/types/permission";
 
 interface CatalogItem {
   key: string;
