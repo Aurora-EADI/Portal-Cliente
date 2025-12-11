@@ -56,6 +56,7 @@ model Company {
   // Relacionamentos
   users     User[] // Usuários vinculados a esta empresa
   documents Document[] // Documentos enviados por esta empresa
+  documentRequirements CompanyDocumentRequirement[]
 
   //  moduleAccess UserModuleAccess[]
 
@@ -104,12 +105,44 @@ model Document {
 
   // Permissao por modulo
 
+  // Chave estrangeira para o tipo de documento (opcional para suportar documentos antigos)
+  documentTypeId Int?
+  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
+
   @@map("documents")
 }
 
-// ... Mantenha seus enums e models existentes (Company, User, Document) ...
+// Tipos de Documentos (Definidos pelo Admin)
+model DocumentType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // Ex: CPF, RG, Contrato Social
+  description String?  // Descrição do que deve ser enviado
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-// Adicione isso ao final do seu schema.prisma
+  documents          Document[]
+  companyRequirements CompanyDocumentRequirement[]
+
+  @@map("document_types")
+}
+
+// Requisitos de Documentos por Empresa
+model CompanyDocumentRequirement {
+  id             Int      @id @default(autoincrement())
+  companyId      String
+  documentTypeId Int
+  isRequired     Boolean  @default(true) // Se é obrigatório para esta empresa
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+
+  // Uma empresa só pode ter um registro de requisito por tipo de documento
+  @@unique([companyId, documentTypeId])
+  @@map("company_document_requirements")
+}
 
 // 1. Catálogo Técnico (As chaves hardcoded no código)
 model Permission {

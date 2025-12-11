@@ -5,15 +5,15 @@ import { CreateCompanyDto } from './dto/create-companies.dto';
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaPostgresService) {}
+  constructor(private prisma: PrismaPostgresService) { }
 
-  async create(createCompaniesDTO: CreateCompanyDto){
+  async create(createCompaniesDTO: CreateCompanyDto) {
     return this.prisma.company.create({
       data: createCompaniesDTO
     })
   }
 
-  async getAll(){
+  async getAll() {
     return this.prisma.company.findMany()
   }
 
@@ -52,12 +52,12 @@ export class CompaniesService {
       },
       responsible: company.users[0]
         ? {
-            id: company.users[0].id,
-            name: company.users[0].name,
-            email: company.users[0].email,
-            role: company.users[0].role,
-            companyId: company.users[0].companyId,
-          }
+          id: company.users[0].id,
+          name: company.users[0].name,
+          email: company.users[0].email,
+          role: company.users[0].role,
+          companyId: company.users[0].companyId,
+        }
         : null,
     }));
   }
@@ -67,5 +67,38 @@ export class CompaniesService {
       where: { id },
       data: { status },
     });
+  }
+
+  async getRequirements(companyId: string) {
+    return this.prisma.companyDocumentRequirement.findMany({
+      where: { companyId },
+      include: {
+        documentType: true,
+      },
+    });
+  }
+
+  async updateRequirements(companyId: string, requirements: { documentTypeId: number; isRequired: boolean }[]) {
+    // Transaction to ensure consistency
+    return this.prisma.$transaction(
+      requirements.map((req) =>
+        this.prisma.companyDocumentRequirement.upsert({
+          where: {
+            companyId_documentTypeId: {
+              companyId,
+              documentTypeId: req.documentTypeId,
+            },
+          },
+          update: {
+            isRequired: req.isRequired,
+          },
+          create: {
+            companyId,
+            documentTypeId: req.documentTypeId,
+            isRequired: req.isRequired,
+          },
+        }),
+      ),
+    );
   }
 }

@@ -1,11 +1,13 @@
+"use client"
+
 import React, { useState } from 'react';
 import { useAuthContext } from '../../../context/AuthContext';
 import { useSuppliers, useUpdateCompanyStatus } from '../../../hooks/useSuppliers';
 import { useDocuments, useUpdateDocumentStatus } from '../../../hooks/useDocuments';
 import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus } from '../../../types';
-import { CompanyWithResponsible, documentService } from '../../../services/api';
-import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon, AlertCircle, Users, UserCheck, Clock, Loader2 } from 'lucide-react';
+import { CompanyWithResponsible, documentService, documentTypeService, companyRequirementService } from '../../../services/api';
+import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon, AlertCircle, Users, UserCheck, Clock, Loader2, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export function AdminDashboard() {
   const { currentUser } = useAuthContext();
@@ -20,6 +22,54 @@ export function AdminDashboard() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+  const [viewingCompany, setViewingCompany] = useState<CompanyWithResponsible | null>(null);
+
+  // Requirements State
+  const [activeTab, setActiveTab] = useState<'info' | 'requirements'>('info');
+  const [documentTypes, setDocumentTypes] = useState<{ id: number; name: string }[]>([]);
+  const [companyRequirements, setCompanyRequirements] = useState<Set<number>>(new Set());
+  const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
+
+  React.useEffect(() => {
+    if (viewingCompany && activeTab === 'requirements') {
+      loadRequirements(String(viewingCompany.company.id));
+    }
+  }, [viewingCompany, activeTab]);
+
+  const loadRequirements = async (companyId: string) => {
+    try {
+      setIsLoadingRequirements(true);
+      const [types, reqs] = await Promise.all([
+        documentTypeService.getAll(),
+        companyRequirementService.getRequirements(companyId)
+      ]);
+      setDocumentTypes(types);
+      setCompanyRequirements(new Set(reqs.filter(r => r.isRequired).map(r => r.documentTypeId)));
+    } catch (error) {
+      console.error('Erro ao carregar requisitos:', error);
+      alert('Erro ao carregar requisitos.');
+    } finally {
+      setIsLoadingRequirements(false);
+    }
+  };
+
+  const toggleRequirement = async (typeId: number) => {
+    if (!viewingCompany) return;
+    const isRequired = !companyRequirements.has(typeId);
+    const newSet = new Set(companyRequirements);
+    if (isRequired) newSet.add(typeId);
+    else newSet.delete(typeId);
+
+    setCompanyRequirements(newSet); // Optimistic update
+
+    try {
+      await companyRequirementService.updateRequirements(String(viewingCompany.company.id), [{ documentTypeId: typeId, isRequired }]);
+    } catch (error) {
+      console.error('Erro ao atualizar requisito:', error);
+      alert('Erro ao atualizar requisito.');
+      loadRequirements(String(viewingCompany.company.id)); // Revert on error
+    }
+  };
 
   // Rejection State
   const [rejectingDoc, setRejectingDoc] = useState<Document | null>(null);
@@ -28,6 +78,21 @@ export function AdminDashboard() {
   const pendingCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.PENDING).length;
   const activeCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.ACTIVE).length;
   const totalCompanies = suppliers.length;
+
+  const getValidityStatus = (dateExpiration?: string) => {
+    if (!dateExpiration) return 'OK';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(dateExpiration);
+    exp.setHours(0, 0, 0, 0);
+
+    const diffTime = exp.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 'EXPIRED';
+    if (diffDays <= 15) return 'ALERT';
+    return 'OK';
+  };
 
 
   const filteredSuppliers = suppliers.filter(({ company, responsible }) => {
@@ -52,7 +117,22 @@ export function AdminDashboard() {
   const getDocStats = (companyId: string) => {
     const docs = documents.filter(d => d.companyId === companyId);
     const pending = docs.filter(d => d.status === DocumentStatus.PENDING).length;
-    return { total: docs.length, pending, hasPending: pending > 0 };
+
+    // Status Agregado
+    let status: 'OK' | 'ALERT' | 'EXPIRED' | undefined;
+
+    for (const doc of docs) {
+      const s = getValidityStatus(doc.dateExpiration);
+      if (s === 'EXPIRED') {
+        status = 'EXPIRED';
+        break; // Prioridade máxima
+      }
+      if (s === 'ALERT' && status !== 'EXPIRED') {
+        status = 'ALERT';
+      }
+    }
+
+    return { total: docs.length, pending, hasPending: pending > 0, status };
   };
 
   const handleApprove = (doc: Document) => {
@@ -149,13 +229,14 @@ export function AdminDashboard() {
               <th className="px-6 py-4">Responsável</th>
               <th className="px-6 py-4">Status do Cadastro</th>
               <th className="px-6 py-4">Docs Pendentes</th>
-              <th className="px-6 py-4 text-right">Ações</th>
+              <th className="px-6 py-4">Status Docs</th>
+              <th colSpan={2} className="px-6 py-4 text-center">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredSuppliers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                   Nenhum fornecedor encontrado.
                 </td>
               </tr>
@@ -184,26 +265,6 @@ export function AdminDashboard() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <Badge status={company.status} context="company" />
-                        {company.status === CompanyStatus.PENDING && (
-                          <div className="flex gap-2">
-                            <button
-                              title="Autorizar Acesso"
-                              disabled={isUpdatingCompany}
-                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(String(company.id), CompanyStatus.ACTIVE); }}
-                              className="p-1.5 bg-green-100 text-green-700 rounded-md hover:bg-green-200 hover:shadow-md transition-all disabled:opacity-50"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button
-                              title="Recusar Acesso"
-                              disabled={isUpdatingCompany}
-                              onClick={(e) => { e.stopPropagation(); handleCompanyAuthorization(String(company.id), CompanyStatus.REJECTED); }}
-                              className="p-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 hover:shadow-md transition-all disabled:opacity-50"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
@@ -216,9 +277,37 @@ export function AdminDashboard() {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
+                    <td className="px-6 py-4">
+                      {docStats.status === 'EXPIRED' && (
+                        <div className="flex items-center gap-1 text-red-600 font-medium" title="Existem documentos vencidos">
+                          <AlertCircle size={18} />
+                          <span>Vencido</span>
+                        </div>
+                      )}
+                      {docStats.status === 'ALERT' && (
+                        <div className="flex items-center gap-1 text-yellow-600 font-medium" title="Existem documentos a vencer">
+                          <AlertTriangle size={18} />
+                          <span>Alerta</span>
+                        </div>
+                      )}
+                      {docStats.status === 'OK' && (
+                        <div className="text-green-500" title="Documentação em dia">
+                          <CheckCircle2 size={18} />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => setSelectedSupplierId(String(company.id))}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+                      >
+                        <FileText size={16} />
+                        Documentos
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setViewingCompany({ company, responsible })}
                         className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
                       >
                         <Eye size={16} />
@@ -313,67 +402,78 @@ export function AdminDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      selectedDocs.map(doc => (
-                        <tr key={doc.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2 font-medium text-gray-900">
-                              <FileText size={16} className={doc.fileType === 'pdf' ? "text-red-500" : "text-blue-500"} />
-                              {doc.name}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-gray-500">
-                            {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
-                          </td>
-                          <td className="px-6 py-4 text-gray-500">
-                            {doc.dateIssue ? new Date(doc.dateIssue).toLocaleDateString('pt-BR') : '-'}
-                          </td>
-                          <td className="px-6 py-4 text-gray-500">
-                            {doc.dateExpiration ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR') : '-'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <Badge status={doc.status} context="document" />
-                              {doc.status === DocumentStatus.REJECTED && (
-                                <div className="text-red-500 cursor-help" title={doc.rejectionReason}>
-                                  <AlertCircle size={16} />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end items-center gap-2">
-                              <button
-                                onClick={() => handleDownload(doc.id)}
-                                className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-600 rounded-md transition-colors"
-                                title="Download"
-                              >
-                                <Download size={18} />
-                              </button>
+                      selectedDocs.map(doc => {
+                        const validity = getValidityStatus(doc.dateExpiration);
+                        return (
+                          <tr key={doc.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2 font-medium text-gray-900">
+                                <FileText size={16} className={doc.fileType === 'pdf' ? "text-red-500" : "text-blue-500"} />
+                                {doc.name}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-500">
+                              {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="px-6 py-4 text-gray-500">
+                              {doc.dateIssue ? new Date(doc.dateIssue).toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td className="px-6 py-4 text-gray-500">
+                              <div className="flex items-center gap-2">
+                                <span>{doc.dateExpiration ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR') : '-'}</span>
+                                {validity === 'EXPIRED' && (
+                                  <AlertCircle size={16} className="text-red-500" />
+                                )}
+                                {validity === 'ALERT' && (
+                                  <AlertTriangle size={16} className="text-yellow-500" />
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <Badge status={doc.status} context="document" />
+                                {doc.status === DocumentStatus.REJECTED && (
+                                  <div className="text-red-500 cursor-help" title={doc.rejectionReason}>
+                                    <AlertCircle size={16} />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end items-center gap-2">
+                                <button
+                                  onClick={() => handleDownload(doc.id)}
+                                  className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-600 rounded-md transition-colors"
+                                  title="Download"
+                                >
+                                  <Download size={18} />
+                                </button>
 
-                              {doc.status === DocumentStatus.PENDING && (
-                                <>
-                                  <button
-                                    onClick={() => handleApprove(doc)}
-                                    disabled={isUpdatingDoc}
-                                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                                    title="Aprovar"
-                                  >
-                                    <Check size={18} />
-                                  </button>
-                                  <button
-                                    onClick={() => { setRejectingDoc(doc); setRejectionReason(''); }}
-                                    disabled={isUpdatingDoc}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                    title="Reprovar"
-                                  >
-                                    <X size={18} />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                {doc.status === DocumentStatus.PENDING && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApprove(doc)}
+                                      disabled={isUpdatingDoc}
+                                      className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                                      title="Aprovar"
+                                    >
+                                      <Check size={18} />
+                                    </button>
+                                    <button
+                                      onClick={() => { setRejectingDoc(doc); setRejectionReason(''); }}
+                                      disabled={isUpdatingDoc}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                      title="Reprovar"
+                                    >
+                                      <X size={18} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -417,6 +517,155 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+      {/* Modal: Company Details */}
+      {viewingCompany && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setViewingCompany(null)} />
+
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 zoom-in-95 duration-300">
+
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-primary-600 shadow-sm">
+                  <Building2 size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900">{viewingCompany.company.fantasyName}</h2>
+                    <Badge status={viewingCompany.company.status} context="company" />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">Dados Cadastrais da Empresa</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingCompany(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            {/* Tabs */}
+            <div className="px-6 border-b border-gray-100 flex gap-6">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'info' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                Dados Cadastrais
+              </button>
+              <button
+                onClick={() => setActiveTab('requirements')}
+                className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'requirements' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                <ShieldCheck size={16} />
+                Documentos Exigidos
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+              {activeTab === 'info' ? (
+                <>
+                  {/* Identificação */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Identificação</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Razão Social</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.socialReason || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">CNPJ</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.cnpj}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Contato */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Contato</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Telefone</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.phone || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Responsável</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.responsible?.name || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg md:col-span-2">
+                        <span className="text-xs text-gray-500 block">Email Responsável</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.responsible?.email || '-'}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Endereço */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">Endereço</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg md:col-span-2">
+                        <span className="text-xs text-gray-500 block">Logradouro</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {viewingCompany.company.address}, {viewingCompany.company.number}
+                          {viewingCompany.company.complement && ` - ${viewingCompany.company.complement}`}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Bairro</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.neighborhood || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">CEP</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.zipCode || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Cidade</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.city || '-'}</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xs text-gray-500 block">Estado</span>
+                        <span className="text-sm font-medium text-gray-900">{viewingCompany.company.state || '-'}</span>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              ) : (
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-blue-800 text-sm">
+                    <p>Selecione os documentos que esta empresa <strong>deve</strong> enviar. O fornecedor será notificado sobre as pendências.</p>
+                  </div>
+
+                  {isLoadingRequirements ? (
+                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary-600" /></div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {documentTypes.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">Nenhum tipo de documento cadastrado no sistema.</div>
+                      ) : (
+                        documentTypes.map(type => (
+                          <label key={type.id} className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500 border-gray-300 mr-3"
+                              checked={companyRequirements.has(type.id)}
+                              onChange={() => toggleRequirement(type.id)}
+                            />
+                            <span className="font-medium text-gray-700">{type.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )
+      }
+    </div >
   );
 };

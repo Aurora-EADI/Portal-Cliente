@@ -25,14 +25,15 @@ export const useUploadDocument = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file, name, user, dateIssue, dateExpiration }: {
+    mutationFn: async ({ file, name, user, dateIssue, dateExpiration, documentTypeId }: {
       file: File;
       name: string;
       user: User;
       dateIssue?: string;
       dateExpiration?: string;
+      documentTypeId?: string;
     }) => {
-      return await documentService.upload(file, name, user, dateIssue, dateExpiration);
+      return await documentService.upload(file, name, user, dateIssue, dateExpiration, documentTypeId);
     },
     onSuccess: () => {
       // Invalida o cache para forçar recarregamento da lista

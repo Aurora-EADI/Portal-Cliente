@@ -11,6 +11,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   Logger,
+  Request,
 } from '@nestjs/common';
 import { SupplierService } from './supplier.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
@@ -24,7 +25,7 @@ import { UserRole } from '@prisma/client-postgres';
 export class SupplierController {
   private readonly logger = new Logger(SupplierController.name);
 
-  constructor(private readonly supplierService: SupplierService) {}
+  constructor(private readonly supplierService: SupplierService) { }
 
   @Post()
   @Roles(UserRole.ADMIN)
@@ -63,5 +64,11 @@ export class SupplierController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     this.logger.log(`Removendo supplier ID: ${id}`);
     return this.supplierService.remove(id);
+  }
+
+  @Get('me/requirements')
+  @Roles(UserRole.SUPPLIER)
+  getRequirements(@Request() req) {
+    return this.supplierService.getRequirements(req.user.id);
   }
 }

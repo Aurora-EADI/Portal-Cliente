@@ -49,4 +49,19 @@ export class CompaniesController {
   ) {
     return this.companiesService.updateStatus(id, dto.status);
   }
+
+  @Get(':id/requirements')
+  @Roles(UserRole.ADMIN)
+  async getRequirements(@Param('id') id: string) {
+    return this.companiesService.getRequirements(id);
+  }
+
+  @Post(':id/requirements')
+  @Roles(UserRole.ADMIN)
+  async updateRequirements(
+    @Param('id') id: string,
+    @Body() body: { requirements: { documentTypeId: number; isRequired: boolean }[] },
+  ) {
+    return this.companiesService.updateRequirements(id, body.requirements);
+  }
 }

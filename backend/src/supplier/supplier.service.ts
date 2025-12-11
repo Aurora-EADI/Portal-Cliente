@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client-postgres';
 
 @Injectable()
 export class SupplierService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(dto: CreateSupplierDto) {
     const company = await this.prisma.company.findUnique({
@@ -82,6 +82,24 @@ export class SupplierService {
 
     return this.prisma.user.delete({
       where: { id },
+    });
+  }
+
+  async getRequirements(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true },
+    });
+
+    if (!user || !user.companyId) {
+      throw new NotFoundException('Empresa não encontrada para este usuário.');
+    }
+
+    return this.prisma.companyDocumentRequirement.findMany({
+      where: { companyId: user.companyId },
+      include: {
+        documentType: true,
+      },
     });
   }
 }

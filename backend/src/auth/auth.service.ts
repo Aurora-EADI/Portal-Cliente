@@ -2,7 +2,7 @@
 
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -17,7 +17,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   /**
    * Realiza o login do usuário
@@ -33,6 +33,20 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
+    }
+
+    // Verificação de Status da Empresa
+    if (user.company) {
+      if (user.company.status === 'PENDING') {
+        throw new UnauthorizedException(
+          'Seu cadastro está em análise. Aguarde a aprovação.',
+        );
+      }
+      if (user.company.status === 'REJECTED') {
+        throw new UnauthorizedException(
+          'Seu cadastro foi recusado. Entre em contato com o suporte.',
+        );
+      }
     }
 
     // Verificar senha
@@ -92,7 +106,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
     // Cria empresa e usuário em uma transação
-    const result = await this.prisma.$transaction(async (prisma) => {
+    await this.prisma.$transaction(async (prisma) => {
       // Cria a empresa com status PENDING
       const newCompany = await prisma.company.create({
         data: {
@@ -112,7 +126,7 @@ export class AuthService {
       });
 
       // Cria o usuário vinculado à empresa com role SUPPLIER
-      const newUser = await prisma.user.create({
+      await prisma.user.create({
         data: {
           name: user.name,
           email: user.email,
@@ -120,28 +134,12 @@ export class AuthService {
           role: 'SUPPLIER', // Usuário que registra a empresa é SUPPLIER
           companyId: newCompany.id,
         },
-        include: {
-          company: true,
-        },
       });
-
-      return newUser;
     });
 
-    // Gera token JWT
-    const payload = {
-      sub: result.id,
-      email: result.email,
-      role: result.role,
-      companyId: result.companyId,
-    };
-
-    const { password: _, ...userWithoutPassword } = result;
-
     return {
-      access_token: this.jwtService.sign(payload),
-      user: userWithoutPassword,
-      message: 'Cadastro realizado com sucesso. Aguardando aprovação do administrador.',
+      message:
+        'Cadastro realizado com sucesso. Aguardando aprovação do administrador.',
     };
   }
 
@@ -243,5 +241,5 @@ export class AuthService {
     };
   }
 
-  
+
 }

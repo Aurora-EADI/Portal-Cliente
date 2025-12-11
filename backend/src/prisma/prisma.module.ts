@@ -7,4 +7,4 @@ import { PrismaSqlServerService as PrismaServiceSql } from './prisma.service';
   providers: [PrismaService, PrismaServiceSql],
   exports: [PrismaService, PrismaServiceSql]
 })
-export class PrismaModule {}
+export class PrismaModule { }

@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -30,7 +30,7 @@ export const navigationContexts: NavigationContext[] = [
         icon: Shield,
         path: '/documentos',
       },
-       {
+      {
         label: 'Empresa Documentos',
         icon: Shield,
         path: '/documentos/empresa',
@@ -63,8 +63,23 @@ export const navigationContexts: NavigationContext[] = [
     ],
     allowedRoles: [UserRole.ADMIN],
   },
-
-  // Navegação para a página de Supplier
+  {
+    basePath: '/fornecedor',
+    items: [
+      {
+        label: 'Home',
+        icon: Home,
+        path: '/modules',
+      },
+      {
+        label: 'Cadastro Fornecedor',
+        icon: Truck,
+        path: '/fornecedor',
+        requiredPermissions: ['FOR_REGISTER'],
+      },
+    ],
+    allowedRoles: [UserRole.ADMIN],
+  },
   {
     basePath: '/permissoes',
     items: [
@@ -92,11 +107,6 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Gestão de Permissões',
         icon: ShieldCheck,
         path: '/permissoes/gestao',
-      },
-      {
-        label: 'Cadastro Fornecedor',
-        icon: Building,
-        path: '/permissoes/companies',
       },
     ],
     allowedRoles: [UserRole.ADMIN],

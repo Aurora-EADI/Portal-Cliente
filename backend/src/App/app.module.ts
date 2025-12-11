@@ -14,6 +14,7 @@ import { UserModuleAccessModule } from 'src/user-module-access/user-module-acces
 import { UserActivityAccessModule } from 'src/user-activity-access/user-activity-access.module';
 import { DocumentsModule } from 'src/documents/documents.module';
 import { CompaniesModule } from 'src/companies/companies.module';
+import { DocumentTypesModule } from '../document-types/document-types.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { CompaniesModule } from 'src/companies/companies.module';
     UserActivityAccessModule,
     DocumentsModule,
     CompaniesModule,
+    DocumentTypesModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

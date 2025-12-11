@@ -7,7 +7,7 @@ import { RegisterCompanies } from '@/components/pages/permissoes/companies/Regis
 
 export default function PermissoesPage() {
   return (
-    <RouteGuard route="/permissoes">
+    <RouteGuard route="/fornecedor">
       <Header />
       <Layout>
         <RegisterCompanies />

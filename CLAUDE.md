@@ -23,12 +23,15 @@ npm run lint       # Run ESLint
 
 ### Backend (backend/)
 ```bash
-npm run dev          # Start NestJS with hot reload on port 3333
-npm run build        # Build for production
-npm run start:prod   # Run production build
-npm start            # Run built code
-npm run lint         # Run ESLint with auto-fix
-npm run format       # Format code with Prettier
+npm run dev                 # Start NestJS with hot reload on port 3333
+npm run build               # Build for production
+npm run start:prod          # Run production build
+npm start                   # Run built code
+npm run lint                # Run ESLint with auto-fix
+npm run format              # Format code with Prettier
+npm run prisma:generate:pg  # Generate Prisma client for PostgreSQL
+npm run prisma:generate:sql # Generate Prisma client for SQL Server
+npm run prisma:migrate:pg   # Run Prisma migration for PostgreSQL
 
 # Database
 npm run studio       # Open Prisma Studio (PostgreSQL schema)

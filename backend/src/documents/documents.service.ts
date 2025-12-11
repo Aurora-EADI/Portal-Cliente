@@ -43,6 +43,7 @@ export class DocumentsService {
                     status: 'PENDING',
                     dateIssue: dto.dateIssue ? new Date(dto.dateIssue) : undefined,
                     dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : undefined,
+                    documentTypeId: dto.documentTypeId ? Number(dto.documentTypeId) : null,
                 },
             });
 

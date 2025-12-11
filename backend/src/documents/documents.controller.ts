@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -41,7 +42,14 @@ export class DocumentsController {
   }
 
   @Get('company/:companyId')
-  async findByCompany(@Param('companyId') companyId: string) {
+  async findByCompany(@Param('companyId') companyId: string, @Request() req) {
+    // 1. Verifica permissão: Admin pode ver tudo, Supplier só vê sua própria empresa
+    if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para acessar documentos desta empresa',
+      );
+    }
+
     return this.documentsService.findByCompany(companyId);
   }
 

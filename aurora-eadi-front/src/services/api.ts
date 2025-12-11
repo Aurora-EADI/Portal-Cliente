@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus } from '@/types';
+import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType } from '@/types';
 
 const validRoles = Object.values(UserRole);
 
@@ -139,7 +139,7 @@ export const documentService = {
   /**
    * Faz upload de documento
    */
-  upload: async (file: File, name: string, user: User, dateIssue?: string, dateExpiration?: string): Promise<Document> => {
+  upload: async (file: File, name: string, user: User, dateIssue?: string, dateExpiration?: string, documentTypeId?: string): Promise<Document> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -152,6 +152,9 @@ export const documentService = {
       }
       if (dateExpiration) {
         formData.append('dateExpiration', dateExpiration);
+      }
+      if (documentTypeId) {
+        formData.append('documentTypeId', documentTypeId);
       }
 
       const response = await api.post('/documents/upload', formData, {
@@ -269,6 +272,76 @@ export const companyService = {
       }
 
       return Promise.reject(new Error(message));
+    }
+  },
+};
+
+/**
+ * Serviço de tipos de documentos
+ */
+export const documentTypeService = {
+  getAll: async (): Promise<DocumentType[]> => {
+    try {
+      const response = await api.get('/document-types');
+      return response.data;
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar tipos de documentos'));
+    }
+  },
+
+  create: async (data: { name: string; description?: string }): Promise<DocumentType> => {
+    try {
+      const response = await api.post('/document-types', data);
+      return response.data;
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao criar tipo de documento'));
+    }
+  },
+
+  update: async (id: number, data: { name?: string; description?: string; active?: boolean }): Promise<DocumentType> => {
+    try {
+      const response = await api.patch(`/document-types/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao atualizar tipo de documento'));
+    }
+  },
+
+  delete: async (id: number): Promise<void> => {
+    try {
+      await api.delete(`/document-types/${id}`);
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao excluir tipo de documento'));
+    }
+  },
+};
+
+export const companyRequirementService = {
+  getRequirements: async (companyId: string): Promise<{ documentTypeId: number; isRequired: boolean }[]> => {
+    try {
+      const response = await api.get(`/companies/${companyId}/requirements`);
+      return response.data;
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar requisitos'));
+    }
+  },
+
+  updateRequirements: async (companyId: string, requirements: { documentTypeId: number; isRequired: boolean }[]): Promise<void> => {
+    try {
+      await api.post(`/companies/${companyId}/requirements`, { requirements });
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao atualizar requisitos'));
+    }
+  },
+};
+
+export const supplierRequirementsService = {
+  getMyRequirements: async (): Promise<{ documentTypeId: number; isRequired: boolean; documentType: DocumentType }[]> => {
+    try {
+      const response = await api.get('/suppliers/me/requirements');
+      return response.data;
+    } catch (error: any) {
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar requisitos'));
     }
   },
 };

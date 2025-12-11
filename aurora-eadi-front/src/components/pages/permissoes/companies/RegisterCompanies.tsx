@@ -55,16 +55,20 @@ export function RegisterCompanies() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-in zoom-in-95">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Cadastro Realizado!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Cadastro em Análise!</h2>
+          <p className="text-gray-600 mb-8">
+            Seu cadastro foi enviado com sucesso e está aguardando aprovação.
+            Você receberá uma confirmação assim que sua conta for ativada.
+          </p>
 
           <button
             onClick={() => router.push("/permissoes")}
             className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
           >
-            Voltar
+            Voltar para Login
           </button>
         </div>
       </div>
@@ -74,17 +78,10 @@ export function RegisterCompanies() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <button
-          className="flex items-center text-gray-500 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar para Login
-        </button>
-
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-primary-300 px-8 py-6">
+          <div className="bg-primary-500 px-8 py-6">
             <h2 className="text-2xl font-bold text-white">Cadastro de Fornecedor</h2>
-            <p className="text-blue-100 mt-1">Preencha os dados da empresa para começar.</p>
+            <p className="text-white mt-1">Preencha os dados da empresa para começar.</p>
           </div>
 
           <div className="p-8">
@@ -168,8 +165,8 @@ export function RegisterCompanies() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 outline-none transition ${confirmPassword && password !== confirmPassword
-                            ? 'border-red-300 focus:ring-red-200'
-                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                          ? 'border-red-300 focus:ring-red-200'
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                           }`}
                         placeholder="••••••••"
                       />

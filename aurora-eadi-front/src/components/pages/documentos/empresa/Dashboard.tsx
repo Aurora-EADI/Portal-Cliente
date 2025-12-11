@@ -1,9 +1,12 @@
+"use client"
 import React, { useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
 import { useDocuments, useUploadDocument } from '@/hooks/useDocuments';
-import { UploadCloud, FileText, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, AlertCircle, CheckCircle, Loader2, AlertTriangle, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { DocumentStatus } from '@/types';
+import { DocumentStatus, DocumentType } from '@/types';
+import { supplierRequirementsService, documentTypeService } from '@/services/api';
+import { Header } from '@/components/layout/Header';
 
 export function SupplierDashboard() {
   const { currentUser } = useAuthContext();
@@ -14,21 +17,66 @@ export function SupplierDashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [dateIssue, setDateIssue] = useState('');
   const [dateExpiration, setDateExpiration] = useState('');
+  const [selectedTypeId, setSelectedTypeId] = useState('');
+
+  // Requirements State
+  const [requirements, setRequirements] = useState<{ documentTypeId: number; isRequired: boolean; documentType: DocumentType }[]>([]);
+  const [isLoadingRequirements, setIsLoadingRequirements] = useState(true);
+
+  React.useEffect(() => {
+    loadRequirements();
+  }, []);
+
+  const loadRequirements = async () => {
+    try {
+      setIsLoadingRequirements(true);
+      const reqs = await supplierRequirementsService.getMyRequirements();
+      setRequirements(reqs);
+    } catch (error) {
+      console.error('Erro ao carregar requisitos:', error);
+    } finally {
+      setIsLoadingRequirements(false);
+    }
+  };
+
+  const pendingRequirements = requirements.filter(req => {
+    // Check if we have an approved or pending document for this type
+    const hasDoc = documents.some(d => d.documentTypeId === req.documentTypeId && d.status !== DocumentStatus.REJECTED);
+    return req.isRequired && !hasDoc;
+  });
+
+  const handleSelectRequirement = (req: { documentTypeId: number, documentType: DocumentType }) => {
+    setSelectedTypeId(String(req.documentTypeId));
+    setDocName(req.documentType.name);
+    // Construct anchor scroll if needed or just focus form
+    const form = document.getElementById('upload-form');
+    form?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
   };
 
+
+
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !docName || !currentUser || !dateIssue || !dateExpiration) return;
+    if (!file || !docName || !currentUser) return;
 
-    upload({ file, name: docName, user: currentUser, dateIssue, dateExpiration }, {
+    upload({
+      file,
+      name: docName,
+      user: currentUser,
+      dateIssue,
+      dateExpiration,
+      documentTypeId: selectedTypeId || undefined
+    } as any, { // Cast to any if hook types aren't updated yet
       onSuccess: () => {
         setFile(null);
         setDocName('');
         setDateIssue('');
         setDateExpiration('');
+        setSelectedTypeId('');
         const input = document.getElementById('file-upload') as HTMLInputElement;
         if (input) input.value = '';
       }
@@ -42,15 +90,69 @@ export function SupplierDashboard() {
         <p className="text-gray-500">Envie e acompanhe o status dos documentos da sua empresa.</p>
       </header>
 
+      {/* Requirements Alert Section */}
+      {
+        pendingRequirements.length > 0 && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 animate-in slide-in-from-top-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-orange-100 rounded-lg text-orange-600 shrink-0">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-orange-900 mb-2">Documentação Pendente</h3>
+                <p className="text-sm text-orange-800 mb-4">
+                  Sua empresa possui documentos obrigatórios pendentes de envio. Regularize sua situação para evitar bloqueios.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {pendingRequirements.map(req => (
+                    <button
+                      key={req.documentTypeId}
+                      onClick={() => handleSelectRequirement(req)}
+                      className="flex items-center justify-between p-3 bg-white border border-orange-200 rounded-lg shadow-sm hover:border-orange-400 hover:shadow-md transition-all text-left group"
+                    >
+                      <span className="font-medium text-gray-700 group-hover:text-primary-600">{req.documentType.name}</span>
+                      <UploadCloud size={16} className="text-gray-400 group-hover:text-primary-600" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
       {/* Upload Section */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200" id="upload-form">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <UploadCloud className="text-primary-600" size={20} />
           Novo Envio
         </h2>
         <form onSubmit={handleUpload} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-12">
+            <div className="md:col-span-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+                value={selectedTypeId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedTypeId(id);
+                  if (id) {
+                    const type = requirements.find(r => r.documentTypeId === Number(id));
+                    if (type) setDocName(type.documentType.name);
+                  }
+                }}
+                disabled={isUploading}
+              >
+                <option value="">Outro / Não listado</option>
+                {requirements.map(req => (
+                  <option key={req.documentTypeId} value={req.documentTypeId}>
+                    {req.documentType.name} {req.isRequired ? '(Obrigatório)' : '(Opcional)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-8">
               <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Documento</label>
               <input
                 type="text"
@@ -118,7 +220,7 @@ export function SupplierDashboard() {
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-800">Histórico</h2>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
@@ -133,11 +235,11 @@ export function SupplierDashboard() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoadingDocs ? (
-                 <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                       <div className="flex justify-center"><Loader2 className="animate-spin text-primary-500" /></div>
-                    </td>
-                 </tr>
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                    <div className="flex justify-center"><Loader2 className="animate-spin text-primary-500" /></div>
+                  </td>
+                </tr>
               ) : documents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
@@ -186,6 +288,6 @@ export function SupplierDashboard() {
           </table>
         </div>
       </div>
-    </div>
+    </div >
   );
 };

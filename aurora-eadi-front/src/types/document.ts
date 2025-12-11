@@ -14,6 +14,16 @@ export interface Document {
     uploadedAt: string
     status: DocumentStatus
     rejectionReason?: string
+    documentTypeId?: number;
     dateIssue?: string
     dateExpiration?: string
+}
+
+export interface DocumentType {
+    id: number;
+    name: string;
+    description?: string;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
 }
