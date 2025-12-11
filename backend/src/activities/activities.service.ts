@@ -4,7 +4,7 @@ import {
     ConflictException,
     BadRequestException,
 } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { UpdateActivityPermissionsDto } from './dto/update-activity-permissions.dto';
@@ -221,7 +221,7 @@ export class ActivitiesService {
                 where: { id },
             });
 
-             if (!currentActivity) {
+            if (!currentActivity) {
                 throw new BadRequestException(
                     "Não podem ser indefinidos para validar duplicidade.",
                 );
@@ -350,10 +350,10 @@ export class ActivitiesService {
         });
 
         if (!updatedActivity) {
-                throw new BadRequestException(
-                    "Não podem ser indefinidos para validar duplicidade.",
-                );
-            }
+            throw new BadRequestException(
+                "Não podem ser indefinidos para validar duplicidade.",
+            );
+        }
 
         return {
             message: 'Permissões atualizadas com sucesso',
@@ -371,24 +371,23 @@ export class ActivitiesService {
      */
     async remove(id: number) {
         // Verifica se a atividade existe
-        const activity = await this.findOne(id);
+        await this.findOne(id);
 
-        // Verifica se há usuários com acesso a esta atividade
-        const userAccessCount = await this.prisma.userActivityAccess.count({
-            where: { activityId: id },
-        });
-
-        if (userAccessCount > 0) {
-            throw new BadRequestException(
-                `Não é possível deletar esta atividade pois existem ${userAccessCount} usuário(s) com acesso. ` +
-                `Remova os acessos antes de deletar.`,
-            );
-        }
-
-        // Deleta a atividade (as permissões são deletadas em cascata via Prisma)
-        await this.prisma.activity.delete({
-            where: { id },
-        });
+        // Deleta a atividade e seus vínculos em transação
+        await this.prisma.$transaction([
+            // 1. Remove acessos de usuários (UserActivityAccess)
+            this.prisma.userActivityAccess.deleteMany({
+                where: { activityId: id },
+            }),
+            // 2. Remove permissões da atividade (ActivityPermission) - caso não tenha cascade no DB
+            this.prisma.activityPermission.deleteMany({
+                where: { activityId: id },
+            }),
+            // 3. Deleta a atividade
+            this.prisma.activity.delete({
+                where: { id },
+            }),
+        ]);
 
         return {
             message: 'Atividade deletada com sucesso',

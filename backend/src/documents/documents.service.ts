@@ -41,8 +41,8 @@ export class DocumentsService {
                     userId,
                     companyId: dto.companyId,
                     status: 'PENDING',
-                    dateIssue: dto.dateIssue,
-                    dateExpiration: dto.dateExpiration
+                    dateIssue: dto.dateIssue ? new Date(dto.dateIssue) : undefined,
+                    dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : undefined,
                 },
             });
 
