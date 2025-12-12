@@ -7,7 +7,7 @@ export interface User {
     name: string;
     email: string;
     role: UserRole;
-    companyId: number | null;
+    companyId: string | null;
     position: string | null;
     createdAt: string;
     updatedAt: string;
@@ -20,7 +20,7 @@ export interface CreateUserDto {
     email: string;
     password: string;
     role: UserRole;
-    companyId?: number;
+    companyId?: string;
     position?: string;
 }
 
@@ -29,7 +29,7 @@ export interface UpdateUserDto {
     email?: string;
     password?: string;
     role?: UserRole;
-    companyId?: number;
+    companyId?: string;
     position?: string;
 }
 

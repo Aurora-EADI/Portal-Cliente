@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -29,14 +29,21 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Gestão de Documentos',
         icon: Shield,
         path: '/documentos',
+        requiredPermissions: [''],
       },
       {
-        label: 'Empresa Documentos',
-        icon: Shield,
+        label: 'Anexar Documentos',
+        icon: Upload,
         path: '/documentos/empresa',
       },
+      {
+        label: 'Cadastrar tipo Documento',
+        icon: FilePlus,
+        path: '/documentos/cadastrar',
+        requiredPermissions: ['DOC_REGISTER'],
+      },
     ],
-    allowedRoles: [UserRole.ADMIN],
+    allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER],
   },
 
   // Navegação para a página de Faturamento
@@ -52,7 +59,7 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Faturamento Detalhado',
         icon: FileBarChart,
         path: '/faturamento',
-        requiredPermissions: ['FAT_VIEW_DETALHADO'],
+        requiredPermissions: ['FAT_VIEW_DET'],
       },
       {
         label: 'Relatório CutOff',

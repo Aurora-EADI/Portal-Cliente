@@ -44,6 +44,13 @@ export function UserRegistryPage() {
     companyId: undefined,
   });
 
+  // Limpa companyId quando role é ADMIN
+  useEffect(() => {
+    if (formData.role === UserRole.ADMIN) {
+      setFormData((prev) => ({ ...prev, companyId: undefined }));
+    }
+  }, [formData.role]);
+
   // Carrega usuários e empresas
   useEffect(() => {
     fetchData();
@@ -422,12 +429,13 @@ export function UserRegistryPage() {
                     className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     value={formData.companyId || ""}
                     disabled={formData.role === UserRole.ADMIN || isSaving}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = e.target.value;
                       setFormData({
                         ...formData,
-                        companyId: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
+                        companyId: value || undefined,
+                      });
+                    }}
                   >
                     <option value="">Selecione uma empresa...</option>
                     {companies.map((comp) => (

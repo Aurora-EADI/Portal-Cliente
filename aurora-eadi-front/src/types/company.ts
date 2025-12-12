@@ -1,5 +1,5 @@
 export interface Company {
-    id: number;
+    id: string;
     cnpj: string;
     fantasyName: string;
     socialReason?: string;

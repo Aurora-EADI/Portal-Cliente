@@ -6,7 +6,6 @@ import { FaturamentoFilters } from "../cutoff/components/filtersFaturamento";
 import { FaturamentoTable } from "../cutoff/components/TableFaturamento";
 import { getFaturamentoCutOff } from "@/services/faturamento/faturamentoDetalhado";
 import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
-import { ExportExcelButton } from "../cutoff/components/ExportExcelButton";
 
 export interface FiltersProps {
   cliente: string;

@@ -20,7 +20,7 @@ enum UserRole {
 }
 
 type Company = {
-  id: number;
+  id: string;
   fantasyName: string;
 };
 
@@ -29,7 +29,7 @@ type UserType = {
   name: string;
   email: string;
   role: UserRole;
-  companyId: number | null;
+  companyId: string | null;
   position: string | null;
   createdAt: string;
   updatedAt: string;
@@ -42,7 +42,7 @@ type UpdateUserDto = {
   password?: string;
   role: UserRole;
   position?: string;
-  companyId?: number;
+  companyId?: string;
 };
 
 interface EditUserModalProps {
@@ -87,6 +87,13 @@ export function EditUserModal({
       });
     }
   }, [user]);
+
+  // Limpa companyId quando role é ADMIN
+  useEffect(() => {
+    if (formData.role === UserRole.ADMIN) {
+      setFormData((prev) => ({ ...prev, companyId: undefined }));
+    }
+  }, [formData.role]);
 
   const handleSubmit = async () => {
     onClearError();
@@ -307,14 +314,13 @@ export function EditUserModal({
                   className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors appearance-none"
                   value={formData.companyId || ""}
                   disabled={formData.role === UserRole.ADMIN || isSaving}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      companyId: e.target.value
-                        ? Number(e.target.value)
-                        : undefined,
-                    })
-                  }
+                      companyId: value || undefined,
+                    });
+                  }}
                 >
                   <option value="">Selecione uma empresa...</option>
                   {companies.map((comp) => (

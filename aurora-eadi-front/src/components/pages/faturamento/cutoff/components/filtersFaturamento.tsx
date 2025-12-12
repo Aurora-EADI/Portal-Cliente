@@ -12,6 +12,7 @@ import { ExportExcelButton } from "./ExportExcelButton";
 import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
 import { FiltersProps } from '../Dashboard';
 import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
+import { PermissionRouteGuard } from "@/components/guards/PermissionRouteGuard";
 
 interface ClienteOption {
   cliente: string;
@@ -356,7 +357,9 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                 Limpar Filtros
               </Button>
 
-              <ExportExcelButton data={filteredData} />
+              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento/cutoff" requiredPermissions={['FAT_EXPORT_CUTOFF']}>
+                <ExportExcelButton data={filteredData} />
+              </PermissionRouteGuard>
             </div>
 
             <CustomButton

@@ -9,7 +9,7 @@ export default function FaturamentoPageRoute() {
   return (
     <PermissionRouteGuard
       moduleRoute="/faturamento"
-      requiredPermissions={['FAT_VIEW_DASHBOARD']}
+      requiredPermissions={['FAT_VIEW_DASH']}
     >
       <div className="h-screen flex flex-col overflow-hidden">
         <Header />
