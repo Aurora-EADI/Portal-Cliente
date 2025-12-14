@@ -3,20 +3,18 @@
 import { Layout } from '@/components/layout/Layout'
 import { AdminDashboard } from '@/components/pages/documentos/Dashboard'
 import { Header } from '@/components/layout/Header'
-import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard'
+import { RoleGuard } from '@/components/guards/RoleGuard'
+import { UserRole } from '@/types'
 
 export default function DocumentosPageRoute() {
   return (
-    // <PermissionRouteGuard
-    //             moduleRoute="/documentos"
-    //             requiredPermissions={['DOC_VIEW_GESTAO']}
-    //           >
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
-      <Layout>
-        <AdminDashboard />
-      </Layout>
-    </div>
-    // </PermissionRouteGuard>
+    <RoleGuard allowedRoles={[UserRole.ADMIN]} redirectTo="/documentos/empresa">
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Layout>
+          <AdminDashboard />
+        </Layout>
+      </div>
+    </RoleGuard>
   )
 }

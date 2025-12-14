@@ -5,6 +5,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -37,12 +38,16 @@ export class DocumentsController {
 
   @Get()
   @Roles(UserRole.ADMIN)
-  async findAll() {
-    return this.documentsService.findAll();
+  async findAll(@Query('latestOnly') latestOnly: string = 'true') {
+    return this.documentsService.findAll(latestOnly === 'true');
   }
 
   @Get('company/:companyId')
-  async findByCompany(@Param('companyId') companyId: string, @Request() req) {
+  async findByCompany(
+    @Param('companyId') companyId: string,
+    @Query('latestOnly') latestOnly: string = 'false',
+    @Request() req
+  ) {
     // 1. Verifica permissão: Admin pode ver tudo, Supplier só vê sua própria empresa
     if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
       throw new ForbiddenException(
@@ -50,7 +55,7 @@ export class DocumentsController {
       );
     }
 
-    return this.documentsService.findByCompany(companyId);
+    return this.documentsService.findByCompany(companyId, latestOnly === 'true');
   }
 
   @Patch(':id/status')

@@ -3,7 +3,7 @@
 import { Layout } from '@/components/layout/Layout'
 import { Header } from '@/components/layout/Header'
 import { DocumentTypesManager } from '@/components/pages/documentos/DocumentTypesManager'
-import { PermissionGuard } from '@/components/guards/PermissionGuard'
+import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard'
 
 export default function DocumentTypesPage() {
     return (
@@ -15,9 +15,13 @@ export default function DocumentTypesPage() {
                         <h1 className="text-2xl font-bold text-gray-900">Gerenciar Tipos de Documentos</h1>
                         <p className="text-gray-500">Cadastre e edite os tipos de documentos exigidos no sistema.</p>
                     </div>
-                    <PermissionGuard moduleRoute='/documentos/empresa' permissionKey='DOC_VIEW'>
+                    <PermissionRouteGuard
+                        moduleRoute='/documentos/empresa'
+                        requiredPermissions={['DOC_VIEW']}
+                        isBlockPage={false}
+                    >
                         <DocumentTypesManager />
-                    </PermissionGuard>
+                    </PermissionRouteGuard>
                 </div>
             </Layout>
         </div>

@@ -32,7 +32,31 @@ export class DocumentsService {
                 throw new BadRequestException('Erro ao enviar arquivo ao MinIO');
             }
 
-            // 2. Depois grava no banco - se falhar, rollback
+            // 2. Marcar documentos anteriores do mesmo tipo/nome como isLatest: false
+            if (dto.documentTypeId) {
+                // Documentos COM tipo: versiona por tipo
+                await tx.document.updateMany({
+                    where: {
+                        companyId: dto.companyId,
+                        documentTypeId: Number(dto.documentTypeId),
+                        isLatest: true
+                    },
+                    data: { isLatest: false }
+                });
+            } else {
+                // Documentos SEM tipo: versiona por nome
+                await tx.document.updateMany({
+                    where: {
+                        companyId: dto.companyId,
+                        documentTypeId: null,
+                        name: dto.name,
+                        isLatest: true
+                    },
+                    data: { isLatest: false }
+                });
+            }
+
+            // 3. Criar novo documento como isLatest: true
             const document = await tx.document.create({
                 data: {
                     name: dto.name,
@@ -44,6 +68,7 @@ export class DocumentsService {
                     dateIssue: dto.dateIssue ? new Date(dto.dateIssue) : undefined,
                     dateExpiration: dto.dateExpiration ? new Date(dto.dateExpiration) : undefined,
                     documentTypeId: dto.documentTypeId ? Number(dto.documentTypeId) : null,
+                    isLatest: true,
                 },
             });
 
@@ -52,8 +77,9 @@ export class DocumentsService {
     }
 
 
-    async findAll() {
+    async findAll(latestOnly: boolean = true) {
         return this.prisma.document.findMany({
+            where: latestOnly ? { isLatest: true } : undefined,
             include: {
                 user: { select: { name: true, email: true } },
                 company: { select: { fantasyName: true } },
@@ -62,9 +88,11 @@ export class DocumentsService {
         });
     }
 
-    async findByCompany(companyId: string) {
+    async findByCompany(companyId: string, latestOnly: boolean = false) {
         return this.prisma.document.findMany({
-            where: { companyId },
+            where: latestOnly
+                ? { companyId, isLatest: true }
+                : { companyId },
             orderBy: { uploadedAt: 'desc' },
         });
     }

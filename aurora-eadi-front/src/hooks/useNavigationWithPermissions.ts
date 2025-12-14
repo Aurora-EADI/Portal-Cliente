@@ -1,26 +1,30 @@
 import { useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { NavItem, getNavigationByPath } from '@/config/navigation';
+import { NavItem, getNavigationByPathAndRole } from '@/config/navigation';
 import { useModuleAccess } from './useModuleAccess';
+import { useAuthContext } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 /**
- * Hook que retorna os itens de navegação filtrados pelas permissões do usuário
+ * Hook que retorna os itens de navegação filtrados pelas permissões e role do usuário
  * @returns Array de NavItems que o usuário tem permissão para acessar
  */
 export function useNavigationWithPermissions(): NavItem[] {
   const pathname = usePathname();
+  const { currentUser } = useAuthContext();
 
   // Extrai a rota base do módulo atual (ex: /faturamento/cutoff -> /faturamento)
   const moduleRoute = useMemo(() => {
-    const parts = pathname.split('/').filter(Boolean);  
+    const parts = pathname.split('/').filter(Boolean);
     return parts.length > 0 ? `/${parts[0]}` : '/modules';
   }, [pathname]);
 
   // Busca dados do módulo e permissões
   const { module, isLoading } = useModuleAccess(moduleRoute);
 
-  // Obtém todos os itens de navegação para o path atual
-  const allNavigationItems = getNavigationByPath(pathname);
+  // Obtém itens de navegação filtrados pelo role do usuário
+  const userRole = currentUser?.role ?? UserRole.SUPPLIER;
+  const allNavigationItems = getNavigationByPathAndRole(pathname, userRole);
 
   // Filtra itens baseado nas permissões do usuário
   const filteredItems = useMemo(() => {

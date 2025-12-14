@@ -8,6 +8,7 @@ import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus } from '../../../types';
 import { CompanyWithResponsible, documentService, documentTypeService, companyRequirementService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, User as UserIcon, AlertCircle, Users, UserCheck, Clock, Loader2, AlertTriangle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 export function AdminDashboard() {
   const { currentUser } = useAuthContext();
@@ -24,11 +25,15 @@ export function AdminDashboard() {
   const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
   const [viewingCompany, setViewingCompany] = useState<CompanyWithResponsible | null>(null);
 
-  // Requirements State
+  // Requirements State (modal Detalhes)
   const [activeTab, setActiveTab] = useState<'info' | 'requirements'>('info');
   const [documentTypes, setDocumentTypes] = useState<{ id: number; name: string }[]>([]);
   const [companyRequirements, setCompanyRequirements] = useState<Set<number>>(new Set());
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
+
+  // Requirements State (modal Documentos)
+  const [modalDocRequirements, setModalDocRequirements] = useState<{ documentTypeId: number; documentType: { id: number; name: string }; isRequired: boolean }[]>([]);
+  const [isLoadingModalReqs, setIsLoadingModalReqs] = useState(false);
 
   React.useEffect(() => {
     if (viewingCompany && activeTab === 'requirements') {
@@ -53,6 +58,44 @@ export function AdminDashboard() {
     }
   };
 
+  // Carrega requisitos quando abre o modal de Documentos
+  React.useEffect(() => {
+    if (selectedSupplierId) {
+      loadModalRequirements(selectedSupplierId);
+    }
+  }, [selectedSupplierId]);
+
+  const loadModalRequirements = async (companyId: string) => {
+    try {
+      setIsLoadingModalReqs(true);
+      const [types, reqs] = await Promise.all([
+        documentTypeService.getAll(),
+        companyRequirementService.getRequirements(companyId)
+      ]);
+      // Monta array com info do tipo de documento
+      const reqsWithType = reqs.filter(r => r.isRequired).map(r => ({
+        ...r,
+        documentType: types.find(t => t.id === r.documentTypeId) || { id: r.documentTypeId, name: 'Desconhecido' }
+      }));
+      setModalDocRequirements(reqsWithType);
+    } catch (error) {
+      console.error('Erro ao carregar requisitos do modal:', error);
+    } finally {
+      setIsLoadingModalReqs(false);
+    }
+  };
+
+  // Calcula documentos obrigatórios pendentes
+  const getPendingRequirements = () => {
+    return modalDocRequirements.filter(req => {
+      // Verifica se existe documento aprovado para esse tipo
+      const hasApprovedDoc = selectedDocs.some(
+        d => d.documentTypeId === req.documentTypeId && d.status === DocumentStatus.APPROVED
+      );
+      return !hasApprovedDoc;
+    });
+  };
+
   const toggleRequirement = async (typeId: number) => {
     if (!viewingCompany) return;
     const isRequired = !companyRequirements.has(typeId);
@@ -74,6 +117,13 @@ export function AdminDashboard() {
   // Rejection State
   const [rejectingDoc, setRejectingDoc] = useState<Document | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Confirm Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'approveDoc' | 'blockCompany' | null;
+    data: any;
+  }>({ open: false, type: null, data: null });
 
   const pendingCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.PENDING).length;
   const activeCompanies = suppliers.filter((s: CompanyWithResponsible) => s.company.status === CompanyStatus.ACTIVE).length;
@@ -136,16 +186,32 @@ export function AdminDashboard() {
   };
 
   const handleApprove = (doc: Document) => {
-    if (window.confirm(`Aprovar documento "${doc.name}"?`)) {
-      updateDoc({ id: doc.id, status: DocumentStatus.APPROVED });
-    }
+    setConfirmDialog({
+      open: true,
+      type: 'approveDoc',
+      data: doc
+    });
   };
 
   const handleCompanyAuthorization = (companyId: string, status: CompanyStatus) => {
-    if (status === CompanyStatus.REJECTED && !window.confirm(`Deseja realmente bloquear o acesso desta empresa?`)) {
+    if (status === CompanyStatus.REJECTED) {
+      setConfirmDialog({
+        open: true,
+        type: 'blockCompany',
+        data: companyId
+      });
       return;
     }
     updateCompany({ id: companyId, status });
+  };
+
+  const handleConfirmAction = () => {
+    if (confirmDialog.type === 'approveDoc' && confirmDialog.data) {
+      updateDoc({ id: confirmDialog.data.id, status: DocumentStatus.APPROVED });
+    } else if (confirmDialog.type === 'blockCompany' && confirmDialog.data) {
+      updateCompany({ id: confirmDialog.data, status: CompanyStatus.REJECTED });
+    }
+    setConfirmDialog({ open: false, type: null, data: null });
   };
 
   const handleRejectSubmit = () => {
@@ -377,6 +443,58 @@ export function AdminDashboard() {
                   </button>
                 </div>
               )}
+
+              {/* Documentos Obrigatórios Pendentes */}
+              {(() => {
+                const pendingReqs = getPendingRequirements();
+                if (isLoadingModalReqs) {
+                  return (
+                    <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
+                      <Loader2 className="animate-spin text-gray-400" size={20} />
+                      <span className="text-gray-500 text-sm">Carregando requisitos...</span>
+                    </div>
+                  );
+                }
+                if (pendingReqs.length > 0) {
+                  return (
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-amber-100 rounded-lg text-amber-600 shrink-0">
+                          <AlertTriangle size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-amber-900 mb-2">Documentos Obrigatórios Pendentes</h4>
+                          <p className="text-sm text-amber-800 mb-3">
+                            Esta empresa ainda não enviou ou teve aprovado os seguintes documentos obrigatórios:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {pendingReqs.map(req => (
+                              <span
+                                key={req.documentTypeId}
+                                className="inline-flex items-center px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full border border-amber-200"
+                              >
+                                {req.documentType.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (modalDocRequirements.length > 0) {
+                  // Todos os requisitos foram atendidos
+                  return (
+                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+                      <CheckCircle2 className="text-green-500" size={20} />
+                      <span className="text-green-800 text-sm font-medium">
+                        Todos os documentos obrigatórios foram enviados e aprovados.
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">Documentação Enviada</h3>
@@ -666,6 +784,32 @@ export function AdminDashboard() {
         </div>
       )
       }
+
+      {/* ConfirmDialog para Aprovar Documento */}
+      <ConfirmDialog
+        open={confirmDialog.open && confirmDialog.type === 'approveDoc'}
+        onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: null, data: null })}
+        title="Aprovar Documento"
+        description={`Deseja realmente aprovar o documento "${confirmDialog.data?.name || ''}"?`}
+        confirmText="Aprovar"
+        cancelText="Cancelar"
+        variant="default"
+        onConfirm={handleConfirmAction}
+        isLoading={isUpdatingDoc}
+      />
+
+      {/* ConfirmDialog para Bloquear Empresa */}
+      <ConfirmDialog
+        open={confirmDialog.open && confirmDialog.type === 'blockCompany'}
+        onOpenChange={(open) => !open && setConfirmDialog({ open: false, type: null, data: null })}
+        title="Bloquear Empresa"
+        description="Deseja realmente bloquear o acesso desta empresa? Esta ação pode ser revertida posteriormente."
+        confirmText="Bloquear"
+        cancelText="Cancelar"
+        variant="destructive"
+        onConfirm={handleConfirmAction}
+        isLoading={isUpdatingCompany}
+      />
     </div >
   );
 };

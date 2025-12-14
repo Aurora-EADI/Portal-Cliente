@@ -109,6 +109,9 @@ model Document {
   documentTypeId Int?
   documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
 
+  // Versionamento: indica se é a versão mais recente do documento
+  isLatest       Boolean        @default(true)
+
   @@map("documents")
 }
 

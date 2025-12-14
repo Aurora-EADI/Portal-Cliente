@@ -6,6 +6,7 @@ export interface NavItem {
   icon: React.ComponentType<{ size?: number }>;
   path: string;
   requiredPermissions?: string[]; // Permissões necessárias para acessar esta rota
+  requiredRoles?: UserRole[]; // Roles necessárias para acessar esta rota
 }
 
 // Definir navegação para cada contexto/página
@@ -14,6 +15,29 @@ export interface NavigationContext {
   items: NavItem[]; // Itens que aparecem SOMENTE nessa página
   allowedRoles?: UserRole[]; // (Opcional) Quais roles podem acessar
 }
+
+// Função para obter os itens de navegação baseado no path atual E no role do usuário
+export const getNavigationByPathAndRole = (
+  currentPath: string,
+  userRole: UserRole
+): NavItem[] => {
+  const context = navigationContexts.find(ctx =>
+    currentPath.startsWith(ctx.basePath)
+  );
+  if (!context) {
+    // Fallback: retorna apenas Home
+    return [{ label: 'Home', icon: Home, path: '/modules' }];
+  }
+  // ✅ Filtra itens que o usuário pode ver
+  return context.items.filter(item => {
+    // Se não tem requiredRoles, todos podem ver
+    if (!item.requiredRoles || item.requiredRoles.length === 0) {
+      return true;
+    }
+    // Caso contrário, verifica se o role do usuário está na lista permitida
+    return item.requiredRoles.includes(userRole);
+  });
+};
 
 export const navigationContexts: NavigationContext[] = [
   // Navegação para a página de Documentos
@@ -29,7 +53,8 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Gestão de Documentos',
         icon: Shield,
         path: '/documentos',
-        requiredPermissions: [''],
+        requiredPermissions: ['DOC_VIEW'],
+        requiredRoles: [UserRole.ADMIN],
       },
       {
         label: 'Anexar Documentos',
