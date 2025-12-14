@@ -14,7 +14,11 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-export function Login() {
+interface LoginProps {
+  onRegisterClick?: () => void;
+}
+
+export function Login({ onRegisterClick }: LoginProps) {
   const router = useRouter();
   const { mutate: login, isPending: isLoading, isSuccess } = useLogin();
 
@@ -55,15 +59,15 @@ export function Login() {
     setError('');
     const adminEmail = 'admin@aurora.com.br';
     const adminPassword = '123456';
-    
+
     setEmail(adminEmail);
     setPassword(adminPassword);
 
     // Faz login automaticamente
-    login({ 
-      email: adminEmail, 
-      password: adminPassword, 
-      role: UserRole.ADMIN 
+    login({
+      email: adminEmail,
+      password: adminPassword,
+      role: UserRole.ADMIN
     }, {
       onError: (err: any) => {
         setError(err.message || 'Erro ao tentar login demo.');
@@ -201,6 +205,23 @@ export function Login() {
                     "Acessar Portal"
                   )}
                 </Button>
+
+                {/* CADASTRO DE FORNECEDOR */}
+                <Separator className="my-6" />
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-3">
+                    É fornecedor e ainda não tem cadastro?
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-primary-300 text-primary-600 hover:bg-primary-50 hover:border-primary-400"
+                    onClick={onRegisterClick}
+                    disabled={isLoading}
+                  >
+                    Cadastrar como Fornecedor
+                  </Button>
+                </div>
               </form>
 
               {/* DEMO */}

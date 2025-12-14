@@ -3,7 +3,7 @@
 import { Layout } from '@/components/layout/Layout'
 import { RouteGuard } from '@/components/guards/RouteGuard'
 import { Header } from '@/components/layout/Header'
-import { RegisterCompanies } from '@/components/pages/permissoes/companies/RegisterCompanies'
+import { RegisterCompanies } from '@/components/pages/fornecedor/RegisterSupplier'
 
 export default function PermissoesPage() {
   return (

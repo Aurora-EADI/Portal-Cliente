@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import React, { useState, useEffect } from "react";
 import {
@@ -25,6 +25,9 @@ import {
   Wrench,
   Database,
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 
 import { usersService } from "@/services/users/users.service";
@@ -76,6 +79,12 @@ export function PermissionManagerPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [userAccessStatus, setUserAccessStatus] = useState<UserModulesAccessStatus | null>(null);
 
+  // Controle de módulos expandidos
+  const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({});
+
+  // Busca/filtro
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Local state for editing before saving
   const [localPermissions, setLocalPermissions] = useState<LocalPermissionState>({
     moduleEnabled: {},
@@ -111,6 +120,13 @@ export function PermissionManagerPage() {
       if (usersData.length > 0) {
         setSelectedUserId(usersData[0].id);
       }
+
+      // Mantém todos os módulos colapsados por padrão
+      const initialExpanded: Record<number, boolean> = {};
+      modulesData.forEach(mod => {
+        initialExpanded[mod.id] = false;
+      });
+      setExpandedModules(initialExpanded);
     } catch (err: any) {
       console.error("Erro ao carregar dados:", err);
       setError(err.response?.data?.message || "Erro ao carregar dados iniciais.");
@@ -166,7 +182,6 @@ export function PermissionManagerPage() {
             (m) => m.id === Number(moduleId)
           )?.isEnabled;
 
-          // Só faz a requisição se houve mudança
           if (currentStatus !== isEnabled) {
             return userModuleAccessService.toggleModule(
               selectedUserId,
@@ -179,7 +194,7 @@ export function PermissionManagerPage() {
 
       await Promise.all(modulePromises.filter(Boolean));
 
-      // Salva atividades alteradas para cada módulo habilitado
+      // Salva atividades alteradas
       const activityPromises = modules
         .filter((module) => localPermissions.moduleEnabled[module.id] ?? false)
         .map(async (module) => {
@@ -187,10 +202,8 @@ export function PermissionManagerPage() {
             (a) => a.moduleId === module.id
           );
 
-          // Identifica as atividades que foram alteradas
           const changedActivities = moduleActivities
             .filter((activity) => {
-              // Pula atividades obrigatórias (já são criadas automaticamente pelo backend)
               if (activity.isMandatory) return false;
 
               const moduleStatus = userAccessStatus?.modules.find((m) => m.id === module.id);
@@ -204,7 +217,6 @@ export function PermissionManagerPage() {
               isEnabled: localPermissions.activityEnabled[activity.id] ?? false,
             }));
 
-          // Envia requisição bulk apenas se houver mudanças
           if (changedActivities.length > 0) {
             return userActivityAccessService.configureBulkActivities(
               selectedUserId,
@@ -216,7 +228,6 @@ export function PermissionManagerPage() {
 
       await Promise.all(activityPromises.filter(Boolean));
 
-      // Recarrega as permissões
       await fetchUserPermissions(selectedUserId);
 
       setHasChanges(false);
@@ -257,13 +268,24 @@ export function PermissionManagerPage() {
     setHasChanges(true);
   };
 
+  const toggleModuleExpansion = (moduleId: number) => {
+    setExpandedModules(prev => ({
+      ...prev,
+      [moduleId]: !prev[moduleId]
+    }));
+  };
+
   const selectedUser = users.find((u) => u.id === selectedUserId);
 
   const renderModuleIcon = (iconName?: string) => {
-    const IconComponent =
-      iconName && ICON_MAP[iconName] ? ICON_MAP[iconName] : Package;
+    const IconComponent = iconName && ICON_MAP[iconName] ? ICON_MAP[iconName] : Package;
     return <IconComponent className="w-5 h-5" />;
   };
+
+  // Filtro de módulos
+  const filteredModules = modules.filter(module =>
+    module.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -293,10 +315,10 @@ export function PermissionManagerPage() {
   }
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="space-y-6 pb-24">
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start animate-in fade-in slide-in-from-top-2">
           <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-sm font-medium text-red-800">Erro</h3>
@@ -304,224 +326,323 @@ export function PermissionManagerPage() {
           </div>
           <button
             onClick={() => setError(null)}
-            className="ml-auto text-red-400 hover:text-red-600 transition-colors"
+            className="ml-auto text-red-400 hover:text-red-600 transition-colors text-xl leading-none"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* User Selection Header */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex-1">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Selecione o Colaborador
-          </label>
-          <div className="relative">
-            <select
-              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-primary-500 focus:outline-none text-gray-700 font-medium"
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} - {u.role}
-                </option>
-              ))}
-            </select>
-            <UserIcon className="w-5 h-5 text-gray-500 absolute left-3 top-3.5 pointer-events-none" />
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Gerenciamento de Permissões</h1>
+            <p className="text-gray-300 text-sm">
+              Configure os acessos e atividades disponíveis para cada colaborador
+            </p>
           </div>
+          <Shield className="w-12 h-12 text-gray-600 opacity-50" />
         </div>
 
-        {selectedUser && (
-          <div className="flex items-center space-x-4 bg-primary-50 p-3 rounded-lg border border-primary-100">
-            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-lg ring-2 ring-white">
-              {selectedUser.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">{selectedUser.name}</p>
-              <p className="text-xs text-primary-700 font-medium">
-                {selectedUser.role}
-              </p>
-              <p className="text-xs text-gray-500">{selectedUser.email}</p>
+        {/* User Selection */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
+              Selecione o Colaborador
+            </label>
+            <div className="relative">
+              <select
+                className="w-full pl-10 pr-4 py-3 bg-white text-gray-900 border-0 rounded-lg appearance-none focus:ring-2 focus:ring-gray-400 focus:outline-none font-medium"
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+              >
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} - {u.role}
+                  </option>
+                ))}
+              </select>
+              <UserIcon className="w-5 h-5 text-gray-500 absolute left-3 top-3.5 pointer-events-none" />
             </div>
           </div>
-        )}
+
+          {selectedUser && (
+            <div className="flex items-center space-x-4 bg-white/10 backdrop-blur-sm p-3 rounded-lg border border-white/20">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg ring-2 ring-white/30">
+                {selectedUser.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">{selectedUser.name}</p>
+                <p className="text-xs text-gray-300 font-medium">{selectedUser.role}</p>
+                <p className="text-xs text-gray-400">{selectedUser.email}</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Summary Stats */}
       {userAccessStatus && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">Módulos Ativos</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {userAccessStatus.summary.enabledModules}/
-              {userAccessStatus.summary.totalModules}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Módulos</p>
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Layers className="w-4 h-4 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">
+              {userAccessStatus.summary.enabledModules}
+              <span className="text-base text-gray-400 font-normal">
+                /{userAccessStatus.summary.totalModules}
+              </span>
             </p>
+            <p className="text-xs text-gray-500 mt-1">ativos</p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">Atividades Ativas</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {userAccessStatus.summary.activeActivities}/
-              {userAccessStatus.summary.totalActivities}
+
+          <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Atividades</p>
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">
+              {userAccessStatus.summary.activeActivities}
+              <span className="text-base text-gray-400 font-normal">
+                /{userAccessStatus.summary.totalActivities}
+              </span>
             </p>
+            <p className="text-xs text-gray-500 mt-1">configuradas</p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">Taxa de Utilização</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+
+          <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Utilização</p>
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-purple-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-gray-900">
               {userAccessStatus.summary.totalModules > 0
                 ? Math.round(
                   (userAccessStatus.summary.enabledModules /
                     userAccessStatus.summary.totalModules) *
                   100
                 )
-                : 0}
-              %
+                : 0}%
             </p>
+            <p className="text-xs text-gray-500 mt-1">dos recursos</p>
           </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-xs text-gray-500 font-medium">Status</p>
-            <p className="text-sm font-bold text-green-600 mt-1 flex items-center">
+
+          <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Status</p>
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-emerald-600" />
+              </div>
+            </div>
+            <p className="text-lg font-bold text-emerald-600 flex items-center mt-1">
               <CheckCircle2 className="w-4 h-4 mr-1" />
-              Configurado
+              Ativo
             </p>
+            <p className="text-xs text-gray-500 mt-1">sistema operacional</p>
           </div>
         </div>
       )}
 
-      {/* Permissions Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {modules.map((module) => {
-          const isModuleEnabled =
-            localPermissions.moduleEnabled[module.id] ?? false;
-          const moduleActivities = activities.filter(
-            (a) => a.moduleId === module.id
-          );
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar módulos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          />
+        </div>
+      </div>
 
-          return (
-            <div
-              key={module.id}
-              className={`
-                  rounded-xl border transition-all duration-200
-                  ${isModuleEnabled
-                  ? "bg-white border-gray-300 shadow-sm"
-                  : "bg-gray-50 border-gray-200 opacity-80"
-                }
-                `}
-            >
-              {/* Card Header with Toggle */}
-              <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+      {/* Permissions List */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="divide-y divide-gray-100">
+          {filteredModules.map((module, idx) => {
+            const isModuleEnabled = localPermissions.moduleEnabled[module.id] ?? false;
+            const isExpanded = expandedModules[module.id] ?? false;
+            const moduleActivities = activities.filter((a) => a.moduleId === module.id);
+            const activeCount = moduleActivities.filter(
+              (a) => localPermissions.activityEnabled[a.id] || a.isMandatory
+            ).length;
+
+            return (
+              <div key={module.id} className={`transition-colors ${isModuleEnabled ? 'bg-white' : 'bg-gray-50/50'}`}>
+                {/* Module Header */}
+                <div className="flex items-center gap-4 p-4 hover:bg-gray-50/50 transition-colors">
+                  {/* Toggle Module */}
+                  <button
+                    onClick={() => toggleModule(module.id, isModuleEnabled)}
+                    className={`
+                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 flex-shrink-0
+                      ${isModuleEnabled ? "bg-primary-600" : "bg-gray-300"}
+                    `}
+                  >
+                    <span
+                      className={`
+                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm
+                        ${isModuleEnabled ? "translate-x-6" : "translate-x-1"}
+                      `}
+                    />
+                  </button>
+
+                  {/* Icon */}
                   <div
-                    className={`p-2 rounded-lg ${isModuleEnabled
+                    className={`p-2.5 rounded-lg flex-shrink-0 ${isModuleEnabled
                       ? "bg-primary-100 text-primary-600"
                       : "bg-gray-200 text-gray-500"
                       }`}
                   >
                     {renderModuleIcon(module.name)}
                   </div>
-                  <div>
-                    <h3
-                      className={`font-bold text-lg ${isModuleEnabled ? "text-gray-900" : "text-gray-500"
-                        }`}
-                    >
+
+                  {/* Module Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-bold text-base ${isModuleEnabled ? "text-gray-900" : "text-gray-500"}`}>
                       {module.name}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {moduleActivities.length} atividades disponíveis
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {isModuleEnabled ? (
+                        <>
+                          <span className="font-semibold text-primary-600">{activeCount}</span>
+                          {" de "}
+                          <span className="font-semibold">{moduleActivities.length}</span>
+                          {" atividades ativas"}
+                        </>
+                      ) : (
+                        "Módulo desabilitado"
+                      )}
                     </p>
                   </div>
+
+                  {/* Status Badge */}
+                  {isModuleEnabled && (
+                    <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                      Ativo
+                    </div>
+                  )}
+
+                  {/* Expand Button */}
+                  {isModuleEnabled && moduleActivities.length > 0 && (
+                    <button
+                      onClick={() => toggleModuleExpansion(module.id)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-gray-500" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-500" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
-                {/* Module Master Toggle */}
-                <button
-                  onClick={() => toggleModule(module.id, isModuleEnabled)}
-                  className={`
-                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-                      ${isModuleEnabled ? "bg-primary-600" : "bg-gray-300"}
-                    `}
-                >
-                  <span
-                    className={`
-                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                        ${isModuleEnabled ? "translate-x-6" : "translate-x-1"}
-                      `}
-                  />
-                </button>
-              </div>
+                {/* Activities List (Expandable) */}
+                {isModuleEnabled && isExpanded && moduleActivities.length > 0 && (
+                  <div className="bg-gray-50/50 border-t border-gray-100">
+                    <div className="px-4 py-3">
+                      <div className="space-y-2 ml-16">
+                        {moduleActivities.map((activity) => {
+                          const isActivityEnabled =
+                            localPermissions.activityEnabled[activity.id] ?? false;
 
-              {/* Activities List */}
-              <div className="p-5">
-                {isModuleEnabled ? (
-                  <div className="space-y-3">
-                    {moduleActivities.map((activity) => {
-                      const isActivityEnabled =
-                        localPermissions.activityEnabled[activity.id] ?? false;
-
-                      return (
-                        <div key={activity.id} className="flex items-start">
-                          <div className="flex h-5 items-center">
-                            <input
-                              id={`perm-${activity.id}`}
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                              checked={isActivityEnabled || activity.isMandatory}
-                              disabled={activity.isMandatory}
-                              onChange={() =>
-                                toggleActivity(activity.id, isActivityEnabled)
-                              }
-                            />
-                          </div>
-                          <div className="ml-3 text-sm">
-                            <label
-                              htmlFor={`perm-${activity.id}`}
-                              className="font-medium text-gray-700 cursor-pointer select-none flex items-center gap-2"
+                          return (
+                            <div
+                              key={activity.id}
+                              className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all"
                             >
-                              {activity.name}
-                              {activity.isMandatory && (
-                                <span title="Permissão obrigatória">
-                                  <Lock className="w-3 h-3 text-gray-400" />
-                                </span>
-                              )}
-                            </label>
-                            <div className="flex items-center gap-2 flex-wrap mt-1">
-                              {activity.permissions?.map((perm) => (
-                                <span
-                                  key={perm.id}
-                                  className="text-[10px] text-gray-400 font-mono bg-gray-50 px-2 py-0.5 rounded border border-gray-100"
+                              <div className="flex h-5 items-center">
+                                <input
+                                  id={`perm-${activity.id}`}
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                  checked={isActivityEnabled || activity.isMandatory}
+                                  disabled={activity.isMandatory}
+                                  onChange={() =>
+                                    toggleActivity(activity.id, isActivityEnabled)
+                                  }
+                                />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <label
+                                  htmlFor={`perm-${activity.id}`}
+                                  className="font-medium text-sm text-gray-900 cursor-pointer select-none flex items-center gap-2"
                                 >
-                                  {perm.key}
-                                </span>
-                              ))}
+                                  {activity.name}
+                                  {activity.isMandatory && (
+                                    <span
+                                      title="Permissão obrigatória"
+                                      className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200"
+                                    >
+                                      <Lock className="w-3 h-3" />
+                                      Obrigatória
+                                    </span>
+                                  )}
+                                </label>
+
+                                {activity.permissions && activity.permissions.length > 0 && (
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                                    {activity.permissions.map((perm) => (
+                                      <span
+                                        key={perm.id}
+                                        className="text-[10px] text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded border border-gray-200"
+                                      >
+                                        {perm.key}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {moduleActivities.length === 0 && (
-                      <p className="text-sm text-gray-400 italic">
-                        Nenhuma atividade vinculada a este módulo.
-                      </p>
-                    )}
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-center py-6 text-gray-400 gap-2">
-                    <Shield className="w-5 h-5" />
-                    <span className="text-sm">Acesso ao módulo desabilitado</span>
+                )}
+
+                {/* Empty State for Disabled Module */}
+                {!isModuleEnabled && (
+                  <div className="px-4 pb-4 ml-16">
+                    <div className="flex items-center gap-2 text-sm text-gray-400 bg-gray-100 px-4 py-3 rounded-lg">
+                      <Shield className="w-4 h-4" />
+                      <span>Habilite o módulo para configurar as atividades</span>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {filteredModules.length === 0 && (
+          <div className="p-12 text-center">
+            <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-medium">Nenhum módulo encontrado</p>
+            <p className="text-sm text-gray-400 mt-1">Tente ajustar os termos de busca</p>
+          </div>
+        )}
       </div>
 
-      {/* Floating Save Action */}
+      {/* Floating Save Button */}
       <div className="fixed bottom-6 right-6 flex items-center gap-4 z-50">
         {savedSuccess && (
-          <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-lg flex items-center animate-in fade-in slide-in-from-right duration-300">
+          <div className="bg-emerald-500 text-white px-4 py-3 rounded-lg shadow-xl flex items-center animate-in fade-in slide-in-from-right-5 duration-300">
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            Permissões salvas com sucesso!
+            <span className="font-medium">Permissões salvas com sucesso!</span>
           </div>
         )}
 
@@ -529,12 +650,12 @@ export function PermissionManagerPage() {
           onClick={handleSave}
           disabled={!hasChanges || isSaving}
           className={`
-              flex items-center px-6 py-3 rounded-full font-bold shadow-lg transition-all transform hover:scale-105
-              ${hasChanges && !isSaving
-              ? "bg-gray-900 text-white hover:bg-gray-800"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            flex items-center px-6 py-3.5 rounded-xl font-bold shadow-xl transition-all transform hover:scale-105 active:scale-95
+            ${hasChanges && !isSaving
+              ? "bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 shadow-primary-200"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed shadow-gray-200"
             }
-            `}
+          `}
         >
           {isSaving ? (
             <>
@@ -545,6 +666,11 @@ export function PermissionManagerPage() {
             <>
               <Save className="w-5 h-5 mr-2" />
               Salvar Alterações
+              {hasChanges && (
+                <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                  Pendente
+                </span>
+              )}
             </>
           )}
         </button>

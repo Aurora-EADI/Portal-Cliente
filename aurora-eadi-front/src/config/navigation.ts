@@ -109,6 +109,12 @@ export const navigationContexts: NavigationContext[] = [
         path: '/fornecedor',
         requiredPermissions: ['FOR_REGISTER'],
       },
+      {
+        label: 'Fornecedores',
+        icon: Truck,
+        path: '/fornecedor/lista-fornecedores',
+        requiredPermissions: ['FOR_VIEW_LIST'],
+      },
     ],
     allowedRoles: [UserRole.ADMIN],
   },

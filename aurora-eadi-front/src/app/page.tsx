@@ -41,5 +41,5 @@ export default function HomePage() {
     return <Register setView={setView} />
   }
 
-  return <Login />
+  return <Login onRegisterClick={() => setView('register')} />
 }
