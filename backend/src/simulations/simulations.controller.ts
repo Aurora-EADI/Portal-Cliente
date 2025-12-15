@@ -20,21 +20,21 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 @Controller('simulations')
 @UseGuards(JwtAuthGuard)
 export class SimulationsController {
-  constructor(private readonly simulationsService: SimulationsService) {}
+  constructor(private readonly simulationsService: SimulationsService) { }
 
   @Post()
   create(@Body() createSimulationDto: CreateSimulationDto, @Request() req) {
-    return this.simulationsService.create(createSimulationDto, req.user.userId);
+    return this.simulationsService.create(createSimulationDto, req.user.id);
   }
 
   @Post('new-version')
   createNewVersion(@Body() createNewVersionDto: CreateNewVersionDto, @Request() req) {
-    return this.simulationsService.createNewVersion(createNewVersionDto, req.user.userId);
+    return this.simulationsService.createNewVersion(createNewVersionDto, req.user.id);
   }
 
   @Get()
   findAll(@Query('supplierId') supplierId?: string, @Request() req?) {
-    return this.simulationsService.findAll(req?.user?.userId, supplierId);
+    return this.simulationsService.findAll(req?.user?.id, supplierId);
   }
 
   @Get('version-history/:simulationNumber')
@@ -68,7 +68,7 @@ export class SimulationsController {
     @Body() addSimulationServiceDto: AddSimulationServiceDto,
     @Request() req,
   ) {
-    return this.simulationsService.addService(id, addSimulationServiceDto, req.user.userId);
+    return this.simulationsService.addService(id, addSimulationServiceDto, req.user.id);
   }
 
   @Get(':id/services')

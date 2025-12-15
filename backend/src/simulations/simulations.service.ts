@@ -1,14 +1,18 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaPostgresService } from '../prisma/prisma.service';
+import { CalculationService } from './calculation.service';
 import { CreateSimulationDto } from './dto/create-simulation.dto';
 import { UpdateSimulationDto } from './dto/update-simulation.dto';
 import { CreateNewVersionDto } from './dto/create-new-version.dto';
 import { AddSimulationServiceDto } from './dto/add-simulation-service.dto';
-import { ServiceCostType } from '@prisma/client-postgres';
+import { ServiceCostType, Prisma } from '@prisma/client-postgres';
 
 @Injectable()
 export class SimulationsService {
-  constructor(private readonly prisma: PrismaPostgresService) {}
+  constructor(
+    private readonly prisma: PrismaPostgresService,
+    private readonly calculationService: CalculationService,
+  ) {}
 
   private generateSimulationNumber(): string {
     const date = new Date();
@@ -26,56 +30,78 @@ export class SimulationsService {
   }
 
   async create(createSimulationDto: CreateSimulationDto, userId: string) {
-    // Verifica se o fornecedor existe
-    const supplier = await this.prisma.company.findUnique({
-      where: { id: createSimulationDto.supplierId },
-    });
+    try {
+      console.log('[SIMULATION CREATE] DTO:', createSimulationDto);
+      console.log('[SIMULATION CREATE] UserId:', userId);
 
-    if (!supplier) {
-      throw new NotFoundException(`Fornecedor com ID ${createSimulationDto.supplierId} não encontrado`);
-    }
+      // Verifica se o fornecedor existe
+      const supplier = await this.prisma.company.findUnique({
+        where: { id: createSimulationDto.supplierId },
+      });
 
-    const simulationNumber = this.generateSimulationNumber();
-    const displayNumber = this.generateDisplayNumber(simulationNumber, 1);
+      if (!supplier) {
+        throw new NotFoundException(`Fornecedor com ID ${createSimulationDto.supplierId} não encontrado`);
+      }
 
-    // Calcula CIF BRL
-    const cifBrl = createSimulationDto.cifUsd * createSimulationDto.dollarRate;
+      const simulationNumber = this.generateSimulationNumber();
+      const displayNumber = this.generateDisplayNumber(simulationNumber, 1);
 
-    return this.prisma.simulation.create({
-      data: {
+      console.log('[SIMULATION CREATE] Generated numbers:', { simulationNumber, displayNumber });
+
+      // Calcula CIF BRL
+      const cifBrl = createSimulationDto.cifUsd * createSimulationDto.dollarRate;
+
+      // Prepara dados com conversões corretas
+      const data: Prisma.SimulationCreateInput = {
         simulationNumber,
         version: 1,
         displayNumber,
-        supplierId: createSimulationDto.supplierId,
-        cifUsd: createSimulationDto.cifUsd,
-        dollarRate: createSimulationDto.dollarRate,
-        cifBrl,
-        tonnes: createSimulationDto.tonnes,
-        cntrCount: createSimulationDto.cntrCount,
-        cntrType: createSimulationDto.cntrType,
-        storageCost: createSimulationDto.storageCost || 0,
-        transportCost: createSimulationDto.transportCost || 0,
-        discount: createSimulationDto.discount || 0,
-        createdBy: userId,
-      },
-      include: {
         supplier: {
-          select: {
-            id: true,
-            fantasyName: true,
-            socialReason: true,
-            cnpj: true,
-          },
+          connect: { id: createSimulationDto.supplierId },
         },
         user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+          connect: { id: userId },
+        },
+        cifUsd: new Prisma.Decimal(createSimulationDto.cifUsd),
+        dollarRate: new Prisma.Decimal(createSimulationDto.dollarRate),
+        cifBrl: new Prisma.Decimal(cifBrl),
+        tonnes: createSimulationDto.tonnes ? new Prisma.Decimal(createSimulationDto.tonnes) : null,
+        cntrCount: createSimulationDto.cntrCount || null,
+        cntrType: createSimulationDto.cntrType || null,
+        storageCost: new Prisma.Decimal(createSimulationDto.storageCost || 0),
+        transportCost: new Prisma.Decimal(createSimulationDto.transportCost || 0),
+        discount: new Prisma.Decimal(createSimulationDto.discount || 0),
+      };
+
+      console.log('[SIMULATION CREATE] Data prepared:', JSON.stringify(data, null, 2));
+
+      const result = await this.prisma.simulation.create({
+        data,
+        include: {
+          supplier: {
+            select: {
+              id: true,
+              fantasyName: true,
+              socialReason: true,
+              cnpj: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      });
+
+      console.log('[SIMULATION CREATE] Success:', result.id);
+      return result;
+    } catch (error) {
+      console.error('[SIMULATION CREATE] Error:', error);
+      throw error;
+    }
   }
 
   async createNewVersion(createNewVersionDto: CreateNewVersionDto, userId: string) {
@@ -109,27 +135,36 @@ export class SimulationsService {
       data: { isCurrentVersion: false },
     });
 
+    // Prepara dados com conversões corretas
+    const dataNewVersion: Prisma.SimulationCreateInput = {
+      simulationNumber: baseSimulation.simulationNumber,
+      version: newVersion,
+      displayNumber,
+      baseSimulation: createNewVersionDto.baseSimulationId
+        ? { connect: { id: createNewVersionDto.baseSimulationId } }
+        : undefined,
+      versionReason: createNewVersionDto.versionReason || null,
+      supplier: {
+        connect: { id: createNewVersionDto.supplierId },
+      },
+      user: {
+        connect: { id: userId },
+      },
+      cifUsd: new Prisma.Decimal(createNewVersionDto.cifUsd),
+      dollarRate: new Prisma.Decimal(createNewVersionDto.dollarRate),
+      cifBrl: new Prisma.Decimal(cifBrl),
+      tonnes: createNewVersionDto.tonnes ? new Prisma.Decimal(createNewVersionDto.tonnes) : null,
+      cntrCount: createNewVersionDto.cntrCount || null,
+      cntrType: createNewVersionDto.cntrType || null,
+      storageCost: new Prisma.Decimal(createNewVersionDto.storageCost || 0),
+      transportCost: new Prisma.Decimal(createNewVersionDto.transportCost || 0),
+      discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
+      isCurrentVersion: true,
+    };
+
     // Cria a nova versão
     const newSimulation = await this.prisma.simulation.create({
-      data: {
-        simulationNumber: baseSimulation.simulationNumber,
-        version: newVersion,
-        displayNumber,
-        baseSimulationId: createNewVersionDto.baseSimulationId,
-        versionReason: createNewVersionDto.versionReason,
-        supplierId: createNewVersionDto.supplierId,
-        cifUsd: createNewVersionDto.cifUsd,
-        dollarRate: createNewVersionDto.dollarRate,
-        cifBrl,
-        tonnes: createNewVersionDto.tonnes,
-        cntrCount: createNewVersionDto.cntrCount,
-        cntrType: createNewVersionDto.cntrType,
-        storageCost: createNewVersionDto.storageCost || 0,
-        transportCost: createNewVersionDto.transportCost || 0,
-        discount: createNewVersionDto.discount || 0,
-        isCurrentVersion: true,
-        createdBy: userId,
-      },
+      data: dataNewVersion,
       include: {
         supplier: {
           select: {
@@ -250,23 +285,62 @@ export class SimulationsService {
   async update(id: string, updateSimulationDto: UpdateSimulationDto) {
     await this.findOne(id); // Verifica se existe
 
+    // Prepara dados de atualização com conversões
+    const updateData: any = {};
+
+    if (updateSimulationDto.supplierId) {
+      updateData.supplierId = updateSimulationDto.supplierId;
+    }
+
+    if (updateSimulationDto.cifUsd !== undefined) {
+      updateData.cifUsd = new Prisma.Decimal(updateSimulationDto.cifUsd);
+    }
+
+    if (updateSimulationDto.dollarRate !== undefined) {
+      updateData.dollarRate = new Prisma.Decimal(updateSimulationDto.dollarRate);
+    }
+
+    if (updateSimulationDto.tonnes !== undefined) {
+      updateData.tonnes = updateSimulationDto.tonnes ? new Prisma.Decimal(updateSimulationDto.tonnes) : null;
+    }
+
+    if (updateSimulationDto.cntrCount !== undefined) {
+      updateData.cntrCount = updateSimulationDto.cntrCount || null;
+    }
+
+    if (updateSimulationDto.cntrType !== undefined) {
+      updateData.cntrType = updateSimulationDto.cntrType || null;
+    }
+
+    if (updateSimulationDto.storageCost !== undefined) {
+      updateData.storageCost = new Prisma.Decimal(updateSimulationDto.storageCost);
+    }
+
+    if (updateSimulationDto.transportCost !== undefined) {
+      updateData.transportCost = new Prisma.Decimal(updateSimulationDto.transportCost);
+    }
+
+    if (updateSimulationDto.discount !== undefined) {
+      updateData.discount = new Prisma.Decimal(updateSimulationDto.discount);
+    }
+
+    if (updateSimulationDto.status) {
+      updateData.status = updateSimulationDto.status;
+    }
+
     // Recalcula CIF BRL se necessário
-    let cifBrl: number | undefined;
-    if (updateSimulationDto.cifUsd || updateSimulationDto.dollarRate) {
+    if (updateSimulationDto.cifUsd !== undefined || updateSimulationDto.dollarRate !== undefined) {
       const current = await this.prisma.simulation.findUnique({ where: { id } });
       if (current) {
-        const newCifUsd = updateSimulationDto.cifUsd ?? current.cifUsd;
-        const newDollarRate = updateSimulationDto.dollarRate ?? current.dollarRate;
-        cifBrl = Number(newCifUsd) * Number(newDollarRate);
+        const newCifUsd = updateSimulationDto.cifUsd ?? Number(current.cifUsd);
+        const newDollarRate = updateSimulationDto.dollarRate ?? Number(current.dollarRate);
+        updateData.cifBrl = new Prisma.Decimal(newCifUsd * newDollarRate);
       }
     }
 
     return this.prisma.simulation.update({
       where: { id },
-      data: {
-        ...updateSimulationDto,
-        ...(cifBrl !== undefined && { cifBrl }),
-      },
+      data: updateData,
       include: {
         supplier: true,
         services: {
@@ -291,7 +365,7 @@ export class SimulationsService {
   async addService(simulationId: string, dto: AddSimulationServiceDto, userId: string) {
     const simulation = await this.findOne(simulationId);
 
-    // Verifica se o serviço existe
+    // Verifica se o serviço existe e busca o tipo de cálculo
     const service = await this.prisma.service.findUnique({
       where: { id: dto.serviceId },
     });
@@ -300,7 +374,7 @@ export class SimulationsService {
       throw new NotFoundException(`Serviço com ID ${dto.serviceId} não encontrado`);
     }
 
-    // Busca o custo vigente do serviço
+    // Busca o custo (taxa) vigente do serviço
     const currentCost = await this.prisma.serviceCost.findFirst({
       where: {
         serviceId: dto.serviceId,
@@ -316,11 +390,41 @@ export class SimulationsService {
       throw new BadRequestException(`Serviço ${service.name} não possui custo vigente cadastrado`);
     }
 
-    const originalCost = currentCost?.cost || 0;
+    const rate = Number(currentCost?.cost || 0); // Taxa base (não é valor final)
+    let appliedCost: number;
 
-    // Validação: se CUSTOM, precisa ter motivo
-    if (dto.costType === ServiceCostType.CUSTOM && !dto.customReason) {
-      throw new BadRequestException('Custo customizado requer motivo (customReason)');
+    // Calcula o custo baseado no tipo
+    if (dto.costType === ServiceCostType.DEFAULT) {
+      // Valida se a simulação tem os dados necessários para o tipo de cálculo
+      this.calculationService.validateSimulationData(service.calculationType, {
+        cifBrl: Number(simulation.cifBrl),
+        cntrCount: simulation.cntrCount || undefined,
+        tonnes: simulation.tonnes ? Number(simulation.tonnes) : undefined,
+      });
+
+      // Calcula o custo usando o CalculationService
+      appliedCost = this.calculationService.calculateServiceCost(
+        service.calculationType,
+        rate,
+        {
+          cifBrl: Number(simulation.cifBrl),
+          cntrCount: simulation.cntrCount || undefined,
+          tonnes: simulation.tonnes ? Number(simulation.tonnes) : undefined,
+        },
+      );
+    } else if (dto.costType === ServiceCostType.ZEROED) {
+      appliedCost = 0;
+    } else if (dto.costType === ServiceCostType.CUSTOM) {
+      // Validação: se CUSTOM, precisa ter motivo e valor
+      if (!dto.customReason) {
+        throw new BadRequestException('Custo customizado requer motivo (customReason)');
+      }
+      if (dto.appliedCost === undefined || dto.appliedCost === null) {
+        throw new BadRequestException('Custo customizado requer valor (appliedCost)');
+      }
+      appliedCost = dto.appliedCost;
+    } else {
+      appliedCost = dto.appliedCost || 0;
     }
 
     // Upsert: cria ou atualiza se já existir
@@ -335,15 +439,15 @@ export class SimulationsService {
         simulationId,
         serviceId: dto.serviceId,
         costType: dto.costType,
-        originalCost,
-        appliedCost: dto.appliedCost,
-        customReason: dto.customReason,
+        originalCost: new Prisma.Decimal(rate), // Taxa base
+        appliedCost: new Prisma.Decimal(appliedCost), // Valor calculado
+        customReason: dto.customReason || null,
       },
       update: {
         costType: dto.costType,
-        originalCost,
-        appliedCost: dto.appliedCost,
-        customReason: dto.customReason,
+        originalCost: new Prisma.Decimal(rate), // Taxa base
+        appliedCost: new Prisma.Decimal(appliedCost), // Valor calculado
+        customReason: dto.customReason || null,
       },
       include: {
         service: true,
@@ -428,8 +532,8 @@ export class SimulationsService {
     await this.prisma.simulation.update({
       where: { id: simulationId },
       data: {
-        totalServices,
-        totalGeneral,
+        totalServices: new Prisma.Decimal(totalServices),
+        totalGeneral: new Prisma.Decimal(totalGeneral),
       },
     });
   }

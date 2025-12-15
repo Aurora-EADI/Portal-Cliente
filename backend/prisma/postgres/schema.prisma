@@ -297,16 +297,26 @@ model Faturamento {
 // SIMULADOR MARÍTIMO - GESTÃO DE SERVIÇOS
 // ============================================
 
+// Tipo de cálculo do serviço
+enum ServiceCalculationType {
+  FIXED // Valor fixo (ex: R$ 500,00)
+  PERCENTAGE_CIF // Percentual sobre CIF BRL (ex: 0,35%)
+  PER_CONTAINER // Valor por container (ex: R$ 350 × qtd)
+  PER_TONNE // Valor por tonelada (ex: R$ 25 × toneladas)
+}
+
 // Catálogo de serviços disponíveis
 model Service {
-  id          String   @id @default(uuid())
-  code        String   @unique // Ex: "SRV-001"
-  name        String // Ex: "Armazenagem"
-  description String? // Descrição do serviço
-  category    String? // Ex: "Operacional", "Administrativo", "Logística"
-  isActive    Boolean  @default(true) // Permite desativar serviços sem deletar
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String                   @id @default(uuid())
+  code              String                   @unique // Ex: "SRV-001"
+  name              String // Ex: "Armazenagem"
+  description       String? // Descrição do serviço
+  category          String? // Ex: "Operacional", "Administrativo", "Logística"
+  calculationType   ServiceCalculationType   @default(FIXED) // Tipo de cálculo
+  formulaExpression String? // Fórmula para exibição (ex: "0.35% do CIF", "R$ 350/container")
+  isActive          Boolean                  @default(true) // Permite desativar serviços sem deletar
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
   // Relacionamentos
   serviceCosts       ServiceCost[] // Histórico de custos ao longo do tempo
@@ -319,7 +329,7 @@ model Service {
 model ServiceCost {
   id         String    @id @default(uuid())
   serviceId  String
-  cost       Decimal   @db.Decimal(10, 2) // Custo em reais
+  cost       Decimal   @db.Decimal(10, 2) // TAXA base (não valor final): 0.35 para %, 350 para valor fixo/unidade
   validFrom  DateTime  @default(now()) // Data início de vigência
   validUntil DateTime? // null = vigente atualmente
   createdBy  String // userId que criou/alterou o custo
