@@ -15,6 +15,9 @@ import { UserActivityAccessModule } from 'src/user-activity-access/user-activity
 import { DocumentsModule } from 'src/documents/documents.module';
 import { CompaniesModule } from 'src/companies/companies.module';
 import { DocumentTypesModule } from '../document-types/document-types.module';
+import { ServicesModule } from '../services/services.module';
+import { ServiceCostsModule } from '../service-costs/service-costs.module';
+import { SimulationsModule } from '../simulations/simulations.module';
 
 @Module({
   imports: [
@@ -36,6 +39,9 @@ import { DocumentTypesModule } from '../document-types/document-types.module';
     DocumentsModule,
     CompaniesModule,
     DocumentTypesModule,
+    ServicesModule,
+    ServiceCostsModule,
+    SimulationsModule,
   ],
 })
 export class AppModule { }

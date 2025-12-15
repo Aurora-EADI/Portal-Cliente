@@ -224,9 +224,8 @@ export function MaritimeSimulator() {
                                                 <SelectValue placeholder="Selecione..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="20">20' Dry</SelectItem>
-                                                <SelectItem value="40">40' Dry</SelectItem>
-                                                <SelectItem value="40hc">40' HC</SelectItem>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="40">40</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
