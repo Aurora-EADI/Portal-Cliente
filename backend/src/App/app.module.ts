@@ -18,6 +18,7 @@ import { DocumentTypesModule } from '../document-types/document-types.module';
 import { ServicesModule } from '../services/services.module';
 import { ServiceCostsModule } from '../service-costs/service-costs.module';
 import { SimulationsModule } from '../simulations/simulations.module';
+import { IntegrationModule } from 'src/integration/integration.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { SimulationsModule } from '../simulations/simulations.module';
     ServicesModule,
     ServiceCostsModule,
     SimulationsModule,
+    IntegrationModule
   ],
 })
 export class AppModule { }
