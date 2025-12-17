@@ -9,44 +9,41 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// Rotas públicas (não precisam de autenticação)
+const PUBLIC_ROUTES = ['/'];
+
+/**
+ * 🚀 OTIMIZAÇÃO: Guard de autenticação centralizado
+ * Evita duplicação de verificações em páginas individuais
+ */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { currentUser, isLoading } = useAuthContext();
 
-  // ✅ Rotas públicas (não precisam de autenticação)
-  const publicRoutes = ['/'];
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
+  // Redireciona para login se não autenticado em rota protegida
   useEffect(() => {
-    
-    if (isLoading) {
-      return;
+    if (!isLoading && !isPublicRoute && !currentUser) {
+      router.push('/');
     }
+  }, [currentUser, isLoading, pathname, isPublicRoute, router]);
 
-    const isPublicRoute = publicRoutes.includes(pathname);
-
-    if (!isPublicRoute && !currentUser) {
-      router.push(`/`);
-    } else if (!isPublicRoute && currentUser) {
-    } else if (isPublicRoute) {
-    }
-  }, [currentUser, isLoading, pathname, router]);
-
+  // Mostra loading enquanto verifica autenticação
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className="animate-spin h-12 w-12 text-primary-600 mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Verificando autenticação...</p>
-          <p className="text-gray-400 text-sm mt-2">Aguarde um momento...</p>
         </div>
       </div>
     );
   }
 
-  const isPublicRoute = publicRoutes.includes(pathname);
+  // Mostra loading durante redirecionamento
   if (!isPublicRoute && !currentUser) {
-    console.log('🔄 Aguardando redirecionamento...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

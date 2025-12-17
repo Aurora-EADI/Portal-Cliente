@@ -363,7 +363,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                 Limpar Filtros
               </Button>
 
-              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento" requiredPermissions={['FAT_EXPORT_CUTOFF']}>
+              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento" requiredPermissions={['FAT_EXPORT_DET']}>
                 <ExportExcelButton data={filteredData} />
               </PermissionRouteGuard>
             </div>

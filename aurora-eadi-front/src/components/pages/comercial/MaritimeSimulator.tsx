@@ -31,10 +31,12 @@ import {
   useUpdateSimulation,
   useSimulation,
   useCreateSimulationVersion,
+  useAddSimulationService,
 } from '@/hooks/useSimulations';
 import { useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
+import { formatCurrency, formatUSD } from '@/lib/utils';
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
@@ -49,12 +51,21 @@ export function MaritimeSimulator() {
   const createSimulationMutation = useCreateSimulation();
   const updateSimulationMutation = useUpdateSimulation();
   const createVersionMutation = useCreateSimulationVersion();
+  const addServiceMutation = useAddSimulationService();
 
   // State Management
   const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
+
+  // Local state for services before saving simulation
+  const [localServices, setLocalServices] = useState<Array<{
+    serviceId: string;
+    costType: any;
+    appliedCost: number;
+    customReason?: string;
+  }>>([]);
 
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
@@ -74,7 +85,7 @@ export function MaritimeSimulator() {
   useEffect(() => {
     const usd = parseFloat(cifUsd) || 0;
     const rate = parseFloat(dollarRate) || 0;
-    setCifBrl((usd * rate).toFixed(2));
+    setCifBrl(formatCurrency((usd * rate), false));
   }, [cifUsd, dollarRate]);
 
   // Load current simulation data
@@ -95,6 +106,25 @@ export function MaritimeSimulator() {
   // Handler: Update supplier selection (local state only)
   const handleSupplierChange = (supplierId: string) => {
     setSelectedSupplierId(supplierId);
+  };
+
+  // Handlers for local services management
+  const handleAddLocalService = (service: {
+    serviceId: string;
+    costType: any;
+    appliedCost: number;
+    customReason?: string;
+  }) => {
+    setLocalServices((prev) => {
+      // Remove if already exists
+      const filtered = prev.filter((s) => s.serviceId !== service.serviceId);
+      // Add new service
+      return [...filtered, service];
+    });
+  };
+
+  const handleRemoveLocalService = (serviceId: string) => {
+    setLocalServices((prev) => prev.filter((s) => s.serviceId !== serviceId));
   };
 
   // Handler: Save simulation (Create or Update)
@@ -124,6 +154,19 @@ export function MaritimeSimulator() {
           transportCost: transportCost ? parseFloat(transportCost) : 0,
           discount: discount ? parseFloat(discount) : 0,
         });
+
+        // Add local services to the newly created simulation
+        if (localServices.length > 0) {
+          for (const service of localServices) {
+            await addServiceMutation.mutateAsync({
+              simulationId: newSimulation.id,
+              data: service,
+            });
+          }
+          // Clear local services after saving
+          setLocalServices([]);
+        }
+
         setCurrentSimulationId(newSimulation.id);
         toast.success('Simulação criada com sucesso!');
       } else {
@@ -456,49 +499,20 @@ export function MaritimeSimulator() {
 
               {/* TAB: SERVIÇOS */}
               <TabsContent value="servico" className="mt-0 p-0">
-                {currentSimulationId ? (
-                  <ServicesTab
-                    simulationId={currentSimulationId}
-                    services={servicesData || []}
-                    isLoadingServices={isLoadingServices}
-                    isEditable={isEditable}
-                  />
-                ) : (
-                  <div className="p-12 text-center">
-                    <div className="max-w-md mx-auto">
-                      <div className="mb-4">
-                        <svg
-                          className="mx-auto h-12 w-12 text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Salve a simulação para continuar
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-6">
-                        Para adicionar serviços, primeiro você precisa preencher os dados da carga e
-                        salvar a simulação clicando no botão <strong>"Salvar Simulação"</strong>.
-                      </p>
-                      <Button
-                        onClick={handleSaveSimulation}
-                        disabled={!cifUsd || parseFloat(cifUsd) <= 0}
-                        className="gap-2"
-                      >
-                        <Save size={16} />
-                        Salvar Simulação
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <ServicesTab
+                  simulationId={currentSimulationId}
+                  services={servicesData || []}
+                  isLoadingServices={isLoadingServices}
+                  isEditable={isEditable}
+                  simulationData={{
+                    cifBrl: parseFloat(cifBrl) || 0,
+                    tonnes: parseFloat(tonnes) || 0,
+                    cntrCount: parseInt(cntrCount) || 0,
+                  }}
+                  localServices={localServices}
+                  onAddLocalService={handleAddLocalService}
+                  onRemoveLocalService={handleRemoveLocalService}
+                />
               </TabsContent>
             </div>
           </Tabs>
@@ -518,7 +532,7 @@ export function MaritimeSimulator() {
                 <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg border border-blue-100">
                   <span className="text-blue-700 font-medium">Total Serviços</span>
                   <span className="text-lg font-bold text-blue-900">
-                    R$ {currentSimulation?.totalServices || '0,00'}
+                    {formatCurrency(currentSimulation?.totalServices || 0)}
                   </span>
                 </div>
 
@@ -526,21 +540,21 @@ export function MaritimeSimulator() {
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Armazenagem</span>
                     <span className="font-semibold text-gray-900">
-                      R$ {parseFloat(storageCost || '0').toFixed(2)}
+                      {formatCurrency(parseFloat(storageCost || '0'))}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Transporte</span>
                     <span className="font-semibold text-gray-900">
-                      R$ {parseFloat(transportCost || '0').toFixed(2)}
+                      {formatCurrency(parseFloat(transportCost || '0'))}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Desconto</span>
                     <span className="font-semibold text-red-600">
-                      - R$ {parseFloat(discount || '0').toFixed(2)}
+                      - {formatCurrency(parseFloat(discount || '0'))}
                     </span>
                   </div>
 
@@ -562,7 +576,7 @@ export function MaritimeSimulator() {
                     <span className="text-xs text-gray-400">Com impostos</span>
                   </div>
                   <span className="text-2xl font-bold text-gray-900">
-                    R$ {currentSimulation?.totalGeneral || '0,00'}
+                    {formatCurrency(currentSimulation?.totalGeneral || 0)}
                   </span>
                 </div>
               </div>

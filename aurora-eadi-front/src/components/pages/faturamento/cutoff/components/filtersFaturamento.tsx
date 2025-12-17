@@ -13,6 +13,8 @@ import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOf
 import { FiltersProps } from '../Dashboard';
 import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
 import { PermissionRouteGuard } from "@/components/guards/PermissionRouteGuard";
+import { usePermission } from "@/hooks/usePermission";
+import { useModuleAccess } from "@/hooks/useModuleAccess";
 
 interface ClienteOption {
   cliente: string;
@@ -33,6 +35,22 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
   const [showFilters, setShowFilters] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
   const [modalidades, setModalidades] = useState<string[]>([]);
+
+  // DEBUG: Verificar permissões - REMOVER DEPOIS
+  const { module, isLoading: moduleLoading, hasAccess } = useModuleAccess('/faturamento/cutoff');
+  const { hasPermission, isLoading: permissionLoading } = usePermission('/faturamento/cutoff', 'FAT_EXPORT_CUTOFF');
+
+  useEffect(() => {
+    if (!moduleLoading && !permissionLoading) {
+      console.log('🔍 DEBUG Permissões:');
+      console.log('📁 Módulo encontrado:', module);
+      console.log('✅ Tem acesso ao módulo:', hasAccess);
+      console.log('🔐 Tem permissão FAT_EXPORT_CUTOFF:', hasPermission);
+      console.log('📋 Atividades:', module?.activities);
+      console.log('🎯 Atividades ativas:', module?.activities?.filter(a => a.isActive));
+      console.log('🔑 Permissão procurada:', 'FAT_EXPORT_CUTOFF');
+    }
+  }, [module, moduleLoading, permissionLoading, hasAccess, hasPermission]);
 
   useEffect(() => {
     setSearchTerm(filters.cliente);
@@ -357,7 +375,7 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                 Limpar Filtros
               </Button>
 
-              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento/cutoff" requiredPermissions={['FAT_EXPORT_CUTOFF']}>
+              <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento" requiredPermissions={['FAT_EXPORT_CUTOFF']}>
                 <ExportExcelButton data={filteredData} />
               </PermissionRouteGuard>
             </div>

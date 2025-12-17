@@ -9,11 +9,11 @@ import { UserRole } from '@/types';
 
 export default function MaritimeSimulatorPage() {
     return (
-        <>
+        <div className="h-screen flex flex-col overflow-hidden">
             <Header />
             <Layout>
                 <MaritimeSimulator />
             </Layout>
-        </>
+        </div>
     );
 }

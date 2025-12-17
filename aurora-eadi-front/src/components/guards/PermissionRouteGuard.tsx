@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePermission } from '@/hooks/usePermission';
-import { AlertCircle, ShieldOff, ArrowLeft, Home } from 'lucide-react';
+import { useModuleAccessContext } from '@/context/ModuleAccessContext';
+import { ShieldOff, ArrowLeft, Home } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 
 interface PermissionRouteGuardProps {
@@ -14,6 +14,10 @@ interface PermissionRouteGuardProps {
   isBlockPage?: boolean;
 }
 
+/**
+ * 🚀 OTIMIZAÇÃO: Guard de permissões usando contexto cacheado
+ * Evita múltiplas chamadas de hooks em loop
+ */
 export function PermissionRouteGuard({
   moduleRoute,
   requiredPermissions,
@@ -22,17 +26,34 @@ export function PermissionRouteGuard({
   fallbackRoute = '/modules',
 }: PermissionRouteGuardProps) {
   const router = useRouter();
+  const { getModuleByRoute, isLoading } = useModuleAccessContext();
 
-  const permissionChecks = requiredPermissions.map((permission) => {
-    const { hasPermission, isLoading } = usePermission(moduleRoute, permission);
-    return { permission, hasPermission, isLoading };
-  });
+  // 🚀 OTIMIZAÇÃO: Calcula permissões de forma memoizada (uma única vez)
+  const permissionCheck = useMemo(() => {
+    const module = getModuleByRoute(moduleRoute);
 
-  const isLoading = permissionChecks.some((check) => check.isLoading);
-  const hasAllPermissions = permissionChecks.every((check) => check.hasPermission);
-  const missingPermissions = permissionChecks
-    .filter((check) => !check.hasPermission)
-    .map((check) => check.permission);
+    if (!module) {
+      return { hasAllPermissions: false, missingPermissions: requiredPermissions };
+    }
+
+    // Coleta todas as permissões do módulo
+    const modulePermissions = new Set<string>();
+    module.activities?.forEach((activity) => {
+      if (activity.isActive && activity.permissions) {
+        activity.permissions.forEach((perm) => modulePermissions.add(perm));
+      }
+    });
+
+    // Verifica quais permissões estão faltando
+    const missing = requiredPermissions.filter((perm) => !modulePermissions.has(perm));
+
+    return {
+      hasAllPermissions: missing.length === 0,
+      missingPermissions: missing,
+    };
+  }, [getModuleByRoute, moduleRoute, requiredPermissions]);
+
+  const { hasAllPermissions, missingPermissions } = permissionCheck;
 
   if (isLoading) {
     return (

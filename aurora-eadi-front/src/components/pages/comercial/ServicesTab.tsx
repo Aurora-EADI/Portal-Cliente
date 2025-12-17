@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Edit, Trash, Check, X, AlertCircle } from 'lucide-react';
+import { Edit, Trash, Check, X, AlertCircle, DollarSign, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/Badge';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -22,26 +23,51 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Service, ServiceCostType } from '@/types';
+import { Service, ServiceCostType, ServiceCalculationType } from '@/types';
 import {
   useSimulationServices,
   useAddSimulationService,
   useRemoveSimulationService,
 } from '@/hooks/useSimulations';
 import { useServiceCostCurrent } from '@/hooks/useServices';
+import { serviceCostService } from '@/services/serviceService';
+import { formatCurrency, formatPercent } from '@/lib/utils';
+
+interface LocalService {
+  serviceId: string;
+  costType: ServiceCostType;
+  appliedCost: number;
+  customReason?: string;
+}
 
 interface ServicesTabProps {
-  simulationId: string;
+  simulationId: string | null;
   services: Service[];
   isLoadingServices: boolean;
   isEditable: boolean;
+  simulationData: {
+    cifBrl: number;
+    tonnes: number;
+    cntrCount: number;
+  };
+  localServices?: LocalService[];
+  onAddLocalService?: (service: LocalService) => void;
+  onRemoveLocalService?: (serviceId: string) => void;
+}
+
+// Component to fetch and display service default cost
+function ServiceDefaultCost({ serviceId }: { serviceId: string }) {
+  const { data: costData, isLoading } = useServiceCostCurrent(serviceId);
+
+  if (isLoading) {
+    return <span className="text-gray-400">...</span>;
+  }
+
+  return (
+    <span className="font-medium text-gray-700">
+      {formatCurrency(costData?.cost || 0)}
+    </span>
+  );
 }
 
 export function ServicesTab({
@@ -49,57 +75,130 @@ export function ServicesTab({
   services,
   isLoadingServices,
   isEditable,
+  simulationData,
+  localServices = [],
+  onAddLocalService,
+  onRemoveLocalService,
 }: ServicesTabProps) {
-  // Query for simulation services
-  const { data: simulationServices, isLoading: isLoadingSimServices } =
-    useSimulationServices(simulationId);
+  // Working mode: local (before save) or saved (with simulationId)
+  const isLocalMode = !simulationId;
 
-  // Mutations
+  // Query for simulation services (only if simulation exists)
+  const { data: simulationServices, isLoading: isLoadingSimServices } =
+    useSimulationServices(simulationId || '');
+
+  // Mutations (only used in saved mode)
   const addServiceMutation = useAddSimulationService();
   const removeServiceMutation = useRemoveSimulationService();
+
+  // Get active services list based on mode
+  const activeServices = isLocalMode ? localServices : (simulationServices || []);
 
   // Dialog state
   const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [customCost, setCustomCost] = useState<string>('');
+  const [customRate, setCustomRate] = useState<string>(''); // Taxa/valor base (não o valor final calculado)
   const [customReason, setCustomReason] = useState<string>('');
-  const [costType, setCostType] = useState<ServiceCostType>(ServiceCostType.DEFAULT);
 
   // Get current cost for selected service
   const { data: currentCostData } = useServiceCostCurrent(selectedService?.id || '');
 
+  // Calculate final cost based on calculationType
+  const calculateFinalCost = (rate: number, service: Service): number => {
+    switch (service.calculationType) {
+      case ServiceCalculationType.FIXED:
+        return rate;
+      case ServiceCalculationType.PERCENTAGE_CIF:
+        return (rate / 100) * simulationData.cifBrl;
+      case ServiceCalculationType.PER_CONTAINER:
+        return rate * simulationData.cntrCount;
+      case ServiceCalculationType.PER_TONNE:
+        return rate * simulationData.tonnes;
+      default:
+        return rate;
+    }
+  };
+
+  // Get calculation formula display
+  const getCalculationFormula = (service: Service, rate: number): string => {
+    switch (service.calculationType) {
+      case ServiceCalculationType.FIXED:
+        return formatCurrency(rate);
+      case ServiceCalculationType.PERCENTAGE_CIF:
+        return `${formatPercent(rate)} × ${formatCurrency(simulationData.cifBrl)} (CIF BRL)`;
+      case ServiceCalculationType.PER_CONTAINER:
+        return `${formatCurrency(rate)} × ${simulationData.cntrCount} containers`;
+      case ServiceCalculationType.PER_TONNE:
+        return `${formatCurrency(rate)} × ${simulationData.tonnes.toFixed(3)} toneladas`;
+      default:
+        return formatCurrency(rate);
+    }
+  };
+
+  // Get input label based on calculation type
+  const getInputLabel = (calculationType: ServiceCalculationType): string => {
+    switch (calculationType) {
+      case ServiceCalculationType.FIXED:
+        return 'Valor Fixo (R$)';
+      case ServiceCalculationType.PERCENTAGE_CIF:
+        return 'Percentual sobre CIF (%)';
+      case ServiceCalculationType.PER_CONTAINER:
+        return 'Valor por Container (R$)';
+      case ServiceCalculationType.PER_TONNE:
+        return 'Valor por Tonelada (R$)';
+      default:
+        return 'Valor (R$)';
+    }
+  };
+
+  // Get service by service ID (works in both modes)
+  const getServiceById = (serviceId: string) => {
+    return activeServices.find((ss) => ss.serviceId === serviceId);
+  };
+
   // Reset dialog when opening
   useEffect(() => {
     if (selectedService && currentCostData) {
-      setCustomCost(currentCostData.cost.toString());
-      setCostType(ServiceCostType.DEFAULT);
-      setCustomReason('');
+      const existingService = getServiceById(selectedService.id);
+      if (existingService) {
+        setCustomRate(currentCostData.cost.toString());
+        setCustomReason(existingService.customReason || '');
+      } else {
+        setCustomRate(currentCostData.cost.toString());
+        setCustomReason('');
+      }
     }
-  }, [selectedService, currentCostData]);
-
-  // Check if service is already added
-  const isServiceAdded = (serviceId: string) => {
-    return simulationServices?.some((ss) => ss.serviceId === serviceId);
-  };
-
-  // Get simulation service by service ID
-  const getSimulationService = (serviceId: string) => {
-    return simulationServices?.find((ss) => ss.serviceId === serviceId);
-  };
+  }, [selectedService, currentCostData, activeServices]);
 
   // Handler: Add service with default cost
-  const handleAddDefault = async (service: Service) => {
-    if (!currentCostData) return;
-
+  const handleUseDefault = async (service: Service) => {
     try {
-      await addServiceMutation.mutateAsync({
-        simulationId,
-        data: {
-          serviceId: service.id,
-          costType: ServiceCostType.DEFAULT,
-          appliedCost: currentCostData.cost,
-        },
-      });
+      // Fetch current cost for the service
+      const costData = await serviceCostService.getCurrent(service.id);
+      if (!costData) {
+        console.error('No cost data found for service:', service.id);
+        return;
+      }
+
+      // Calculate final cost based on calculation type
+      const finalCost = calculateFinalCost(costData.cost, service);
+
+      const serviceData = {
+        serviceId: service.id,
+        costType: ServiceCostType.DEFAULT,
+        appliedCost: finalCost,
+      };
+
+      if (isLocalMode) {
+        // Local mode: use callback
+        onAddLocalService?.(serviceData);
+      } else {
+        // Saved mode: use mutation
+        await addServiceMutation.mutateAsync({
+          simulationId: simulationId!,
+          data: serviceData,
+        });
+      }
     } catch (error) {
       console.error('Error adding service:', error);
     }
@@ -108,14 +207,22 @@ export function ServicesTab({
   // Handler: Zero service
   const handleZero = async (service: Service) => {
     try {
-      await addServiceMutation.mutateAsync({
-        simulationId,
-        data: {
-          serviceId: service.id,
-          costType: ServiceCostType.ZEROED,
-          appliedCost: 0,
-        },
-      });
+      const serviceData = {
+        serviceId: service.id,
+        costType: ServiceCostType.ZEROED,
+        appliedCost: 0,
+      };
+
+      if (isLocalMode) {
+        // Local mode: use callback
+        onAddLocalService?.(serviceData);
+      } else {
+        // Saved mode: use mutation
+        await addServiceMutation.mutateAsync({
+          simulationId: simulationId!,
+          data: serviceData,
+        });
+      }
     } catch (error) {
       console.error('Error zeroing service:', error);
     }
@@ -129,30 +236,43 @@ export function ServicesTab({
 
   // Handler: Save customized cost
   const handleSaveCustom = async () => {
-    if (!selectedService) return;
+    if (!selectedService || !currentCostData) return;
 
-    const isCustom = costType === ServiceCostType.CUSTOM;
-    const isZeroed = costType === ServiceCostType.ZEROED;
+    const rateValue = parseFloat(customRate) || 0;
+    const defaultRate = parseFloat(currentCostData.cost.toString());
 
-    // Validation
-    if (isCustom && !customReason.trim()) {
-      alert('Informe o motivo da customização');
+    // Calculate final costs
+    const finalCost = calculateFinalCost(rateValue, selectedService);
+
+    // Validation - if rate is different from default, reason is required
+    if (rateValue !== defaultRate && !customReason.trim()) {
+      alert('Por favor, informe o motivo da customização');
       return;
     }
 
     try {
-      await addServiceMutation.mutateAsync({
-        simulationId,
-        data: {
-          serviceId: selectedService.id,
-          costType,
-          appliedCost: isZeroed ? 0 : parseFloat(customCost) || 0,
-          customReason: isCustom ? customReason : undefined,
-        },
-      });
+      const serviceData = {
+        serviceId: selectedService.id,
+        costType: rateValue === defaultRate ? ServiceCostType.DEFAULT : ServiceCostType.CUSTOM,
+        appliedCost: finalCost,
+        customReason: rateValue !== defaultRate ? customReason : undefined,
+      };
+
+      if (isLocalMode) {
+        // Local mode: use callback
+        onAddLocalService?.(serviceData);
+      } else {
+        // Saved mode: use mutation
+        await addServiceMutation.mutateAsync({
+          simulationId: simulationId!,
+          data: serviceData,
+        });
+      }
 
       setIsCustomizeDialogOpen(false);
       setSelectedService(null);
+      setCustomRate('');
+      setCustomReason('');
     } catch (error) {
       console.error('Error customizing service:', error);
     }
@@ -161,10 +281,16 @@ export function ServicesTab({
   // Handler: Remove service
   const handleRemove = async (serviceId: string) => {
     try {
-      await removeServiceMutation.mutateAsync({
-        simulationId,
-        serviceId,
-      });
+      if (isLocalMode) {
+        // Local mode: use callback
+        onRemoveLocalService?.(serviceId);
+      } else {
+        // Saved mode: use mutation
+        await removeServiceMutation.mutateAsync({
+          simulationId: simulationId!,
+          serviceId,
+        });
+      }
     } catch (error) {
       console.error('Error removing service:', error);
     }
@@ -173,22 +299,22 @@ export function ServicesTab({
   // Get cost badge variant
   const getCostBadge = (simService: any) => {
     if (simService.costType === ServiceCostType.DEFAULT) {
-      return <Badge variant="outline" className="text-green-600 border-green-600">Padrão</Badge>;
+      return <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">Padrão</Badge>;
     }
     if (simService.costType === ServiceCostType.ZEROED) {
-      return <Badge variant="outline" className="text-gray-500 border-gray-400">Zerado</Badge>;
+      return <Badge variant="outline" className="text-gray-600 border-gray-400 bg-gray-50">Zerado</Badge>;
     }
     if (simService.costType === ServiceCostType.CUSTOM) {
       return (
-        <Badge variant="outline" className="text-orange-600 border-orange-600 gap-1">
+        <Badge variant="outline" className="text-orange-600 border-orange-600 bg-orange-50 gap-1">
           <AlertCircle className="w-3 h-3" />
-          Custom
+          Customizado
         </Badge>
       );
     }
   };
 
-  if (isLoadingServices || isLoadingSimServices) {
+  if (isLoadingServices || (!isLocalMode && isLoadingSimServices)) {
     return (
       <div className="p-12 text-center text-gray-500">
         <p>Carregando serviços...</p>
@@ -199,107 +325,142 @@ export function ServicesTab({
   return (
     <div>
       {/* HEADER */}
-      <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-        <h2 className="text-lg font-bold text-gray-800">Serviços Disponíveis</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Selecione os serviços que serão aplicados nesta simulação. Você pode usar o custo padrão,
-          zerar ou customizar cada serviço.
+      <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-blue-600" />
+          Serviços Disponíveis
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          Selecione os serviços para esta simulação. Os valores padrão são carregados automaticamente.
         </p>
       </div>
 
       {/* TABLE */}
       <div className="p-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Código</TableHead>
-              <TableHead>Serviço</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Custo Padrão</TableHead>
-              <TableHead className="text-right">Custo Aplicado</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center w-[180px]">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {services.map((service) => {
-              const simService = getSimulationService(service.id);
-              const isAdded = !!simService;
+        <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50 hover:bg-gray-50">
+                {/* <TableHead className="w-[80px] font-semibold">Código</TableHead> */}
+                <TableHead className="text-left w-[500px] font-semibold">Serviço</TableHead>
+                {/* <TableHead className="w-[150px] font-semibold">Categoria</TableHead> */}
+                <TableHead className="text-center w-[120px] font-semibold">Valor Padrão</TableHead>
+                <TableHead className="text-center w-[160px] font-semibold">Valor Aplicado</TableHead>
+                <TableHead className="text-center w-[130px] font-semibold">Status</TableHead>
+                <TableHead className="text-center w-[280px] font-semibold">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {services.map((service) => {
+                const simService = getServiceById(service.id);
+                const isAdded = !!simService;
 
-              return (
-                <TableRow key={service.id} className={isAdded ? 'bg-blue-50/30' : ''}>
-                  <TableCell className="font-mono text-xs">{service.code}</TableCell>
-                  <TableCell className="font-medium">{service.name}</TableCell>
-                  <TableCell className="text-sm text-gray-600">{service.category || '-'}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    R$ {simService?.originalCost || '0,00'}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {isAdded ? (
-                      <span className={simService.costType === ServiceCostType.ZEROED ? 'text-gray-400' : 'text-green-600'}>
-                        R$ {simService.appliedCost}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {isAdded ? getCostBadge(simService) : <span className="text-gray-400 text-sm">Não usado</span>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-2">
-                      {!isAdded ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAddDefault(service)}
-                            disabled={!isEditable}
-                            className="text-xs"
-                          >
-                            <Check className="w-3 h-3 mr-1" />
-                            Usar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenCustomize(service)}
-                            disabled={!isEditable}
-                            className="text-xs"
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Customizar
-                          </Button>
-                        </>
+                return (
+                  <TableRow
+                    key={service.id}
+                    className={isAdded ? 'bg-blue-50/50 hover:bg-blue-50/70' : 'hover:bg-gray-50'}
+                  >
+                    {/* <TableCell className="font-mono text-xs text-gray-600">
+                      {service.code}
+                    </TableCell> */}
+                    <TableCell className="font-medium text-gray-900">
+                      {service.name}
+                    </TableCell>
+                    {/* <TableCell className="text-sm text-gray-600">
+                      {service.category || '-'}
+                    </TableCell> */}
+                    <TableCell className="text-right">
+                      <ServiceDefaultCost serviceId={service.id} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isAdded ? (
+                        <span className={
+                          simService.costType === ServiceCostType.ZEROED
+                            ? 'font-bold text-gray-500'
+                            : simService.costType === ServiceCostType.CUSTOM
+                              ? 'font-bold text-orange-600'
+                              : 'font-bold text-green-600'
+                        }>
+                          {formatCurrency(simService.appliedCost)}
+                        </span>
                       ) : (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenCustomize(service)}
-                            disabled={!isEditable}
-                            className="text-xs"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRemove(service.id)}
-                            disabled={!isEditable}
-                            className="text-xs text-red-600 hover:text-red-700"
-                          >
-                            <Trash className="w-3 h-3" />
-                          </Button>
-                        </>
+                        <span className="text-gray-400 text-sm">-</span>
                       )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {isAdded ? getCostBadge(simService) : (
+                        <Badge variant="outline" className="text-gray-500 border-gray-300">
+                          Disponível
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-2">
+                        {!isAdded ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleUseDefault(service)}
+                              disabled={!isEditable}
+                              className="text-xs h-8 bg-green-600 hover:bg-green-700"
+                            >
+                              <Check className="w-3 h-3 mr-1" />
+                              Usar Padrão
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleZero(service)}
+                              disabled={!isEditable}
+                              className="text-xs h-8 text-gray-600 hover:text-gray-700"
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Zerar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenCustomize(service)}
+                              disabled={!isEditable}
+                              className="text-xs h-8 text-orange-600 hover:text-orange-700 border-orange-300"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Customizar
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenCustomize(service)}
+                              disabled={!isEditable}
+                              className="text-xs h-8"
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRemove(service.id)}
+                              disabled={!isEditable}
+                              className="text-xs h-8 text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50"
+                            >
+                              <Trash className="w-3 h-3 mr-1" />
+                              Remover
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
 
         {services.length === 0 && (
           <div className="p-12 text-center text-gray-400">
@@ -310,94 +471,163 @@ export function ServicesTab({
 
       {/* DIALOG: CUSTOMIZE SERVICE */}
       <Dialog open={isCustomizeDialogOpen} onOpenChange={setIsCustomizeDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Customizar Serviço</DialogTitle>
-            <DialogDescription>
-              Serviço: <strong>{selectedService?.name}</strong> ({selectedService?.code})
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="pb-3">
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <Edit className="w-5 h-5 text-orange-600" />
+              Customizar Serviço
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              <strong className="text-gray-900">{selectedService?.name}</strong>
+              <span className="text-gray-500 ml-2">({selectedService?.code})</span>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Tipo de Custo */}
-            <div className="space-y-2">
-              <Label htmlFor="costType">Tipo de Custo</Label>
-              <Select
-                value={costType}
-                onValueChange={(value) => setCostType(value as ServiceCostType)}
-              >
-                <SelectTrigger id="costType">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ServiceCostType.DEFAULT}>
-                    Usar Custo Padrão (R$ {currentCostData?.cost || '0,00'})
-                  </SelectItem>
-                  <SelectItem value={ServiceCostType.CUSTOM}>
-                    Customizar Custo
-                  </SelectItem>
-                  <SelectItem value={ServiceCostType.ZEROED}>
-                    Zerar (Não usar serviço)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Custom Cost Input */}
-            {costType === ServiceCostType.CUSTOM && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="customCost">Custo Customizado (R$)</Label>
-                  <Input
-                    id="customCost"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={customCost}
-                    onChange={(e) => setCustomCost(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customReason">
-                    Motivo da Customização <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="customReason"
-                    placeholder="Ex: Cliente solicitou desconto de 10%"
-                    value={customReason}
-                    onChange={(e) => setCustomReason(e.target.value)}
-                  />
-                  <p className="text-xs text-gray-500">
-                    ⚠️ Obrigatório informar o motivo para custos customizados
+          {/* Scrollable Content */}
+          <div className="overflow-y-auto flex-1 pr-2 space-y-3">
+            {/* Calculation Type & Default Rate - Combined */}
+            {selectedService && currentCostData && (
+              <div className="grid grid-cols-2 gap-2">
+                {/* Calculation Type */}
+                <div className="p-2 bg-gray-100 rounded-md border border-gray-300">
+                  <p className="text-[10px] text-gray-600 font-medium uppercase mb-0.5">Tipo</p>
+                  <p className="text-xs text-gray-900 font-semibold">
+                    {selectedService.calculationType === ServiceCalculationType.FIXED && '💵 Fixo'}
+                    {selectedService.calculationType === ServiceCalculationType.PERCENTAGE_CIF && '📊 % CIF'}
+                    {selectedService.calculationType === ServiceCalculationType.PER_CONTAINER && '📦 /Container'}
+                    {selectedService.calculationType === ServiceCalculationType.PER_TONNE && '⚖️ /Tonelada'}
                   </p>
                 </div>
-              </>
+
+                {/* Default Rate */}
+                <div className="p-2 bg-blue-50 rounded-md border border-blue-200">
+                  <p className="text-[10px] text-blue-600 font-medium uppercase mb-0.5">Taxa Padrão</p>
+                  <p className="text-sm font-bold text-blue-900">
+                    {selectedService.calculationType === ServiceCalculationType.PERCENTAGE_CIF
+                      ? formatPercent(parseFloat(currentCostData.cost.toString()))
+                      : formatCurrency(parseFloat(currentCostData.cost.toString()))}
+                  </p>
+                </div>
+              </div>
             )}
 
-            {/* Preview */}
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Prévia:</p>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Custo que será aplicado:</span>
-                <span className="text-lg font-bold text-gray-900">
-                  R${' '}
-                  {costType === ServiceCostType.ZEROED
-                    ? '0,00'
-                    : costType === ServiceCostType.CUSTOM
-                      ? parseFloat(customCost || '0')
-                      : currentCostData?.cost || '0,00'}
-                </span>
+            {/* Formula Display */}
+            {selectedService && currentCostData && (
+              <div className="p-2 bg-blue-50/50 rounded-md border border-blue-100">
+                <p className="text-[10px] text-blue-600 font-medium mb-1">Cálculo Padrão:</p>
+                <p className="text-xs text-blue-800 font-medium">
+                  {getCalculationFormula(selectedService, parseFloat(currentCostData.cost.toString()))}
+                  <span className="text-blue-900 font-bold ml-1">
+                    = {formatCurrency(calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService))}
+                  </span>
+                </p>
               </div>
+            )}
+
+            {/* Input Section - Compact Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Custom Rate Input */}
+              <div className="space-y-1">
+                <Label htmlFor="customRate" className="text-sm font-semibold">
+                  {selectedService && getInputLabel(selectedService.calculationType)}
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">
+                    {selectedService?.calculationType === ServiceCalculationType.PERCENTAGE_CIF ? '%' : 'R$'}
+                  </span>
+                  <Input
+                    id="customRate"
+                    type="number"
+                    step={selectedService?.calculationType === ServiceCalculationType.PERCENTAGE_CIF ? '0.001' : '0.01'}
+                    placeholder="0.00"
+                    value={customRate}
+                    onChange={(e) => setCustomRate(e.target.value)}
+                    className="pl-8 h-9 font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Preview Result */}
+              <div className="space-y-1">
+                <Label className="text-sm font-semibold text-orange-600">Valor Final</Label>
+                <div className="h-9 flex items-center justify-end px-3 bg-orange-50 rounded-md border-2 border-orange-200">
+                  <span className="text-base font-bold text-orange-600">
+                    {selectedService && formatCurrency(calculateFinalCost(parseFloat(customRate || '0'), selectedService))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula Preview - Compact */}
+            {selectedService && customRate && (
+              <div className="p-2 bg-orange-50/50 rounded-md border border-orange-100">
+                <p className="text-[10px] text-orange-600 font-medium">
+                  {getCalculationFormula(selectedService, parseFloat(customRate))}
+                </p>
+              </div>
+            )}
+
+            {/* Comparison - Compact */}
+            {selectedService && currentCostData && customRate && (
+              <div className="p-2 bg-gradient-to-r from-green-50 to-red-50 rounded-md border border-gray-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Diferença:</span>
+                  <span className={`font-bold text-base ${
+                    calculateFinalCost(parseFloat(customRate || '0'), selectedService) >
+                    calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
+                      ? 'text-red-600'
+                      : calculateFinalCost(parseFloat(customRate || '0'), selectedService) <
+                        calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
+                        ? 'text-green-600'
+                        : 'text-gray-600'
+                  }`}>
+                    {calculateFinalCost(parseFloat(customRate || '0'), selectedService) >
+                     calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService) && '+'}
+                    {formatCurrency(
+                      calculateFinalCost(parseFloat(customRate || '0'), selectedService) -
+                      calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Reason Input - Compact */}
+            <div className="space-y-1">
+              <Label htmlFor="customReason" className="text-sm font-semibold flex items-center gap-1">
+                Motivo <span className="text-red-500 text-xs">*</span>
+                <span className="text-[10px] text-gray-500 font-normal">(obrigatório se diferente do padrão)</span>
+              </Label>
+              <Textarea
+                id="customReason"
+                placeholder="Ex: Cliente solicitou desconto devido ao volume..."
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                rows={2}
+                className="resize-none text-sm"
+              />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCustomizeDialogOpen(false)}>
+          <DialogFooter className="gap-2 pt-3 border-t mt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCustomizeDialogOpen(false);
+                setCustomRate('');
+                setCustomReason('');
+              }}
+              size="sm"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSaveCustom}>
-              Salvar
+            <Button
+              onClick={handleSaveCustom}
+              size="sm"
+              className="bg-orange-600 hover:bg-orange-700"
+              disabled={!customRate || parseFloat(customRate) < 0}
+            >
+              Aplicar Valor
             </Button>
           </DialogFooter>
         </DialogContent>
