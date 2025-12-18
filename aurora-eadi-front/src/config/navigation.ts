@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -104,16 +104,16 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Cadastro Fornecedor',
-        icon: Truck,
-        path: '/fornecedor',
-        requiredPermissions: ['FOR_REGISTER'],
-      },
-      {
         label: 'Fornecedores',
         icon: Truck,
         path: '/fornecedor/lista-fornecedores',
         requiredPermissions: ['FOR_VIEW_LIST'],
+      },
+      {
+        label: 'Cadastro Fornecedor',
+        icon: Factory,
+        path: '/fornecedor',
+        requiredPermissions: ['FOR_REGISTER'],
       },
     ],
     allowedRoles: [UserRole.ADMIN],

@@ -82,7 +82,7 @@ export class ProtheusSupplierService {
         // 4.2 Criar User com role SUPPLIER vinculado à Company
         const user = await tx.user.create({
           data: {
-            name: dto.contactName,
+            name: dto.cnpj,
             email: dto.contactEmail,
             password: hashedPassword,
             role: 'SUPPLIER', // ROLE OBRIGATÓRIO PARA FORNECEDOR
@@ -97,14 +97,6 @@ export class ProtheusSupplierService {
         return { company, user, tempPassword };
       });
 
-      // 5. LOG DE AUDITORIA (OPCIONAL - IMPLEMENTAR SE NECESSÁRIO)
-      // await this.logIntegrationEvent({
-      //   type: 'SUPPLIER_CREATED_FROM_PROTHEUS',
-      //   protheusCode: dto.protheusCode,
-      //   companyId: result.company.id,
-      //   integrationDate: dto.integrationDate,
-      // });
-
       // 6. RETORNAR DADOS DE SUCESSO
       return {
         success: true,
@@ -115,8 +107,6 @@ export class ProtheusSupplierService {
           cnpj: result.company.cnpj,
           status: result.company.status,
           createdAt: result.company.createdAt,
-          // IMPORTANTE: Retornar senha temporária para que o dev Protheus possa informar ao fornecedor
-          // EM PRODUÇÃO: enviar por email em vez de retornar na resposta
           tempPassword: result.tempPassword,
         },
       };
