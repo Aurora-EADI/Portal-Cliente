@@ -60,3 +60,16 @@ export function formatPercent(value: number | string, decimals: number = 2): str
     maximumFractionDigits: decimals,
   }).format(numValue) + '%';
 }
+
+export function formatNumber(value: number | string): string {
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(numValue)) {
+    return '0';
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numValue);
+}

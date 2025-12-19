@@ -90,13 +90,6 @@ export function CompanyDetailsModal({ companyData, onClose }: CompanyDetailsModa
                     >
                         Dados Cadastrais
                     </button>
-                    <button
-                        onClick={() => setActiveTab('requirements')}
-                        className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'requirements' ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    >
-                        <ShieldCheck size={16} />
-                        Documentos Exigidos
-                    </button>
                 </div>
 
                 {/* Body */}

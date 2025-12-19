@@ -106,14 +106,8 @@ export const navigationContexts: NavigationContext[] = [
       {
         label: 'Fornecedores',
         icon: Truck,
-        path: '/fornecedor/lista-fornecedores',
-        requiredPermissions: ['FOR_VIEW_LIST'],
-      },
-      {
-        label: 'Cadastro Fornecedor',
-        icon: Factory,
         path: '/fornecedor',
-        requiredPermissions: ['FOR_REGISTER'],
+        requiredPermissions: ['FOR_VIEW_LIST'],
       },
     ],
     allowedRoles: [UserRole.ADMIN],

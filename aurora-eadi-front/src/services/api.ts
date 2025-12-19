@@ -230,15 +230,39 @@ export interface CompanyWithResponsible {
 }
 
 /**
- * Serviço de empresas
+ * Interface para parâmetros de paginação
  */
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  status?: string;
+}
+
+/**
+ * Interface para resposta paginada
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+  statusCounts?: Record<string, number>;
+}
+
+
 export const companyService = {
-  /**
-   * Busca todas as empresas com seus responsáveis
-   */
-  getAllWithResponsible: async (): Promise<CompanyWithResponsible[]> => {
+
+  getAllWithResponsible: async (params?: PaginationParams): Promise<PaginatedResponse<CompanyWithResponsible>> => {
     try {
-      const response = await api.get('/companies/with-responsible');
+      const response = await api.get('/companies/with-responsible', { params });
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -254,9 +278,7 @@ export const companyService = {
     }
   },
 
-  /**
-   * Atualiza status da empresa
-   */
+
   updateStatus: async (id: string, status: CompanyStatus): Promise<Company> => {
     try {
       const response = await api.patch(`/companies/${id}/status`, { status });

@@ -84,7 +84,30 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
   const handleCnpjLookup = async (cnpjNumbers: string) => {
     const company = await lookup(cnpjNumbers);
     if (company) {
-      // Verifica se a empresa já tem usuário cadastrado
+      // Verifica se a empresa está com solicitação em análise
+      if (company.status === "PENDING_ACTIVE") {
+        setCompanyId(company.id);
+        setSocialReason(company.socialReason || '');
+        setFantasyName(company.fantasyName || '');
+        setCep(company.zipCode || '');
+        setAddress(company.address || '');
+        setNumber(company.number || '');
+        setComplement(company.complement || '');
+        setNeighborhood(company.neighborhood || '');
+        setCity(company.city || '');
+        setState(company.state || '');
+        setPhone(company.phone || '');
+        toast.info(
+          'Sua solicitação está sendo validada',
+          {
+            duration: 6000,
+            description: 'Já existe uma solicitação de acesso em análise para esta empresa. Aguarde a aprovação do administrador.',
+          }
+        );
+        return;
+      }
+
+      // Verifica se a empresa já tem usuário cadastrado e está ativa/rejeitada
       if (company.hasUser && company.status !== "PENDING") {
         setCompanyId(null);
         toast.error(
@@ -94,11 +117,10 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
             description: 'Esta empresa já tem um usuário registrado. Faça login ou entre em contato com o administrador.',
           }
         );
-
         return;
       }
 
-      // Se não tem usuário, preenche os dados para permitir registro
+      // Se não tem usuário ou status é PENDING, preenche os dados para permitir registro
       setCompanyId(company.id);
       setSocialReason(company.socialReason || '');
       setFantasyName(company.fantasyName || '');
@@ -169,6 +191,10 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
   };
 
   const validateStep1 = () => {
+    // Bloqueia se a empresa estiver com status PENDING_ACTIVE
+    if (foundCompany?.status === "PENDING_ACTIVE") {
+      return false;
+    }
     return companyId && cnpj && socialReason && fantasyName && cep && address && number &&
       neighborhood && city && state && phone;
   };
@@ -316,8 +342,31 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                     </div>
                   )}
 
+                  {/* Mensagem quando empresa está com solicitação em análise */}
+                  {foundCompany && foundCompany.status === "PENDING_ACTIVE" && !isLoadingCnpj && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-blue-900 mb-1">Sua solicitação está sendo validada</h4>
+                        <p className="text-sm text-blue-700 mb-2">
+                          Já existe uma solicitação de acesso em análise para esta empresa. Aguarde a aprovação do administrador para fazer login.
+                        </p>
+                        <button
+                          onClick={() => setView('login')}
+                          className="text-sm font-medium text-blue-800 hover:text-blue-900 underline"
+                        >
+                          Voltar para o login
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Mensagem de erro quando empresa já possui usuário */}
-                  {foundCompany && foundCompany.hasUser && !isLoadingCnpj && foundCompany.status !== "PENDING" &&  (
+                  {foundCompany && foundCompany.hasUser && !isLoadingCnpj && foundCompany.status !== "PENDING" && foundCompany.status !== "PENDING_ACTIVE" && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                       <div className="flex-shrink-0 mt-0.5">
                         <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
@@ -400,7 +449,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={socialReason}
                         onChange={(e) => setSocialReason(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Razão social da empresa"
                       />
@@ -415,7 +464,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={fantasyName}
                         onChange={(e) => setFantasyName(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Nome fantasia"
                       />
@@ -430,7 +479,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={cep}
                         onChange={(e) => setCep(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="00000-000"
                       />
@@ -445,7 +494,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         type="tel"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="(00) 00000-0000"
                       />
@@ -460,7 +509,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Rua, Avenida, etc."
                       />
@@ -475,7 +524,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={number}
                         onChange={(e) => setNumber(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Nº"
                       />
@@ -489,7 +538,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={complement}
                         onChange={(e) => setComplement(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Apto, Sala, etc. (opcional)"
                       />
@@ -504,7 +553,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={neighborhood}
                         onChange={(e) => setNeighborhood(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Bairro"
                       />
@@ -519,7 +568,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         placeholder="Cidade"
                       />
@@ -534,7 +583,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                         value={state}
                         onChange={(e) => setState(e.target.value.toUpperCase())}
                         type="text"
-                        disabled={isLoadingCnpj || !foundCompany}
+                        disabled={isLoadingCnpj || !foundCompany || foundCompany?.status === "PENDING_ACTIVE"}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
                         maxLength={2}
                         placeholder="SP"
@@ -544,7 +593,12 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
 
                   <div className="flex justify-end pt-6">
                     <div className="flex flex-col items-end gap-2">
-                      {!validateStep1() && companyId && (
+                      {foundCompany?.status === "PENDING_ACTIVE" && (
+                        <p className="text-xs text-blue-600 font-medium">
+                          Sua solicitação está sendo validada.
+                        </p>
+                      )}
+                      {!validateStep1() && companyId && foundCompany?.status !== "PENDING_ACTIVE" && (
                         <p className="text-xs text-amber-600">
                           Preencha todos os campos obrigatórios (*)
                         </p>

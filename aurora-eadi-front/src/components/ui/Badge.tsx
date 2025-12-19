@@ -22,6 +22,8 @@ const badgeVariants = cva(
           "border-transparent bg-yellow-100 text-yellow-800 shadow",
         danger:
           "border-transparent bg-red-100 text-red-800 shadow",
+        pending_active:
+          "border-transparent text-center bg-blue-100 text-secondary-foreground shadow",
       },
     },
     defaultVariants: {
@@ -32,7 +34,7 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {
+  VariantProps<typeof badgeVariants> {
   status?: DocumentStatus | CompanyStatus;
   context?: "document" | "company";
 }
@@ -64,6 +66,10 @@ function Badge({ className, variant, status, context, children, ...props }: Badg
           autoVariant = "warning";
           text = "Pendente";
           break;
+        case CompanyStatus.PENDING_ACTIVE:
+          autoVariant = "pending_active";
+          text = "Em Aprovação";
+          break;  
         case CompanyStatus.ACTIVE:
           autoVariant = "success";
           text = "Ativo";

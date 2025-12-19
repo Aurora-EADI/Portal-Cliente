@@ -19,6 +19,7 @@ export interface Company {
 
 export enum CompanyStatus {
     PENDING = 'PENDING',
+    PENDING_ACTIVE = "PENDING_ACTIVE",
     ACTIVE = 'ACTIVE',
     REJECTED = 'REJECTED'
 }

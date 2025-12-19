@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { companyService } from '../services/api';
+import { companyService, PaginationParams } from '../services/api';
 import { CompanyStatus } from '../types';
 
 export const SUPPLIERS_KEY = ['suppliers'];
 
-export const useSuppliers = () => {
+export const useSuppliers = (params?: PaginationParams) => {
   return useQuery({
-    queryKey: SUPPLIERS_KEY,
+    queryKey: [...SUPPLIERS_KEY, params],
     queryFn: async () => {
-      return await companyService.getAllWithResponsible();
+      return await companyService.getAllWithResponsible(params);
     },
   });
 };
