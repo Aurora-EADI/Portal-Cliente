@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../user/user.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdateAdminDto } from './dto/update.admin.dto';
 import { UserRole } from '@prisma/client-postgres';
@@ -8,7 +9,10 @@ import { UserRole } from '@prisma/client-postgres';
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) { }
 
   async create(dto: CreateAdminDto) {
     this.logger.log(`Criando administrador: ${JSON.stringify(dto)}`);
@@ -82,8 +86,7 @@ export class AdminService {
       );
     }
 
-    await this.prisma.user.delete({ where: { id } });
-
-    return { message: 'Administrador excluído com sucesso!' };
+    // Usa o método centralizado do UsersService que tem todas as verificações de segurança
+    return this.usersService.remove(id);
   }
 }

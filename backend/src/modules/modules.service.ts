@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 
 @Injectable()
 export class ModulesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async findAll() {
     return this.prisma.module.findMany({
@@ -35,12 +35,41 @@ export class ModulesService {
   }
 
   async remove(id: string) {
-    try {
-      await this.prisma.module.delete({
-        where: { id: Number(id) },
-      });
-    } catch (error) {
+    const moduleId = Number(id);
+
+    // Verificar se o módulo existe e carregar dependências
+    const module = await this.prisma.module.findUnique({
+      where: { id: moduleId },
+      include: {
+        activities: true,
+        userAccess: true,
+      },
+    });
+
+    if (!module) {
       throw new NotFoundException(`Módulo com ID ${id} não encontrado`);
     }
+
+    // Verificar se há atividades vinculadas
+    if (module.activities.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar módulo com ${module.activities.length} atividade(s) vinculada(s). ` +
+        `Remova ou reatribua as atividades antes de deletar o módulo. ` +
+        `Ou use o campo 'active' para desativar ao invés de deletar.`,
+      );
+    }
+
+    // Verificar se há acessos de usuários vinculados
+    if (module.userAccess.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar módulo com ${module.userAccess.length} acesso(s) de usuário(s) configurado(s). ` +
+        `Use o campo 'active' para desativar ao invés de deletar.`,
+      );
+    }
+
+    // Se passou por todas as verificações, pode deletar
+    await this.prisma.module.delete({
+      where: { id: moduleId },
+    });
   }
 }

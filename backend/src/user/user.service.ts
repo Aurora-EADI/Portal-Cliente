@@ -5,7 +5,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
@@ -18,7 +18,7 @@ import {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(createUserDto: CreateUserDto) {
     const { name, email, password, role, companyId, position } = createUserDto;
@@ -186,16 +186,47 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    // Verifica se o usuário existe
+    // Verifica se o usuário existe e carrega dependências
     const user = await this.prisma.user.findUnique({
       where: { id },
+      include: {
+        documents: true,
+        simulations: true,
+        serviceCosts: true,
+      },
     });
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    // Deleta o usuário (cascade vai remover relacionamentos)
+    // CRÍTICO: Verificar se há documentos vinculados
+    // Documentos pertencem à empresa, não ao usuário
+    if (user.documents.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar usuário com ${user.documents.length} documento(s) vinculado(s). ` +
+        `Os documentos pertencem à empresa e devem ser reatribuídos antes da deleção do usuário.`,
+      );
+    }
+
+    // Verificar se há simulações criadas pelo usuário
+    if (user.simulations.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar usuário com ${user.simulations.length} simulação(ões) vinculada(s). ` +
+        `Reatribua as simulações para outro usuário antes de deletar.`,
+      );
+    }
+
+    // Verificar se há custos de serviço criados pelo usuário
+    if (user.serviceCosts.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar usuário com ${user.serviceCosts.length} alteração(ões) de custo no histórico. ` +
+        `Este histórico é importante para auditoria e não pode ser perdido.`,
+      );
+    }
+
+    // Se passou por todas as verificações, pode deletar
+    // Cascade vai remover apenas UserModuleAccess e UserActivityAccess (dados de configuração)
     await this.prisma.user.delete({
       where: { id },
     });
@@ -228,7 +259,7 @@ export class UsersService {
     return moduleAccess;
   }
 
-async getUserActivities(id: string): Promise<UserActivityResponse[]> {
+  async getUserActivities(id: string): Promise<UserActivityResponse[]> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });

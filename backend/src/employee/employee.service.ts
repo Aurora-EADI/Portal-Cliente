@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
+import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../user/user.service';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UserRole } from '@prisma/client-postgres';
@@ -8,7 +9,10 @@ import { UserRole } from '@prisma/client-postgres';
 export class EmployeesService {
   private readonly logger = new Logger(EmployeesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) { }
 
   async create(dto: CreateEmployeeDto) {
     this.logger.log(`Criando funcionário: ${JSON.stringify(dto)}`);
@@ -80,8 +84,7 @@ export class EmployeesService {
       );
     }
 
-    await this.prisma.user.delete({ where: { id } });
-
-    return { message: 'Funcionário excluído com sucesso!' };
+    // Usa o método centralizado do UsersService que tem todas as verificações de segurança
+    return this.usersService.remove(id);
   }
 }

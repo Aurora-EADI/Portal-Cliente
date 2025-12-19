@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaPostgresService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Injectable()
 export class ServicesService {
-  constructor(private readonly prisma: PrismaPostgresService) {}
+  constructor(private readonly prisma: PrismaPostgresService) { }
 
   async create(createServiceDto: CreateServiceDto, userId: string) {
     // Verifica se o código já existe
@@ -103,9 +103,35 @@ export class ServicesService {
   }
 
   async hardDelete(id: string) {
-    await this.findOne(id); // Verifica se existe
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      include: {
+        serviceCosts: true,
+        simulationServices: true,
+      },
+    });
 
-    // Delete permanente (só permitir se não tiver custos ou simulações vinculadas)
+    if (!service) {
+      throw new NotFoundException(`Serviço com ID ${id} não encontrado`);
+    }
+
+    // Verificar se há histórico de custos
+    if (service.serviceCosts.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar serviço com ${service.serviceCosts.length} registro(s) de custo no histórico. ` +
+        `Este histórico é importante para auditoria. Use o método remove() para desativar o serviço.`,
+      );
+    }
+
+    // Verificar se há simulações usando este serviço
+    if (service.simulationServices.length > 0) {
+      throw new BadRequestException(
+        `Não é possível deletar serviço usado em ${service.simulationServices.length} simulação(ões). ` +
+        `Use o método remove() para desativar o serviço.`,
+      );
+    }
+
+    // Se passou por todas as verificações, pode deletar
     return this.prisma.service.delete({
       where: { id },
     });

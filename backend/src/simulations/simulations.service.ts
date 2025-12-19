@@ -12,7 +12,7 @@ export class SimulationsService {
   constructor(
     private readonly prisma: PrismaPostgresService,
     private readonly calculationService: CalculationService,
-  ) {}
+  ) { }
 
   private generateSimulationNumber(): string {
     const date = new Date();
@@ -353,7 +353,16 @@ export class SimulationsService {
   }
 
   async remove(id: string) {
-    await this.findOne(id); // Verifica se existe
+    const simulation = await this.findOne(id);
+
+    // Só permite deletar simulações em status DRAFT
+    if (simulation.status !== 'DRAFT') {
+      throw new BadRequestException(
+        `Não é possível deletar simulação com status ${simulation.status}. ` +
+        `Apenas simulações em DRAFT podem ser deletadas. ` +
+        `Para simulações aprovadas/enviadas, crie uma nova versão ao invés de deletar.`,
+      );
+    }
 
     return this.prisma.simulation.delete({
       where: { id },
