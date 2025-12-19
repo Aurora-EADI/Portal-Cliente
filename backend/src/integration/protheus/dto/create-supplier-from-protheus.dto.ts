@@ -12,8 +12,8 @@ export class CreateSupplierFromProtheusDto {
   // ===== COMPANY DATA =====
 
   @IsNotEmpty({ message: 'CNPJ é obrigatório' })
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX'
+  @Matches(/^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{14})$/, {
+    message: 'CNPJ deve conter 14 dígitos (com ou sem formatação)'
   })
   cnpj: string;
 
@@ -25,13 +25,13 @@ export class CreateSupplierFromProtheusDto {
   @MinLength(3, { message: 'Razão Social deve ter no mínimo 3 caracteres' })
   socialReason: string;
 
-  @IsNotEmpty({ message: 'CEP é obrigatório' })
+  @IsOptional()
   zipCode: string;
 
   @IsNotEmpty({ message: 'Endereço é obrigatório' })
   address: string;
 
-  @IsNotEmpty({ message: 'Número é obrigatório' })
+  @IsOptional()
   number: string;
 
   @IsOptional()
@@ -48,7 +48,7 @@ export class CreateSupplierFromProtheusDto {
   @MaxLength(2, { message: 'Estado deve ter 2 caracteres (UF)' })
   state: string;
 
-  @IsNotEmpty({ message: 'Telefone é obrigatório' })
+  @IsOptional()
   phone: string;
 
   // ===== USER DATA =====
@@ -57,8 +57,7 @@ export class CreateSupplierFromProtheusDto {
   @MinLength(3, { message: 'Nome do contato deve ter no mínimo 3 caracteres' })
   contactName: string;
 
-  @IsNotEmpty({ message: 'Email do contato é obrigatório' })
-  @IsEmail({}, { message: 'Email inválido' })
+  @IsOptional()
   contactEmail: string;
 
   // ===== INTEGRATION METADATA =====

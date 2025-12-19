@@ -32,6 +32,7 @@ enum DocumentStatus {
 // Status do cadastro da empresa
 enum CompanyStatus {
   PENDING // Aguardando liberação de acesso
+  PENDING_ACTIVE // Aguardando liberção do admin
   ACTIVE // Cadastro aprovado, pode acessar o sistema
   REJECTED // Cadastro recusado
 }

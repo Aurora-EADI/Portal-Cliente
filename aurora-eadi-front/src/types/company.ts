@@ -12,6 +12,7 @@ export interface Company {
     state?: string;
     phone?: string;
     status?: CompanyStatus;
+    hasUser?: boolean; // Indica se a empresa já tem usuário cadastrado
     createdAt?: string;
     updatedAt?: string;
 }

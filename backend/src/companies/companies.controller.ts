@@ -14,6 +14,7 @@ import { UpdateCompanyStatusDto } from './dto/update-status.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { UserRole } from '@prisma/client-postgres';
 import { CreateCompanyDto } from './dto/create-companies.dto';
 
@@ -39,6 +40,12 @@ export class CompaniesController {
   @Roles(UserRole.ADMIN)
   async getAllWithResponsible() {
     return this.companiesService.getAllWithResponsible();
+  }
+
+  @Public()
+  @Get('cnpj/:cnpj')
+  async findByCnpj(@Param('cnpj') cnpj: string) {
+    return this.companiesService.findByCnpj(cnpj);
   }
 
   @Patch(':id/status')

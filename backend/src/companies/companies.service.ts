@@ -62,6 +62,43 @@ export class CompaniesService {
     }));
   }
 
+  async findByCnpj(cnpj: string) {
+    // Remove caracteres não numéricos do CNPJ
+    const cleanCnpj = cnpj.replace(/\D/g, '');
+
+    const company = await this.prisma.company.findFirst({
+      where: {
+        cnpj: {
+          contains: cleanCnpj,
+        },
+        status: {
+          equals: "PENDING" 
+        }
+      },
+      include: {
+        users: {
+          where: {
+            role: 'SUPPLIER',
+          },
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!company) {
+      return null;
+    }
+
+    // Retorna a empresa com indicador de se já tem usuário
+    return {
+      ...company,
+      hasUser: company.users.length > 0,
+      users: undefined, // Remove o array de usuários da resposta
+    };
+  }
+
   async updateStatus(id: string, status: CompanyStatus) {
     return this.prisma.company.update({
       where: { id },

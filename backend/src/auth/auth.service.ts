@@ -37,7 +37,7 @@ export class AuthService {
 
     // Verificação de Status da Empresa
     if (user.company) {
-      if (user.company.status === 'PENDING') {
+      if (user.company.status === 'PENDING_ACTIVE') {
         throw new UnauthorizedException(
           'Seu cadastro está em análise. Aguarde a aprovação.',
         );
@@ -73,10 +73,87 @@ export class AuthService {
 
   /**
    * Realiza o registro de um novo usuário e empresa
+   * Se companyId for fornecido, atualiza empresa existente e cria/atualiza usuário
    */
   async register(registerDto: RegisterDto) {
-    const { company, user } = registerDto;
+    const { company, user, companyId } = registerDto;
 
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // CENÁRIO 1: Atualizar empresa existente
+    if (companyId) {
+      // Verifica se a empresa existe
+      const existingCompany = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        include: {
+          users: {
+            where: {
+              role: 'SUPPLIER',
+            },
+          },
+        },
+      });
+
+      if (!existingCompany) {
+        throw new BadRequestException('Empresa não encontrada');
+      }
+
+      // IMPORTANTE: Impede criação de múltiplos usuários para a mesma empresa
+      // Verifica se a empresa já tem algum usuário SUPPLIER cadastrado
+      // if (existingCompany.users.length > 0) {
+      //   throw new ConflictException(
+      //     'Esta empresa já possui um usuário cadastrado. Faça login ou entre em contato com o administrador.',
+      //   );
+      // }
+
+      // Verifica se o email já está sendo usado por outro usuário
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: user.email },
+      });
+
+      if (existingUser && existingUser.companyId !== companyId) {
+        throw new ConflictException('Email já cadastrado para outra empresa');
+      }
+
+      // Atualiza empresa e cria o primeiro usuário em transação
+      await this.prisma.$transaction(async (prisma) => {
+        // Atualiza os dados da empresa
+        await prisma.company.update({
+          where: { id: companyId },
+          data: {
+            fantasyName: company.fantasyName,
+            socialReason: company.socialReason,
+            zipCode: company.zipCode,
+            address: company.address,
+            number: company.number,
+            complement: company.complement,
+            neighborhood: company.neighborhood,
+            city: company.city,
+            state: company.state,
+            phone: company.phone,
+            status: 'PENDING_ACTIVE', // Atualiza status para aguardar aprovação
+          },
+        });
+
+        // Cria o primeiro (e único) usuário SUPPLIER para a empresa
+        await prisma.user.create({
+          data: {
+            name: user.name,
+            email: user.email,
+            password: hashedPassword,
+            role: 'SUPPLIER',
+            companyId: companyId,
+          },
+        });
+      });
+
+      return {
+        message: 'Cadastro atualizado com sucesso. Aguardando aprovação do administrador.',
+      };
+    }
+
+    // CENÁRIO 2: Criar nova empresa (comportamento original)
     // Remove formatação do CNPJ para verificação (mantém apenas números)
     const cnpjNumbers = company.cnpj.replace(/\D/g, '');
 
@@ -102,15 +179,12 @@ export class AuthService {
       throw new ConflictException('CNPJ já cadastrado no sistema');
     }
 
-    // Hash da senha
-    const hashedPassword = await bcrypt.hash(user.password, 10);
-
     // Cria empresa e usuário em uma transação
     await this.prisma.$transaction(async (prisma) => {
       // Cria a empresa com status PENDING
       const newCompany = await prisma.company.create({
         data: {
-          cnpj: company.cnpj,
+          cnpj: cnpjNumbers, // Salva CNPJ sem formatação
           fantasyName: company.fantasyName,
           socialReason: company.socialReason,
           zipCode: company.zipCode,
@@ -121,7 +195,7 @@ export class AuthService {
           city: company.city,
           state: company.state,
           phone: company.phone,
-          status: 'PENDING', // Aguardando aprovação do admin
+          status: 'PENDING_ACTIVE', // Aguardando aprovação do admin
         },
       });
 

@@ -64,7 +64,7 @@ export class ProtheusSupplierService {
         // 4.1 Criar Company com status PENDING
         const company = await tx.company.create({
           data: {
-            cnpj: dto.cnpj,
+            cnpj: cnpjLimpo, // Salva CNPJ sem formatação
             fantasyName: dto.fantasyName,
             socialReason: dto.socialReason,
             zipCode: dto.zipCode,

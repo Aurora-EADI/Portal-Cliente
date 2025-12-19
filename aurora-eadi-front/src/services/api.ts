@@ -44,7 +44,7 @@ export const authService = {
   /**
    * Registra um novo usuário e empresa
    */
-  register: async (payload: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
+  register: async (payload: { companyId?: string; company: CreateCompanyDTO; user: CreateUserDTO }) => {
     try {
       const response = await api.post('/auth/register', payload);
       return response.data.user;

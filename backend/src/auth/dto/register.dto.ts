@@ -14,8 +14,8 @@ import {
 export class RegisterCompanyDto {
   @IsString({ message: 'CNPJ deve ser uma string' })
   @IsNotEmpty({ message: 'CNPJ é obrigatório' })
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato 00.000.000/0000-00',
+  @Matches(/^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{14})$/, {
+    message: 'CNPJ deve conter 14 dígitos (com ou sem formatação)',
   })
   cnpj: string;
 
@@ -84,6 +84,10 @@ export class RegisterUserDto {
  * Combina dados da empresa e do usuário responsável
  */
 export class RegisterDto {
+  @IsString()
+  @IsOptional()
+  companyId?: string;
+
   @IsNotEmpty({ message: 'Dados da empresa são obrigatórios' })
   company: RegisterCompanyDto;
 

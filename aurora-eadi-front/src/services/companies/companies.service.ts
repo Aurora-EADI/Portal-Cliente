@@ -6,6 +6,21 @@ export const companiesService = {
     const response = await api.get("/companies");
     return response.data;
   },
+
+  async findByCnpj(cnpj: string): Promise<Company | null> {
+    try {
+      // Remove caracteres não numéricos antes de enviar
+      const cleanCnpj = cnpj.replace(/\D/g, '');
+      const response = await api.get(`/companies/cnpj/${cleanCnpj}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      const message = error.response?.data?.message || 'Erro ao buscar empresa por CNPJ';
+      return Promise.reject(new Error(message));
+    }
+  },
 };
 
 export const registerCompanies = {

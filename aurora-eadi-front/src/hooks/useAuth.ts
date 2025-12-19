@@ -23,11 +23,12 @@ export const useLogin = () => {
 
 export const useRegister = () => {
   return useMutation({
-    mutationFn: async ({ company, user }: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
-      return await authService.register({ company, user });
+    mutationFn: async ({ companyId, company, user }: { companyId?: string | null; company: CreateCompanyDTO; user: CreateUserDTO }) => {
+      return await authService.register({ companyId: companyId || undefined, company, user });
     },
     onError: (error: any) => {
-      console.error('Erro no registro:', error.message);
+      // O erro é tratado no componente através do callback onError
+      // Não precisa fazer console.error aqui para evitar poluição do console
     },
   });
 };

@@ -7,7 +7,7 @@ import { SupplierList } from '@/components/pages/fornecedor/listaFornecedores/Su
 
 export default function PermissoesPage() {
     return (
-        <RouteGuard route="/fornecedor">
+        <RouteGuard route="/fornecedor/lista-fornecedores">
             <Header />
             <Layout>
                 <SupplierList />
