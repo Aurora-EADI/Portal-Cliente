@@ -129,7 +129,8 @@ const getCellValue = (item: FaturamentoDetalhado, columnId: string): string | nu
   }
 };
 
-const TableSkeletonRow = ({ visibleColumns }: { visibleColumns: ColumnConfig[] }) => (
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+const TableSkeletonRow = React.memo(({ visibleColumns }: { visibleColumns: ColumnConfig[] }) => (
   <TableRow className="animate-pulse border-t">
     <TableCell className="p-2 sticky left-0 bg-white z-10">
       <div className="flex justify-center">
@@ -147,7 +148,7 @@ const TableSkeletonRow = ({ visibleColumns }: { visibleColumns: ColumnConfig[] }
       </TableCell>
     ))}
   </TableRow>
-);
+));
 
 const TableSkeleton = ({ visibleColumns }: { visibleColumns: ColumnConfig[] }) => (
   <>
@@ -199,7 +200,8 @@ interface ExpandedRowContentProps {
   visibleColumnsCount: number;
 }
 
-const ExpandedRowContent = ({ group, visibleColumnsCount }: ExpandedRowContentProps) => {
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders quando props não mudam
+const ExpandedRowContent = React.memo(({ group, visibleColumnsCount }: ExpandedRowContentProps) => {
   const totalGeral = useMemo(() =>
     group.items.reduce((sum, item) => {
       const qtd = parseFloat(item.quantidade?.toString() || "0");
@@ -254,7 +256,7 @@ const ExpandedRowContent = ({ group, visibleColumnsCount }: ExpandedRowContentPr
       </TableCell>
     </TableRow>
   );
-};
+});
 
 interface ResizableHeaderProps {
   column: ColumnConfig;
@@ -262,7 +264,8 @@ interface ResizableHeaderProps {
   onMouseDown: (e: React.MouseEvent, columnId: string) => void;
 }
 
-const ResizableHeader = ({ column, isResizing, onMouseDown }: ResizableHeaderProps) => (
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+const ResizableHeader = React.memo(({ column, isResizing, onMouseDown }: ResizableHeaderProps) => (
   <TableHead
     className="p-2 whitespace-nowrap font-semibold relative group select-none"
     style={{ width: `${column.width}px`, minWidth: `${column.minWidth}px` }}
@@ -280,7 +283,7 @@ const ResizableHeader = ({ column, isResizing, onMouseDown }: ResizableHeaderPro
       />
     </div>
   </TableHead>
-);
+));
 
 interface PaginationProps {
   currentPage: number;
@@ -291,7 +294,8 @@ interface PaginationProps {
   onNext: () => void;
 }
 
-const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev, onNext }: PaginationProps) => (
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalItems, onPrev, onNext }: PaginationProps) => (
   <div className="flex justify-between items-center mt-4">
     <div className="text-sm text-gray-600">
       Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
@@ -318,7 +322,7 @@ const Pagination = ({ currentPage, totalPages, itemsPerPage, totalItems, onPrev,
       </Button>
     </div>
   </div>
-);
+));
 
 export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
   const [currentPage, setCurrentPage] = useState(1);

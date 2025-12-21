@@ -13,6 +13,15 @@ export const useSuppliers = (params?: PaginationParams) => {
   });
 };
 
+export const useActiveCompanies = (params?: PaginationParams) => {
+  return useQuery({
+    queryKey: [...SUPPLIERS_KEY, 'active', params],
+    queryFn: async () => {
+      return await companyService.getActiveCompanies(params);
+    },
+  });
+};
+
 export const useUpdateCompanyStatus = () => {
   const queryClient = useQueryClient();
 

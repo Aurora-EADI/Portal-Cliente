@@ -7,7 +7,7 @@ import { CreateCompanyDto } from './dto/create-companies.dto';
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) {}
+  constructor(private readonly companiesService: CompaniesService) { }
 
   @Post()
   create(@Body() createDto: CreateCompanyDto) {
@@ -22,6 +22,11 @@ export class CompaniesController {
   @Get('with-responsible')
   getAllWithResponsible(@Query() query: PaginationQueryDto) {
     return this.companiesService.getAllWithResponsible(query);
+  }
+
+  @Get('active')
+  getActive(@Query() query: PaginationQueryDto) {
+    return this.companiesService.getActiveCompanies(query);
   }
 
   @Get('cnpj/:cnpj')

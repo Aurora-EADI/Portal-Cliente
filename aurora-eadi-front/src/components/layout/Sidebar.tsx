@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ interface SidebarItemProps {
   onClick: () => void;
 }
 
-function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemProps) {
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+const SidebarItem = React.memo(function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemProps) {
   return (
     <button
       onClick={onClick}
@@ -24,8 +25,8 @@ function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemPro
         relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
         transition-all duration-200 group
         ${collapsed ? 'justify-center' : 'justify-start'}
-        ${active 
-          ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20' 
+        ${active
+          ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
           : 'text-slate-400 hover:bg-slate-800 hover:text-white'
         }
       `}
@@ -33,18 +34,18 @@ function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemPro
       <span className={`flex-shrink-0 ${active ? 'scale-110' : 'group-hover:scale-105'} transition-transform`}>
         {icon}
       </span>
-      
+
       {!collapsed && (
         <span className="whitespace-nowrap font-medium text-sm">
           {label}
         </span>
       )}
-      
+
       {/* Indicador visual para item ativo */}
       {active && !collapsed && (
         <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
       )}
-      
+
       {/* Tooltip para modo colapsado */}
       {collapsed && (
         <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded-md 
@@ -55,7 +56,7 @@ function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemPro
       )}
     </button>
   );
-}
+});
 
 export const Sidebar: React.FC = () => {
   const router = useRouter();
@@ -69,10 +70,10 @@ export const Sidebar: React.FC = () => {
 
   const isActive = (path: string) => pathname === path;
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logoutUser();
     router.push('/');
-  };
+  }, [logoutUser, router]);
 
   return (
     <aside
@@ -166,7 +167,7 @@ export const Sidebar: React.FC = () => {
         >
           <LogOut size={20} className="group-hover:scale-110 transition-transform" />
           {!collapsed && <span className="font-medium text-sm">Sair</span>}
-          
+
           {collapsed && (
             <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded-md 
                             opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap
@@ -179,3 +180,6 @@ export const Sidebar: React.FC = () => {
     </aside>
   );
 };
+
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+export default React.memo(Sidebar);

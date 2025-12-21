@@ -7,7 +7,7 @@ import { UpdateRequirementsDto } from './dto/update-requirements.dto';
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaPostgresService) {}
+  constructor(private prisma: PrismaPostgresService) { }
 
   async create(createCompaniesDTO: CreateCompanyDto) {
     return this.prisma.company.create({
@@ -21,7 +21,7 @@ export class CompaniesService {
 
   async getAllWithResponsible(query: PaginationQueryDto) {
     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status } = query;
-    
+
     const skip = (page - 1) * limit;
 
     // Construir filtros
@@ -65,6 +65,44 @@ export class CompaniesService {
         hasPrev: page > 1,
       },
       statusCounts,
+    };
+  }
+
+  async getActiveCompanies(query: PaginationQueryDto) {
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+
+    const skip = (page - 1) * limit;
+
+    // Força status ACTIVE
+    const where = this.buildWhereClause(search, CompanyStatus.ACTIVE);
+
+    const orderBy = this.buildOrderBy(sortBy, sortOrder);
+
+    const [companies, total] = await Promise.all([
+      this.prisma.company.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prisma.company.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: companies.map(c => ({
+        ...c,
+        createdAt: c.createdAt.toISOString()
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
     };
   }
 
@@ -246,12 +284,12 @@ export class CompaniesService {
       },
       responsible: company.users[0]
         ? {
-            id: company.users[0].id,
-            name: company.users[0].name,
-            email: company.users[0].email,
-            role: company.users[0].role,
-            companyId: company.users[0].companyId,
-          }
+          id: company.users[0].id,
+          name: company.users[0].name,
+          email: company.users[0].email,
+          role: company.users[0].role,
+          companyId: company.users[0].companyId,
+        }
         : null,
     };
   }

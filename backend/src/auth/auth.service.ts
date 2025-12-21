@@ -137,7 +137,7 @@ export class AuthService {
         });
 
         // Cria o primeiro (e único) usuário SUPPLIER para a empresa
-        await prisma.user.create({
+        const newUser = await prisma.user.create({
           data: {
             name: user.name,
             email: user.email,
@@ -146,6 +146,9 @@ export class AuthService {
             companyId: companyId,
           },
         });
+
+        // Libera permissões de Documentos
+        await this._grantSupplierPermissions(prisma, newUser.id);
       });
 
       return {
@@ -200,7 +203,7 @@ export class AuthService {
       });
 
       // Cria o usuário vinculado à empresa com role SUPPLIER
-      await prisma.user.create({
+      const newUser = await prisma.user.create({
         data: {
           name: user.name,
           email: user.email,
@@ -209,12 +212,66 @@ export class AuthService {
           companyId: newCompany.id,
         },
       });
+
+      // Libera permissões de Documentos
+      await this._grantSupplierPermissions(prisma, newUser.id);
     });
 
     return {
       message:
         'Cadastro realizado com sucesso. Aguardando aprovação do administrador.',
     };
+  }
+
+  /**
+   * Helper para conceder permissões padrão de Supplier (Documentos)
+   */
+  private async _grantSupplierPermissions(tx: any, userId: string) {
+    // 1. Busca o módulo "/documentos"
+    const docModule = await tx.module.findFirst({
+      where: { route: '/documentos' },
+    });
+
+    if (!docModule) {
+      console.warn('[AUTH] Módulo /documentos não encontrado. Permissões não concedidas.');
+      return;
+    }
+
+    // 2. Busca a atividade "Anexar documento"
+    const attachActivity = await tx.activity.findFirst({
+      where: {
+        moduleId: docModule.id,
+        name: 'Anexar documento',
+      },
+    });
+
+    if (!attachActivity) {
+      console.warn('[AUTH] Atividade "Anexar documento" não encontrada.');
+      // Ainda assim vamos liberar o módulo?
+      // O requisito diz "liberar o modulo ... e a atividade"
+      // Se não achar a atividade, pelo menos o módulo?
+      // Vamos tentar criar o acesso ao módulo pelo menos.
+    }
+
+    // 3. Cria acesso ao Módulo
+    const userModuleAccess = await tx.userModuleAccess.create({
+      data: {
+        userId,
+        moduleId: docModule.id,
+        isEnabled: true,
+      },
+    });
+
+    // 4. Se achou a atividade, cria exceção habilitando-a
+    if (attachActivity) {
+      await tx.userActivityAccess.create({
+        data: {
+          userModuleAccessId: userModuleAccess.id,
+          activityId: attachActivity.id,
+          isEnabled: true,
+        },
+      });
+    }
   }
 
   async getUserPermissions(userId: string): Promise<UserPermissionsResponse> {

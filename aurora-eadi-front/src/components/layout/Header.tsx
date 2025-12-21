@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { LogOut } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useAuthContext } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
 
   if (!currentUser) return null;
 
-  const handleLogout = () => logoutUser();
+  const handleLogout = useCallback(() => logoutUser(), [logoutUser]);
 
   const userDisplay =
     currentUser.role === 'ADMIN' ? currentUser.name : currentUser.name;
@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
       "
     >
       <div className="flex items-center justify-between h-12">
-        
+
         {/* Logo + título */}
         <div className="flex items-center gap-3">
           <Logo src="/logo_principal.png" size="sm" />
@@ -69,3 +69,6 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
     </header>
   );
 };
+
+// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
+export default React.memo(Header);

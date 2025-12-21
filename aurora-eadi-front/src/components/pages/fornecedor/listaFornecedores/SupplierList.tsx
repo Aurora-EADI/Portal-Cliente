@@ -3,10 +3,11 @@ import { useSuppliers, useUpdateCompanyStatus } from "@/hooks/useSuppliers";
 import { CompanyWithResponsible } from '@/services/api';
 import { CompanyStatus } from '@/types';
 import { Badge } from "@/components/ui/Badge";
-import { Loader2, Eye, ShieldCheck, Building2, User as UserIcon, FileText, Search, ChevronLeft, ChevronRight, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react";
+import { Loader2, Eye, ShieldCheck, Building2, User as UserIcon, FileText, Search, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react";
 import { CompanyDetailsModal } from './components/CompanyDetailsModal';
 import { AuthorizationModal } from './components/AuthorizationModal';
 import { formatNumber } from '@/lib/utils';
+import { Pagination } from '@/components/ui/Pagination';
 
 // Configuração dos cards de status
 const STATUS_CARDS = [
@@ -131,11 +132,10 @@ export function SupplierList() {
                         <button
                             key={card.status}
                             onClick={() => handleStatusCardClick(card.status)}
-                            className={`bg-white p-6 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md ${
-                                isActive 
-                                    ? 'border-primary-500 ring-2 ring-primary-200' 
-                                    : 'border-gray-200'
-                            }`}
+                            className={`bg-white p-6 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md ${isActive
+                                ? 'border-primary-500 ring-2 ring-primary-200'
+                                : 'border-gray-200'
+                                }`}
                         >
                             <div className={`p-3 ${card.bgColor} ${card.textColor} rounded-lg`}>
                                 <Icon size={16} />
@@ -253,65 +253,15 @@ export function SupplierList() {
             </div>
 
             {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-xl">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span>
-                            Mostrando <span className="font-medium">{((page - 1) * limit) + 1}</span> a{' '}
-                            <span className="font-medium">{Math.min(page * limit, pagination.total)}</span> de{' '}
-                            <span className="font-medium">{pagination.total}</span> resultados
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => handlePageChange(page - 1)}
-                            disabled={!pagination.hasPrev}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            <ChevronLeft size={16} />
-                            Anterior
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                                .filter(pageNum => {
-                                    if (pagination.totalPages <= 7) return true;
-                                    if (pageNum === 1 || pageNum === pagination.totalPages) return true;
-                                    if (Math.abs(pageNum - page) <= 1) return true;
-                                    return false;
-                                })
-                                .map((pageNum, idx, arr) => {
-                                    const prevPageNum = arr[idx - 1];
-                                    const showEllipsis = prevPageNum && pageNum - prevPageNum > 1;
-
-                                    return (
-                                        <React.Fragment key={pageNum}>
-                                            {showEllipsis && (
-                                                <span className="px-2 text-gray-400">...</span>
-                                            )}
-                                            <button
-                                                onClick={() => handlePageChange(pageNum)}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${pageNum === page
-                                                        ? 'bg-primary-600 text-white'
-                                                        : 'text-gray-700 hover:bg-gray-100'
-                                                    }`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        </React.Fragment>
-                                    );
-                                })}
-                        </div>
-
-                        <button
-                            onClick={() => handlePageChange(page + 1)}
-                            disabled={!pagination.hasNext}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Próximo
-                            <ChevronRight size={16} />
-                        </button>
-                    </div>
+            {pagination && (
+                <div className='mt-4'>
+                    <Pagination
+                        page={page}
+                        total={pagination.total}
+                        limit={limit}
+                        onPageChange={handlePageChange}
+                        className="rounded-b-xl border-t-0 rounded-t-none"
+                    />
                 </div>
             )}
 
@@ -370,7 +320,7 @@ function TableRow({ item, onView, onAuthorize }: {
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
                 >
                     <FileText size={16} />
-                    Documentos
+                    Detalhes
                 </button>
             </td>
             <td className="px-6 py-4 text-center">

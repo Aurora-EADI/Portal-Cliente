@@ -16,14 +16,25 @@ export interface NavigationContext {
   allowedRoles?: UserRole[]; // (Opcional) Quais roles podem acessar
 }
 
+// 🚀 OTIMIZAÇÃO: Map para lookup O(1) em vez de busca linear O(n)
+// Criado uma única vez no carregamento do módulo
+const navigationContextMap = new Map<string, NavigationContext>();
+
 // Função para obter os itens de navegação baseado no path atual E no role do usuário
 export const getNavigationByPathAndRole = (
   currentPath: string,
   userRole: UserRole
 ): NavItem[] => {
-  const context = navigationContexts.find(ctx =>
-    currentPath.startsWith(ctx.basePath)
-  );
+  // Tenta buscar contexto exato primeiro (O(1))
+  let context = navigationContextMap.get(currentPath);
+
+  // Se não encontrou exato, busca por prefixo (fallback para compatibilidade)
+  if (!context) {
+    context = navigationContexts.find(ctx =>
+      currentPath.startsWith(ctx.basePath)
+    );
+  }
+
   if (!context) {
     // Fallback: retorna apenas Home
     return [{ label: 'Home', icon: Home, path: '/modules' }];
@@ -60,9 +71,10 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Anexar Documentos',
         icon: Upload,
         path: '/documentos/empresa',
+        requiredPermissions: ['DOC_ATTACH'],
       },
       {
-        label: 'Cadastrar tipo Documento',
+        label: 'Documentos Exigidos',
         icon: FilePlus,
         path: '/documentos/cadastrar',
         requiredPermissions: ['DOC_REGISTER'],
@@ -130,11 +142,11 @@ export const navigationContexts: NavigationContext[] = [
         icon: ListChecks,
         path: '/permissoes/atividades',
       },
-      {
-        label: 'Cadastro de Usuários',
-        icon: UserPlus,
-        path: '/permissoes/usuario',
-      },
+      // {
+      //   label: 'Cadastro de Usuários',
+      //   icon: UserPlus,
+      //   path: '/permissoes/usuario',
+      // },
       {
         label: 'Gestão de Permissões',
         icon: ShieldCheck,
@@ -208,3 +220,8 @@ export const canAccessContext = (currentPath: string, userRole: UserRole): boole
 
   return context.allowedRoles.includes(userRole);
 };
+
+// 🚀 OTIMIZAÇÃO: Popula o Map uma única vez no carregamento do módulo
+navigationContexts.forEach(ctx => {
+  navigationContextMap.set(ctx.basePath, ctx);
+});

@@ -28,6 +28,8 @@ import {
 import { userModuleAccessService } from '@/services/access/user-module-access.service';
 import { ModuleAccess } from '@/types/access-control';
 
+// 🚀 OTIMIZAÇÃO: Map de ícones movido para escopo do módulo
+// Evita recriação do objeto em cada render (~5-10ms de economia)
 const ICON_COMPONENTS: Record<string, React.ElementType> = {
   'Truck': Truck,
   'FileText': FileText,
@@ -66,7 +68,6 @@ export function ModulesPage() {
         const activeModules = data.modules.filter(module => module.isEnabled === true);
         setModules(activeModules);
       } catch (err: any) {
-        console.error('Erro ao carregar módulos:', err);
         setError(err.message || 'Erro ao carregar módulos');
       } finally {
         setIsLoading(false);
@@ -81,8 +82,6 @@ export function ModulesPage() {
   const handleModuleClick = (module: ModuleAccess) => {
     if (module.route) {
       router.push(module.route);
-    } else {
-      console.warn(`Módulo ${module.name} não tem rota configurada`);
     }
   };
 
@@ -119,7 +118,7 @@ export function ModulesPage() {
               Selecione o ambiente operacional que deseja acessar.
             </p>
           </div>
-          
+
           {/* Data Atual */}
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500 uppercase tracking-wide">

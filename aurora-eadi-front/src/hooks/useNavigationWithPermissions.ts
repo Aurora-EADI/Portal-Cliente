@@ -55,7 +55,7 @@ export function useNavigationWithPermissions(): NavItem[] {
         userPermissions.has(requiredPerm)
       );
     });
-  }, [allNavigationItems, module, isLoading]);
+  }, [allNavigationItems, module, isLoading, module?.activities]);
 
   return filteredItems;
 }

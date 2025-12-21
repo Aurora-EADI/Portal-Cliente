@@ -96,10 +96,13 @@ export const authService = {
 export const documentService = {
   /**
    * Busca todos os documentos (admin)
+   * Por padrão, retorna TODOS os documentos (incluindo histórico de versões)
    */
   getAll: async (): Promise<Document[]> => {
     try {
-      const response = await api.get('/documents');
+      const response = await api.get('/documents', {
+        params: { latestOnly: 'false' } // ← Busca TODO o histórico
+      });
       return response.data;
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
@@ -278,6 +281,24 @@ export const companyService = {
     }
   },
 
+  getActiveCompanies: async (params?: PaginationParams): Promise<PaginatedResponse<Company>> => {
+    try {
+      const response = await api.get('/companies/active', { params });
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar empresas ativas';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
 
   updateStatus: async (id: string, status: CompanyStatus): Promise<Company> => {
     try {
@@ -350,7 +371,7 @@ export const companyRequirementService = {
 
   updateRequirements: async (companyId: string, requirements: { documentTypeId: number; isRequired: boolean }[]): Promise<void> => {
     try {
-      await api.post(`/companies/${companyId}/requirements`, { requirements });
+      await api.patch(`/companies/${companyId}/requirements`, { requirements });
     } catch (error: any) {
       return Promise.reject(new Error(error.response?.data?.message || 'Erro ao atualizar requisitos'));
     }
