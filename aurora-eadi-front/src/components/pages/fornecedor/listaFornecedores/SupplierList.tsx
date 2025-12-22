@@ -18,13 +18,13 @@ const STATUS_CARDS = [
         bgColor: 'bg-blue-100',
         textColor: 'text-blue-600',
     },
-    {
-        status: CompanyStatus.PENDING,
-        label: 'Pendente',
-        icon: Clock,
-        bgColor: 'bg-orange-100',
-        textColor: 'text-orange-600',
-    },
+    // {
+    //     status: CompanyStatus.PENDING,
+    //     label: 'Pendente',
+    //     icon: Clock,
+    //     bgColor: 'bg-orange-100',
+    //     textColor: 'text-orange-600',
+    // },
     {
         status: CompanyStatus.PENDING_ACTIVE,
         label: 'Em Aprovação',
@@ -190,7 +190,7 @@ export function SupplierList() {
                 </form>
 
                 {/* Status Filter - Agora sincronizado com os cards */}
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                     <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
                         Filtrar por Status:
                     </label>
@@ -215,7 +215,7 @@ export function SupplierList() {
                             <Badge status={statusFilter as CompanyStatus} context="company" />
                         </div>
                     )}
-                </div>
+                </div> */}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

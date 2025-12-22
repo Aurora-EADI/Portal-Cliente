@@ -24,16 +24,24 @@ export class CompaniesService {
 
     const skip = (page - 1) * limit;
 
-    // Construir filtros (excluindo PENDING)
+    // Construir filtros base
     const where = this.buildWhereClause(search, status);
 
-    // Adicionar filtro para excluir PENDING
-    const whereWithoutPending: Prisma.CompanyWhereInput = {
-      ...where,
-      status: {
-        not: 'PENDING'
-      }
-    };
+    // Combinar filtro de status com exclusão de PENDING
+    let whereWithoutPending: Prisma.CompanyWhereInput;
+
+    if (status) {
+      // Se já tem filtro de status, use-o diretamente (e garante que não é PENDING)
+      whereWithoutPending = where;
+    } else {
+      // Se não tem filtro de status, apenas exclua PENDING
+      whereWithoutPending = {
+        ...where,
+        status: {
+          not: 'PENDING'
+        }
+      };
+    }
 
     // Construir ordenação
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
