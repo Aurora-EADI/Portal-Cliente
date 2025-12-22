@@ -76,6 +76,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
         setCity('');
         setState('');
         setPhone('');
+        setUserName('');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,6 +98,8 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
         setCity(company.city || '');
         setState(company.state || '');
         setPhone(company.phone || '');
+        // Preenche o nome do usuário com a razão social
+        setUserName(company.socialReason || '');
         toast.info(
           'Sua solicitação está sendo validada',
           {
@@ -132,6 +135,8 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
       setCity(company.city || '');
       setState(company.state || '');
       setPhone(company.phone || '');
+      // Preenche o nome do usuário com a razão social
+      setUserName(company.socialReason || '');
       toast.success('Empresa encontrada! Dados preenchidos automaticamente.');
     } else {
       setCompanyId(null);
@@ -315,14 +320,14 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
               {/* Step 1: Company Data */}
               {step === 1 && (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between mb-4">
+                  {/* <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Dados da Empresa</h3>
                     {!foundCompany && cnpj.replace(/\D/g, '').length === 14 && !isLoadingCnpj && (
                       <span className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full font-medium">
                         Aguardando verificação do CNPJ
                       </span>
                     )}
-                  </div>
+                  </div> */}
 
                   {/* Mensagem informativa quando CNPJ está incompleto */}
                   {!foundCompany && !isLoadingCnpj && cnpj.replace(/\D/g, '').length < 14 && (

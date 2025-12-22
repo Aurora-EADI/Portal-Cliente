@@ -24,8 +24,16 @@ export class CompaniesService {
 
     const skip = (page - 1) * limit;
 
-    // Construir filtros
+    // Construir filtros (excluindo PENDING)
     const where = this.buildWhereClause(search, status);
+
+    // Adicionar filtro para excluir PENDING
+    const whereWithoutPending: Prisma.CompanyWhereInput = {
+      ...where,
+      status: {
+        not: 'PENDING'
+      }
+    };
 
     // Construir ordenação
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
@@ -33,7 +41,7 @@ export class CompaniesService {
     // Buscar dados, contagem total e contagem por status em paralelo
     const [companies, total, statusCounts] = await Promise.all([
       this.prisma.company.findMany({
-        where,
+        where: whereWithoutPending, // Usar o mesmo where
         include: {
           users: {
             where: { role: 'SUPPLIER' },
@@ -44,7 +52,7 @@ export class CompaniesService {
         skip,
         take: limit,
       }),
-      this.prisma.company.count({ where }),
+      this.prisma.company.count({ where: whereWithoutPending }), // Usar o mesmo where aqui
       this.getStatusCounts(search),
     ]);
 
@@ -206,23 +214,33 @@ export class CompaniesService {
     // Construir where apenas com busca (sem filtro de status)
     const baseWhere = this.buildWhereClause(search, undefined);
 
+    // Adicionar filtro para excluir PENDING
+    const whereWithoutPending: Prisma.CompanyWhereInput = {
+      ...baseWhere,
+      status: {
+        not: 'PENDING'
+      }
+    };
+
     // Buscar contagem agrupada por status
     const counts = await this.prisma.company.groupBy({
       by: ['status'],
-      where: baseWhere,
+      where: whereWithoutPending,
       _count: {
         status: true,
       },
     });
 
-    // Formatar resultado em objeto { PENDING: 10, ACTIVE: 25, ... }
+    // Formatar resultado em objeto { ACTIVE: 25, REJECTED: 5, ... }
     const statusCounts = counts.reduce((acc, item) => {
-      acc[item.status] = item._count.status;
+      if (item._count) {
+        acc[item.status] = item._count.status;
+      }
       return acc;
     }, {} as Record<string, number>);
 
-    // Garantir que todos os status existam no objeto (mesmo com valor 0)
-    const allStatus = Object.values(CompanyStatus);
+    // Garantir que todos os status existam no objeto (exceto PENDING, com valor 0)
+    const allStatus = Object.values(CompanyStatus).filter(status => status !== 'PENDING');
     allStatus.forEach((status) => {
       if (!statusCounts[status]) {
         statusCounts[status] = 0;

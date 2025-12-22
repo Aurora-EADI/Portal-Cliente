@@ -69,7 +69,7 @@ export const navigationContexts: NavigationContext[] = [
         isGroup: true,
         children: [
           {
-            label: 'Gestão de Documentos',
+            label: 'Gestão Documentos',
             icon: Shield,
             path: '/documentos',
             requiredPermissions: ['DOC_VIEW'],
@@ -86,6 +86,7 @@ export const navigationContexts: NavigationContext[] = [
             icon: FilePlus,
             path: '/documentos/cadastrar',
             requiredPermissions: ['DOC_REGISTER'],
+            requiredRoles: [UserRole.ADMIN],
           },
         ],
       },
