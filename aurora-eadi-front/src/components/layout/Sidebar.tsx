@@ -5,8 +5,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LogOut, Menu, ChevronLeft, User } from 'lucide-react';
+import { LogOut, Menu, ChevronLeft, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { useNavigationWithPermissions } from '@/hooks/useNavigationWithPermissions';
+import type { NavItem } from '@/config/navigation';
 
 interface SidebarItemProps {
   label: string;
@@ -14,10 +15,22 @@ interface SidebarItemProps {
   active: boolean;
   collapsed: boolean;
   onClick: () => void;
+  hasChildren?: boolean;
+  isExpanded?: boolean;
+  isChild?: boolean;
 }
 
 // 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
-const SidebarItem = React.memo(function SidebarItem({ label, icon, active, collapsed, onClick }: SidebarItemProps) {
+const SidebarItem = React.memo(function SidebarItem({
+  label,
+  icon,
+  active,
+  collapsed,
+  onClick,
+  hasChildren = false,
+  isExpanded = false,
+  isChild = false
+}: SidebarItemProps) {
   return (
     <button
       onClick={onClick}
@@ -25,6 +38,7 @@ const SidebarItem = React.memo(function SidebarItem({ label, icon, active, colla
         relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
         transition-all duration-200 group
         ${collapsed ? 'justify-center' : 'justify-start'}
+        ${isChild ? 'pl-11 text-xs' : ''}
         ${active
           ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
           : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -36,19 +50,26 @@ const SidebarItem = React.memo(function SidebarItem({ label, icon, active, colla
       </span>
 
       {!collapsed && (
-        <span className="whitespace-nowrap font-medium text-sm">
+        <span className="whitespace-nowrap font-medium text-sm flex-1 text-left">
           {label}
         </span>
       )}
 
+      {/* Ícone de expansão para grupos */}
+      {hasChildren && !collapsed && (
+        <span className="ml-auto">
+          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </span>
+      )}
+
       {/* Indicador visual para item ativo */}
-      {active && !collapsed && (
+      {active && !collapsed && !hasChildren && (
         <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
       )}
 
       {/* Tooltip para modo colapsado */}
       {collapsed && (
-        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded-md 
+        <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded-md
                         opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap
                         shadow-lg z-50">
           {label}
@@ -63,12 +84,27 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { currentUser, logoutUser } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const navigationItems = useNavigationWithPermissions();
 
   if (!currentUser) return null;
 
   const isActive = (path: string) => pathname === path;
+
+  const isGroupActive = (item: NavItem): boolean => {
+    if (item.children) {
+      return item.children.some(child => isActive(child.path));
+    }
+    return false;
+  };
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
 
   const handleLogout = useCallback(() => {
     logoutUser();
@@ -140,6 +176,55 @@ export const Sidebar: React.FC = () => {
         <nav className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedGroups[item.label] ?? isGroupActive(item);
+
+            if (hasChildren) {
+              return (
+                <div key={item.label}>
+                  {/* Grupo Colapsável */}
+                  <SidebarItem
+                    label={item.label}
+                    icon={<Icon size={20} />}
+                    active={isGroupActive(item)}
+                    collapsed={collapsed}
+                    hasChildren={true}
+                    isExpanded={isExpanded}
+                    onClick={() => {
+                      if (collapsed) {
+                        // No modo colapsado, navega direto
+                        router.push(item.path);
+                      } else {
+                        // No modo expandido, abre/fecha o grupo
+                        toggleGroup(item.label);
+                      }
+                    }}
+                  />
+
+                  {/* Subitens (apenas quando expandido e sidebar não colapsada) */}
+                  {!collapsed && isExpanded && (
+                    <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                      {item.children?.map((child) => {
+                        const ChildIcon = child.icon;
+                        return (
+                          <SidebarItem
+                            key={child.path}
+                            label={child.label}
+                            icon={<ChildIcon size={16} />}
+                            active={isActive(child.path)}
+                            collapsed={collapsed}
+                            isChild={true}
+                            onClick={() => router.push(child.path)}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Item simples (sem filhos)
             return (
               <SidebarItem
                 key={item.path}

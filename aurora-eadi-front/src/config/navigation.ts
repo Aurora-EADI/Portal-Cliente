@@ -7,6 +7,8 @@ export interface NavItem {
   path: string;
   requiredPermissions?: string[]; // Permissões necessárias para acessar esta rota
   requiredRoles?: UserRole[]; // Roles necessárias para acessar esta rota
+  children?: NavItem[]; // Subitens para grupos colapsáveis
+  isGroup?: boolean; // Indica se é um grupo (não tem path próprio)
 }
 
 // Definir navegação para cada contexto/página
@@ -61,23 +63,31 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Gestão de Documentos',
-        icon: Shield,
+        label: 'Documentos',
+        icon: FileText,
         path: '/documentos',
-        requiredPermissions: ['DOC_VIEW'],
-        requiredRoles: [UserRole.ADMIN],
-      },
-      {
-        label: 'Anexar Documentos',
-        icon: Upload,
-        path: '/documentos/empresa',
-        requiredPermissions: ['DOC_ATTACH'],
-      },
-      {
-        label: 'Documentos Exigidos',
-        icon: FilePlus,
-        path: '/documentos/cadastrar',
-        requiredPermissions: ['DOC_REGISTER'],
+        isGroup: true,
+        children: [
+          {
+            label: 'Gestão de Documentos',
+            icon: Shield,
+            path: '/documentos',
+            requiredPermissions: ['DOC_VIEW'],
+            requiredRoles: [UserRole.ADMIN],
+          },
+          {
+            label: 'Anexar Documentos',
+            icon: Upload,
+            path: '/documentos/empresa',
+            requiredPermissions: ['DOC_ATTACH'],
+          },
+          {
+            label: 'Documentos Exigidos',
+            icon: FilePlus,
+            path: '/documentos/cadastrar',
+            requiredPermissions: ['DOC_REGISTER'],
+          },
+        ],
       },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER],
@@ -93,16 +103,24 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Faturamento Detalhado',
-        icon: FileBarChart,
+        label: 'Faturamento',
+        icon: DollarSign,
         path: '/faturamento',
-        requiredPermissions: ['FAT_VIEW_DET'],
-      },
-      {
-        label: 'Relatório CutOff',
-        icon: FileBarChart,
-        path: '/faturamento/cutoff',
-        requiredPermissions: ['FAT_VIEW_CUTOFF'],
+        isGroup: true,
+        children: [
+          {
+            label: 'Faturamento Detalhado',
+            icon: FileBarChart,
+            path: '/faturamento',
+            requiredPermissions: ['FAT_VIEW_DET'],
+          },
+          {
+            label: 'Relatório CutOff',
+            icon: FileBarChart,
+            path: '/faturamento/cutoff',
+            requiredPermissions: ['FAT_VIEW_CUTOFF'],
+          },
+        ],
       },
     ],
     allowedRoles: [UserRole.ADMIN],
@@ -133,24 +151,27 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Cadastro de Módulos',
-        icon: FileText,
+        label: 'Permissões',
+        icon: Shield,
         path: '/permissoes',
-      },
-      {
-        label: 'Atividades e Vinculos',
-        icon: ListChecks,
-        path: '/permissoes/atividades',
-      },
-      // {
-      //   label: 'Cadastro de Usuários',
-      //   icon: UserPlus,
-      //   path: '/permissoes/usuario',
-      // },
-      {
-        label: 'Gestão de Permissões',
-        icon: ShieldCheck,
-        path: '/permissoes/gestao',
+        isGroup: true,
+        children: [
+          {
+            label: 'Cadastro de Módulos',
+            icon: FileText,
+            path: '/permissoes',
+          },
+          {
+            label: 'Atividades e Vinculos',
+            icon: ListChecks,
+            path: '/permissoes/atividades',
+          },
+          {
+            label: 'Gestão de Permissões',
+            icon: ShieldCheck,
+            path: '/permissoes/gestao',
+          },
+        ],
       },
     ],
     allowedRoles: [UserRole.ADMIN],
