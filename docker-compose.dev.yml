@@ -1,40 +1,19 @@
 services:
-#   traefik:
-#     image: traefik:v2.10
-#     container_name: portal-aurora-traefik
-#     command:
-#       - "--configFile=/etc/traefik/traefik.yml"
-#     ports:
-#       - "80:80"
-#       - "8080:8080"
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock:ro
-#       - ./docker/traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
-#       - ./docker/traefik/acme.json:/acme.json
-#     networks:
-#       - aurora-network
-#     restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: portal-aurora-postgres
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"      # API
+      - "9001:9001"      # Console Web
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
     networks:
       - aurora-network
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   backend:
     build:
@@ -44,15 +23,24 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: 5000
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
-      DATABASE_URL_POSTGRES: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
+      # Usando o IP fixo da VM: 172.20.210.81
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.81:${DB_PORT}/${DB_NAME}
+      DATABASE_URL_POSTGRES: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.81:${DB_PORT}/${DB_NAME}
       DATABASE_URL_SQLSERVER: ${DATABASE_URL_SQLSERVER}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_PORT: ${MINIO_PORT}
+      MINIO_USE_SSL: ${MINIO_USE_SSL}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
     volumes:
       - ./backend:/app
       - /app/node_modules
+    ports:
+      - "5000:5000"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`api.dev.local`)"
@@ -61,8 +49,7 @@ services:
     networks:
       - aurora-network
     depends_on:
-      postgres:
-        condition: service_healthy
+      - minio  
     restart: unless-stopped
 
   frontend:

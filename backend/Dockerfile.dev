@@ -2,22 +2,22 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copiar package files
 COPY package*.json ./
+
 COPY prisma ./prisma/
 
-# Instalar dependências (isso instala o Prisma CLI)
+# Configurar npm para ignorar certificados SSL
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV NPM_CONFIG_STRICT_SSL=false
+
 RUN npm install
 
 # Gerar AMBOS os clientes Prisma usando npx
 RUN npx prisma generate --schema=prisma/postgres/schema.prisma
 RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
 
-# Copiar código
 COPY . .
 
-# Expor porta
 EXPOSE 5000
 
-# Comando de desenvolvimento com watch
 CMD ["npm", "run", "dev"]
