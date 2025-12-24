@@ -16,12 +16,14 @@ import {
 } from "lucide-react";
 import {
   usersService,
+  type PaginatedUsersResponse,
 } from "@/services/users/users.service";
+import { companiesService } from "@/services/companies/companies.service";
 import type { User as UserType, CreateUserDto } from "@/types/user";
 import type { Company } from "@/types/company";
 import { UserRole } from "@/types/auth";
-import { companiesService } from "@/services/companies/companies.service";
 import { EditUserModal } from './EditUserModal';
+import { Pagination } from '@/components/ui/Pagination';
 
 export function UserRegistryPage() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -34,6 +36,11 @@ export function UserRegistryPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const limit = 10;
 
   const [formData, setFormData] = useState<CreateUserDto>({
     name: "",
@@ -51,23 +58,36 @@ export function UserRegistryPage() {
     }
   }, [formData.role]);
 
-  // Carrega usuários e empresas
+  // Carrega usuários (excluindo SUPPLIERS) quando a página muda
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const [usersData, companiesData] = await Promise.all([
-        usersService.findAll(),
-        companiesService.findAll(),
+      // Busca usuários (ADMIN e EMPLOYEE) e empresas ativas em paralelo
+      const [usersResponse, companiesResponse] = await Promise.all([
+        usersService.findAll({
+          roles: `${UserRole.ADMIN},${UserRole.EMPLOYEE}`,
+          page,
+          limit,
+        }),
+        companiesService.findActive({ limit: 100 }), // Busca todas as empresas ativas
       ]);
 
-      setUsers(usersData);
-      setCompanies(companiesData);
+      // Verificação de segurança para response.data
+      if (usersResponse && usersResponse.data && Array.isArray(usersResponse.data)) {
+        setUsers(usersResponse.data);
+        setTotalUsers(usersResponse.pagination.total);
+      }
+
+      // Define empresas ativas vindas do endpoint dedicado
+      if (companiesResponse && companiesResponse.data && Array.isArray(companiesResponse.data)) {
+        setCompanies(companiesResponse.data);
+      }
     } catch (err: any) {
       console.error("Erro ao carregar dados:", err);
       setError(
@@ -79,21 +99,14 @@ export function UserRegistryPage() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // Validação: SUPPLIER e EMPLOYEE precisam de companyId
-    if (
-      (formData.role === UserRole.SUPPLIER ||
-        formData.role === UserRole.EMPLOYEE) &&
-      !formData.companyId
-    ) {
-      setError(
-        "A seleção de Empresa é obrigatória para Funcionários e Fornecedores."
-      );
-      return;
-    }
 
     // Verifica se email já existe
     const emailExists = users.some(
@@ -109,8 +122,6 @@ export function UserRegistryPage() {
 
       const newUser = await usersService.create(formData);
 
-      setUsers((prev) => [...prev, newUser]);
-
       // Reset Form
       setFormData({
         name: "",
@@ -121,6 +132,10 @@ export function UserRegistryPage() {
         companyId: undefined,
       });
       setIsAdding(false);
+
+      // Volta para a primeira página e recarrega os dados
+      setPage(1);
+      await fetchData();
     } catch (err: any) {
       console.error("Erro ao criar usuário:", err);
       const errorMessage = err.response?.data?.message;
@@ -131,28 +146,6 @@ export function UserRegistryPage() {
       }
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) {
-      return;
-    }
-
-    try {
-      setDeletingId(userId);
-      setError(null);
-
-      await usersService.remove(userId);
-
-      setUsers((prev) => prev.filter((user) => user.id !== userId));
-    } catch (err: any) {
-      console.error("Erro ao excluir usuário:", err);
-      setError(
-        err.response?.data?.message || "Erro ao excluir usuário."
-      );
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -220,25 +213,26 @@ export function UserRegistryPage() {
       throw new Error("Empresa obrigatória");
     }
 
-    // Atualizar usuário
-    const updatedUser: UserType = {
-      ...editingUser,
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      position: data.position,
-      company: data.companyId ? companies.find((c) => c.id === data.companyId) : undefined,
-    };
+    try {
+      // Atualizar usuário via API
+      await usersService.update(editingUser.id, data);
 
-    // Chamar API aqui: await usersService.update(editingUser.id, data);
+      setIsEditModalOpen(false);
+      setEditingUser(null);
+      setError(null);
 
-    setUsers((prev) =>
-      prev.map((user) => (user.id === editingUser.id ? updatedUser : user))
-    );
-
-    setIsEditModalOpen(false);
-    setEditingUser(null);
-    setError(null);
+      // Recarrega os dados para obter a versão atualizada do servidor
+      await fetchData();
+    } catch (err: any) {
+      console.error("Erro ao atualizar usuário:", err);
+      const errorMessage = err.response?.data?.message;
+      if (Array.isArray(errorMessage)) {
+        setError(errorMessage.join(", "));
+      } else {
+        setError(errorMessage || "Erro ao atualizar usuário. Tente novamente.");
+      }
+      throw err; // Re-throw para impedir que o modal feche
+    }
   }
 
   return (
@@ -385,9 +379,6 @@ export function UserRegistryPage() {
                     <option value={UserRole.EMPLOYEE}>
                       Colaborador (Employee)
                     </option>
-                    <option value={UserRole.SUPPLIER}>
-                      Fornecedor (Supplier)
-                    </option>
                   </select>
                   <ShieldAlert className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 </div>
@@ -484,75 +475,29 @@ export function UserRegistryPage() {
 
       {/* User List */}
       {users.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition-shadow group relative"
-            >
-              <div className="flex">
-                <button
-                  onClick={() => handleEdit(user)}
-                  className="absolute top-4 right-12 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Editar usuário"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => handleDelete(user.id)}
-                  disabled={deletingId === user.id}
-                  className="absolute top-4 right-4 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deletingId === user.id ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-xl border-2 border-white shadow-sm">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h4 className="font-bold text-gray-900">{user.name}</h4>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 mt-2 flex-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Perfil:</span>
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-bold border ${getRoleBadgeColor(
-                      user.role
-                    )}`}
-                  >
-                    {getRoleLabel(user.role)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Cargo:</span>
-                  <span className="font-medium text-gray-700 truncate max-w-[150px]">
-                    {user.position || "-"}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Empresa:</span>
-                  <span
-                    className="font-medium text-gray-700 truncate max-w-[150px]"
-                    title={user.company?.fantasyName}
-                  >
-                    {user.company?.fantasyName || "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4">Usuário</th>
+                <th className="px-6 py-4">Perfil</th>
+                <th className="px-6 py-4">Cargo</th>
+                <th className="px-6 py-4">Empresa</th>
+                <th className="px-6 py-4 text-center">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map((user) => (
+                <TableRow
+                  key={user.id}
+                  user={user}
+                  onEdit={() => handleEdit(user)}
+                  getRoleBadgeColor={getRoleBadgeColor}
+                  getRoleLabel={getRoleLabel}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
@@ -574,6 +519,19 @@ export function UserRegistryPage() {
           </button>
         </div>
       )}
+
+      {/* Pagination */}
+      {totalUsers > limit && (
+        <div className="mt-4">
+          <Pagination
+            page={page}
+            total={totalUsers}
+            limit={limit}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
+
       <EditUserModal
         isOpen={isEditModalOpen}
         user={editingUser}
@@ -588,5 +546,68 @@ export function UserRegistryPage() {
         onClearError={() => setError(null)}
       />
     </div>
+  );
+}
+
+function TableRow({
+  user,
+  onEdit,
+  getRoleBadgeColor,
+  getRoleLabel
+}: {
+  user: UserType;
+  onEdit: () => void;
+  getRoleBadgeColor: (role: string) => string;
+  getRoleLabel: (role: string) => string;
+}) {
+  return (
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-lg shrink-0">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 truncate">{user.name}</div>
+            <div className="text-xs text-gray-500 truncate">{user.email}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <span
+          className={`px-2.5 py-1 rounded-md text-xs font-semibold border inline-block ${getRoleBadgeColor(
+            user.role
+          )}`}
+        >
+          {getRoleLabel(user.role)}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2 text-gray-700">
+          <Briefcase size={14} className="text-gray-400" />
+          <span className="truncate">{user.position || "-"}</span>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2 text-gray-700">
+          <Building2 size={14} className="text-gray-400" />
+          <span className="truncate" title={user.company?.fantasyName}>
+            {user.company?.fantasyName || "N/A"}
+          </span>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+            title="Editar usuário"
+          >
+            <Edit size={16} />
+            Editar
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }

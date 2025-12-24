@@ -8,6 +8,7 @@ import {
 import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserQueryDto } from './dto/user-query.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '@prisma/client-postgres';
 import {
@@ -79,30 +80,89 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  async findAll() {
-    const users = await this.prisma.user.findMany({
-      include: {
-        company: {
-          select: {
-            id: true,
-            fantasyName: true,
-            cnpj: true,
-            status: true,
-          },
-        },
-        moduleAccess: {
-          include: {
-            module: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findAll(query: UserQueryDto = {}) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      role,
+      roles,
+    } = query;
 
-    // Remove senhas da resposta
-    return users.map(({ password, ...user }) => user);
+    // Build where clause for filtering
+    const where: any = {};
+
+    // Filter by single role
+    if (role) {
+      where.role = role;
+    }
+
+    // Filter by multiple roles (more performant than excludeRole)
+    if (roles && roles.length > 0) {
+      where.role = { in: roles };
+    }
+
+    // Search by name or email
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    // Execute query with filters and pagination
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          company: {
+            select: {
+              id: true,
+              fantasyName: true,
+              cnpj: true,
+              status: true,
+            },
+          },
+          moduleAccess: {
+            include: {
+              module: true,
+            },
+          },
+        },
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // Remove passwords from response
+    const usersWithoutPassword = users.map(({ password, ...user }) => user);
+
+    return {
+      data: usersWithoutPassword,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext,
+        hasPrev,
+      },
+    };
   }
 
   async findOne(id: string) {

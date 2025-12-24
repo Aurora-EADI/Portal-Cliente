@@ -2,14 +2,36 @@ import { api } from "@/lib/api";
 import { CreateUserDto, UpdateUserDto, User } from "@/types/user";
 import { UserModuleAccess, UserActivityResponse, UserPermissionsResult } from "@/types/access-control";
 
+export interface UserQueryParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    role?: string;
+    roles?: string; // Comma-separated roles (ex: "ADMIN,EMPLOYEE")
+}
+
+export interface PaginatedUsersResponse {
+    data: User[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+    };
+}
+
 export const usersService = {
     async create(data: CreateUserDto): Promise<User> {
         const response = await api.post("/users", data);
         return response.data;
     },
 
-    async findAll(): Promise<User[]> {
-        const response = await api.get("/users");
+    async findAll(params?: UserQueryParams): Promise<PaginatedUsersResponse> {
+        const response = await api.get("/users", { params });
         return response.data;
     },
 

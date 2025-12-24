@@ -24,7 +24,6 @@ export class CreateCompanyDto {
   @Length(8, 8, { message: 'CEP deve ter 8 caracteres (somente números)' })
   zipCode: string;
 
-  @IsEmail({}, { message: 'Endereço deve ser um e-mail válido' })
   @IsNotEmpty({ message: 'Endereço (email) não pode ser vazio' })
   address: string;
 

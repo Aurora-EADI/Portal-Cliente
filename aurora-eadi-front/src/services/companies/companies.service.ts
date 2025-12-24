@@ -1,10 +1,45 @@
 import { api } from "@/lib/api";
 import { Company, CreateCompanyDTO } from "@/types/company";
 
+export interface CompanyQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedCompaniesResponse {
+  data: Company[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
 export const companiesService = {
   async findAll(): Promise<Company[]> {
-    const response = await api.get("/companies");
-    return response.data;
+    try {
+      const response = await api.get("/companies");
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao buscar empresas';
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  async findActive(params?: CompanyQueryParams): Promise<PaginatedCompaniesResponse> {
+    try {
+      const response = await api.get("/companies/active", { params });
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao buscar empresas ativas';
+      return Promise.reject(new Error(message));
+    }
   },
 
   async findByCnpj(cnpj: string): Promise<Company | null> {

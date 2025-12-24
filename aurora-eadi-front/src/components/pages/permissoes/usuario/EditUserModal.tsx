@@ -109,7 +109,14 @@ export function EditUserModal({
 
     try {
       setIsSaving(true);
-      await onSave(formData);
+
+      // Remove password do payload se estiver vazio
+      const dataToSend = { ...formData };
+      if (!dataToSend.password || dataToSend.password.trim() === "") {
+        delete dataToSend.password;
+      }
+
+      await onSave(dataToSend);
     } catch (err) {
       // Erro será tratado pelo componente pai
     } finally {
@@ -356,7 +363,7 @@ export function EditUserModal({
             <button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="px-6 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium flex items-center shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSaving ? (
                 <>

@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -91,7 +91,7 @@ export const navigationContexts: NavigationContext[] = [
         ],
       },
     ],
-    allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER],
+    allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER, UserRole.EMPLOYEE],
   },
 
   // Navegação para a página de Faturamento
@@ -124,7 +124,7 @@ export const navigationContexts: NavigationContext[] = [
         ],
       },
     ],
-    allowedRoles: [UserRole.ADMIN],
+    allowedRoles: [UserRole.ADMIN,UserRole.EMPLOYEE],
   },
   {
     basePath: '/fornecedor',
@@ -141,7 +141,7 @@ export const navigationContexts: NavigationContext[] = [
         requiredPermissions: ['FOR_VIEW_LIST'],
       },
     ],
-    allowedRoles: [UserRole.ADMIN],
+    allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
   },
   {
     basePath: '/permissoes',
@@ -168,6 +168,11 @@ export const navigationContexts: NavigationContext[] = [
             path: '/permissoes/atividades',
           },
           {
+            label: 'Usuário',
+            icon: UserPlus,
+            path: '/permissoes/usuario',
+          },
+          {
             label: 'Gestão de Permissões',
             icon: ShieldCheck,
             path: '/permissoes/gestao',
@@ -191,7 +196,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/comercial/simulador',
       },
     ],
-    allowedRoles: [UserRole.ADMIN],
+    allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
   },
 
   // Navegação padrão (Home/Modules) - quando não está em nenhuma página específica
@@ -204,7 +209,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
     ],
-    allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER],
+    allowedRoles: [UserRole.ADMIN, UserRole.SUPPLIER, UserRole.SUPPLIER],
   },
 ];
 
