@@ -4,19 +4,22 @@ WORKDIR /app
 
 COPY package*.json ./
 
-COPY prisma ./prisma/
-
 # Configurar npm para ignorar certificados SSL
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV NPM_CONFIG_STRICT_SSL=false
 
 RUN npm install
 
-# Gerar AMBOS os clientes Prisma usando npx
+# Copiar TUDO antes de gerar o Prisma (importante!)
+COPY . .
+
+# Gerar AMBOS os clientes Prisma
 RUN npx prisma generate --schema=prisma/postgres/schema.prisma
 RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
 
-COPY . .
+# Verificar se os clientes foram gerados
+RUN ls -la node_modules/.prisma/ || echo "Pasta .prisma não encontrada"
+RUN ls -la node_modules/@prisma/ || echo "Pasta @prisma não encontrada"
 
 EXPOSE 5000
 

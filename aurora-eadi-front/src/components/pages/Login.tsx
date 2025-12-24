@@ -225,7 +225,7 @@ export function Login({ onRegisterClick }: LoginProps) {
               </form>
 
               {/* DEMO */}
-              <Separator className="my-6" />
+              {/* <Separator className="my-6" />
 
               <p className="text-xs text-gray-400 uppercase font-semibold text-center mb-3 tracking-wider">
                 Para demonstração
@@ -248,7 +248,7 @@ export function Login({ onRegisterClick }: LoginProps) {
                     "Demo Admin"
                   )}
                 </Button>
-              </div>
+              </div> */}
 
             </CardContent>
           </Card>

@@ -20,5 +20,6 @@ EXPOSE 3000
 
 # IMPORTANTE: Next.js deve ouvir em 0.0.0.0 para aceitar conexões do Docker
 ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
 CMD ["npm", "run", "dev"]
