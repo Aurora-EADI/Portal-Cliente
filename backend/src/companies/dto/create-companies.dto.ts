@@ -5,6 +5,7 @@ import {
   Length,
   IsEmail,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateCompanyDto {
   @IsString()
@@ -14,17 +15,20 @@ export class CreateCompanyDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Nome fantasia não pode ser vazio' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   fantasyName: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Razão social não pode ser vazia' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   socialReason: string;
 
   @IsString()
   @Length(8, 8, { message: 'CEP deve ter 8 caracteres (somente números)' })
   zipCode: string;
 
-  @IsNotEmpty({ message: 'Endereço (email) não pode ser vazio' })
+  @IsNotEmpty({ message: 'Endereço não pode ser vazio' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   address: string;
 
   @IsString()
@@ -32,18 +36,22 @@ export class CreateCompanyDto {
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value?.trim().toUpperCase())
   complement?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Bairro não pode ser vazio' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   neighborhood: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Cidade não pode ser vazia' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   city: string;
 
   @IsString()
   @Length(2, 2, { message: 'Estado deve conter 2 caracteres (UF)' })
+  @Transform(({ value }) => value?.trim().toUpperCase())
   state: string;
 
   @IsString()

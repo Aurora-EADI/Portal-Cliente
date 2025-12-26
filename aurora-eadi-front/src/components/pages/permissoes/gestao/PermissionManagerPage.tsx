@@ -116,18 +116,18 @@ export function PermissionManagerPage() {
       setIsLoading(true);
       setError(null);
 
-      const [usersData, modulesData, activitiesData] = await Promise.all([
-        usersService.findAll(),
+      const [usersResponse, modulesData, activitiesData] = await Promise.all([
+        usersService.findAll({ limit: 100 }),
         modulesService.findAll(),
         activitiesService.findAll(),
       ]);
 
-      setUsers(usersData);
+      setUsers(usersResponse.data);
       setModules(modulesData);
       setActivities(activitiesData);
 
-      if (usersData.length > 0) {
-        setSelectedUserId(usersData[0].id);
+      if (usersResponse.data.length > 0) {
+        setSelectedUserId(usersResponse.data[0].id);
       }
 
       // Mantém todos os módulos colapsados por padrão
@@ -441,7 +441,6 @@ export function PermissionManagerPage() {
               <th className="px-6 py-4">Colaborador</th>
               <th className="px-6 py-4">E-mail</th>
               <th className="px-6 py-4">Função</th>
-              <th className="px-6 py-4 text-center">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -498,16 +497,7 @@ export function PermissionManagerPage() {
                         {user.role}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      {isSelected ? (
-                        <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                          Selecionado
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">Clique para selecionar</span>
-                      )}
-                    </td>
+                    
                   </tr>
                 );
               })

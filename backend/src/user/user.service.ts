@@ -57,7 +57,7 @@ export class UsersService {
     // Cria o usuário
     const user = await this.prisma.user.create({
       data: {
-        name,
+        name: name.toUpperCase(),
         email,
         password: hashedPassword,
         role,

@@ -638,7 +638,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome Completo *
+                      Razão Social *
                     </label>
                     <input
                       required
@@ -646,7 +646,7 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
                       value={userName}
                       onChange={(e) => setUserName(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition"
-                      placeholder="Seu nome completo"
+                      placeholder="Razão Social"
                     />
                   </div>
 
