@@ -1,0 +1,22 @@
+http:
+  routers:
+    frontend-router:
+      rule: "Host(`172.20.210.84`) || Host(`portal.local`)"
+      service: frontend-service
+      entryPoints:
+        - web
+    backend-router:
+      rule: "Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`)"
+      service: backend-service
+      entryPoints:
+        - web
+
+  services:
+    frontend-service:
+      loadBalancer:
+        servers:
+          - url: "http://portal-aurora-frontend-prod:3000"
+    backend-service:
+      loadBalancer:
+        servers:
+          - url: "http://portal-aurora-backend-prod:5000"

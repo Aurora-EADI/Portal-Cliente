@@ -1,34 +1,37 @@
 services:
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: minio-prod
     ports:
       - "9000:9000"      # API
       - "9001:9001"      # Console Web
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - ./data:/data
+      - minio_data:/data
     command: server /data --console-address ":9001"
-    restart: unless-stopped
+    restart: always
     networks:
       - aurora-network
     deploy:
       resources:
         limits:
           memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
-    container_name: portal-aurora-backend
-    command: npm run dev
+      dockerfile: Dockerfile.prod
+    container_name: portal-aurora-backend-prod
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: 5000
-      # CORRIGIDO: Usa host.docker.internal para acessar PostgreSQL no host
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@host.docker.internal:${DB_PORT}/${DB_NAME}
       DATABASE_URL_POSTGRES: postgresql://${DB_USER}:${DB_PASSWORD}@host.docker.internal:${DB_PORT}/${DB_NAME}
       DATABASE_URL_SQLSERVER: ${DATABASE_URL_SQLSERVER}
@@ -41,37 +44,43 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-      - /app/dist
     ports:
       - "5000:5000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`api.dev.local`)"
+      - "traefik.http.routers.backend.rule=Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`)"
       - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=5000"
     networks:
       - aurora-network
     depends_on:
-      - minio  
-    restart: unless-stopped
+      minio:
+        condition: service_healthy
+    restart: always
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api', (res) => res.statusCode < 500 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   traefik:
     image: traefik:v3.1
-    container_name: traefik-dev
+    container_name: traefik-prod
     ports:
-      - "8081:80"      # HTTP traffic (different than prod)
-      - "8082:8080"    # Traefik Dashboard (different than prod)
+      - "80:80"        # HTTP traffic
+      - "8080:8080"    # Traefik Dashboard (insecure)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./docker/traefik/traefik.dev.yml:/etc/traefik/traefik.yml:ro
-    restart: unless-stopped
+      - ./docker/traefik/traefik.prod.yml:/etc/traefik/traefik.yml:ro
+      - ./docker/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    restart: always
     networks:
       - aurora-network
     deploy:
@@ -82,43 +91,46 @@ services:
   frontend:
     build:
       context: ./aurora-eadi-front
-      dockerfile: Dockerfile.dev
-    container_name: portal-aurora-frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL}
+    container_name: portal-aurora-frontend-prod
     environment:
       NODE_ENV: ${NODE_ENV}
       NEXT_PUBLIC_API_URL: ${API_URL}
-      # Desabilitar telemetria do Next.js
       NEXT_TELEMETRY_DISABLED: 1
-      # Otimizações de memória do Node.js
-      NODE_OPTIONS: --max-old-space-size=3072
-      # Adicione para resolver o problema de memória com watchpack
-      WATCHPACK_POLLING: true
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./aurora-eadi-front:/app
-      - /app/node_modules
-      - /app/.next
+    # ports:
+    #   - "3000:3000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`dev.local`)"
+      - "traefik.http.routers.frontend.rule=Host(`172.20.210.84`) || Host(`portal.local`)"
       - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
     networks:
       - aurora-network
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: always
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 1G
         reservations:
-          memory: 2G
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 networks:
   aurora-network:
     driver: bridge
 
 volumes:
-  postgres_data:
+  minio_data:
+    driver: local
+
+# Comando para executar:
+# docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build

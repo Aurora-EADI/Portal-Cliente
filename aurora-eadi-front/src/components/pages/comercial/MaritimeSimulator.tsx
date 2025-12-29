@@ -332,7 +332,7 @@ export function MaritimeSimulator() {
                       {isLoadingSuppliers ? (
                         <div className="p-4 text-center text-sm text-gray-500">Carregando fornecedores...</div>
                       ) : (
-                        suppliersData?.map((item: any) => (
+                        suppliersData?.data?.map((item: any) => (
                           <SelectItem key={item.company.id} value={item.company.id}>
                             {item.company.fantasyName || item.company.socialReason}
                             <span className="text-gray-400 text-xs ml-2">({item.company.cnpj})</span>

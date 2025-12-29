@@ -5,9 +5,12 @@ import { AppModule } from './App/app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS - usar variável de ambiente
+  // CORS - suporte a múltiplos domínios
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: allowedOrigins,
     credentials: true,
   });
 
