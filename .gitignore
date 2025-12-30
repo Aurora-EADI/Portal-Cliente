@@ -3,3 +3,11 @@
 data/
 *.xl.meta
 .minio.sys/
+
+# Variáveis de ambiente
+.env.dev
+.env.prod
+.env.*
+
+# Documentação
+*.md

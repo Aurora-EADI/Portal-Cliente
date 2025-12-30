@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['172.20.210.81', '172.20.210.84'],
 
   // Otimizações para reduzir uso de memória
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     workerThreads: false,
     cpus: 1,

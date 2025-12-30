@@ -44,7 +44,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - /app/dist
+      # - /app/dist  # Comentado: causa EBUSY no Windows
     ports:
       - "5000:5000"
     labels:

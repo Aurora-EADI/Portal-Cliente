@@ -1,12 +1,12 @@
 http:
   routers:
     frontend-router:
-      rule: "Host(`172.20.210.84`) || Host(`portal.local`)"
+      rule: "Host(`172.20.210.84`) || Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)"
       service: frontend-service
       entryPoints:
         - web
     backend-router:
-      rule: "Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`)"
+      rule: "Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`) || Host(`portal.auroraeadi.com.br`) && PathPrefix(`/api`)"
       service: backend-service
       entryPoints:
         - web
