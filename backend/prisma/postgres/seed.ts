@@ -1,10 +1,38 @@
-import { PrismaClient, UserRole } from '@prisma/client-postgres';
+import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client-postgres';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...');
+
+  // ============================================
+  // 0. GARANTIR EMPRESA AURORA EADI
+  // ============================================
+  console.log('🏢 Verificando/Criando empresa Aurora EADI...');
+
+  const company = await prisma.company.upsert({
+    where: {
+      cnpj: '04694548000210'
+    },
+    update: {}, // Mantém dados existentes se já houver
+    create: {
+      cnpj: '04694548000210',
+      fantasyName: 'Aurora EADI',
+      socialReason: 'Aurora da Amazônia Terminais e Serviços LTDA',
+      zipCode: '69075840',
+      address: 'Rua Ministro João Gonçalves de Araújo',
+      number: '472',
+      complement: 'Parte E',
+      neighborhood: 'Distrito Industrial',
+      city: 'Manaus',
+      state: 'AM',
+      phone: '3614-8800',
+      status: CompanyStatus.ACTIVE,
+    },
+  });
+
+  console.log(`✔️ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
 
   // Verificar se já existe um usuário admin
   const existingAdmin = await prisma.user.findFirst({
@@ -14,10 +42,20 @@ async function main() {
   });
 
   if (existingAdmin) {
-    console.log('⚠️  Usuario admin ja existe. Pulando seed...');
+    console.log('⚠️  Usuario admin ja existe. Atualizando vínculo com a empresa...');
+
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: {
+        companyId: company.id
+      }
+    });
+
+    console.log('✔️ Vínculo atualizado com sucesso.');
     console.log(`🆔 ID: ${existingAdmin.id}`);
     console.log(`👤 Nome: ${existingAdmin.name}`);
     console.log(`🎭 Role: ${existingAdmin.role}`);
+    console.log(`🏢 Empresa ID: ${company.id}`);
     return;
   }
 
@@ -43,6 +81,7 @@ async function main() {
       email: 'admin@aurora.com.br',
       password: adminPassword,
       role: UserRole.ADMIN,
+      companyId: company.id, // Vincula à empresa criada
     },
   });
 
@@ -140,6 +179,7 @@ USUÁRIO ADMINISTRADOR CRIADO:
 🔑 Senha: aurora@2025
 👤 Nome: Admin Aurora
 🛡️  Role: ADMIN
+🏢 Empresa: Aurora EADI
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MÓDULO E PERMISSÕES ATRIBUÍDAS:

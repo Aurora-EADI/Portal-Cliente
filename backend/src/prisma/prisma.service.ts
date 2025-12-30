@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient as PrismaClientSqlServer } from '@prisma/client-sqlserver';
 import { PrismaClient as PrismaClientPostgres } from '@prisma/client-postgres';
 
@@ -12,11 +13,25 @@ export class PrismaPostgresService extends PrismaClientPostgres implements OnMod
 @Injectable()
 export class PrismaSqlServerService extends PrismaClientSqlServer implements OnModuleInit {
   private readonly logger = new Logger(PrismaSqlServerService.name);
+
+  constructor(private configService: ConfigService) {
+    const url = configService.get<string>('DATABASE_URL_SQLSERVER');
+    super({
+      datasources: {
+        db: {
+          url,
+        },
+      },
+    });
+    const maskedUrl = url ? url.replace(/password=[^;]+/, 'password=****') : 'UNDEFINED';
+    this.logger.log(`Conectando em: ${maskedUrl}`);
+  }
+
   private connected = false;
 
   async onModuleInit() {
     try {
-      // await this.$connect();
+      await this.$connect();
       this.connected = true;
       this.logger.log('SQL Server connected successfully');
     } catch (error) {

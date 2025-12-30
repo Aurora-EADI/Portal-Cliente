@@ -316,52 +316,6 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
 
             </div>
 
-            {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Nº RPS</Label>
-                <Input
-                  placeholder="Nº RPS"
-                  value={filters.rps}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, rps: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Nº Fatura</Label>
-                <Input
-                  placeholder="Nº Fatura"
-                  value={filters.n_fatura}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, n_fatura: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Nº DI</Label>
-                <Input
-                  placeholder="Nº DI"
-                  value={filters.n_di}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, n_di: e.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Nº Lote</Label>
-                <Input
-                  placeholder="Nº Lote"
-                  value={filters.n_lote}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, n_lote: e.target.value }))
-                  }
-                />
-              </div>
-            </div> */}
-
-
           </div>
 
           <div className="flex justify-between mt-6 pt-4 border-t">

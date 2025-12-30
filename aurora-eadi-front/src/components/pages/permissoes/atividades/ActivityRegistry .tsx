@@ -240,9 +240,17 @@ export function ActivityRegistry() {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex-1">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-              Módulo Destino
-            </label>
+            <div className="flex justify-between items-start mb-4">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+                Módulo Destino
+              </label>
+              <a
+                href="/permissoes/catalogo"
+                className="text-xs text-primary-600 hover:text-primary-800 hover:underline flex items-center gap-1"
+              >
+                Gerenciar Catálogo Técnico <Icons.ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
             <div className="relative">
               <select
                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-primary-500 focus:outline-none text-lg text-gray-800 font-semibold transition-all hover:bg-gray-100 cursor-pointer"

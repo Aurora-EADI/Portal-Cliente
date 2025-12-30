@@ -124,7 +124,7 @@ export const navigationContexts: NavigationContext[] = [
         ],
       },
     ],
-    allowedRoles: [UserRole.ADMIN,UserRole.EMPLOYEE],
+    allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
   },
   {
     basePath: '/fornecedor',
@@ -158,9 +158,14 @@ export const navigationContexts: NavigationContext[] = [
         isGroup: true,
         children: [
           {
-            label: 'Cadastro de Módulos',
+            label: 'Módulos',
             icon: FileText,
             path: '/permissoes',
+          },
+          {
+            label: 'Catalogo técnico ',
+            icon: FileText,
+            path: '/permissoes/catalogo',
           },
           {
             label: 'Atividades e Vinculos',
