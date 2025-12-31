@@ -30,16 +30,22 @@ export class PrismaSqlServerService extends PrismaClientSqlServer implements OnM
   private connected = false;
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      this.connected = true;
-      this.logger.log('SQL Server connected successfully');
-    } catch (error) {
-      this.logger.warn('SQL Server connection failed - running without legacy database integration');
-      this.logger.warn(`Error: ${error.message}`);
-      this.connected = false;
-    }
+  try {
+    this.logger.log('Tentando conectar ao SQL Server...');
+    await this.$connect();
+    this.connected = true;
+    this.logger.log('SQL Server connected successfully');
+  } catch (error) {
+    this.logger.warn('SQL Server connection failed - running without legacy database integration');
+    this.logger.error(`Error details: ${JSON.stringify({
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack?.split('\n').slice(0, 3)
+    }, null, 2)}`);
+    this.connected = false;
   }
+}
 
   isConnected(): boolean {
     return this.connected;

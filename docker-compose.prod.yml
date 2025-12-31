@@ -8,6 +8,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    env_file:
+      - .env.prod
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -44,13 +46,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+    env_file:
+      - .env.prod
     ports:
       - "5000:5000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=5000"
     networks:
       - aurora-network
     depends_on:
@@ -75,11 +74,12 @@ services:
     container_name: traefik-prod
     ports:
       - "80:80"        # HTTP traffic
+      - "443:443"      # HTTPS traffic
       - "8080:8080"    # Traefik Dashboard (insecure)
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./docker/traefik/traefik.prod.yml:/etc/traefik/traefik.yml:ro
       - ./docker/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - C:/Users/administrator/Documents/certificado:/etc/traefik/certificados:ro
     restart: always
     networks:
       - aurora-network
@@ -99,13 +99,8 @@ services:
       NODE_ENV: ${NODE_ENV}
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_TELEMETRY_DISABLED: 1
-    # ports:
-    #   - "3000:3000"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`172.20.210.84`) || Host(`portal.local`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    env_file:
+      - .env.prod
     networks:
       - aurora-network
     depends_on:
@@ -131,6 +126,3 @@ networks:
 volumes:
   minio_data:
     driver: local
-
-# Comando para executar:
-# docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build

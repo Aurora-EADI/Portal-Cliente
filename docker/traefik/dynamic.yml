@@ -1,15 +1,33 @@
 http:
   routers:
+    # Redirecionar todo tráfego HTTP para HTTPS
+    http-catchall:
+      rule: "HostRegexp(`{host:.+}`)"
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: noop@internal
+
     frontend-router:
       rule: "Host(`172.20.210.84`) || Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)"
       service: frontend-service
       entryPoints:
-        - web
+        - websecure
+      tls: {}
+      
     backend-router:
-      rule: "Host(`api.portal.local`) || Host(`portal.local`) && PathPrefix(`/api`) || Host(`172.20.210.84`) && PathPrefix(`/api`) || Host(`portal.auroraeadi.com.br`) && PathPrefix(`/api`)"
+      rule: "(Host(`api.portal.local`) || Host(`portal.local`) || Host(`172.20.210.84`) || Host(`portal.auroraeadi.com.br`)) && PathPrefix(`/api`)"
       service: backend-service
       entryPoints:
-        - web
+        - websecure
+      tls: {}
+
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
 
   services:
     frontend-service:
@@ -20,3 +38,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://portal-aurora-backend-prod:5000"
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/certificados/portal.crt
+      keyFile: /etc/traefik/certificados/portal.key

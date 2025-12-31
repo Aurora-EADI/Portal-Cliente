@@ -1,10 +1,6 @@
-import axios from "axios";
+import api from "@/lib/api";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
-
-const api = axios.create({
-  baseURL: "http://localhost:3333/api",
-});
 
 export async function getFaturamento(
   dataInicial: string,
