@@ -67,8 +67,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-# Configurar npm para ignorar certificados SSL
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# Configurar npm para ignorar certificados SSL (apenas para build)
+# NOTA: Necessário apenas para npm install durante build
 ENV NPM_CONFIG_STRICT_SSL=false
 
 # Instalar todas as dependências (incluindo devDependencies para build)
@@ -79,7 +79,8 @@ COPY . .
 
 # Gerar clientes Prisma
 RUN npx prisma generate --schema=prisma/postgres/schema.prisma
-RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
+# DEPRECATED: Prisma SQL Server substituído por SqlServerService (mssql/tedious)
+# RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
 
 # Build da aplicação
 RUN npm run build
@@ -126,8 +127,10 @@ CipherString = DEFAULT@SECLEVEL=0
 EOL
 
 # Variáveis de ambiente para OpenSSL legacy
+# Configuração granular de TLS para SQL Server 2008 R2
 ENV OPENSSL_CONF=/etc/ssl/openssl_legacy.cnf
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# REMOVIDO: NODE_TLS_REJECT_UNAUTHORIZED=0 (inseguro - substituído por configurações granulares no SqlServerService)
+# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV NPM_CONFIG_STRICT_SSL=false
 
 # Copiar package files
