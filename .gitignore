@@ -4,17 +4,14 @@ data/
 *.xl.meta
 .minio.sys/
 
-<<<<<<< HEAD
 # Variáveis de ambiente
 .env.dev
 .env.prod
 .env.*
 
 # Documentação
-*.md
-=======
 .CLAUDE.md
 .DEPLOY_PROD.md
 .Docker.md
 .task.md
->>>>>>> eca68bd (refactor: Production Environment)
+*.md
