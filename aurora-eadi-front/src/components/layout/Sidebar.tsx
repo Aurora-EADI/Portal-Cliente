@@ -5,9 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LogOut, Menu, ChevronLeft, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { LogOut, Menu, ChevronLeft, User, ChevronDown, ChevronRight, Settings } from 'lucide-react';
 import { useNavigationWithPermissions } from '@/hooks/useNavigationWithPermissions';
 import type { NavItem } from '@/config/navigation';
+import { UserProfileModal } from './UserProfileModal';
 
 interface SidebarItemProps {
   label: string;
@@ -36,35 +37,35 @@ const SidebarItem = React.memo(function SidebarItem({
       onClick={onClick}
       className={`
         relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-        transition-all duration-200 group
+        transition-all duration-300 group
         ${collapsed ? 'justify-center' : 'justify-start'}
-        ${isChild ? 'pl-11 text-xs' : ''}
+        ${isChild ? 'pl-11' : ''}
         ${active
-          ? 'bg-primary-600 text-white shadow-md shadow-primary-600/20'
-          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          ? 'bg-primary-500/10 text-white border border-primary-500/20 shadow-sm shadow-primary-500/5'
+          : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
         }
       `}
     >
-      <span className={`flex-shrink-0 ${active ? 'scale-110' : 'group-hover:scale-105'} transition-transform`}>
+      {/* Indicador Lateral para item ativo */}
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+      )}
+
+      <span className={`flex-shrink-0 ${active ? 'scale-110 text-primary-400' : 'group-hover:scale-105 group-hover:text-slate-200'} transition-all duration-200`}>
         {icon}
       </span>
 
       {!collapsed && (
-        <span className="whitespace-nowrap font-medium text-sm flex-1 text-left">
+        <span className={`flex-1 text-left font-medium transition-colors truncate mr-2 ${isChild ? 'text-xs' : 'text-sm'}`}>
           {label}
         </span>
       )}
 
       {/* Ícone de expansão para grupos */}
       {hasChildren && !collapsed && (
-        <span className="ml-auto">
-          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className={`ml-auto transition-transform duration-200 ${isExpanded ? 'rotate-0' : 'rotate-0 text-slate-500'}`}>
+          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
-      )}
-
-      {/* Indicador visual para item ativo */}
-      {active && !collapsed && !hasChildren && (
-        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
       )}
 
       {/* Tooltip para modo colapsado */}
@@ -85,6 +86,7 @@ export const Sidebar: React.FC = () => {
   const { currentUser, logoutUser } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const navigationItems = useNavigationWithPermissions();
 
@@ -153,12 +155,19 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* User Info */}
-      {!collapsed && currentUser && (
-        <div className="px-4 py-3 border-b border-slate-800/50">
-          <div className="flex items-center gap-3 text-slate-300">
-            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">
-              <User size={16} />
-            </div>
+      <div
+        onClick={() => setIsProfileModalOpen(true)}
+        className={`
+          px-4 py-3 border-b border-slate-800/50 cursor-pointer 
+          hover:bg-slate-800/50 transition-colors group relative
+          ${collapsed ? 'flex justify-center' : ''}
+        `}
+      >
+        <div className="flex items-center gap-3 text-slate-300">
+          <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-primary-600/20 group-hover:text-primary-400 transition-colors">
+            <User size={16} />
+          </div>
+          {!collapsed && currentUser && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
                 {currentUser.name}
@@ -167,9 +176,20 @@ export const Sidebar: React.FC = () => {
                 {currentUser.email}
               </p>
             </div>
-          </div>
+          )}
+          {!collapsed && (
+            <Settings size={14} className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
         </div>
-      )}
+
+        {collapsed && (
+          <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-sm rounded-md 
+                          opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap
+                          shadow-lg z-50">
+            Editar Perfil
+          </div>
+        )}
+      </div>
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
@@ -262,6 +282,12 @@ export const Sidebar: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* Modal de Perfil */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+      />
     </aside>
   );
 };

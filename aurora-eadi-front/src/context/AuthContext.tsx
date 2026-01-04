@@ -21,6 +21,7 @@ interface AuthContextType {
   logoutUser: () => Promise<void>;
   isLoading: boolean;
   refreshPermissions: () => Promise<void>;
+  updateCurrentUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -210,6 +211,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateCurrentUser = (user: User) => {
+    setCurrentUser(user);
+    try {
+      const userData = JSON.stringify(user);
+      localStorage.setItem(AUTH_SESSION_KEY, userData);
+
+      // Atualiza o Cookie (para o Middleware do Next.js ter acesso)
+      Cookies.set(AUTH_SESSION_KEY, userData, {
+        expires: 7, // 7 dias
+        path: '/',
+        sameSite: 'lax',
+        secure: false,
+      });
+    } catch (error) {
+      console.error('[AUTH CONTEXT] Erro ao atualizar usuário local:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +238,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logoutUser,
         isLoading,
         refreshPermissions,
+        updateCurrentUser,
       }}
     >
       {children}
