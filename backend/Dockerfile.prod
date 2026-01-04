@@ -67,9 +67,10 @@ WORKDIR /app
 
 COPY package*.json ./
 
-# Configurar npm para ignorar certificados SSL (apenas para build)
-# NOTA: Necessário apenas para npm install durante build
+# Configurar npm e Node.js para ignorar certificados SSL (apenas para build)
+# NOTA: Necessário apenas para npm install e Prisma generate durante build
 ENV NPM_CONFIG_STRICT_SSL=false
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Instalar todas as dependências (incluindo devDependencies para build)
 RUN npm ci
