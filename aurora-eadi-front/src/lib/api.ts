@@ -1,4 +1,10 @@
-import axios from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { isTokenExpired } from './jwt-helper';
+import {
+  getAccessToken,
+  refreshAccessToken,
+  clearAllAuthData,
+} from '@/services/auth/token.service';
 
 // Instância principal do axios
 export const api = axios.create({
@@ -8,43 +14,174 @@ export const api = axios.create({
   },
 });
 
+// Controle de estado para evitar múltiplas renovações simultâneas
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
 
-  // REQUEST INTERCEPTOR
-  // Adiciona token quando existir
+/**
+ * Adiciona callback para ser executado quando o token for renovado
+ */
+function subscribeTokenRefresh(callback: (token: string) => void): void {
+  refreshSubscribers.push(callback);
+}
 
+/**
+ * Notifica todos os callbacks aguardando pela renovação do token
+ */
+function onTokenRefreshed(token: string): void {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
+/**
+ * REQUEST INTERCEPTOR
+ * Adiciona token e renova automaticamente se expirado
+ */
 api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('access_token');
+  async (config: InternalAxiosRequestConfig) => {
+    if (typeof window === 'undefined') return config;
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    const requestUrl = config.url || '';
+
+    // Ignora rotas públicas (login, register, refresh)
+    const isPublicRoute =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/refresh');
+
+    if (isPublicRoute) {
+      return config;
+    }
+
+    // Obtém token atual
+    let token = getAccessToken();
+
+    if (!token) {
+      // Não tem token, deixa a requisição prosseguir (vai dar 401)
+      return config;
+    }
+
+    // Verifica se o token está expirado
+    if (isTokenExpired(token)) {
+      if (isRefreshing) {
+        // Já está renovando, aguarda renovação
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((newToken: string) => {
+            if (config.headers) {
+              config.headers.Authorization = `Bearer ${newToken}`;
+            }
+            resolve(config);
+          });
+        });
       }
+
+      // Inicia renovação
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+
+        if (newToken) {
+          // Renovação bem-sucedida
+          if (config.headers) {
+            config.headers.Authorization = `Bearer ${newToken}`;
+          }
+
+          // Notifica requisições pendentes
+          onTokenRefreshed(newToken);
+          isRefreshing = false;
+
+          return config;
+        } else {
+          // Renovação falhou, limpa tudo e redireciona
+          isRefreshing = false;
+          clearAllAuthData();
+
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/' && currentPath !== '/login') {
+            window.location.href = '/';
+          }
+
+          return Promise.reject(new Error('Token expirado e renovação falhou'));
+        }
+      } catch (error) {
+        // Erro na renovação
+        isRefreshing = false;
+        clearAllAuthData();
+
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/' && currentPath !== '/login') {
+          window.location.href = '/';
+        }
+
+        return Promise.reject(error);
+      }
+    }
+
+    // Token válido, adiciona ao header
+    if (config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
-
-  // RESPONSE INTERCEPTOR
-  // Trata 401 e limpa sessão
-
+/**
+ * RESPONSE INTERCEPTOR
+ * Trata erros 401 e tenta renovar token automaticamente
+ */
 api.interceptors.response.use(
   (response) => response,
 
-  (error) => {
+  async (error: AxiosError) => {
     const status = error.response?.status;
-    const requestUrl = error.config?.url || '';
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+    const requestUrl = originalRequest?.url || '';
 
-    // ⛔ Evita deslogar caso o erro seja na rota de login
-    const isLoginRequest = requestUrl.includes('/auth/login');
+    // Ignora rotas públicas
+    const isPublicRoute =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/refresh');
 
-    if (status === 401 && !isLoginRequest) {
+    if (status === 401 && !isPublicRoute) {
+      // Tenta renovar token uma vez
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          const newToken = await refreshAccessToken();
+
+          if (newToken && originalRequest.headers) {
+            // Atualiza header da requisição original
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+            // Retry da requisição original
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          // Renovação falhou, limpa tudo
+          clearAllAuthData();
+
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/' && currentPath !== '/login') {
+              window.location.href = '/';
+            }
+          }
+
+          return Promise.reject(refreshError);
+        }
+      }
+
+      // Já tentou renovar e falhou, limpa tudo
+      clearAllAuthData();
+
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('access_token');
-
         const currentPath = window.location.pathname;
         if (currentPath !== '/' && currentPath !== '/login') {
           window.location.href = '/';
@@ -53,7 +190,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

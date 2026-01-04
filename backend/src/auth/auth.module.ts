@@ -3,8 +3,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { AuthController } from './auth.controller'; // ← ADICIONE
-import { AuthService } from './auth.service';       // ← ADICIONE
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { TokenService } from './services/token.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -15,12 +16,12 @@ import { PrismaModule } from '../prisma/prisma.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '24h' },
+        signOptions: { expiresIn: '1h' }, // 1 hora para access tokens (mais seguro)
       }),
     }),
   ],
-  controllers: [AuthController], // ← ADICIONE
-  providers: [AuthService, JwtStrategy], // ← ADICIONE AuthService
-  exports: [JwtModule, AuthService], // ← EXPORTE AuthService se outros módulos usarem
+  controllers: [AuthController],
+  providers: [AuthService, TokenService, JwtStrategy],
+  exports: [JwtModule, AuthService, TokenService],
 })
-export class AuthModule {}
+export class AuthModule { }

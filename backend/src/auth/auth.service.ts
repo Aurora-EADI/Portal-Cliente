@@ -11,18 +11,20 @@ import {
   ModuleData,
   UserPermissionsResponse,
 } from './types/user-permissions.types';
+import { TokenService, TokenSecurityMetadata } from './services/token.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private tokenService: TokenService,
   ) { }
 
   /**
    * Realiza o login do usuário
    */
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, metadata?: TokenSecurityMetadata) {
     const { email, password } = loginDto;
 
     // Buscar usuário
@@ -55,20 +57,58 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    // Gerar token JWT
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      companyId: user.companyId,
-    };
+    // Gerar par de tokens (access + refresh) usando o TokenService
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(
+      user.id,
+      user.email,
+      user.role,
+      user.companyId ?? undefined, // Converte null para undefined
+      metadata,
+    );
 
     const { password: _, ...userWithoutPassword } = user;
 
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: userWithoutPassword,
     };
+  }
+
+  /**
+   * Renova o access token usando um refresh token válido
+   */
+  async refreshToken(refreshToken: string) {
+    try {
+      console.log('[AUTH SERVICE] Tentando renovar token...');
+      const result = await this.tokenService.refreshAccessToken(refreshToken);
+      console.log('[AUTH SERVICE] Token renovado com sucesso');
+      return result;
+    } catch (error: any) {
+      console.error('[AUTH SERVICE] Erro ao renovar token:', error.message);
+      throw new UnauthorizedException('Refresh token inválido ou expirado');
+    }
+  }
+
+  /**
+   * Realiza logout revogando o refresh token
+   */
+  async logout(refreshToken: string) {
+    try {
+      await this.tokenService.revokeRefreshToken(refreshToken);
+      return { message: 'Logout realizado com sucesso' };
+    } catch (error) {
+      // Mesmo se falhar, retorna sucesso (token pode já estar revogado)
+      return { message: 'Logout realizado com sucesso' };
+    }
+  }
+
+  /**
+   * Realiza logout de todas as sessões do usuário
+   */
+  async logoutAll(userId: string) {
+    await this.tokenService.revokeAllUserTokens(userId);
+    return { message: 'Logout de todas as sessões realizado com sucesso' };
   }
 
   /**

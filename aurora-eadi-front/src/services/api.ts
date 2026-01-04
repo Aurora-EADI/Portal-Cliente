@@ -9,6 +9,7 @@ const validRoles = Object.values(UserRole);
 export const authService = {
   /**
    * Faz login do usuário
+   * Retorna o usuário e os tokens (access e refresh)
    */
   login: async (email: string, password: string, role: UserRole) => {
     // Validação front-end da role antes de enviar
@@ -19,11 +20,12 @@ export const authService = {
     try {
       const response = await api.post('/auth/login', { email, password, role });
 
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-      }
-
-      return response.data.user;
+      // Retorna user, access_token e refresh_token
+      return {
+        user: response.data.user,
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+      };
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
       let message = 'Erro ao fazer login';

@@ -37,6 +37,13 @@ enum CompanyStatus {
   REJECTED // Cadastro recusado
 }
 
+// Tipos de tokens de autenticação
+enum TokenType {
+  REFRESH // Token de renovação de acesso
+  RESET_PASSWORD // Token para reset de senha
+  EMAIL_VERIFICATION // Token para verificação de email
+}
+
 model Company {
   id           String        @id @default(uuid())
   cnpj         String        @unique // CNPJ único da empresa
@@ -81,6 +88,7 @@ model User {
   // Relacionamentos
   company   Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   documents Document[] // Documentos enviados por este usuário
+  tokens    UserToken[] // Tokens de autenticação (refresh tokens)
 
   moduleAccess UserModuleAccess[]
 
@@ -89,6 +97,31 @@ model User {
   simulations  Simulation[] // Simulações criadas
 
   @@map("users")
+}
+
+// Tabela de tokens de autenticação
+model UserToken {
+  id        String    @id @default(uuid())
+  userId    String // ID do usuário dono do token
+  token     String    @unique // Hash do token
+  type      TokenType // Tipo do token
+  expiresAt DateTime // Data de expiração
+  revokedAt DateTime? // Data de revogação (null = ainda válido)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Metadados de segurança
+  ipAddress   String? // IP de onde o token foi gerado
+  userAgent   String? // User agent do navegador
+  lastUsedAt  DateTime? // Última vez que o token foi usado
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type]) // Índice para buscar tokens por usuário e tipo
+  @@index([token, type]) // Índice para validação rápida de tokens
+  @@index([expiresAt]) // Índice para limpeza de tokens expirados
+  @@map("user_tokens")
 }
 
 model Document {
