@@ -29,8 +29,11 @@ export class DocumentsService {
         return await this.prisma.$transaction(async (tx) => {
             // 1. Primeiro tenta subir o arquivo (externo ao DB, não rollback automático)
             try {
+                this.logger.log(`Iniciando upload para o MinIO: ${fileName}`);
                 await this.minio.uploadFile(file, fileName);
+                this.logger.log(`Upload para o MinIO concluído: ${fileName}`);
             } catch (error) {
+                this.logger.error(`Erro no upload para o MinIO (${fileName}): ${error.message}`, error.stack);
                 throw new BadRequestException('Erro ao enviar arquivo ao MinIO');
             }
 

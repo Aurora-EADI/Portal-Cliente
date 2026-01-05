@@ -1,467 +1,377 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../node_modules/@prisma/client-postgres"
+  binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL_POSTGRES")
 }
 
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
-  output        = "../../node_modules/@prisma/client-postgres"
-}
-
-//generator client {
-// provider = "prisma-client-js"
-//  output   = "../../node_modules/@prisma/client-postgres"
-//}
-
-// Tipos de função dos usuários no sistema
-enum UserRole {
-  ADMIN // Administrador do sistema
-  SUPPLIER // Fornecedor/Empresa
-  EMPLOYEE // funcionário da empresa
-}
-
-// Status dos documentos enviados
-enum DocumentStatus {
-  PENDING // Aguardando análise
-  APPROVED // Aprovado pelo admin
-  REJECTED // Reprovado pelo admin
-}
-
-// Status do cadastro da empresa
-enum CompanyStatus {
-  PENDING // Aguardando liberação de acesso
-  PENDING_ACTIVE // Aguardando liberção do admin
-  ACTIVE // Cadastro aprovado, pode acessar o sistema
-  REJECTED // Cadastro recusado
-}
-
-// Tipos de tokens de autenticação
-enum TokenType {
-  REFRESH // Token de renovação de acesso
-  RESET_PASSWORD // Token para reset de senha
-  EMAIL_VERIFICATION // Token para verificação de email
-}
-
 model Company {
-  id           String        @id @default(uuid())
-  cnpj         String        @unique // CNPJ único da empresa
-  fantasyName  String // Nome fantasia
-  socialReason String // Razão social
-  zipCode      String // CEP
-  address      String // Logradouro
-  number       String // Número
-  complement   String? // Complemento (opcional)
-  neighborhood String // Bairro
-  city         String // Cidade
-  state        String // UF (Estado)
-  phone        String // Telefone de contato
-  status       CompanyStatus @default(PENDING) // Status inicial: aguardando aprovação
-  createdAt    DateTime      @default(now()) // Data de criação do cadastro
-  updatedAt    DateTime      @updatedAt // Data da última atualização
-
-  // Relacionamentos
-  users     User[] // Usuários vinculados a esta empresa
-  documents Document[] // Documentos enviados por esta empresa
+  id                   String                       @id @default(uuid())
+  cnpj                 String                       @unique
+  fantasyName          String
+  socialReason         String
+  zipCode              String
+  address              String
+  number               String
+  complement           String?
+  neighborhood         String
+  city                 String
+  state                String
+  phone                String
+  status               CompanyStatus                @default(PENDING)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
   documentRequirements CompanyDocumentRequirement[]
+  documents            Document[]
+  simulations          Simulation[]
+  users                User[]
 
-  //  moduleAccess UserModuleAccess[]
-
-  // Simulador Marítimo
-  simulations Simulation[] // Simulações vinculadas a esta empresa
-
-  @@map("companies") // Nome da tabela no banco
+  @@map("companies")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String // Nome completo do usuário
-  email     String   @unique // Email único para login
-  password  String // Senha criptografada (bcrypt)
-  role      UserRole // Papel do usuário (ADMIN, SUPPLIER, EMPLOYEE)
-  companyId String? // ID da empresa (null para admins)
-  position  String? // Cargo do funcionário (EMPLOYEE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relacionamentos
-  company   Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  documents Document[] // Documentos enviados por este usuário
-  tokens    UserToken[] // Tokens de autenticação (refresh tokens)
-
+  id           String             @id @default(uuid())
+  name         String
+  email        String             @unique
+  password     String
+  role         UserRole
+  companyId    String?
+  position     String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  documents    Document[]
+  serviceCosts ServiceCost[]
+  simulations  Simulation[]
   moduleAccess UserModuleAccess[]
-
-  // Simulador Marítimo
-  serviceCosts ServiceCost[] // Histórico de alterações de custo criadas
-  simulations  Simulation[] // Simulações criadas
+  tokens       UserToken[]
+  company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
 
-// Tabela de tokens de autenticação
 model UserToken {
-  id        String    @id @default(uuid())
-  userId    String // ID do usuário dono do token
-  token     String    @unique // Hash do token
-  type      TokenType // Tipo do token
-  expiresAt DateTime // Data de expiração
-  revokedAt DateTime? // Data de revogação (null = ainda válido)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String    @id @default(uuid())
+  userId     String
+  token      String    @unique
+  type       TokenType
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  ipAddress  String?
+  userAgent  String?
+  lastUsedAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Metadados de segurança
-  ipAddress   String? // IP de onde o token foi gerado
-  userAgent   String? // User agent do navegador
-  lastUsedAt  DateTime? // Última vez que o token foi usado
-
-  // Relacionamentos
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type]) // Índice para buscar tokens por usuário e tipo
-  @@index([token, type]) // Índice para validação rápida de tokens
-  @@index([expiresAt]) // Índice para limpeza de tokens expirados
+  @@index([userId, type])
+  @@index([token, type])
+  @@index([expiresAt])
   @@map("user_tokens")
 }
 
 model Document {
   id              String         @id @default(uuid())
-  name            String 
-  fileType        String 
-  fileUrl         String 
+  name            String
+  fileType        String
+  fileUrl         String
   status          DocumentStatus @default(PENDING)
   rejectionReason String?
-  dateIssue       DateTime? 
-  dateExpiration  DateTime?
   uploadedAt      DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-
-  // Chaves estrangeiras
-  userId    String // ID do usuário que enviou
-  companyId String // ID da empresa dona do documento
-
-  // Relacionamentos
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  // Permissao por modulo
-
-  // Chave estrangeira para o tipo de documento (opcional para suportar documentos antigos)
-  documentTypeId Int?
-  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id])
-
-  // Versionamento: indica se é a versão mais recente do documento
-  isLatest       Boolean        @default(true)
+  userId          String
+  companyId       String
+  dateExpiration  DateTime?
+  dateIssue       DateTime?
+  documentTypeId  Int?
+  isLatest        Boolean        @default(true)
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType    DocumentType?  @relation(fields: [documentTypeId], references: [id])
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("documents")
 }
 
-// Tipos de Documentos (Definidos pelo Admin)
 model DocumentType {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique // Ex: CPF, RG, Contrato Social
-  description String?  // Descrição do que deve ser enviado
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  documents          Document[]
+  id                  Int                          @id @default(autoincrement())
+  name                String                       @unique
+  description         String?
+  active              Boolean                      @default(true)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
   companyRequirements CompanyDocumentRequirement[]
+  documents           Document[]
 
   @@map("document_types")
 }
 
-// Requisitos de Documentos por Empresa
 model CompanyDocumentRequirement {
-  id             Int      @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   companyId      String
   documentTypeId Int
-  isRequired     Boolean  @default(true) // Se é obrigatório para esta empresa
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isRequired     Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
 
-  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  documentType DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-
-  // Uma empresa só pode ter um registro de requisito por tipo de documento
   @@unique([companyId, documentTypeId])
   @@map("company_document_requirements")
 }
 
-// 1. Catálogo Técnico (As chaves hardcoded no código)
 model Permission {
-  id          Int     @id @default(autoincrement())
-  key         String  @unique // Ex: LOG_VIEW_FLEET
+  id          Int                  @id @default(autoincrement())
+  key         String               @unique
   description String?
-  category    String? // Ex: LOGISTICS
-
-  activities ActivityPermission[]
+  category    String?
+  activities  ActivityPermission[]
 
   @@map("permissions")
 }
 
-// 2. Macro-Módulos (O que aparece nos Cards grandes)
 model Module {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique 
+  id          Int                @id @default(autoincrement())
+  name        String             @unique
   description String?
-  route       String? 
-  icon        String? 
-  active      Boolean @default(true)
-
-  activities Activity[]
-  userAccess UserModuleAccess[]
+  active      Boolean            @default(true)
+  icon        String?
+  route       String?
+  activities  Activity[]
+  userAccess  UserModuleAccess[]
 
   @@map("modules")
 }
 
-// 3. Atividades (Funcionalidades de Negócio)
 model Activity {
-  id          Int     @id @default(autoincrement())
-  name        String // Ex: Visualizar Frota
-  description String? // Descrição da atividade (opcional)
+  id          Int                  @id @default(autoincrement())
+  name        String
   moduleId    Int
-  isMandatory Boolean @default(false) // Se true, ao ganhar o módulo, ganha a atividade
-
+  isMandatory Boolean              @default(false)
+  description String?
   module      Module               @relation(fields: [moduleId], references: [id])
   permissions ActivityPermission[]
   userAccess  UserActivityAccess[]
 
-  // VINCULO: O NOME DA ATIVIDADE DEVE SER ÚNICO DENTRO DE CADA MÓDULO.
   @@unique([moduleId, name], name: "moduleId_name")
-
   @@map("activities")
 }
 
-// 4. Tabela de Junção: Atividade <-> Permissão Técnica
 model ActivityPermission {
   activityId   Int
   permissionId Int
-
-  activity   Activity   @relation(fields: [activityId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
+  activity     Activity   @relation(fields: [activityId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
 
   @@id([activityId, permissionId])
   @@map("activity_permissions")
 }
 
-// 5. Tabela de Junção: Usuário <-> Módulo (O "Toggle" do Card)
 model UserModuleAccess {
-  id        String  @id @default(uuid())
-  userId    String
-  moduleId  Int
-  isEnabled Boolean @default(false)
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module Module @relation(fields: [moduleId], references: [id])
-
-  // Relacionamento com as exceções de atividades
+  id             String               @id @default(uuid())
+  userId         String
+  moduleId       Int
+  isEnabled      Boolean              @default(false)
   activityAccess UserActivityAccess[]
+  module         Module               @relation(fields: [moduleId], references: [id])
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, moduleId])
   @@map("user_module_access")
 }
 
-// 6. Tabela de Junção: Usuário <-> Atividade (Acesso Granular/Exceções)
 model UserActivityAccess {
-  id                 String  @id @default(uuid())
-  userModuleAccessId String // Vincula ao acesso do módulo pai
+  id                 String           @id @default(uuid())
+  userModuleAccessId String
   activityId         Int
-  isEnabled          Boolean @default(false)
-
-  parentAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
-  activity     Activity         @relation(fields: [activityId], references: [id])
+  isEnabled          Boolean          @default(false)
+  activity           Activity         @relation(fields: [activityId], references: [id])
+  parentAccess       UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
 
   @@unique([userModuleAccessId, activityId])
   @@map("user_activity_access")
 }
 
 model Faturamento {
-  id                     Int       @id @default(autoincrement())
-  cod_cli                String    @db.VarChar(50) // Código do Cliente
-  n_fatura               String    @db.VarChar(50) // Número da Fatura (Pode ser UNIQUE)
-  cliente                String    @db.VarChar(255)
-  endereco               String?   @db.VarChar(255) // ? = Opcional (Nullable)
-  bairro                 String?   @db.VarChar(100)
-  cidade                 String?   @db.VarChar(100)
-  uf                     String?   @db.VarChar(2)
-  cep                    String?   @db.VarChar(10)
-  cgc                    String?   @db.VarChar(20) // CNPJ/CPF
-  insc_esta              String?   @db.VarChar(50) // Inscrição Estadual
-  insc_munic             String?   @db.VarChar(50) // Inscrição Municipal
-  rps                    String?   @db.VarChar(50)
-  tp_nota                String?   @db.VarChar(20) // Tipo de Nota
-  vl_extenso             String?   @db.VarChar(255) // Valor por Extenso
-  valor_fatura           Decimal   @db.Decimal(10, 2) // Valor Total da Fatura
-  valor_servicos         Decimal   @db.Decimal(10, 2)
-  dt_fatura              DateTime  @db.Date // Data da Fatura
-  dt_vencimento          DateTime  @db.Date // Data de Vencimento
-  dt_entrada             DateTime? @db.Date // Data de Entrada
-  iss_cobrar             String?   @db.VarChar(5) // Indica se o ISS é cobrado (ex: 'S' ou 'N')
-  iss_valor              Decimal?  @db.Decimal(10, 2)
-  iss_percentual         Decimal?  @db.Decimal(5, 2)
-  iii_valor              Decimal?  @db.Decimal(10, 2)
-  tributacao_msg         String?   @db.Text // Mensagem de Tributação
-  observacao             String?   @db.Text
-  modalidade             String?   @db.VarChar(50)
-  despachante            String?   @db.VarChar(100)
-  valor_cif              Decimal?  @db.Decimal(16, 2)
-  n_da                   String?   @db.VarChar(50)
-  n_di                   String?   @db.VarChar(50)
-  n_lote                 String?   @db.VarChar(50)
-  n_conhecimento         String?   @db.VarChar(50)
-  n_documento            String?   @db.VarChar(50)
-  tx_dolar               Decimal?  @db.Decimal(10, 4) // Taxa do Dólar
-  nr_periodo_i           Int? // Número do Período Inicial (ex: mês 1)
-  nr_periodo_f           Int? // Número do Período Final (ex: mês 12)
-  dt_periodo_f           DateTime? @db.Date
-  qt_volumes             Int?
-  peso_bruto             Decimal?  @db.Decimal(10, 2)
-  m3                     Decimal?  @db.Decimal(10, 2)
-  quantidade             Int?
-  servico_id             String?   @db.VarChar(50)
-  servico                String?   @db.Text
-  valor                  Decimal?  @db.Decimal(10, 2) // Algum valor genérico? (se for o total, remova)
-  modalidade_txt         String?   @db.VarChar(100)
+  id             Int       @id @default(autoincrement())
+  cod_cli        String    @db.VarChar(50)
+  n_fatura       String    @db.VarChar(50)
+  cliente        String    @db.VarChar(255)
+  endereco       String?   @db.VarChar(255)
+  bairro         String?   @db.VarChar(100)
+  cidade         String?   @db.VarChar(100)
+  uf             String?   @db.VarChar(2)
+  cep            String?   @db.VarChar(10)
+  cgc            String?   @db.VarChar(20)
+  insc_esta      String?   @db.VarChar(50)
+  insc_munic     String?   @db.VarChar(50)
+  rps            String?   @db.VarChar(50)
+  tp_nota        String?   @db.VarChar(20)
+  vl_extenso     String?   @db.VarChar(255)
+  valor_fatura   Decimal   @db.Decimal(10, 2)
+  valor_servicos Decimal   @db.Decimal(10, 2)
+  dt_fatura      DateTime  @db.Date
+  dt_vencimento  DateTime  @db.Date
+  dt_entrada     DateTime? @db.Date
+  iss_cobrar     String?   @db.VarChar(5)
+  iss_valor      Decimal?  @db.Decimal(10, 2)
+  iss_percentual Decimal?  @db.Decimal(5, 2)
+  iii_valor      Decimal?  @db.Decimal(10, 2)
+  tributacao_msg String?
+  observacao     String?
+  modalidade     String?   @db.VarChar(50)
+  despachante    String?   @db.VarChar(100)
+  valor_cif      Decimal?  @db.Decimal(16, 2)
+  n_da           String?   @db.VarChar(50)
+  n_di           String?   @db.VarChar(50)
+  n_lote         String?   @db.VarChar(50)
+  n_conhecimento String?   @db.VarChar(50)
+  n_documento    String?   @db.VarChar(50)
+  tx_dolar       Decimal?  @db.Decimal(10, 4)
+  nr_periodo_i   Int?
+  nr_periodo_f   Int?
+  dt_periodo_f   DateTime? @db.Date
+  qt_volumes     Int?
+  peso_bruto     Decimal?  @db.Decimal(10, 2)
+  m3             Decimal?  @db.Decimal(10, 2)
+  quantidade     Int?
+  servico_id     String?   @db.VarChar(50)
+  servico        String?
+  valor          Decimal?  @db.Decimal(10, 2)
+  modalidade_txt String?   @db.VarChar(100)
 
   @@map("faturamento")
 }
 
-// ============================================
-// SIMULADOR MARÍTIMO - GESTÃO DE SERVIÇOS
-// ============================================
-
-// Tipo de cálculo do serviço
-enum ServiceCalculationType {
-  FIXED // Valor fixo (ex: R$ 500,00)
-  PERCENTAGE_CIF // Percentual sobre CIF BRL (ex: 0,35%)
-  PER_CONTAINER // Valor por container (ex: R$ 350 × qtd)
-  PER_TONNE // Valor por tonelada (ex: R$ 25 × toneladas)
-}
-
-// Catálogo de serviços disponíveis
 model Service {
-  id                String                   @id @default(uuid())
-  code              String                   @unique // Ex: "SRV-001"
-  name              String // Ex: "Armazenagem"
-  description       String? // Descrição do serviço
-  category          String? // Ex: "Operacional", "Administrativo", "Logística"
-  calculationType   ServiceCalculationType   @default(FIXED) // Tipo de cálculo
-  formulaExpression String? // Fórmula para exibição (ex: "0.35% do CIF", "R$ 350/container")
-  isActive          Boolean                  @default(true) // Permite desativar serviços sem deletar
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
-
-  // Relacionamentos
-  serviceCosts       ServiceCost[] // Histórico de custos ao longo do tempo
-  simulationServices SimulationService[] // Uso em simulações
+  id                 String                 @id @default(uuid())
+  code               String                 @unique
+  name               String
+  description        String?
+  category           String?
+  isActive           Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  calculationType    ServiceCalculationType @default(FIXED)
+  formulaExpression  String?
+  serviceCosts       ServiceCost[]
+  simulationServices SimulationService[]
 
   @@map("services")
 }
 
-// Tabela de custos padrão (histórico de preços ao longo do tempo)
 model ServiceCost {
   id         String    @id @default(uuid())
   serviceId  String
-  cost       Decimal   @db.Decimal(10, 2) // TAXA base (não valor final): 0.35 para %, 350 para valor fixo/unidade
-  validFrom  DateTime  @default(now()) // Data início de vigência
-  validUntil DateTime? // null = vigente atualmente
-  createdBy  String // userId que criou/alterou o custo
-  reason     String? // Motivo da alteração (ex: "Reajuste inflação")
+  cost       Decimal   @db.Decimal(10, 2)
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+  createdBy  String
+  reason     String?
   createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [createdBy], references: [id])
+  service    Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
-  // Relacionamentos
-  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [createdBy], references: [id])
-
-  @@index([serviceId, validUntil]) // Para buscar custo vigente rapidamente
+  @@index([serviceId, validUntil])
   @@map("service_costs")
 }
 
-// Status da simulação
-enum SimulationStatus {
-  DRAFT // Rascunho, em edição
-  APPROVED // Aprovada internamente
-  SENT // Enviada ao cliente
-  ACCEPTED // Cliente aceitou
-  REJECTED // Cliente rejeitou
-}
-
-// Simulação de custo EADI (com versionamento)
 model Simulation {
-  id               String           @id @default(uuid())
-  simulationNumber String // Ex: "SIM-20241215-0001" (fixo para todas versões)
-  version          Int              @default(1) // Versão sequencial (1, 2, 3...)
-  displayNumber    String // Ex: "SIM-001-V1" (para mostrar ao usuário)
+  id               String              @id @default(uuid())
+  simulationNumber String
+  version          Int                 @default(1)
+  displayNumber    String
+  baseSimulationId String?
+  isCurrentVersion Boolean             @default(true)
+  versionReason    String?
+  supplierId       String
+  cifUsd           Decimal             @db.Decimal(12, 2)
+  dollarRate       Decimal             @db.Decimal(8, 4)
+  cifBrl           Decimal             @db.Decimal(12, 2)
+  tonnes           Decimal?            @db.Decimal(10, 3)
+  cntrCount        Int?
+  cntrType         String?
+  storageCost      Decimal?            @db.Decimal(10, 2)
+  transportCost    Decimal?            @db.Decimal(10, 2)
+  discount         Decimal?            @db.Decimal(10, 2)
+  totalServices    Decimal?            @db.Decimal(12, 2)
+  totalGeneral     Decimal?            @db.Decimal(12, 2)
+  status           SimulationStatus    @default(DRAFT)
+  createdBy        String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  services         SimulationService[]
+  baseSimulation   Simulation?         @relation("SimulationVersions", fields: [baseSimulationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  versions         Simulation[]        @relation("SimulationVersions")
+  user             User                @relation(fields: [createdBy], references: [id])
+  supplier         Company             @relation(fields: [supplierId], references: [id])
 
-  // Rastreamento de versões
-  baseSimulationId String? // ID da simulação que originou esta versão (null na V1)
-  isCurrentVersion Boolean          @default(true) // true apenas na versão mais recente
-  versionReason    String? // Motivo da criação desta versão
-
-  // Dados do cliente
-  supplierId String // Empresa/Fornecedor
-
-  // Dados da carga
-  cifUsd     Decimal  @db.Decimal(12, 2) // Valor CIF em dólares
-  dollarRate Decimal  @db.Decimal(8, 4) // Taxa do dólar
-  cifBrl     Decimal  @db.Decimal(12, 2) // Valor CIF em reais (calculado)
-  tonnes     Decimal? @db.Decimal(10, 3) // Toneladas
-  cntrCount  Int? // Quantidade de containers
-  cntrType   String? // Tipo do container (ex: "20", "40")
-
-  // Custos adicionais
-  storageCost   Decimal? @db.Decimal(10, 2) // Armazenagem
-  transportCost Decimal? @db.Decimal(10, 2) // Transporte
-  discount      Decimal? @db.Decimal(10, 2) // Desconto aplicado
-
-  // Totalizadores (calculados)
-  totalServices Decimal? @db.Decimal(12, 2) // Soma de todos serviços
-  totalGeneral  Decimal? @db.Decimal(12, 2) // Total geral com impostos
-
-  // Status e controle
-  status    SimulationStatus @default(DRAFT)
-  createdBy String // ID do usuário que criou
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  // Relacionamentos
-  supplier Company @relation(fields: [supplierId], references: [id])
-  user     User    @relation(fields: [createdBy], references: [id])
-  services SimulationService[] // Serviços aplicados nesta simulação
-
-  // Auto-relação para histórico de versões
-  baseSimulation Simulation?  @relation("SimulationVersions", fields: [baseSimulationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  versions       Simulation[] @relation("SimulationVersions")
-
-  @@unique([simulationNumber, version]) // Garante unicidade da versão
-  @@index([supplierId, isCurrentVersion]) // Para buscar versão atual por cliente
+  @@unique([simulationNumber, version])
+  @@index([supplierId, isCurrentVersion])
   @@map("simulations")
 }
 
-// Tipos de custo aplicado na simulação
-enum ServiceCostType {
-  DEFAULT // Usando custo padrão da tabela
-  CUSTOM // Custo customizado pelo usuário
-  ZEROED // Serviço zerado (não será usado)
-}
-
-// Serviços aplicados na simulação (com custos customizados ou zerados)
 model SimulationService {
   id           String          @id @default(uuid())
   simulationId String
   serviceId    String
-  costType     ServiceCostType @default(DEFAULT) // Tipo de custo aplicado
-  originalCost Decimal         @db.Decimal(10, 2) // Custo da tabela no momento
-  appliedCost  Decimal         @db.Decimal(10, 2) // Custo efetivamente aplicado
-  customReason String? // Motivo se for customizado (obrigatório se costType=CUSTOM)
+  costType     ServiceCostType @default(DEFAULT)
+  originalCost Decimal         @db.Decimal(10, 2)
+  appliedCost  Decimal         @db.Decimal(10, 2)
+  customReason String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  service      Service         @relation(fields: [serviceId], references: [id])
+  simulation   Simulation      @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 
-  // Relacionamentos
-  simulation Simulation @relation(fields: [simulationId], references: [id], onDelete: Cascade)
-  service    Service    @relation(fields: [serviceId], references: [id])
-
-  @@unique([simulationId, serviceId]) // Um serviço só pode aparecer 1x por simulação
+  @@unique([simulationId, serviceId])
   @@map("simulation_services")
+}
+
+enum UserRole {
+  ADMIN
+  SUPPLIER
+  EMPLOYEE
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CompanyStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  PENDING_ACTIVE
+}
+
+enum TokenType {
+  REFRESH
+  RESET_PASSWORD
+  EMAIL_VERIFICATION
+}
+
+enum ServiceCalculationType {
+  FIXED
+  PERCENTAGE_CIF
+  PER_CONTAINER
+  PER_TONNE
+}
+
+enum SimulationStatus {
+  DRAFT
+  APPROVED
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum ServiceCostType {
+  DEFAULT
+  CUSTOM
+  ZEROED
 }
