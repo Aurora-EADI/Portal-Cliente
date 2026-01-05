@@ -77,42 +77,43 @@ export function FaturamentoPage() {
   };
 
   // Filtragem no frontend (após receber dados da API)
-  const filteredData = useMemo(() => {
-    if (!data) return [];
+  // Filtragem no frontend (após receber dados da API)
+const filteredData = useMemo(() => {
+  if (!data) return [];
 
-    return data.filter((item) => {
-      const matchCliente = !filters.cliente ||
-        item.cliente.toLowerCase().includes(filters.cliente.toLowerCase());
+  return data.filter((item) => {
+    const matchCliente = !filters.cliente ||
+      (item.cliente && item.cliente.toLowerCase().includes(filters.cliente.toLowerCase()));
 
-      const matchRps = !filters.rps ||
-        item.rps.toLowerCase().includes(filters.rps.toLowerCase());
+    const matchRps = !filters.rps ||
+      (item.rps && String(item.rps).toLowerCase().includes(filters.rps.toLowerCase()));
 
-      const matchFatura = !filters.n_fatura ||
-        item.n_fatura.toLowerCase().includes(filters.n_fatura.toLowerCase());
+    const matchFatura = !filters.n_fatura ||
+      (item.n_fatura && item.n_fatura.toLowerCase().includes(filters.n_fatura.toLowerCase()));
 
-      const matchDI = !filters.n_di ||
-        item.n_di?.toLowerCase().includes(filters.n_di.toLowerCase());
+    const matchDI = !filters.n_di ||
+      (item.n_di && item.n_di.toLowerCase().includes(filters.n_di.toLowerCase()));
 
-      const matchLote = !filters.n_lote ||
-        item.n_lote?.toLowerCase().includes(filters.n_lote.toLowerCase());
+    const matchLote = !filters.n_lote ||
+      (item.n_lote && item.n_lote.toLowerCase().includes(filters.n_lote.toLowerCase()));
 
-      const modalidadesItem = Array.isArray(item.modalidade_txt)
-        ? item.modalidade_txt.map(m => m.toLowerCase())
-        : (item.modalidade_txt ?? "")
-          .toLowerCase()
-          .split(",")
-          .map(s => s.trim());
+    const modalidadesItem = Array.isArray(item.modalidade_txt)
+      ? item.modalidade_txt.map(m => m.toLowerCase())
+      : (item.modalidade_txt ?? "")
+        .toLowerCase()
+        .split(",")
+        .map(s => s.trim());
 
-      const matchModalidade =
-        filters.modalidade_txt.length === 0 ||
-        filters.modalidade_txt.some((mod) =>
-          modalidadesItem.includes(mod.toLowerCase())
-        );
+    const matchModalidade =
+      filters.modalidade_txt.length === 0 ||
+      filters.modalidade_txt.some((mod) =>
+        modalidadesItem.includes(mod.toLowerCase())
+      );
 
-      return matchCliente && matchFatura && matchRps &&
-        matchDI && matchLote && matchModalidade;
-    });
-  }, [data, filters]);
+    return matchCliente && matchFatura && matchRps &&
+      matchDI && matchLote && matchModalidade;
+  });
+}, [data, filters]);
 
   // Função chamada SOMENTE quando usuário clica em "Buscar Dados"
   const handleFetch = () => {
@@ -143,55 +144,65 @@ export function FaturamentoPage() {
 
   // Métricas calculadas com base nos dados filtrados
   const metricas = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) {
-      return {
-        totalFaturado: 0,
-        quantidadeRPS: 0,
-        totalISS: 0,
-        totalOutrosServicos: 0
-      };
-    }
-
-    // Total Faturado: soma de todos os valores de fatura
-    const totalFaturado = filteredData.reduce((acc, item) => {
-      const valorFaturado = parseNumericValue(item.valor_fatura);
-
-      // Verifica se já existe este valor de fatura no acumulador
-      if (!acc.faturas.has(item.valor_fatura)) {
-        acc.faturas.add(item.valor_fatura);
-        acc.total += valorFaturado;
-      }
-
-      return acc;
-    }, { total: 0, faturas: new Set() }).total;
-
-    // Quantidade RPS: conta quantos registros únicos têm RPS preenchido
-    const quantidadeRPS = new Set(
-      filteredData
-        .map(item => item.rps)
-        .filter(rps => rps && String(rps).trim() !== "")
-    ).size;
-
-    // Total ISS 5%: soma dos valores de ISS
-    const totalISS = filteredData.reduce((acc, item) => {
-      const valorISS = parseNumericValue(item.iss_valor);
-      return acc + valorISS;
-    }, 0);
-
-    // Total Outros Serviços: quantidade * valor
-    const totalOutrosServicos = filteredData.reduce((acc, item) => {
-      const quantidade = parseNumericValue(item.quantidade);
-      const valor = parseNumericValue(item.valor);
-      return acc + (quantidade * valor);
-    }, 0);
-
+  if (!filteredData || filteredData.length === 0) {
     return {
-      totalFaturado,
-      quantidadeRPS,
-      totalISS,
-      totalOutrosServicos
+      totalFaturado: 0,
+      quantidadeRPS: 0,
+      totalISS: 0,
+      totalOutrosServicos: 0
     };
-  }, [filteredData]);
+  }
+
+  // Quantidade RPS: conta quantos registros únicos têm RPS preenchido
+  const quantidadeRPS = new Set(
+    filteredData
+      .map(item => item.rps)
+      .filter(rps => rps && String(rps).trim() !== "")
+  ).size;
+
+  // Criar um Map para armazenar valores únicos por RPS
+  const rpsMap = new Map();
+
+  filteredData.forEach(item => {
+    const rps = item.rps && String(item.rps).trim() !== "" ? item.rps : null;
+    
+    // Se o RPS já existe no Map, pula este registro
+    if (rps && rpsMap.has(rps)) {
+      return;
+    }
+    
+    // Se o RPS é válido, adiciona ao Map
+    if (rps) {
+      rpsMap.set(rps, {
+        valor_fatura: parseNumericValue(item.valor_fatura),
+        iss_valor: parseNumericValue(item.iss_valor)
+      });
+    }
+  });
+
+  // Total Faturado: soma dos valores de fatura sem RPS repetidos
+  const totalFaturado = Array.from(rpsMap.values()).reduce((acc, item) => {
+    return acc + item.valor_fatura;
+  }, 0);
+
+  // Total ISS: soma dos valores de ISS sem RPS repetidos
+  const totalISS = Array.from(rpsMap.values()).reduce((acc, item) => {
+    return acc + item.iss_valor;
+  }, 0);
+
+  // Total Outros Serviços: soma (quantidade * valor) de TODOS os registros (inclui RPS repetidos)
+  const totalOutrosServicos = filteredData.reduce((acc, item) => {
+    const valor = parseNumericValue(item.valor);
+    return acc + (valor);
+  }, 0);
+
+  return {
+    totalFaturado,
+    quantidadeRPS,
+    totalISS,
+    totalOutrosServicos
+  };
+}, [filteredData]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
