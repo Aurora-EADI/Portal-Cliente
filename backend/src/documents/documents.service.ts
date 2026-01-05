@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { PrismaPostgresService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
@@ -6,6 +6,8 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 
 @Injectable()
 export class DocumentsService {
+    private readonly logger = new Logger(DocumentsService.name);
+
     constructor(
         private prisma: PrismaPostgresService,
         private minio: MinioService,
@@ -109,7 +111,13 @@ export class DocumentsService {
 
     async getFileUrl(id: string) {
         const document = await this.prisma.document.findUnique({ where: { id } });
-        if (!document) throw new Error('Documento não encontrado');
-        return this.minio.getFileUrl(document.fileUrl);
+        if (!document) throw new NotFoundException('Documento não encontrado no banco de dados');
+
+        try {
+            return await this.minio.getFileUrl(document.fileUrl);
+        } catch (error) {
+            this.logger.error(`Erro ao gerar URL do MinIO para o arquivo ${document.fileUrl}:`, error);
+            throw new InternalServerErrorException('Erro ao recuperar o arquivo do servidor de armazenamento (MinIO)');
+        }
     }
 }

@@ -231,9 +231,10 @@ export function AdminDashboard() {
     try {
       const url = await documentService.getDownloadUrl(docId);
       window.open(url, '_blank');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao fazer download:', error);
-      alert('Erro ao fazer download do documento');
+      const message = error.message || 'Erro ao fazer download do documento';
+      alert(message);
     }
   };
 

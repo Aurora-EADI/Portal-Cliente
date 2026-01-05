@@ -14,7 +14,7 @@ export class MinioService implements OnModuleInit {
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
       useSSL: process.env.MINIO_USE_SSL === 'true',
       accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
     });
 
     // Cliente para geração de URLs públicas (presigned URLs)
@@ -27,7 +27,7 @@ export class MinioService implements OnModuleInit {
       port: externalPort,
       useSSL: process.env.MINIO_USE_SSL === 'true',
       accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+      secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
     });
 
     // Criar bucket se não existir
