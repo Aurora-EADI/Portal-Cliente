@@ -126,10 +126,18 @@ export function Login({ onRegisterClick }: LoginProps) {
 
           <Card className="p-8 shadow-lg border border-gray-100 rounded-2xl">
             <CardHeader className="p-0 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Bem-vindo de volta</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Bem-vindo(a)</h2>
               <p className="text-gray-500 text-sm">
-                Acesse sua conta para gerenciar operações logísticas
+                Informe suas credenciais para acessar o sistema.
               </p>
+
+              {/* Badge de Desenvolvimento */}
+              {process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev' && (
+                <div className="mt-4 bg-yellow-400 text-red-900 text-xs font-bold px-3 py-2 rounded-md uppercase tracking-wide shadow-md flex items-center justify-center gap-2 mx-auto w-fit">
+                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                  AMBIENTE DE DESENVOLVIMENTO
+                </div>
+              )}
             </CardHeader>
 
             <CardContent className="p-0">

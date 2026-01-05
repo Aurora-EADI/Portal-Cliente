@@ -21,14 +21,16 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
 
   return (
     <header
-      className="
+      className={`
         w-full
-        bg-gradient-to-r from-primary-600 to-primary-500
+        ${process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev'
+          ? 'bg-gradient-to-r from-red-700 to-red-600 border-b border-red-800/50'
+          : 'bg-gradient-to-r from-orange-600 to-orange-500 border-b border-orange-700/40'
+        }
         px-4 md:px-6 py-2.5
         sticky top-0 z-20
-        border-b border-primary-700/40
         shadow-sm
-      "
+      `}
     >
       <div className="flex items-center justify-between h-12">
 
@@ -38,6 +40,11 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
           <span className="text-white font-semibold tracking-wide hidden md:block">
             {pageTitle}
           </span>
+          {process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev' && (
+            <span className="bg-yellow-400 text-red-900 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wide shadow-lg">
+              DESENVOLVIMENTO
+            </span>
+          )}
         </div>
 
         {/* Usuário + logout */}
