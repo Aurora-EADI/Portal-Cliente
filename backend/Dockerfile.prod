@@ -1,0 +1,154 @@
+# # Build stage
+# FROM node:20-bullseye-slim AS builder
+
+# WORKDIR /app
+
+# COPY package*.json ./
+
+# # Configurar npm para ignorar certificados SSL
+# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# ENV NPM_CONFIG_STRICT_SSL=false
+
+# # Instalar todas as dependências (incluindo devDependencies para build)
+# RUN npm ci
+
+# # Copiar código fonte
+# COPY . .
+
+# # Gerar clientes Prisma
+# RUN npx prisma generate --schema=prisma/postgres/schema.prisma
+# RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
+
+# # Build da aplicação
+# RUN npm run build
+
+# # Compilar o script de seed
+# RUN npx tsc prisma/postgres/seed.ts --esModuleInterop --module nodenext --outDir dist/seed
+
+# # Production stage
+# FROM node:20-bullseye-slim AS production
+
+# WORKDIR /app
+
+# # Instalar OpenSSL e certificados CA
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#     openssl \
+#     ca-certificates && \
+#     rm -rf /var/lib/apt/lists/*
+
+# # Configurar npm
+# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# ENV NPM_CONFIG_STRICT_SSL=false
+
+# # Copiar package files
+# COPY package*.json ./
+
+# # Instalar apenas dependências de produção
+# RUN npm ci --only=production
+
+# # Copiar arquivos buildados
+# COPY --from=builder /app/dist ./dist
+# COPY --from=builder /app/prisma ./prisma
+# COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# # Configurações de produção
+# ENV NODE_ENV=production
+
+# EXPOSE 5000
+
+# CMD ["node", "dist/src/main.js"]
+
+# Build stage
+FROM node:20-bullseye-slim AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Configurar npm e Node.js para ignorar certificados SSL (apenas para build)
+# NOTA: Necessário apenas para npm install e Prisma generate durante build
+ENV NPM_CONFIG_STRICT_SSL=false
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+# Instalar todas as dependências (incluindo devDependencies para build)
+RUN npm ci
+
+# Copiar código fonte
+COPY . .
+
+# Gerar clientes Prisma
+RUN npx prisma generate --schema=prisma/postgres/schema.prisma
+# DEPRECATED: Prisma SQL Server substituído por SqlServerService (mssql/tedious)
+# RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
+
+# Build da aplicação
+RUN npm run build
+
+# Compilar o script de seed
+RUN npx tsc prisma/postgres/seed.ts --esModuleInterop --module nodenext --outDir dist/seed
+
+# Production stage
+FROM node:20-bullseye-slim AS production
+
+WORKDIR /app
+
+# Instalar OpenSSL e configurar para aceitar protocolos legacy (TLS 1.0/1.1)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Criar configuração OpenSSL que aceita TLS legacy (SQL Server 2008 R2)
+RUN cat > /etc/ssl/openssl_legacy.cnf << 'EOL'
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+ssl_conf = ssl_sect
+
+[provider_sect]
+default = default_sect
+legacy = legacy_sect
+
+[default_sect]
+activate = 1
+
+[legacy_sect]
+activate = 1
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+MinProtocol = TLSv1
+CipherString = DEFAULT@SECLEVEL=0
+EOL
+
+# Variáveis de ambiente para OpenSSL legacy
+# Configuração granular de TLS para SQL Server 2008 R2
+ENV OPENSSL_CONF=/etc/ssl/openssl_legacy.cnf
+# REMOVIDO: NODE_TLS_REJECT_UNAUTHORIZED=0 (inseguro - substituído por configurações granulares no SqlServerService)
+# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV NPM_CONFIG_STRICT_SSL=false
+
+# Copiar package files
+COPY package*.json ./
+
+# Instalar apenas dependências de produção
+RUN npm ci --only=production
+
+# Copiar arquivos buildados
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Configurações de produção
+ENV NODE_ENV=production
+
+EXPOSE 5000
+
+CMD ["node", "dist/src/main.js"]

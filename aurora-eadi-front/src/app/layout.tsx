@@ -1,19 +1,15 @@
-import './globals.css'
-import { Providers } from './providers'
+import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata = {
-  title: 'Sua App',
-  description: 'Descrição da app',
-}
+  title: "Aurora EADI",
+  description: "Descrição da app",
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>
