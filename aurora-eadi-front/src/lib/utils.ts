@@ -73,3 +73,29 @@ export function formatNumber(value: number | string): string {
     maximumFractionDigits: 0,
   }).format(numValue);
 }
+
+/**
+ * Formata uma data (string ISO ou Date) para o formato brasileiro (dd/mm/yyyy)
+ * sem problemas de timezone.
+ *
+ * @param dateString - String de data ISO (ex: "2026-06-15" ou "2026-06-15T00:00:00.000Z") ou objeto Date
+ * @returns String formatada no padrão brasileiro (ex: "15/06/2026")
+ * @example
+ * formatDateBR("2026-06-15T00:00:00.000Z") // "15/06/2026"
+ * formatDateBR("2026-06-15") // "15/06/2026"
+ */
+export function formatDateBR(dateString?: string | Date | null): string {
+  if (!dateString) return '-';
+
+  // Se for um objeto Date, converte para string ISO
+  const dateStr = dateString instanceof Date
+    ? dateString.toISOString()
+    : dateString;
+
+  // Extrai apenas a parte da data (YYYY-MM-DD) ignorando timezone
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+
+  // Retorna formatado como dd/mm/yyyy
+  return `${day}/${month}/${year}`;
+}

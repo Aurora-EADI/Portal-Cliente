@@ -171,7 +171,11 @@ export function AdminDashboard() {
 
     let status: 'OK' | 'ALERT' | 'EXPIRED' | undefined;
 
-    for (const doc of docs) {
+    // Filtra documentos rejeitados antes de verificar validade
+    // Documentos rejeitados não devem influenciar o status de validade
+    const nonRejectedDocs = docs.filter(d => d.status !== DocumentStatus.REJECTED);
+
+    for (const doc of nonRejectedDocs) {
       const s = getValidityStatus(doc.dateExpiration);
       if (s === 'EXPIRED') {
         status = 'EXPIRED';

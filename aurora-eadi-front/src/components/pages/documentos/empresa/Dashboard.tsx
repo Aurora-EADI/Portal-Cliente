@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { DocumentStatus, DocumentType } from '@/types';
 import { supplierRequirementsService, documentTypeService } from '@/services/api';
 import { Header } from '@/components/layout/Header';
+import { formatDateBR } from '@/lib/utils';
 
 export function SupplierDashboard() {
   const { currentUser } = useAuthContext();
@@ -254,13 +255,13 @@ export function SupplierDashboard() {
                       {doc.name}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                      {formatDateBR(doc.uploadedAt)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {doc.dateIssue ? new Date(doc.dateIssue).toLocaleDateString('pt-BR') : '-'}
+                      {formatDateBR(doc.dateIssue)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {doc.dateExpiration ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR') : '-'}
+                      {formatDateBR(doc.dateExpiration)}
                     </td>
                     <td className="px-6 py-4">
                       <Badge status={doc.status} context="document" />

@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './App/app.module';
 
 async function bootstrap() {
@@ -23,6 +24,17 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api');
+
+  // Configuração do Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Portal Aurora API')
+    .setDescription('Documentação da API do Portal Aurora')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3333;
 

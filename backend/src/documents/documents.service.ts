@@ -3,6 +3,8 @@ import { PrismaPostgresService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { OverdueDocumentsQueryDto } from './dto/overdue-documents-query.dto';
+import { Prisma } from '@prisma/client-postgres';
 
 @Injectable()
 export class DocumentsService {
@@ -122,5 +124,106 @@ export class DocumentsService {
             this.logger.error(`Erro ao gerar URL do MinIO para o arquivo ${document.fileUrl}:`, error);
             throw new InternalServerErrorException('Erro ao recuperar o arquivo do servidor de armazenamento (MinIO)');
         }
+    }
+
+    async findOverdueDocuments(query: OverdueDocumentsQueryDto) {
+        const { page = 1, limit = 10, companyId, sortBy = 'dateExpiration', sortOrder = 'asc', search } = query;
+        const skip = (page - 1) * limit;
+
+        // Construir cláusula WHERE
+        const where: Prisma.DocumentWhereInput = {
+            dateExpiration: {
+                lt: new Date(), // Menor que a data atual (atrasados)
+            },
+            status: {
+                not: 'REJECTED', // Não mostrar documentos rejeitados
+            },
+            isLatest: true, // Apenas versões mais recentes
+        };
+
+        // Filtro por empresa (opcional)
+        if (companyId) {
+            where.companyId = companyId;
+        }
+
+        // Filtro de busca (opcional)
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { company: { fantasyName: { contains: search, mode: 'insensitive' } } },
+                { documentType: { name: { contains: search, mode: 'insensitive' } } },
+            ];
+        }
+
+        // Construir cláusula ORDER BY
+        const orderBy: Prisma.DocumentOrderByWithRelationInput = {};
+        if (sortBy === 'dateExpiration') {
+            orderBy.dateExpiration = sortOrder;
+        } else if (sortBy === 'uploadedAt') {
+            orderBy.uploadedAt = sortOrder;
+        } else if (sortBy === 'name') {
+            orderBy.name = sortOrder;
+        }
+
+        // Executar queries em paralelo para otimização
+        const [documents, total] = await Promise.all([
+            this.prisma.document.findMany({
+                where,
+                include: {
+                    company: {
+                        select: {
+                            id: true,
+                            fantasyName: true,
+                            cnpj: true,
+                            city: true,
+                            state: true,
+                        },
+                    },
+                    documentType: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy,
+                skip,
+                take: limit,
+            }),
+            this.prisma.document.count({ where }),
+        ]);
+
+        // Calcular informações de paginação
+        const totalPages = Math.ceil(total / limit);
+
+        // Calcular quantos dias de atraso
+        const documentsWithDelay = documents.map(doc => {
+            const daysOverdue = doc.dateExpiration
+                ? Math.floor((new Date().getTime() - doc.dateExpiration.getTime()) / (1000 * 60 * 60 * 24))
+                : 0;
+            return {
+                ...doc,
+                daysOverdue,
+            };
+        });
+
+        return {
+            data: documentsWithDelay,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1,
+            },
+        };
     }
 }

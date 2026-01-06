@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Document, DocumentStatus, Company } from '@/types';
 import { FileText, X, Loader2, AlertCircle, Download } from 'lucide-react';
+import { formatDateBR } from '@/lib/utils';
 
 interface DocumentsHistoryModalProps {
   open: boolean;
@@ -279,7 +280,7 @@ export function DocumentsHistoryModal({
                     >
                       <div className="col-span-2">
                         <div className="font-medium text-sm text-foreground">
-                          {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                          {formatDateBR(doc.uploadedAt)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(doc.uploadedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -287,15 +288,11 @@ export function DocumentsHistoryModal({
                       </div>
 
                       <span className="col-span-2 text-sm text-muted-foreground">
-                        {doc.dateIssue
-                          ? new Date(doc.dateIssue).toLocaleDateString('pt-BR')
-                          : '-'}
+                        {formatDateBR(doc.dateIssue)}
                       </span>
 
                       <span className="col-span-2 text-sm text-muted-foreground">
-                        {doc.dateExpiration
-                          ? new Date(doc.dateExpiration).toLocaleDateString('pt-BR')
-                          : '-'}
+                        {formatDateBR(doc.dateExpiration)}
                       </span>
 
                       <div className="col-span-4 pr-4">
