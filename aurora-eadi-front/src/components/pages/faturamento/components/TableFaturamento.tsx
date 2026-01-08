@@ -28,6 +28,7 @@ interface Props {
   data: FaturamentoDetalhado[];
   isLoading: boolean;
   itemsPerPage?: number;
+  onVisibleColumnsChange?: (columns: ColumnConfig[]) => void;
 }
 
 type GroupedData = {
@@ -86,6 +87,8 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "pes_bruto", label: "Peso Bruto", visible: false, width: 120, minWidth: 100 },
   { id: "m3", label: "M3", visible: false, width: 120, minWidth: 100 },
   { id: "servico_id", label: "Servico ID", visible: false, width: 120, minWidth: 100 },
+  { id: "quantidade", label: "Quantidade", visible: false, width: 200, minWidth: 100 },
+  { id: "servico", label: "Serviço", visible: false, width: 200, minWidth: 100 },
 ];
 
 const SKELETON_ROWS_COUNT = 10;
@@ -267,7 +270,7 @@ interface ResizableHeaderProps {
 // 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
 const ResizableHeader = React.memo(({ column, isResizing, onMouseDown }: ResizableHeaderProps) => (
   <TableHead
-    className="p-2 whitespace-nowrap font-semibold relative group select-none"
+    className="p-2 whitespace-nowrap font-semibold relative group select-none bg-gray-100"
     style={{ width: `${column.width}px`, minWidth: `${column.minWidth}px` }}
   >
     <div className="flex items-center justify-between pr-2">
@@ -324,7 +327,7 @@ const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalIte
   </div>
 ));
 
-export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
+export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisibleColumnsChange }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
@@ -368,6 +371,13 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     [columns]
   );
 
+  // Notifica o componente pai sempre que as colunas visíveis mudarem
+  useEffect(() => {
+    if (onVisibleColumnsChange) {
+      onVisibleColumnsChange(visibleColumns);
+    }
+  }, [visibleColumns, onVisibleColumnsChange]);
+
   const toggleRow = useCallback((key: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
@@ -387,6 +397,17 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
       )
     );
   }, []);
+
+  const toggleAllColumns = useCallback((checked: boolean) => {
+    setColumns(prev =>
+      prev.map(col => ({ ...col, visible: checked }))
+    );
+  }, []);
+
+  const allColumnsVisible = useMemo(() =>
+    columns.every(col => col.visible),
+    [columns]
+  );
 
   const handleMouseDown = useCallback((e: React.MouseEvent, columnId: string) => {
     e.preventDefault();
@@ -495,6 +516,15 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Exibir Colunas</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={allColumnsVisible}
+              onCheckedChange={toggleAllColumns}
+              onSelect={(e) => e.preventDefault()}
+              className="font-semibold"
+            >
+              Selecionar Todas
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
             {columns.map(column => (
               <DropdownMenuCheckboxItem
                 key={column.id}
@@ -516,9 +546,9 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
 
         {data.length > 0 && (
           <>
-            <div className="overflow-auto rounded border max-h-[70vh]">
+            <div className="overflow-auto rounded border max-h-[90vh]">
               <Table className="text-xs w-full">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-20"    >
                   <TableRow className="bg-gray-100">
                     <TableHead className="p-2 w-8 sticky left-0 bg-gray-100 z-10"></TableHead>
                     {visibleColumns.map((column) => (

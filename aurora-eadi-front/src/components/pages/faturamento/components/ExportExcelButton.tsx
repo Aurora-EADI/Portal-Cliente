@@ -4,12 +4,20 @@ import { Download, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { useState } from "react";
+import { toast } from "sonner";
+
+interface ColumnConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+}
 
 interface Props {
   data: FaturamentoDetalhado[];
   disabled?: boolean;
   dt_fatura_inicio?: string;
   dt_fatura_fim?: string;
+  visibleColumns?: ColumnConfig[];
 }
 
 export function ExportExcelButton({
@@ -17,6 +25,7 @@ export function ExportExcelButton({
   disabled,
   dt_fatura_inicio,
   dt_fatura_fim,
+  visibleColumns,
 }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,7 +67,7 @@ export function ExportExcelButton({
   // Função principal agora inclui um delay
   const exportToExcel = async () => {
     if (!data || data.length === 0) {
-      alert("Não há dados para exportar.");
+      toast.error("Não há dados para exportar.");
       return;
     }
 
@@ -72,22 +81,44 @@ export function ExportExcelButton({
       await new Promise(resolve => setTimeout(resolve, 10));
 
       // 3. Início do trabalho pesado (Geração da Planilha)
+      // Se houver colunas visíveis especificadas, filtrar apenas essas colunas
       const formatted = data.map((item) => {
         const row: Record<string, any> = {};
 
-        Object.entries(item).forEach(([key, val]) => {
-          if (isDate(val)) {
-            row[key] = val.toLocaleDateString("pt-BR");
-          } else if (
-            typeof val === "string" &&
-            val.includes("-") &&
-            !isNaN(Date.parse(val))
-          ) {
-            row[key] = parseLocalDate(val);
-          } else {
-            row[key] = val ?? "";
-          }
-        });
+        // Se visibleColumns foi fornecido, exportar apenas colunas visíveis
+        if (visibleColumns && visibleColumns.length > 0) {
+          visibleColumns.forEach((col) => {
+            const key = col.id as keyof FaturamentoDetalhado;
+            const val = item[key];
+
+            if (isDate(val)) {
+              row[col.label] = val.toLocaleDateString("pt-BR");
+            } else if (
+              typeof val === "string" &&
+              val.includes("-") &&
+              !isNaN(Date.parse(val))
+            ) {
+              row[col.label] = parseLocalDate(val);
+            } else {
+              row[col.label] = val ?? "";
+            }
+          });
+        } else {
+          // Caso contrário, exportar todas as colunas (comportamento padrão)
+          Object.entries(item).forEach(([key, val]) => {
+            if (isDate(val)) {
+              row[key] = val.toLocaleDateString("pt-BR");
+            } else if (
+              typeof val === "string" &&
+              val.includes("-") &&
+              !isNaN(Date.parse(val))
+            ) {
+              row[key] = parseLocalDate(val);
+            } else {
+              row[key] = val ?? "";
+            }
+          });
+        }
 
         return row;
       });
@@ -126,9 +157,10 @@ export function ExportExcelButton({
 
       // 4. Download da planilha (síncrono)
       XLSX.writeFile(workbook, `${fileName}.xlsx`);
+      toast.success("Planilha exportada com sucesso!");
     } catch (error) {
       console.error("Erro ao exportar para Excel:", error);
-      alert("Ocorreu um erro ao gerar a planilha.");
+      toast.error("Ocorreu um erro ao gerar a planilha.");
     } finally {
       // 5. Desativa o estado de loading
       setIsLoading(false);

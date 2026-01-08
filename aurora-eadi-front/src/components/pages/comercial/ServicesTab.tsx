@@ -32,6 +32,7 @@ import {
 import { useServiceCostCurrent } from '@/hooks/useServices';
 import { serviceCostService } from '@/services/serviceService';
 import { formatCurrency, formatPercent } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface LocalService {
   serviceId: string;
@@ -246,7 +247,7 @@ export function ServicesTab({
 
     // Validation - if rate is different from default, reason is required
     if (rateValue !== defaultRate && !customReason.trim()) {
-      alert('Por favor, informe o motivo da customização');
+      toast.error('Por favor, informe o motivo da customização');
       return;
     }
 

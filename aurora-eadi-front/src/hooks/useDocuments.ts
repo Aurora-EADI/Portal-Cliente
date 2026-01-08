@@ -1,13 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentService } from '../services/api';
 import { DocumentStatus, User } from '../types';
+import { toast } from 'sonner';
 
 // Query Keys Constants
 export const DOCS_KEY = ['documents'];
 
 export const useDocuments = (user: User | null) => {
   return useQuery({
-    queryKey: DOCS_KEY,
+    queryKey: [...DOCS_KEY, user?.id],
     queryFn: async () => {
       if (!user) return [];
       if (user.role === 'ADMIN') {
@@ -38,6 +39,7 @@ export const useUploadDocument = () => {
     onSuccess: () => {
       // Invalida o cache para forçar recarregamento da lista
       queryClient.invalidateQueries({ queryKey: DOCS_KEY });
+      toast.success('Documento enviado com sucesso!');
     },
   });
 };
@@ -49,8 +51,14 @@ export const useUpdateDocumentStatus = () => {
     mutationFn: async ({ id, status, reason }: { id: string; status: DocumentStatus; reason?: string }) => {
       return await documentService.updateStatus(id, status, reason);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: DOCS_KEY });
+
+      if (variables.status === DocumentStatus.APPROVED) {
+        toast.success('Documento aprovado com sucesso!');
+      } else if (variables.status === DocumentStatus.REJECTED) {
+        toast.success('Documento rejeitado.');
+      }
     },
   });
 };

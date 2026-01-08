@@ -337,6 +337,17 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     );
   }, []);
 
+  const toggleAllColumns = useCallback((checked: boolean) => {
+    setColumns(prev =>
+      prev.map(col => ({ ...col, visible: checked }))
+    );
+  }, []);
+
+  const allColumnsVisible = useMemo(() =>
+    columns.every(col => col.visible),
+    [columns]
+  );
+
   const handleMouseDown = useCallback((e: React.MouseEvent, columnId: keyof TypeBillingCutOff) => {
     e.preventDefault();
     e.stopPropagation();
@@ -432,6 +443,15 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 max-h-96 overflow-y-auto">
             <DropdownMenuLabel>Exibir Colunas</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={allColumnsVisible}
+              onCheckedChange={toggleAllColumns}
+              onSelect={(e) => e.preventDefault()}
+              className="font-semibold"
+            >
+              Selecionar Todas
+            </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             {columns.map(column => (
               <DropdownMenuCheckboxItem

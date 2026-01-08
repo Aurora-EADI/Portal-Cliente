@@ -7,6 +7,12 @@ import { FaturamentoTable } from "./components/TableFaturamento";
 import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 
+interface ColumnConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+}
+
 export interface FiltersProps {
   cliente: string;
   n_fatura: string;
@@ -29,6 +35,9 @@ export function FaturamentoPage() {
     dt_fatura_inicio: "",
     dt_fatura_fim: ""
   });
+
+  // Estado para armazenar as colunas visíveis da tabela
+  const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>([]);
 
   // Armazena os parâmetros da última busca realizada
   const [searchParams, setSearchParams] = useState<{
@@ -220,6 +229,7 @@ const filteredData = useMemo(() => {
           onFetch={handleFetch}
           clientes={clientesUnicos}
           filteredData={filteredData}
+          visibleColumns={visibleColumns}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -267,6 +277,7 @@ const filteredData = useMemo(() => {
         <FaturamentoTable
           data={filteredData}
           isLoading={isLoading}
+          onVisibleColumnsChange={setVisibleColumns}
         />
       </div>
     </div>
