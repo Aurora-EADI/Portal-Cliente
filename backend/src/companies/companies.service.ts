@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaPostgresService } from '../prisma/prisma.service';
 import { CompanyStatus, Prisma } from '@prisma/client-postgres';
 import { CreateCompanyDto } from './dto/create-companies.dto';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
+import { RequestAccessDto } from './dto/request-access.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CompaniesService {
@@ -216,7 +218,156 @@ export class CompaniesService {
     );
   }
 
+  /**
+   * Solicitar acesso: Atualiza empresa existente e usuário SUPPLIER
+   * Usado quando o fornecedor já foi cadastrado pelo Protheus e quer solicitar acesso
+   */
+  async requestAccess(companyId: string, requestAccessDto: RequestAccessDto) {
+    const { company, user } = requestAccessDto;
+
+    // Verifica se a empresa existe
+    const existingCompany = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      include: {
+        users: {
+          where: { role: 'SUPPLIER' },
+        },
+      },
+    });
+
+    if (!existingCompany) {
+      throw new NotFoundException('Empresa não encontrada');
+    }
+
+    // Verifica se já existe outro usuário com este email em outra empresa
+    const existingUserWithEmail = await this.prisma.user.findUnique({
+      where: { email: user.email },
+    });
+
+    if (existingUserWithEmail && existingUserWithEmail.companyId !== companyId) {
+      throw new ConflictException('Email já cadastrado para outra empresa');
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // Atualiza empresa e usuário em transação
+    await this.prisma.$transaction(async (prisma) => {
+      // 1. Atualiza dados da empresa
+      await prisma.company.update({
+        where: { id: companyId },
+        data: {
+          fantasyName: company.fantasyName,
+          socialReason: company.socialReason,
+          zipCode: company.zipCode,
+          address: company.address,
+          number: company.number,
+          complement: company.complement,
+          neighborhood: company.neighborhood,
+          city: company.city,
+          state: company.state,
+          phone: company.phone,
+          status: 'PENDING_ACTIVE', // Atualiza status para aguardar aprovação
+        },
+      });
+
+      // 2. Verifica se já existe um usuário SUPPLIER para esta empresa
+      const supplierUser = existingCompany.users[0]; // Pega o primeiro SUPPLIER
+
+      if (supplierUser) {
+        // UPDATE: Atualiza o usuário SUPPLIER existente
+        await prisma.user.update({
+          where: { id: supplierUser.id },
+          data: {
+            name: user.name,
+            email: user.email,
+            password: hashedPassword,
+          },
+        });
+
+        // Verifica se o usuário já tem permissões de Documentos
+        const hasDocPermissions = await prisma.userModuleAccess.findFirst({
+          where: {
+            userId: supplierUser.id,
+            module: { route: '/documentos' },
+          },
+        });
+
+        // Se não tem permissões, concede
+        if (!hasDocPermissions) {
+          await this.grantSupplierPermissions(prisma, supplierUser.id);
+        }
+      } else {
+        // CREATE: Não deveria acontecer, mas cria se não existir
+        const newUser = await prisma.user.create({
+          data: {
+            name: user.name,
+            email: user.email,
+            password: hashedPassword,
+            role: 'SUPPLIER',
+            companyId: companyId,
+          },
+        });
+
+        // Concede permissões de Documentos para novo usuário
+        await this.grantSupplierPermissions(prisma, newUser.id);
+      }
+    });
+
+    return {
+      success: true,
+      message: 'Solicitação de acesso enviada com sucesso. Aguardando aprovação do administrador.',
+    };
+  }
+
   // ==================== MÉTODOS PRIVADOS ====================
+
+  /**
+   * Concede permissões padrão de SUPPLIER (Módulo Documentos + Atividade Anexar)
+   */
+  private async grantSupplierPermissions(tx: any, userId: string) {
+    // 1. Busca o módulo "/documentos"
+    const docModule = await tx.module.findFirst({
+      where: { route: '/documentos' },
+    });
+
+    if (!docModule) {
+      console.warn('[COMPANIES] Módulo /documentos não encontrado. Permissões não concedidas.');
+      return;
+    }
+
+    // 2. Busca a atividade "Anexar documento"
+    const attachActivity = await tx.activity.findFirst({
+      where: {
+        moduleId: docModule.id,
+        name: 'Anexar documento',
+      },
+    });
+
+    if (!attachActivity) {
+      console.warn('[COMPANIES] Atividade "Anexar documento" não encontrada.');
+    }
+
+    // 3. Cria acesso ao Módulo
+    const userModuleAccess = await tx.userModuleAccess.create({
+      data: {
+        userId,
+        moduleId: docModule.id,
+        isEnabled: true,
+      },
+    });
+
+    // 4. Se achou a atividade, cria acesso habilitando-a
+    if (attachActivity) {
+      await tx.userActivityAccess.create({
+        data: {
+          userModuleAccessId: userModuleAccess.id,
+          activityId: attachActivity.id,
+          isEnabled: true,
+        },
+      });
+    }
+  }
 
   private async getStatusCounts(search?: string) {
     // Construir where apenas com busca (sem filtro de status)

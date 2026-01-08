@@ -5,10 +5,19 @@ import { ArrowLeft, Building2, User as UserIcon, CheckCircle, Lock, Loader2 } fr
 import { useCnpjLookup } from '@/hooks/useCnpjLookup';
 import { toast } from 'sonner';
 import { IconWithTooltip } from '../ui/utils/icon-with-tooltip';
+import { companyService } from '@/services/api';
+import { useMutation } from '@tanstack/react-query';
 
 export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> = ({ setView }) => {
-  const { mutate: register, isPending: isLoading } = useRegister();
+  const { mutate: register, isPending: isRegisterLoading } = useRegister();
+  const { mutate: requestAccess, isPending: isRequestAccessLoading } = useMutation({
+    mutationFn: async ({ companyId, company, user }: { companyId: string; company: any; user: any }) => {
+      return await companyService.requestAccess(companyId, { company, user });
+    },
+  });
   const { lookup, isLoading: isLoadingCnpj, error: cnpjError, company: foundCompany } = useCnpjLookup();
+
+  const isLoading = isRegisterLoading || isRequestAccessLoading;
 
   const [step, setStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -152,47 +161,61 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
       return;
     }
 
-    register({
-      companyId,
-      company: {
-        cnpj,
-        fantasyName,
-        socialReason,
-        zipCode: cep,
-        address,
-        number,
-        complement,
-        neighborhood,
-        city,
-        state,
-        phone
-      },
-      user: {
-        name: userName,
-        email: userEmail,
-        password
-      }
-    }, {
-      onSuccess: () => {
-        setIsSuccess(true);
-      },
-      onError: (err: any) => {
-        const errorMessage = err.message || 'Erro ao realizar cadastro';
+    const companyData = {
+      cnpj,
+      fantasyName,
+      socialReason,
+      zipCode: cep,
+      address,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
+      phone
+    };
 
-        // Verifica se é erro de empresa já com usuário
-        if (errorMessage.toLowerCase().includes('já possui um usuário cadastrado') ||
-            errorMessage.toLowerCase().includes('já possui cadastro')) {
+    const userData = {
+      name: userName,
+      email: userEmail,
+      password
+    };
 
-          toast.error(
-            'Empresa já possui cadastro!',
-            {
-              duration: 6000,
-              description: 'Esta empresa já tem um usuário registrado. Faça login ou entre em contato com o administrador.',
-            }
-          );
+    // Se tem companyId, significa que veio do Protheus → usar endpoint de request-access
+    if (companyId) {
+      console.log('🟢 Usando endpoint REQUEST-ACCESS (atualizar empresa existente)');
+      requestAccess({
+        companyId,
+        company: companyData,
+        user: userData
+      }, {
+        onSuccess: () => {
+          toast.success('Solicitação enviada com sucesso!');
+          setIsSuccess(true);
+        },
+        onError: (err: any) => {
+          const errorMessage = err.message || 'Erro ao solicitar acesso';
+          toast.error(errorMessage);
         }
-      }
-    });
+      });
+    } else {
+      // Se NÃO tem companyId → criar do zero (comportamento original)
+      console.log('🔴 Usando endpoint REGISTER (criar nova empresa)');
+      register({
+        companyId: undefined,
+        company: companyData,
+        user: userData
+      }, {
+        onSuccess: () => {
+          toast.success('Cadastro realizado com sucesso!');
+          setIsSuccess(true);
+        },
+        onError: (err: any) => {
+          const errorMessage = err.message || 'Erro ao realizar cadastro';
+          toast.error(errorMessage);
+        }
+      });
+    }
   };
 
   const validateStep1 = () => {

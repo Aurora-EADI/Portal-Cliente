@@ -264,6 +264,28 @@ export interface PaginatedResponse<T> {
 
 
 export const companyService = {
+  /**
+   * Solicitar acesso: Atualiza empresa e usuário SUPPLIER
+   */
+  requestAccess: async (companyId: string, payload: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
+    try {
+      const response = await api.patch(`/companies/${companyId}/request-access`, payload);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao solicitar acesso';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      } else if (backendMessage && typeof backendMessage === 'object') {
+        message = JSON.stringify(backendMessage);
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
 
   getAllWithResponsible: async (params?: PaginationParams): Promise<PaginatedResponse<CompanyWithResponsible>> => {
     try {
