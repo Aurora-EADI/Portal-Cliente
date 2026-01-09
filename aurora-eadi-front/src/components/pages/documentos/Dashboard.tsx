@@ -8,6 +8,7 @@ import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus, Company } from '../../../types';
 import { documentService, documentTypeService, companyRequirementService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, AlertCircle, AlertTriangle, CheckCircle2, ShieldCheck, ChevronLeft, ChevronRight, Loader2, Clock, Calendar } from 'lucide-react';
+import { formatDateBR, getValidityStatus } from '@/lib/utils';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Pagination } from '../../ui/Pagination';
 import { DocumentsHistoryModal } from './modals/DocumentsHistoryModal';
@@ -144,20 +145,6 @@ export function AdminDashboard() {
     data: any;
   }>({ open: false, type: null, data: null });
 
-  const getValidityStatus = (dateExpiration?: string) => {
-    if (!dateExpiration) return 'OK';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const exp = new Date(dateExpiration);
-    exp.setHours(0, 0, 0, 0);
-
-    const diffTime = exp.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return 'EXPIRED';
-    if (diffDays <= 15) return 'ALERT';
-    return 'OK';
-  };
 
   const selectedData = selectedSupplierId
     ? suppliers.find((s: Company) => String(s.id) === selectedSupplierId)
