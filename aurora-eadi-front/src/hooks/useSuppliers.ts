@@ -33,7 +33,7 @@ export const useUpdateCompanyStatus = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: SUPPLIERS_KEY });
 
-      if (variables.status === CompanyStatus.APPROVED) {
+      if (variables.status === CompanyStatus.ACTIVE) {
         toast.success('Empresa aprovada com sucesso!');
       } else if (variables.status === CompanyStatus.REJECTED) {
         toast.success('Empresa bloqueada.');
