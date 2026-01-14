@@ -5,7 +5,6 @@ import { Edit, Trash, Check, X, AlertCircle, DollarSign, XCircle } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
@@ -56,6 +55,7 @@ interface ServicesTabProps {
   localServices?: LocalService[];
   onAddLocalService?: (service: LocalService) => void;
   onRemoveLocalService?: (serviceId: string) => void;
+  hasStripping?: boolean;
 }
 
 // Helper to calculate final cost based on calculationType
@@ -97,6 +97,7 @@ export function ServicesTab({
   localServices = [],
   onAddLocalService,
   onRemoveLocalService,
+  hasStripping = false,
 }: ServicesTabProps) {
   // Working mode: local (before save) or saved (with simulationId)
   const isLocalMode = !simulationId;
@@ -307,23 +308,6 @@ export function ServicesTab({
     }
   };
 
-  // Get cost badge variant
-  const getCostBadge = (simService: any) => {
-    if (simService.costType === ServiceCostType.DEFAULT) {
-      return <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">Padrão</Badge>;
-    }
-    if (simService.costType === ServiceCostType.ZEROED) {
-      return <Badge variant="outline" className="text-gray-600 border-gray-400 bg-gray-50">Zerado</Badge>;
-    }
-    if (simService.costType === ServiceCostType.CUSTOM) {
-      return (
-        <Badge variant="outline" className="text-orange-600 border-orange-600 bg-orange-50 gap-1">
-          <AlertCircle className="w-3 h-3" />
-          Customizado
-        </Badge>
-      );
-    }
-  };
 
   if (isLoadingServices || (!isLocalMode && isLoadingSimServices)) {
     return (
@@ -357,122 +341,121 @@ export function ServicesTab({
                 {/* <TableHead className="w-[150px] font-semibold">Categoria</TableHead> */}
                 <TableHead className="text-center w-[120px] font-semibold">Valor Padrão</TableHead>
                 <TableHead className="text-center w-[160px] font-semibold">Valor Aplicado</TableHead>
-                <TableHead className="text-center w-[130px] font-semibold">Status</TableHead>
                 <TableHead className="text-center w-[280px] font-semibold">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {services.map((service) => {
-                const simService = getServiceById(service.id);
-                const isAdded = !!simService;
+              {services
+                .filter(service => {
+                  // Se o serviço é de desova, só mostra se a simulação tem desova.
+                  // Se o serviço NÃO é de desova, mostra sempre.
+                  if (service.hasStripping && !hasStripping) return false;
+                  return true;
+                })
+                .map((service) => {
+                  const simService = getServiceById(service.id);
+                  const isAdded = !!simService;
 
-                return (
-                  <TableRow
-                    key={service.id}
-                    className={isAdded ? 'bg-blue-50/50 hover:bg-blue-50/70' : 'hover:bg-gray-50'}
-                  >
-                    {/* <TableCell className="font-mono text-xs text-gray-600">
+                  return (
+                    <TableRow
+                      key={service.id}
+                      className={isAdded ? 'bg-blue-50/50 hover:bg-blue-50/70' : 'hover:bg-gray-50'}
+                    >
+                      {/* <TableCell className="font-mono text-xs text-gray-600">
                       {service.code}
                     </TableCell> */}
-                    <TableCell className="font-medium text-gray-900">
-                      {service.name}
-                    </TableCell>
-                    {/* <TableCell className="text-sm text-gray-600">
+                      <TableCell className="font-medium text-gray-900">
+                        {service.name}
+                      </TableCell>
+                      {/* <TableCell className="text-sm text-gray-600">
                       {service.category || '-'}
                     </TableCell> */}
-                    <TableCell className="text-right">
-                      <ServiceDefaultCost service={service} simulationData={simulationData} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isAdded ? (
-                        <span className={
-                          simService.costType === ServiceCostType.ZEROED
-                            ? 'font-bold text-gray-500'
-                            : simService.costType === ServiceCostType.CUSTOM
-                              ? 'font-bold text-orange-600'
-                              : 'font-bold text-green-600'
-                        }>
-                          {formatCurrency(
-                            simService.costType === ServiceCostType.DEFAULT
-                              ? calculateServiceCost(Number(simService.originalCost), service.calculationType, simulationData)
-                              : simService.appliedCost
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {isAdded ? getCostBadge(simService) : (
-                        <Badge variant="outline" className="text-gray-500 border-gray-300">
-                          Disponível
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-2">
-                        {!isAdded ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleUseDefault(service)}
-                              disabled={!isEditable}
-                              className="text-xs h-8 bg-green-600 hover:bg-green-700"
-                            >
-                              <Check className="w-3 h-3 mr-1" />
-                              Usar Padrão
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleZero(service)}
-                              disabled={!isEditable}
-                              className="text-xs h-8 text-gray-600 hover:text-gray-700"
-                            >
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Zerar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenCustomize(service)}
-                              disabled={!isEditable}
-                              className="text-xs h-8 text-orange-600 hover:text-orange-700 border-orange-300"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Customizar
-                            </Button>
-                          </>
+                      <TableCell className="text-right">
+                        <ServiceDefaultCost service={service} simulationData={simulationData} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isAdded ? (
+                          <span className={
+                            simService.costType === ServiceCostType.ZEROED
+                              ? 'font-bold text-gray-500'
+                              : simService.costType === ServiceCostType.CUSTOM
+                                ? 'font-bold text-orange-600'
+                                : 'font-bold text-green-600'
+                          }>
+                            {formatCurrency(
+                              simService.costType === ServiceCostType.DEFAULT
+                                ? calculateServiceCost(Number(simService.originalCost), service.calculationType, simulationData)
+                                : simService.appliedCost
+                            )}
+                          </span>
                         ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenCustomize(service)}
-                              disabled={!isEditable}
-                              className="text-xs h-8"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRemove(service.id)}
-                              disabled={!isEditable}
-                              className="text-xs h-8 text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50"
-                            >
-                              <Trash className="w-3 h-3 mr-1" />
-                              Remover
-                            </Button>
-                          </>
+                          <span className="text-gray-400 text-sm">-</span>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          {!isAdded ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleUseDefault(service)}
+                                disabled={!isEditable}
+                                className="text-xs h-8 bg-green-600 hover:bg-green-700"
+                              >
+                                <Check className="w-3 h-3 mr-1" />
+                                Usar Padrão
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleZero(service)}
+                                disabled={!isEditable}
+                                className="text-xs h-8 text-gray-600 hover:text-gray-700"
+                              >
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Zerar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenCustomize(service)}
+                                disabled={!isEditable}
+                                className="text-xs h-8 text-orange-600 hover:text-orange-700 border-orange-300"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Customizar
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenCustomize(service)}
+                                disabled={!isEditable}
+                                className="text-xs h-8"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRemove(service.id)}
+                                disabled={!isEditable}
+                                className="text-xs h-8 text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50"
+                              >
+                                <Trash className="w-3 h-3 mr-1" />
+                                Remover
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
             </TableBody>
           </Table>
         </div>

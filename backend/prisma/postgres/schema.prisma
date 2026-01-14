@@ -255,6 +255,7 @@ model Service {
   updatedAt          DateTime               @updatedAt
   calculationType    ServiceCalculationType @default(FIXED)
   formulaExpression  String?
+  hasStripping       Boolean                @default(false)
   serviceCosts       ServiceCost[]
   simulationServices SimulationService[]
 
@@ -298,6 +299,7 @@ model Simulation {
   totalServices    Decimal?            @db.Decimal(12, 2)
   totalGeneral     Decimal?            @db.Decimal(12, 2)
   status           SimulationStatus    @default(DRAFT)
+  hasStripping     Boolean             @default(false)
   createdBy        String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt

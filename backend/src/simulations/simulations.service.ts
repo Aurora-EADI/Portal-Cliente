@@ -71,6 +71,7 @@ export class SimulationsService {
         storageCost: new Prisma.Decimal(createSimulationDto.storageCost || 0),
         transportCost: new Prisma.Decimal(createSimulationDto.transportCost || 0),
         discount: new Prisma.Decimal(createSimulationDto.discount || 0),
+        hasStripping: createSimulationDto.hasStripping || false,
       };
 
       console.log('[SIMULATION CREATE] Data prepared:', JSON.stringify(data, null, 2));
@@ -160,6 +161,7 @@ export class SimulationsService {
       transportCost: new Prisma.Decimal(createNewVersionDto.transportCost || 0),
       discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
       isCurrentVersion: true,
+      hasStripping: createNewVersionDto.hasStripping || false,
     };
 
     // Cria a nova versão
@@ -326,6 +328,10 @@ export class SimulationsService {
 
     if (updateSimulationDto.status) {
       updateData.status = updateSimulationDto.status;
+    }
+
+    if (updateSimulationDto.hasStripping !== undefined) {
+      updateData.hasStripping = updateSimulationDto.hasStripping;
     }
 
     // Recalcula CIF BRL se necessário

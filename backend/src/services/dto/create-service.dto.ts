@@ -27,4 +27,8 @@ export class CreateServiceDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hasStripping?: boolean;
 }

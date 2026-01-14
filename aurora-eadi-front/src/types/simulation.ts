@@ -49,6 +49,7 @@ export interface Simulation {
 
   // Status e controle
   status: SimulationStatus;
+  hasStripping: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -99,6 +100,7 @@ export interface CreateSimulationDto {
   storageCost?: number;
   transportCost?: number;
   discount?: number;
+  hasStripping?: boolean;
 }
 
 export interface UpdateSimulationDto extends Partial<CreateSimulationDto> {

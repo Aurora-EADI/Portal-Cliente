@@ -20,6 +20,7 @@ interface FormData {
     calculationType: ServiceCalculationType;
     isActive: boolean;
     initialCost: string;
+    hasStripping: boolean;
 }
 
 export function RegisterService() {
@@ -35,6 +36,7 @@ export function RegisterService() {
         calculationType: ServiceCalculationType.FIXED,
         isActive: true,
         initialCost: '',
+        hasStripping: false,
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -103,6 +105,7 @@ export function RegisterService() {
                 description: formData.description || undefined,
                 calculationType: formData.calculationType,
                 isActive: formData.isActive,
+                hasStripping: formData.hasStripping,
             };
 
             // Criar o serviço
@@ -179,9 +182,8 @@ export function RegisterService() {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                    errors.name ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'
+                                    }`}
                                 placeholder="Ex: Armazenagem, Desembaraço Aduaneiro"
                             />
                             {errors.name && (
@@ -199,9 +201,8 @@ export function RegisterService() {
                                 name="calculationType"
                                 value={formData.calculationType}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                    errors.calculationType ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.calculationType ? 'border-red-500' : 'border-gray-300'
+                                    }`}
                             >
                                 {Object.entries(calculationTypeLabels).map(([value, label]) => (
                                     <option key={value} value={value}>
@@ -225,9 +226,8 @@ export function RegisterService() {
                                 name="initialCost"
                                 value={formData.initialCost}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                                    errors.initialCost ? 'border-red-500' : 'border-gray-300'
-                                }`}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.initialCost ? 'border-red-500' : 'border-gray-300'
+                                    }`}
                                 placeholder={getCostPlaceholder()}
                             />
                             {errors.initialCost && (
@@ -254,8 +254,8 @@ export function RegisterService() {
                             />
                         </div>
 
-                        {/* Status Ativo */}
-                        <div className="md:col-span-2">
+                        {/* Status Ativo e Desova */}
+                        <div className="md:col-span-2 flex flex-col gap-4">
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <input
                                     type="checkbox"
@@ -264,13 +264,33 @@ export function RegisterService() {
                                     onChange={handleChange}
                                     className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                 />
-                                <span className="text-sm font-medium text-gray-700">
-                                    Serviço ativo
-                                </span>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Serviço ativo
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Serviços inativos não aparecem nas simulações
+                                    </span>
+                                </div>
                             </label>
-                            <p className="mt-1 text-xs text-gray-500 ml-8">
-                                Serviços inativos não aparecem nas simulações
-                            </p>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasStripping"
+                                    checked={formData.hasStripping}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Desova?
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Se marcado, este serviço só aparecerá em simulações que tenham desova
+                                    </span>
+                                </div>
+                            </label>
                         </div>
                     </div>
 

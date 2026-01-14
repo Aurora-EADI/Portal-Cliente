@@ -71,6 +71,7 @@ export function MaritimeSimulator() {
   const [storageRate, setStorageRate] = useState<string>('0.35');
   const [transportRate, setTransportRate] = useState<string>('1700');
   const [discount, setDiscount] = useState<string>('0');
+  const [hasStripping, setHasStripping] = useState<boolean>(false);
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -175,6 +176,7 @@ export function MaritimeSimulator() {
       }
 
       setDiscount(currentSimulation.discount?.toString() || '0');
+      setHasStripping(currentSimulation.hasStripping || false);
     }
   }, [currentSimulation]);
 
@@ -229,6 +231,7 @@ export function MaritimeSimulator() {
           storageCost: calculatedStorageCost,
           transportCost: calculatedTransportCost,
           discount: discount ? parseFloat(discount) : 0,
+          hasStripping,
         });
 
         // Add local services to the newly created simulation
@@ -259,6 +262,7 @@ export function MaritimeSimulator() {
             storageCost: calculatedStorageCost,
             transportCost: calculatedTransportCost,
             discount: discount ? parseFloat(discount) : 0,
+            hasStripping,
           },
         });
         toast.success('Simulação atualizada com sucesso!');
@@ -286,6 +290,7 @@ export function MaritimeSimulator() {
         storageCost: calculatedStorageCost,
         transportCost: calculatedTransportCost,
         discount: discount ? parseFloat(discount) : 0,
+        hasStripping,
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -600,6 +605,24 @@ export function MaritimeSimulator() {
                       />
                     </div>
                   </div>
+
+                  {/* Row 7: Desova */}
+                  <div className="md:col-span-2 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                    <input
+                      type="checkbox"
+                      id="hasStripping"
+                      checked={hasStripping}
+                      onChange={(e) => setHasStripping(e.target.checked)}
+                      disabled={!isEditable}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    />
+                    <Label htmlFor="hasStripping" className="font-semibold text-blue-900 cursor-pointer select-none">
+                      Tem Desova?
+                      <p className="text-xs text-blue-700/70 font-normal">
+                        Marque esta opção se a carga precisar ser desovada para filtrar os serviços específicos.
+                      </p>
+                    </Label>
+                  </div>
                 </CardContent>
               </TabsContent>
 
@@ -618,6 +641,7 @@ export function MaritimeSimulator() {
                   localServices={localServices}
                   onAddLocalService={handleAddLocalService}
                   onRemoveLocalService={handleRemoveLocalService}
+                  hasStripping={hasStripping}
                 />
               </TabsContent>
             </div>
@@ -689,10 +713,10 @@ export function MaritimeSimulator() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </div >
 
       {/* DIALOG: NOVA VERSÃO */}
-      <Dialog open={isNewVersionDialogOpen} onOpenChange={setIsNewVersionDialogOpen}>
+      < Dialog open={isNewVersionDialogOpen} onOpenChange={setIsNewVersionDialogOpen} >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar Nova Versão</DialogTitle>
@@ -723,7 +747,7 @@ export function MaritimeSimulator() {
             </Button>
           </div>
         </DialogContent>
-      </Dialog>
-    </div>
+      </Dialog >
+    </div >
   );
 }

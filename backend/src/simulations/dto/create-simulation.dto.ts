@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsInt, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSimulationDto {
@@ -42,4 +42,8 @@ export class CreateSimulationDto {
   @IsNumber()
   @Type(() => Number)
   discount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  hasStripping?: boolean;
 }
