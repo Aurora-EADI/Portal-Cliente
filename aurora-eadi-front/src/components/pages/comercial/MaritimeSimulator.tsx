@@ -36,9 +36,11 @@ import {
 import { useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
-import { formatCurrency, formatUSD } from '@/lib/utils';
+import { formatCurrency, formatUSD, formatPercent } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
+
+const MIN_BILLING_PER_CNTR = 5500;
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
@@ -92,20 +94,29 @@ export function MaritimeSimulator() {
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
+  // Filter services based on stripping status
+  const effectiveServicesList = useMemo(() => {
+    const list = currentSimulationId ? (currentSimulation?.services || []) : localServices;
+    if (!hasStripping) {
+      return list.filter(s => {
+        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+        return !serviceDef?.hasStripping;
+      });
+    }
+    return list;
+  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, servicesData]);
+
   // Calculate total services in real-time (summing appliedCost from the list, with reactive re-calculation for DEFAULT type)
   const calculatedTotalServices = useMemo(() => {
-    const servicesList = currentSimulationId ? (currentSimulation?.services || []) : localServices;
     const calcData = {
       cifBrl: cifBrlNum,
       tonnes: parseFloat(tonnes || '0'),
       cntrCount: parseInt(cntrCount || '0'),
     };
 
-    return servicesList.reduce((total, s) => {
+    return effectiveServicesList.reduce((total, s) => {
       // If DEFAULT, calculate reactively from originalCost and current cargo data
       if (s.costType === ServiceCostType.DEFAULT) {
-        // Need to find the calculation type. For simulationService it's in s.service.
-        // For localService it's... wait, I need calculationType in LocalService too.
         const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
         if (serviceDef) {
           return total + calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
@@ -113,15 +124,10 @@ export function MaritimeSimulator() {
       }
       return total + Number(s.appliedCost || 0);
     }, 0);
-  }, [localServices, currentSimulationId, currentSimulation?.services, cifBrlNum, tonnes, cntrCount, servicesData]);
+  }, [effectiveServicesList, cifBrlNum, tonnes, cntrCount, servicesData]);
 
   // Count of selected services
-  const servicesCount = useMemo(() => {
-    if (currentSimulationId && currentSimulation?._count?.services) {
-      return currentSimulation._count.services;
-    }
-    return localServices.length;
-  }, [localServices, currentSimulationId, currentSimulation?._count?.services]);
+  const servicesCount = effectiveServicesList.length;
 
 
   // Calculate costs based on rates
@@ -137,13 +143,25 @@ export function MaritimeSimulator() {
   }, [transportRate, cntrCount]);
 
   // Calculate total general in real-time
-  const calculatedTotalGeneral = useMemo(() => {
+  const { minDiff, minProfitMarginPct, totalGeneral } = useMemo(() => {
     const services = calculatedTotalServices;
     const storage = calculatedStorageCost;
     const transport = calculatedTransportCost;
     const discountValue = parseFloat(discount || '0');
-    return services + storage + transport - discountValue;
-  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount]);
+    const count = parseInt(cntrCount || '0');
+
+    const minBillingThreshold = MIN_BILLING_PER_CNTR * count;
+    const difference = (count > 0 && services < minBillingThreshold) ? minBillingThreshold - services : 0;
+    const marginPct = (difference > 0 && services > 0) ? (difference / services) * 100 : 0;
+
+    return {
+      minDiff: difference,
+      minProfitMarginPct: marginPct,
+      totalGeneral: services + difference + storage + transport - discountValue
+    };
+  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, cntrCount]);
+
+  const calculatedTotalGeneral = totalGeneral;
 
   // Auto-calculate CIF BRL
   useEffect(() => {
@@ -687,6 +705,27 @@ export function MaritimeSimulator() {
                       - {formatCurrency(parseFloat(discount || '0'))}
                     </span>
                   </div>
+
+                  {minDiff > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start group p-2 bg-amber-50 rounded border border-amber-100">
+                        <span className="text-amber-800 text-xs font-semibold uppercase leading-tight">
+                          Diferença mínima a ser cobrada para emissão de Nota Fiscal por contêiner
+                        </span>
+                        <span className="font-bold text-amber-900">
+                          {formatCurrency(minDiff)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center px-2 py-1 bg-green-50 rounded border border-green-100 italic">
+                        <span className="text-green-800 text-[10px] font-bold uppercase tracking-wider">
+                          Margem de lucro mínima
+                        </span>
+                        <span className="font-bold text-green-700 text-xs">
+                          {formatPercent(minProfitMarginPct)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <Separator className="my-2" />
 

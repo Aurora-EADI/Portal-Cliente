@@ -357,6 +357,18 @@ export class SimulationsService {
       },
     });
 
+    // Se desativou desova, removemos os serviços de desova vinculados
+    if (updateSimulationDto.hasStripping === false) {
+      await this.prisma.simulationService.deleteMany({
+        where: {
+          simulationId: id,
+          service: {
+            hasStripping: true,
+          },
+        },
+      });
+    }
+
     // Recalcula custos de serviços e totalizadores
     await this.recalculateAllServices(id);
 
@@ -538,26 +550,40 @@ export class SimulationsService {
   }
 
   private async recalculateTotals(simulationId: string) {
-    const services = await this.prisma.simulationService.findMany({
-      where: { simulationId },
-    });
-
-    const totalServices = services.reduce((sum, s) => sum + Number(s.appliedCost), 0);
-
-    // Busca custos adicionais
     const simulation = await this.prisma.simulation.findUnique({
       where: { id: simulationId },
+      include: {
+        services: {
+          include: {
+            service: true,
+          },
+        },
+      },
     });
 
     if (!simulation) {
       throw new NotFoundException(`Simulação com ID ${simulationId} não encontrada`);
     }
 
+    // Filtra serviços: se a simulação não tem desova, ignoramos serviços marcados como desova
+    const effectiveServices = simulation.services.filter((s) => {
+      if (!simulation.hasStripping && s.service.hasStripping) return false;
+      return true;
+    });
+
+    const totalServices = effectiveServices.reduce((sum, s) => sum + Number(s.appliedCost), 0);
+
     const storageCost = Number(simulation.storageCost || 0);
     const transportCost = Number(simulation.transportCost || 0);
     const discount = Number(simulation.discount || 0);
+    const cntrCount = Number(simulation.cntrCount || 0);
 
-    const totalGeneral = totalServices + storageCost + transportCost - discount;
+    // Regra: Mínimo de R$ 5.500,00 por contêiner nos serviços
+    const MIN_BILLING_PER_CNTR = 5500;
+    const minBillingThreshold = MIN_BILLING_PER_CNTR * cntrCount;
+    const minDiff = totalServices < minBillingThreshold ? minBillingThreshold - totalServices : 0;
+
+    const totalGeneral = totalServices + minDiff + storageCost + transportCost - discount;
 
     await this.prisma.simulation.update({
       where: { id: simulationId },
