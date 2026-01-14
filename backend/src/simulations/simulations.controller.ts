@@ -43,10 +43,10 @@ export class SimulationsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as simulações' })
-  @ApiQuery({ name: 'supplierId', required: false, description: 'Filtrar por fornecedor' })
+  @ApiQuery({ name: 'customerId', required: false, description: 'Filtrar por cliente' })
   @ApiResponse({ status: 200, description: 'Lista de simulações retornada com sucesso' })
-  findAll(@Query('supplierId') supplierId?: string, @Request() req?) {
-    return this.simulationsService.findAll(req?.user?.id, supplierId);
+  findAll(@Query('customerId') customerId?: string, @Request() req?) {
+    return this.simulationsService.findAll(req?.user?.id, customerId);
   }
 
   @Get('version-history/:simulationNumber')

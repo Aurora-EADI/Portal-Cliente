@@ -19,7 +19,7 @@ export class ServiceCostsController {
 
   @Post()
   create(@Body() createServiceCostDto: CreateServiceCostDto, @Request() req) {
-    return this.serviceCostsService.create(createServiceCostDto, req.user.userId);
+    return this.serviceCostsService.create(createServiceCostDto, req.user.id);
   }
 
   @Get()

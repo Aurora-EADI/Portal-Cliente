@@ -28,7 +28,7 @@ export interface Simulation {
   versionReason?: string | null;
 
   // Dados do cliente
-  supplierId: string;
+  customerId: string;
 
   // Dados da carga
   cifUsd: number;
@@ -54,11 +54,11 @@ export interface Simulation {
   updatedAt: string;
 
   // Relacionamentos
-  supplier?: {
+  customer?: {
     id: string;
-    fantasyName?: string;
-    socialReason: string;
-    cnpj: string;
+    code: string;
+    name: string;
+    document: string;
   };
   user?: {
     id: string;
@@ -90,7 +90,7 @@ export interface SimulationService {
 
 // DTOs
 export interface CreateSimulationDto {
-  supplierId: string;
+  customerId: string;
   cifUsd: number;
   dollarRate: number;
   tonnes?: number;

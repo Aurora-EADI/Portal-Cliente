@@ -34,13 +34,13 @@ export class SimulationsService {
       console.log('[SIMULATION CREATE] DTO:', createSimulationDto);
       console.log('[SIMULATION CREATE] UserId:', userId);
 
-      // Verifica se o fornecedor existe
-      const supplier = await this.prisma.company.findUnique({
-        where: { id: createSimulationDto.supplierId },
+      // Verifica se o cliente existe
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: createSimulationDto.customerId },
       });
 
-      if (!supplier) {
-        throw new NotFoundException(`Fornecedor com ID ${createSimulationDto.supplierId} não encontrado`);
+      if (!customer) {
+        throw new NotFoundException(`Cliente com ID ${createSimulationDto.customerId} não encontrado`);
       }
 
       const simulationNumber = this.generateSimulationNumber();
@@ -56,8 +56,8 @@ export class SimulationsService {
         simulationNumber,
         version: 1,
         displayNumber,
-        supplier: {
-          connect: { id: createSimulationDto.supplierId },
+        customer: {
+          connect: { id: createSimulationDto.customerId },
         },
         user: {
           connect: { id: userId },
@@ -78,12 +78,12 @@ export class SimulationsService {
       const result = await this.prisma.simulation.create({
         data,
         include: {
-          supplier: {
+          customer: {
             select: {
               id: true,
-              fantasyName: true,
-              socialReason: true,
-              cnpj: true,
+              code: true,
+              name: true,
+              document: true,
             },
           },
           user: {
@@ -144,8 +144,8 @@ export class SimulationsService {
         ? { connect: { id: createNewVersionDto.baseSimulationId } }
         : undefined,
       versionReason: createNewVersionDto.versionReason || null,
-      supplier: {
-        connect: { id: createNewVersionDto.supplierId },
+      customer: {
+        connect: { id: createNewVersionDto.customerId },
       },
       user: {
         connect: { id: userId },
@@ -166,12 +166,12 @@ export class SimulationsService {
     const newSimulation = await this.prisma.simulation.create({
       data: dataNewVersion,
       include: {
-        supplier: {
+        customer: {
           select: {
             id: true,
-            fantasyName: true,
-            socialReason: true,
-            cnpj: true,
+            code: true,
+            name: true,
+            document: true,
           },
         },
       },
@@ -197,21 +197,21 @@ export class SimulationsService {
     return newSimulation;
   }
 
-  async findAll(userId?: string, supplierId?: string) {
+  async findAll(userId?: string, customerId?: string) {
     const where: any = { isCurrentVersion: true }; // Só versões correntes
 
-    if (supplierId) {
-      where.supplierId = supplierId;
+    if (customerId) {
+      where.customerId = customerId;
     }
 
     return this.prisma.simulation.findMany({
       where,
       include: {
-        supplier: {
+        customer: {
           select: {
-            fantasyName: true,
-            socialReason: true,
-            cnpj: true,
+            code: true,
+            name: true,
+            document: true,
           },
         },
         user: {
@@ -233,7 +233,7 @@ export class SimulationsService {
     const simulation = await this.prisma.simulation.findUnique({
       where: { id },
       include: {
-        supplier: true,
+        customer: true,
         user: {
           select: {
             id: true,
@@ -288,8 +288,8 @@ export class SimulationsService {
     // Prepara dados de atualização com conversões
     const updateData: any = {};
 
-    if (updateSimulationDto.supplierId) {
-      updateData.supplierId = updateSimulationDto.supplierId;
+    if (updateSimulationDto.customerId) {
+      updateData.customerId = updateSimulationDto.customerId;
     }
 
     if (updateSimulationDto.cifUsd !== undefined) {
@@ -342,7 +342,7 @@ export class SimulationsService {
       where: { id },
       data: updateData,
       include: {
-        supplier: true,
+        customer: true,
         services: {
           include: {
             service: true,

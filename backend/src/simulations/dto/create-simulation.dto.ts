@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 export class CreateSimulationDto {
   @IsString()
-  supplierId: string;
+  customerId: string;
 
   // Dados da carga
   @IsNumber()

@@ -27,7 +27,6 @@ model Company {
   updatedAt            DateTime                     @updatedAt
   documentRequirements CompanyDocumentRequirement[]
   documents            Document[]
-  simulations          Simulation[]
   users                User[]
 
   @@map("companies")
@@ -286,7 +285,7 @@ model Simulation {
   baseSimulationId String?
   isCurrentVersion Boolean             @default(true)
   versionReason    String?
-  supplierId       String
+  customerId       String
   cifUsd           Decimal             @db.Decimal(12, 2)
   dollarRate       Decimal             @db.Decimal(8, 4)
   cifBrl           Decimal             @db.Decimal(12, 2)
@@ -306,10 +305,10 @@ model Simulation {
   baseSimulation   Simulation?         @relation("SimulationVersions", fields: [baseSimulationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   versions         Simulation[]        @relation("SimulationVersions")
   user             User                @relation(fields: [createdBy], references: [id])
-  supplier         Company             @relation(fields: [supplierId], references: [id])
+  customer         Customer            @relation(fields: [customerId], references: [id])
 
   @@unique([simulationNumber, version])
-  @@index([supplierId, isCurrentVersion])
+  @@index([customerId, isCurrentVersion])
   @@map("simulations")
 }
 
@@ -374,4 +373,22 @@ enum ServiceCostType {
   DEFAULT
   CUSTOM
   ZEROED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Customer {
+  id          String         @id @default(uuid())
+  code        String         @unique
+  name        String
+  document    String         @unique
+  status      CustomerStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  simulations Simulation[]
+
+  @@map("customers")
 }

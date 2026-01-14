@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -199,6 +199,27 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Simulador Marítimo',
         icon: Ship,
         path: '/comercial/simulador',
+      },
+    ],
+    allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
+  },
+    {
+    basePath: '/cliente',
+    items: [
+      {
+        label: 'Home',
+        icon: Home,
+        path: '/modules',
+      },
+      {
+        label: 'Lista Clientes',
+        icon: List,
+        path: '/cliente',
+      },
+      {
+        label: 'Clientes',
+        icon: Building2,
+        path: '/cliente/cadastro',
       },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],

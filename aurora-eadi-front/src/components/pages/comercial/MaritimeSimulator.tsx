@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Printer, Plus, Building2, History, Lock, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useSuppliers } from '@/hooks/useSuppliers';
+import { useCustomers } from '@/hooks/useCustomers';
 import { useAuthContext } from '@/context/AuthContext';
 import {
   useCreateSimulation,
@@ -41,8 +41,8 @@ import { formatCurrency, formatUSD } from '@/lib/utils';
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
 
-  // Suppliers Data
-  const { data: suppliersData, isLoading: isLoadingSuppliers } = useSuppliers();
+  // Customers Data
+  const { data: customersData, isLoading: isLoadingCustomers } = useCustomers();
 
   // Services Data
   const { data: servicesData, isLoading: isLoadingServices } = useServices(false);
@@ -55,7 +55,7 @@ export function MaritimeSimulator() {
 
   // State Management
   const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(null);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
 
@@ -70,6 +70,24 @@ export function MaritimeSimulator() {
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
+  // Calculate total services in real-time (local + saved)
+  const calculatedTotalServices = useMemo(() => {
+    // If we have a saved simulation, use its total
+    if (currentSimulationId && currentSimulation?.totalServices) {
+      return currentSimulation.totalServices;
+    }
+    // Otherwise, calculate from local services
+    return localServices.reduce((total, service) => total + service.appliedCost, 0);
+  }, [localServices, currentSimulationId, currentSimulation?.totalServices]);
+
+  // Count of selected services
+  const servicesCount = useMemo(() => {
+    if (currentSimulationId && currentSimulation?._count?.services) {
+      return currentSimulation._count.services;
+    }
+    return localServices.length;
+  }, [localServices, currentSimulationId, currentSimulation?._count?.services]);
+
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
   const [dollarRate, setDollarRate] = useState<string>('5.85');
@@ -81,6 +99,20 @@ export function MaritimeSimulator() {
   const [transportCost, setTransportCost] = useState<string>('1700');
   const [discount, setDiscount] = useState<string>('0');
 
+  // Calculate total general in real-time
+  const calculatedTotalGeneral = useMemo(() => {
+    // If we have a saved simulation, use its total
+    if (currentSimulationId && currentSimulation?.totalGeneral) {
+      return currentSimulation.totalGeneral;
+    }
+    // Otherwise, calculate from local values
+    const services = calculatedTotalServices;
+    const storage = parseFloat(storageCost || '0');
+    const transport = parseFloat(transportCost || '0');
+    const discountValue = parseFloat(discount || '0');
+    return services + storage + transport - discountValue;
+  }, [calculatedTotalServices, storageCost, transportCost, discount, currentSimulationId, currentSimulation?.totalGeneral]);
+
   // Auto-calculate CIF BRL
   useEffect(() => {
     const usd = parseFloat(cifUsd) || 0;
@@ -91,7 +123,7 @@ export function MaritimeSimulator() {
   // Load current simulation data
   useEffect(() => {
     if (currentSimulation) {
-      setSelectedSupplierId(currentSimulation.supplierId);
+      setSelectedCustomerId(currentSimulation.customerId);
       setCifUsd(currentSimulation.cifUsd.toString());
       setDollarRate(currentSimulation.dollarRate.toString());
       setTonnes(currentSimulation.tonnes?.toString() || '');
@@ -103,9 +135,9 @@ export function MaritimeSimulator() {
     }
   }, [currentSimulation]);
 
-  // Handler: Update supplier selection (local state only)
-  const handleSupplierChange = (supplierId: string) => {
-    setSelectedSupplierId(supplierId);
+  // Handler: Update customer selection (local state only)
+  const handleCustomerChange = (customerId: string) => {
+    setSelectedCustomerId(customerId);
   };
 
   // Handlers for local services management
@@ -130,8 +162,8 @@ export function MaritimeSimulator() {
   // Handler: Save simulation (Create or Update)
   const handleSaveSimulation = async () => {
     // Validações
-    if (!selectedSupplierId) {
-      toast.error('Por favor, selecione um fornecedor');
+    if (!selectedCustomerId) {
+      toast.error('Por favor, selecione um cliente');
       return;
     }
 
@@ -144,7 +176,7 @@ export function MaritimeSimulator() {
       if (!currentSimulationId) {
         // Create new simulation
         const newSimulation = await createSimulationMutation.mutateAsync({
-          supplierId: selectedSupplierId,
+          customerId: selectedCustomerId,
           cifUsd: parseFloat(cifUsd) || 0,
           dollarRate: parseFloat(dollarRate) || 5.85,
           tonnes: tonnes ? parseFloat(tonnes) : undefined,
@@ -174,7 +206,7 @@ export function MaritimeSimulator() {
         await updateSimulationMutation.mutateAsync({
           id: currentSimulationId,
           data: {
-            supplierId: selectedSupplierId,
+            customerId: selectedCustomerId,
             cifUsd: parseFloat(cifUsd) || 0,
             dollarRate: parseFloat(dollarRate) || 0,
             tonnes: tonnes ? parseFloat(tonnes) : undefined,
@@ -201,7 +233,7 @@ export function MaritimeSimulator() {
       const newVersion = await createVersionMutation.mutateAsync({
         baseSimulationId: currentSimulation.id,
         versionReason: versionReason || undefined,
-        supplierId: selectedSupplierId,
+        customerId: selectedCustomerId,
         cifUsd: parseFloat(cifUsd) || 0,
         dollarRate: parseFloat(dollarRate) || 0,
         tonnes: tonnes ? parseFloat(tonnes) : undefined,
@@ -290,14 +322,14 @@ export function MaritimeSimulator() {
                 <TabsTrigger
                   value="carga"
                   className="rounded-b-none border-t border-l border-r border-transparent data-[state=active]:border-gray-200 data-[state=active]:bg-white data-[state=active]:shadow-none px-6 py-2.5 text-gray-500 data-[state=active]:text-primary-700 font-semibold relative top-[1px]"
-                  disabled={!selectedSupplierId}
+                  disabled={!selectedCustomerId}
                 >
                   Dados da Carga
                 </TabsTrigger>
                 <TabsTrigger
                   value="servico"
                   className="rounded-b-none border-t border-l border-r border-transparent data-[state=active]:border-gray-200 data-[state=active]:bg-white data-[state=active]:shadow-none px-6 py-2.5 text-gray-500 data-[state=active]:text-primary-700 font-semibold relative top-[1px]"
-                  disabled={!selectedSupplierId}
+                  disabled={!selectedCustomerId}
                 >
                   Serviço
                 </TabsTrigger>
@@ -313,50 +345,51 @@ export function MaritimeSimulator() {
                     <Building2 className="w-5 h-5 text-primary-600" />
                     Seleção de Cliente
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">Selecione o fornecedor/empresa para a simulação</p>
+                  <p className="text-sm text-gray-500 mt-1">Selecione o cliente para a simulação</p>
                 </div>
 
                 <div className="p-8">
-                  <Label htmlFor="supplier" className="text-base font-semibold text-gray-700 mb-3 block">
-                    Fornecedor
+                  <Label htmlFor="customer" className="text-base font-semibold text-gray-700 mb-3 block">
+                    Cliente
                   </Label>
                   <Select
-                    value={selectedSupplierId}
-                    onValueChange={handleSupplierChange}
+                    value={selectedCustomerId}
+                    onValueChange={handleCustomerChange}
                     disabled={!isEditable}
                   >
-                    <SelectTrigger id="supplier" className="w-full h-12 text-base">
-                      <SelectValue placeholder="Selecione um fornecedor..." />
+                    <SelectTrigger id="customer" className="w-full h-12 text-base">
+                      <SelectValue placeholder="Selecione um cliente..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {isLoadingSuppliers ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Carregando fornecedores...</div>
+                      {isLoadingCustomers ? (
+                        <div className="p-4 text-center text-sm text-gray-500">Carregando clientes...</div>
                       ) : (
-                        suppliersData?.data?.map((item: any) => (
-                          <SelectItem key={item.company.id} value={item.company.id}>
-                            {item.company.fantasyName || item.company.socialReason}
-                            <span className="text-gray-400 text-xs ml-2">({item.company.cnpj})</span>
+                        customersData?.data?.map((customer: any) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                            <span className="text-gray-400 text-xs ml-2">({customer.document})</span>
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
 
-                  {selectedSupplierId && !currentSimulation && (
+                  {selectedCustomerId && !currentSimulation && (
                     <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-sm text-yellow-800">
-                        <strong>Fornecedor selecionado.</strong> Preencha os dados da carga e clique em{' '}
+                        <strong>Cliente selecionado.</strong> Preencha os dados da carga e clique em{' '}
                         <strong>"Salvar Simulação"</strong> para continuar.
                       </p>
                     </div>
                   )}
 
-                  {selectedSupplierId && currentSimulation && (
+                  {selectedCustomerId && currentSimulation && (
                     <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-                      <h3 className="font-semibold text-primary-800 mb-2">Empresa Selecionada</h3>
+                      <h3 className="font-semibold text-primary-800 mb-2">Cliente Selecionado</h3>
                       <div className="text-sm text-primary-700 space-y-1">
-                        <p><strong>Nome:</strong> {currentSimulation.supplier?.fantasyName || currentSimulation.supplier?.socialReason}</p>
-                        <p><strong>CNPJ:</strong> {currentSimulation.supplier?.cnpj}</p>
+                        <p><strong>Código:</strong> {currentSimulation.customer?.code}</p>
+                        <p><strong>Nome:</strong> {currentSimulation.customer?.name}</p>
+                        <p><strong>Documento:</strong> {currentSimulation.customer?.document}</p>
                         <div className="flex items-center">
                           <strong>Status:</strong>{' '}
                           <Badge className="ml-2" variant={isEditable ? 'default' : 'secondary'}>
@@ -532,7 +565,7 @@ export function MaritimeSimulator() {
                 <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg border border-blue-100">
                   <span className="text-blue-700 font-medium">Total Serviços</span>
                   <span className="text-lg font-bold text-blue-900">
-                    {formatCurrency(currentSimulation?.totalServices || 0)}
+                    {formatCurrency(calculatedTotalServices)}
                   </span>
                 </div>
 
@@ -563,7 +596,7 @@ export function MaritimeSimulator() {
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-gray-600 font-medium">Serviços Diversos</span>
                     <span className="text-xs text-gray-400 italic">
-                      {currentSimulation?._count?.services || 0} selecionados
+                      {servicesCount} selecionados
                     </span>
                   </div>
                 </div>
@@ -576,7 +609,7 @@ export function MaritimeSimulator() {
                     <span className="text-xs text-gray-400">Com impostos</span>
                   </div>
                   <span className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(currentSimulation?.totalGeneral || 0)}
+                    {formatCurrency(calculatedTotalGeneral)}
                   </span>
                 </div>
               </div>

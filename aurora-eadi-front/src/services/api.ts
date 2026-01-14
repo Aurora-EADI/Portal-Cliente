@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType } from '@/types';
+import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType, Customer, CustomerStatus, CreateCustomerDTO, UpdateCustomerDTO } from '@/types';
 
 const validRoles = Object.values(UserRole);
 
@@ -409,6 +409,118 @@ export const supplierRequirementsService = {
       return response.data;
     } catch (error: any) {
       return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar requisitos'));
+    }
+  },
+};
+
+/**
+ * Serviço de clientes
+ */
+export const customerService = {
+  getAll: async (params?: PaginationParams): Promise<PaginatedResponse<Customer>> => {
+    try {
+      const response = await api.get('/customers', { params });
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar clientes';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  getById: async (id: string): Promise<Customer> => {
+    try {
+      const response = await api.get(`/customers/${id}`);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  create: async (data: CreateCustomerDTO): Promise<Customer> => {
+    try {
+      const response = await api.post('/customers', data);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao criar cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  update: async (id: string, data: UpdateCustomerDTO): Promise<Customer> => {
+    try {
+      const response = await api.patch(`/customers/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao atualizar cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  updateStatus: async (id: string, status: CustomerStatus): Promise<Customer> => {
+    try {
+      const response = await api.patch(`/customers/${id}/status`, { status });
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao atualizar status do cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/customers/${id}`);
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao excluir cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
     }
   },
 };
