@@ -94,6 +94,24 @@ export const useRemoveService = () => {
   });
 };
 
+/**
+ * Hook para reativar um serviço
+ */
+export const useActivateService = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => serviceService.update(id, { isActive: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SERVICES_KEY });
+      toast.success('Serviço reativado com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+
 // ========== SERVICE COSTS ==========
 
 /**

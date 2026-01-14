@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType, Customer, CustomerStatus, CreateCustomerDTO, UpdateCustomerDTO } from '@/types';
+import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType, Customer, CustomerStatus, CreateCustomerDTO, UpdateCustomerDTO, Service, CreateServiceDto, UpdateServiceDto } from '@/types';
 
 const validRoles = Object.values(UserRole);
 
@@ -513,6 +513,120 @@ export const customerService = {
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;
       let message = 'Erro ao excluir cliente';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+};
+
+/**
+ * Serviço de serviços (catálogo de serviços)
+ */
+export const serviceService = {
+  getAll: async (includeInactive = false): Promise<Service[]> => {
+    try {
+      const response = await api.get('/services', {
+        params: { includeInactive: includeInactive.toString() }
+      });
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar serviços';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  getById: async (id: string): Promise<Service> => {
+    try {
+      const response = await api.get(`/services/${id}`);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar serviço';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  create: async (data: CreateServiceDto): Promise<Service> => {
+    try {
+      const response = await api.post('/services', data);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao criar serviço';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  update: async (id: string, data: UpdateServiceDto): Promise<Service> => {
+    try {
+      const response = await api.patch(`/services/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao atualizar serviço';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  toggleStatus: async (id: string): Promise<Service> => {
+    try {
+      const response = await api.delete(`/services/${id}`);
+      return response.data;
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao alterar status do serviço';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      return Promise.reject(new Error(message));
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/services/${id}/hard`);
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao excluir serviço';
 
       if (typeof backendMessage === 'string') {
         message = backendMessage;

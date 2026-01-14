@@ -139,7 +139,8 @@ export class CalculationService {
       throw new BadRequestException('Toneladas deve ser maior que zero');
     }
 
-    return rate * tonnes;
+    // Excel style: ROUNDUP(val; -3) / 1000 -> Math.ceil(val / 1000)
+    return rate * Math.ceil(tonnes / 1000);
   }
 
   /**

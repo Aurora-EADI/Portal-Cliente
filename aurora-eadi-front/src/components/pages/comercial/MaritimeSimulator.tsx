@@ -37,6 +37,8 @@ import { useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
 import { formatCurrency, formatUSD } from '@/lib/utils';
+import { calculateServiceCost } from '@/lib/calculations';
+import { ServiceCostType } from '@/types';
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
@@ -59,26 +61,58 @@ export function MaritimeSimulator() {
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
 
+  // Form Fields
+  const [cifUsd, setCifUsd] = useState<string>('');
+  const [dollarRate, setDollarRate] = useState<string>('5.85');
+  const [cifBrl, setCifBrl] = useState<string>('0');
+  const [tonnes, setTonnes] = useState<string>('');
+  const [cntrCount, setCntrCount] = useState<string>('');
+  const [cntrType, setCntrType] = useState<string>('');
+  const [storageRate, setStorageRate] = useState<string>('0.35');
+  const [transportRate, setTransportRate] = useState<string>('1700');
+  const [discount, setDiscount] = useState<string>('0');
+
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
     serviceId: string;
     costType: any;
+    originalCost: number;
     appliedCost: number;
     customReason?: string;
   }>>([]);
 
+  // Calculate CIF BRL numeric value
+  const cifBrlNum = useMemo(() => {
+    const usd = parseFloat(cifUsd) || 0;
+    const rate = parseFloat(dollarRate) || 0;
+    return usd * rate;
+  }, [cifUsd, dollarRate]);
+
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
-  // Calculate total services in real-time (local + saved)
+  // Calculate total services in real-time (summing appliedCost from the list, with reactive re-calculation for DEFAULT type)
   const calculatedTotalServices = useMemo(() => {
-    // If we have a saved simulation, use its total
-    if (currentSimulationId && currentSimulation?.totalServices) {
-      return currentSimulation.totalServices;
-    }
-    // Otherwise, calculate from local services
-    return localServices.reduce((total, service) => total + service.appliedCost, 0);
-  }, [localServices, currentSimulationId, currentSimulation?.totalServices]);
+    const servicesList = currentSimulationId ? (currentSimulation?.services || []) : localServices;
+    const calcData = {
+      cifBrl: cifBrlNum,
+      tonnes: parseFloat(tonnes || '0'),
+      cntrCount: parseInt(cntrCount || '0'),
+    };
+
+    return servicesList.reduce((total, s) => {
+      // If DEFAULT, calculate reactively from originalCost and current cargo data
+      if (s.costType === ServiceCostType.DEFAULT) {
+        // Need to find the calculation type. For simulationService it's in s.service.
+        // For localService it's... wait, I need calculationType in LocalService too.
+        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+        if (serviceDef) {
+          return total + calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
+        }
+      }
+      return total + Number(s.appliedCost || 0);
+    }, 0);
+  }, [localServices, currentSimulationId, currentSimulation?.services, cifBrlNum, tonnes, cntrCount, servicesData]);
 
   // Count of selected services
   const servicesCount = useMemo(() => {
@@ -88,30 +122,27 @@ export function MaritimeSimulator() {
     return localServices.length;
   }, [localServices, currentSimulationId, currentSimulation?._count?.services]);
 
-  // Form Fields
-  const [cifUsd, setCifUsd] = useState<string>('');
-  const [dollarRate, setDollarRate] = useState<string>('5.85');
-  const [cifBrl, setCifBrl] = useState<string>('0');
-  const [tonnes, setTonnes] = useState<string>('');
-  const [cntrCount, setCntrCount] = useState<string>('');
-  const [cntrType, setCntrType] = useState<string>('');
-  const [storageCost, setStorageCost] = useState<string>('0');
-  const [transportCost, setTransportCost] = useState<string>('1700');
-  const [discount, setDiscount] = useState<string>('0');
+
+  // Calculate costs based on rates
+  const calculatedStorageCost = useMemo(() => {
+    const rate = parseFloat(storageRate) || 0;
+    return (rate / 100) * (cifBrlNum || 0);
+  }, [storageRate, cifBrlNum]);
+
+  const calculatedTransportCost = useMemo(() => {
+    const rate = parseFloat(transportRate) || 0;
+    const count = parseInt(cntrCount) || 0;
+    return rate * count;
+  }, [transportRate, cntrCount]);
 
   // Calculate total general in real-time
   const calculatedTotalGeneral = useMemo(() => {
-    // If we have a saved simulation, use its total
-    if (currentSimulationId && currentSimulation?.totalGeneral) {
-      return currentSimulation.totalGeneral;
-    }
-    // Otherwise, calculate from local values
     const services = calculatedTotalServices;
-    const storage = parseFloat(storageCost || '0');
-    const transport = parseFloat(transportCost || '0');
+    const storage = calculatedStorageCost;
+    const transport = calculatedTransportCost;
     const discountValue = parseFloat(discount || '0');
     return services + storage + transport - discountValue;
-  }, [calculatedTotalServices, storageCost, transportCost, discount, currentSimulationId, currentSimulation?.totalGeneral]);
+  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount]);
 
   // Auto-calculate CIF BRL
   useEffect(() => {
@@ -129,8 +160,20 @@ export function MaritimeSimulator() {
       setTonnes(currentSimulation.tonnes?.toString() || '');
       setCntrCount(currentSimulation.cntrCount?.toString() || '');
       setCntrType(currentSimulation.cntrType || '');
-      setStorageCost(currentSimulation.storageCost?.toString() || '0');
-      setTransportCost(currentSimulation.transportCost?.toString() || '0');
+
+      // Calculate rates from saved costs for consistency
+      const savedStorageCost = Number(currentSimulation.storageCost || 0);
+      const savedCifBrl = Number(currentSimulation.cifBrl || 0);
+      if (savedCifBrl > 0) {
+        setStorageRate(((savedStorageCost / savedCifBrl) * 100).toFixed(4).replace(/\.?0+$/, ''));
+      }
+
+      const savedTransportCost = Number(currentSimulation.transportCost || 0);
+      const savedCntrCount = Number(currentSimulation.cntrCount || 0);
+      if (savedCntrCount > 0) {
+        setTransportRate((savedTransportCost / savedCntrCount).toString());
+      }
+
       setDiscount(currentSimulation.discount?.toString() || '0');
     }
   }, [currentSimulation]);
@@ -144,6 +187,7 @@ export function MaritimeSimulator() {
   const handleAddLocalService = (service: {
     serviceId: string;
     costType: any;
+    originalCost: number;
     appliedCost: number;
     customReason?: string;
   }) => {
@@ -182,8 +226,8 @@ export function MaritimeSimulator() {
           tonnes: tonnes ? parseFloat(tonnes) : undefined,
           cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
           cntrType: cntrType || undefined,
-          storageCost: storageCost ? parseFloat(storageCost) : 0,
-          transportCost: transportCost ? parseFloat(transportCost) : 0,
+          storageCost: calculatedStorageCost,
+          transportCost: calculatedTransportCost,
           discount: discount ? parseFloat(discount) : 0,
         });
 
@@ -212,8 +256,8 @@ export function MaritimeSimulator() {
             tonnes: tonnes ? parseFloat(tonnes) : undefined,
             cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
             cntrType: cntrType || undefined,
-            storageCost: storageCost ? parseFloat(storageCost) : 0,
-            transportCost: transportCost ? parseFloat(transportCost) : 0,
+            storageCost: calculatedStorageCost,
+            transportCost: calculatedTransportCost,
             discount: discount ? parseFloat(discount) : 0,
           },
         });
@@ -239,8 +283,8 @@ export function MaritimeSimulator() {
         tonnes: tonnes ? parseFloat(tonnes) : undefined,
         cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
         cntrType: cntrType || undefined,
-        storageCost: storageCost ? parseFloat(storageCost) : 0,
-        transportCost: transportCost ? parseFloat(transportCost) : 0,
+        storageCost: calculatedStorageCost,
+        transportCost: calculatedTransportCost,
         discount: discount ? parseFloat(discount) : 0,
       });
 
@@ -492,28 +536,57 @@ export function MaritimeSimulator() {
                     </Select>
                   </div>
 
-                  {/* Row 4 */}
+                  {/* Row 4: Storage */}
                   <div className="space-y-2">
-                    <Label htmlFor="storageCost">Armazenagem R$ (2º Período de 15)</Label>
-                    <Input
-                      id="storageCost"
-                      value={storageCost}
-                      onChange={(e) => setStorageCost(e.target.value)}
-                      disabled={!isEditable}
-                    />
+                    <Label htmlFor="storageRate">Armazenagem (2º Período de 15) %</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="storageRate"
+                          value={storageRate}
+                          onChange={(e) => setStorageRate(e.target.value)}
+                          disabled={!isEditable}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedStorageCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Row 5: Transport */}
                   <div className="space-y-2">
-                    <Label htmlFor="transportCost">Transporte de DTA + Devolução</Label>
-                    <Input
-                      id="transportCost"
-                      value={transportCost}
-                      onChange={(e) => setTransportCost(e.target.value)}
-                      disabled={!isEditable}
-                    />
+                    <Label htmlFor="transportRate">Transporte de DTA + Devolução</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                        <Input
+                          id="transportRate"
+                          value={transportRate}
+                          onChange={(e) => setTransportRate(e.target.value)}
+                          disabled={!isEditable}
+                          className="pl-8"
+                        />
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedTransportCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Row 5 */}
+                  {/* Row 6: Discount */}
                   <div className="space-y-2">
                     <Label htmlFor="discount">Desconto</Label>
                     <div className="relative">
@@ -538,7 +611,7 @@ export function MaritimeSimulator() {
                   isLoadingServices={isLoadingServices}
                   isEditable={isEditable}
                   simulationData={{
-                    cifBrl: parseFloat(cifBrl) || 0,
+                    cifBrl: cifBrlNum,
                     tonnes: parseFloat(tonnes) || 0,
                     cntrCount: parseInt(cntrCount) || 0,
                   }}
@@ -573,14 +646,14 @@ export function MaritimeSimulator() {
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Armazenagem</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(parseFloat(storageCost || '0'))}
+                      {formatCurrency(calculatedStorageCost)}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Transporte</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(parseFloat(transportCost || '0'))}
+                      {formatCurrency(calculatedTransportCost)}
                     </span>
                   </div>
 

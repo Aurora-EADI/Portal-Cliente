@@ -338,9 +338,24 @@ export class SimulationsService {
       }
     }
 
-    return this.prisma.simulation.update({
+    const updated = await this.prisma.simulation.update({
       where: { id },
       data: updateData,
+      include: {
+        customer: true,
+        services: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    // Recalcula custos de serviços e totalizadores
+    await this.recalculateAllServices(id);
+
+    return this.prisma.simulation.findUnique({
+      where: { id },
       include: {
         customer: true,
         services: {
@@ -545,5 +560,53 @@ export class SimulationsService {
         totalGeneral: new Prisma.Decimal(totalGeneral),
       },
     });
+  }
+
+  private async recalculateAllServices(simulationId: string) {
+    const simulation = await this.prisma.simulation.findUnique({
+      where: { id: simulationId },
+      include: {
+        services: {
+          include: {
+            service: true,
+          },
+        },
+      },
+    });
+
+    if (!simulation) return;
+
+    for (const simService of simulation.services) {
+      if (simService.costType === ServiceCostType.DEFAULT) {
+        try {
+          const newCost = this.calculationService.calculateServiceCost(
+            simService.service.calculationType,
+            Number(simService.originalCost),
+            {
+              cifBrl: Number(simulation.cifBrl),
+              cntrCount: simulation.cntrCount || undefined,
+              tonnes: simulation.tonnes ? Number(simulation.tonnes) : undefined,
+            },
+          );
+
+          await this.prisma.simulationService.update({
+            where: {
+              simulationId_serviceId: {
+                simulationId,
+                serviceId: simService.serviceId,
+              },
+            },
+            data: {
+              appliedCost: new Prisma.Decimal(newCost),
+            },
+          });
+        } catch (error) {
+          console.error(`Error recalculating service ${simService.serviceId}:`, error);
+        }
+      }
+    }
+
+    // Após atualizar os serviços, recalcula os totais
+    await this.recalculateTotals(simulationId);
   }
 }

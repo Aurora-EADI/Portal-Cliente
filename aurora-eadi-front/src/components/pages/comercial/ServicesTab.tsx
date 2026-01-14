@@ -32,11 +32,13 @@ import {
 import { useServiceCostCurrent } from '@/hooks/useServices';
 import { serviceCostService } from '@/services/serviceService';
 import { formatCurrency, formatPercent } from '@/lib/utils';
+import { calculateServiceCost } from '@/lib/calculations';
 import { toast } from 'sonner';
 
 interface LocalService {
   serviceId: string;
   costType: ServiceCostType;
+  originalCost: number;
   appliedCost: number;
   customReason?: string;
 }
@@ -56,17 +58,32 @@ interface ServicesTabProps {
   onRemoveLocalService?: (serviceId: string) => void;
 }
 
+// Helper to calculate final cost based on calculationType
+const calculateFinalCostGlobal = (rate: number, service: Service, simulationData: { cifBrl: number; tonnes: number; cntrCount: number }): number => {
+  return calculateServiceCost(rate, service.calculationType, simulationData);
+};
+
 // Component to fetch and display service default cost
-function ServiceDefaultCost({ serviceId }: { serviceId: string }) {
-  const { data: costData, isLoading } = useServiceCostCurrent(serviceId);
+function ServiceDefaultCost({
+  service,
+  simulationData
+}: {
+  service: Service;
+  simulationData: { cifBrl: number; tonnes: number; cntrCount: number }
+}) {
+  const { data: costData, isLoading } = useServiceCostCurrent(service.id);
 
   if (isLoading) {
     return <span className="text-gray-400">...</span>;
   }
 
+  const baseCost = costData?.cost || 0;
+
   return (
     <span className="font-medium text-gray-700">
-      {formatCurrency(costData?.cost || 0)}
+      {service.calculationType === ServiceCalculationType.PERCENTAGE_CIF
+        ? formatPercent(baseCost)
+        : formatCurrency(baseCost)}
     </span>
   );
 }
@@ -106,18 +123,7 @@ export function ServicesTab({
 
   // Calculate final cost based on calculationType
   const calculateFinalCost = (rate: number, service: Service): number => {
-    switch (service.calculationType) {
-      case ServiceCalculationType.FIXED:
-        return rate;
-      case ServiceCalculationType.PERCENTAGE_CIF:
-        return (rate / 100) * simulationData.cifBrl;
-      case ServiceCalculationType.PER_CONTAINER:
-        return rate * simulationData.cntrCount;
-      case ServiceCalculationType.PER_TONNE:
-        return rate * simulationData.tonnes;
-      default:
-        return rate;
-    }
+    return calculateFinalCostGlobal(rate, service, simulationData);
   };
 
   // Get calculation formula display
@@ -130,7 +136,8 @@ export function ServicesTab({
       case ServiceCalculationType.PER_CONTAINER:
         return `${formatCurrency(rate)} × ${simulationData.cntrCount} containers`;
       case ServiceCalculationType.PER_TONNE:
-        return `${formatCurrency(rate)} × ${simulationData.tonnes.toFixed(3)} toneladas`;
+        const roundedTonnes = Math.ceil(simulationData.tonnes / 1000);
+        return `${formatCurrency(rate)} × ${roundedTonnes} ton (arr.)`;
       default:
         return formatCurrency(rate);
     }
@@ -187,6 +194,7 @@ export function ServicesTab({
       const serviceData = {
         serviceId: service.id,
         costType: ServiceCostType.DEFAULT,
+        originalCost: costData.cost,
         appliedCost: finalCost,
       };
 
@@ -211,6 +219,7 @@ export function ServicesTab({
       const serviceData = {
         serviceId: service.id,
         costType: ServiceCostType.ZEROED,
+        originalCost: 0,
         appliedCost: 0,
       };
 
@@ -255,6 +264,7 @@ export function ServicesTab({
       const serviceData = {
         serviceId: selectedService.id,
         costType: rateValue === defaultRate ? ServiceCostType.DEFAULT : ServiceCostType.CUSTOM,
+        originalCost: rateValue,
         appliedCost: finalCost,
         customReason: rateValue !== defaultRate ? customReason : undefined,
       };
@@ -371,7 +381,7 @@ export function ServicesTab({
                       {service.category || '-'}
                     </TableCell> */}
                     <TableCell className="text-right">
-                      <ServiceDefaultCost serviceId={service.id} />
+                      <ServiceDefaultCost service={service} simulationData={simulationData} />
                     </TableCell>
                     <TableCell className="text-right">
                       {isAdded ? (
@@ -382,7 +392,11 @@ export function ServicesTab({
                               ? 'font-bold text-orange-600'
                               : 'font-bold text-green-600'
                         }>
-                          {formatCurrency(simService.appliedCost)}
+                          {formatCurrency(
+                            simService.costType === ServiceCostType.DEFAULT
+                              ? calculateServiceCost(Number(simService.originalCost), service.calculationType, simulationData)
+                              : simService.appliedCost
+                          )}
                         </span>
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>
@@ -573,17 +587,16 @@ export function ServicesTab({
               <div className="p-2 bg-gradient-to-r from-green-50 to-red-50 rounded-md border border-gray-300">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-600">Diferença:</span>
-                  <span className={`font-bold text-base ${
-                    calculateFinalCost(parseFloat(customRate || '0'), selectedService) >
+                  <span className={`font-bold text-base ${calculateFinalCost(parseFloat(customRate || '0'), selectedService) >
                     calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
-                      ? 'text-red-600'
-                      : calculateFinalCost(parseFloat(customRate || '0'), selectedService) <
-                        calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
-                        ? 'text-green-600'
-                        : 'text-gray-600'
-                  }`}>
+                    ? 'text-red-600'
+                    : calculateFinalCost(parseFloat(customRate || '0'), selectedService) <
+                      calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
+                      ? 'text-green-600'
+                      : 'text-gray-600'
+                    }`}>
                     {calculateFinalCost(parseFloat(customRate || '0'), selectedService) >
-                     calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService) && '+'}
+                      calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService) && '+'}
                     {formatCurrency(
                       calculateFinalCost(parseFloat(customRate || '0'), selectedService) -
                       calculateFinalCost(parseFloat(currentCostData.cost.toString()), selectedService)
