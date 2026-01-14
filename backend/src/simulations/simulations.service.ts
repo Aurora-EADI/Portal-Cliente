@@ -334,6 +334,10 @@ export class SimulationsService {
       updateData.hasStripping = updateSimulationDto.hasStripping;
     }
 
+    if (updateSimulationDto.minBillingValue !== undefined) {
+      updateData.minBillingValue = new Prisma.Decimal(updateSimulationDto.minBillingValue);
+    }
+
     // Recalcula CIF BRL se necessário
     if (updateSimulationDto.cifUsd !== undefined || updateSimulationDto.dollarRate !== undefined) {
       const current = await this.prisma.simulation.findUnique({ where: { id } });
@@ -578,9 +582,9 @@ export class SimulationsService {
     const discount = Number(simulation.discount || 0);
     const cntrCount = Number(simulation.cntrCount || 0);
 
-    // Regra: Mínimo de R$ 5.500,00 por contêiner nos serviços
-    const MIN_BILLING_PER_CNTR = 5500;
-    const minBillingThreshold = MIN_BILLING_PER_CNTR * cntrCount;
+    // Regra: Mínimo configurável por contêiner nos serviços (Padrão: R$ 5.500,00)
+    const minBillingPerCntr = Number(simulation.minBillingValue || 5500);
+    const minBillingThreshold = minBillingPerCntr * cntrCount;
     const minDiff = totalServices < minBillingThreshold ? minBillingThreshold - totalServices : 0;
 
     const totalGeneral = totalServices + minDiff + storageCost + transportCost - discount;

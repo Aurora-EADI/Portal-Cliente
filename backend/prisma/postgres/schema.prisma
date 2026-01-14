@@ -300,6 +300,7 @@ model Simulation {
   totalGeneral     Decimal?            @db.Decimal(12, 2)
   status           SimulationStatus    @default(DRAFT)
   hasStripping     Boolean             @default(false)
+  minBillingValue  Decimal             @db.Decimal(10, 2) @default(5500)
   createdBy        String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt

@@ -40,7 +40,7 @@ import { formatCurrency, formatUSD, formatPercent } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
 
-const MIN_BILLING_PER_CNTR = 5500;
+const DEFAULT_MIN_BILLING = 5500;
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
@@ -74,6 +74,7 @@ export function MaritimeSimulator() {
   const [transportRate, setTransportRate] = useState<string>('1700');
   const [discount, setDiscount] = useState<string>('0');
   const [hasStripping, setHasStripping] = useState<boolean>(false);
+  const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -149,8 +150,9 @@ export function MaritimeSimulator() {
     const transport = calculatedTransportCost;
     const discountValue = parseFloat(discount || '0');
     const count = parseInt(cntrCount || '0');
+    const minThreshold = parseFloat(minBillingValue) || 0;
 
-    const minBillingThreshold = MIN_BILLING_PER_CNTR * count;
+    const minBillingThreshold = minThreshold * count;
     const difference = (count > 0 && services < minBillingThreshold) ? minBillingThreshold - services : 0;
     const marginPct = (difference > 0 && services > 0) ? (difference / services) * 100 : 0;
 
@@ -159,7 +161,7 @@ export function MaritimeSimulator() {
       minProfitMarginPct: marginPct,
       totalGeneral: services + difference + storage + transport - discountValue
     };
-  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, cntrCount]);
+  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, cntrCount, minBillingValue]);
 
   const calculatedTotalGeneral = totalGeneral;
 
@@ -195,6 +197,7 @@ export function MaritimeSimulator() {
 
       setDiscount(currentSimulation.discount?.toString() || '0');
       setHasStripping(currentSimulation.hasStripping || false);
+      setMinBillingValue(currentSimulation.minBillingValue?.toString() || DEFAULT_MIN_BILLING.toString());
     }
   }, [currentSimulation]);
 
@@ -250,6 +253,7 @@ export function MaritimeSimulator() {
           transportCost: calculatedTransportCost,
           discount: discount ? parseFloat(discount) : 0,
           hasStripping,
+          minBillingValue: parseFloat(minBillingValue),
         });
 
         // Add local services to the newly created simulation
@@ -281,6 +285,7 @@ export function MaritimeSimulator() {
             transportCost: calculatedTransportCost,
             discount: discount ? parseFloat(discount) : 0,
             hasStripping,
+            minBillingValue: parseFloat(minBillingValue),
           },
         });
         toast.success('Simulação atualizada com sucesso!');
@@ -309,6 +314,7 @@ export function MaritimeSimulator() {
         transportCost: calculatedTransportCost,
         discount: discount ? parseFloat(discount) : 0,
         hasStripping,
+        minBillingValue: parseFloat(minBillingValue),
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -609,7 +615,7 @@ export function MaritimeSimulator() {
                     </div>
                   </div>
 
-                  {/* Row 6: Discount */}
+                  {/* Row 6: Discount & Min Billing */}
                   <div className="space-y-2">
                     <Label htmlFor="discount">Desconto</Label>
                     <div className="relative">
@@ -619,6 +625,20 @@ export function MaritimeSimulator() {
                         value={discount}
                         onChange={(e) => setDiscount(e.target.value)}
                         className="pl-9"
+                        disabled={!isEditable}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="minBillingValue">Faturamento Mínimo por CNTR</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                      <Input
+                        id="minBillingValue"
+                        value={minBillingValue}
+                        onChange={(e) => setMinBillingValue(e.target.value)}
+                        className="pl-9 bg-amber-50/30 border-amber-200/50 focus-visible:ring-amber-500"
                         disabled={!isEditable}
                       />
                     </div>

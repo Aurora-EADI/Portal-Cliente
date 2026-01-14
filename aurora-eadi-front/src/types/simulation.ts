@@ -50,6 +50,7 @@ export interface Simulation {
   // Status e controle
   status: SimulationStatus;
   hasStripping: boolean;
+  minBillingValue: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -101,6 +102,7 @@ export interface CreateSimulationDto {
   transportCost?: number;
   discount?: number;
   hasStripping?: boolean;
+  minBillingValue?: number;
 }
 
 export interface UpdateSimulationDto extends Partial<CreateSimulationDto> {
