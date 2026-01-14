@@ -617,7 +617,7 @@ export function MaritimeSimulator() {
                       className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                     />
                     <Label htmlFor="hasStripping" className="font-semibold text-blue-900 cursor-pointer select-none">
-                      Tem Desova?
+                      Desova?
                       <p className="text-xs text-blue-700/70 font-normal">
                         Marque esta opção se a carga precisar ser desovada para filtrar os serviços específicos.
                       </p>
