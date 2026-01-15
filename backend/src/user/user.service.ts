@@ -251,7 +251,7 @@ export class UsersService {
       where: { id },
       include: {
         documents: true,
-        simulations: true,
+        simulationVersions: true,
         serviceCosts: true,
       },
     });
@@ -270,9 +270,9 @@ export class UsersService {
     }
 
     // Verificar se há simulações criadas pelo usuário
-    if (user.simulations.length > 0) {
+    if (user.simulationVersions.length > 0) {
       throw new BadRequestException(
-        `Não é possível deletar usuário com ${user.simulations.length} simulação(ões) vinculada(s). ` +
+        `Não é possível deletar usuário com ${user.simulationVersions.length} simulação(ões) vinculada(s). ` +
         `Reatribua as simulações para outro usuário antes de deletar.`,
       );
     }

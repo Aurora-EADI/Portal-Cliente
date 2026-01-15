@@ -107,7 +107,6 @@ export class ServicesService {
       where: { id },
       include: {
         serviceCosts: true,
-        simulationServices: true,
       },
     });
 
@@ -123,13 +122,8 @@ export class ServicesService {
       );
     }
 
-    // Verificar se há simulações usando este serviço
-    if (service.simulationServices.length > 0) {
-      throw new BadRequestException(
-        `Não é possível deletar serviço usado em ${service.simulationServices.length} simulação(ões). ` +
-        `Use o método remove() para desativar o serviço.`,
-      );
-    }
+    // Nota: A verificação de uso em simulações agora é baseada em snapshot JSON e não impede o hard delete,
+    // mas o histórico do serviço em simulações antigas é preservado pelo snapshot.
 
     // Se passou por todas as verificações, pode deletar
     return this.prisma.service.delete({

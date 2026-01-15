@@ -11,6 +11,10 @@ export class AddSimulationServiceDto {
 
   @IsNumber()
   @Type(() => Number)
+  originalCost: number; // Custo original do serviço
+
+  @IsNumber()
+  @Type(() => Number)
   appliedCost: number; // Custo que será aplicado
 
   @IsOptional()

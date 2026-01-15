@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Printer, Plus, Building2, History, Lock, Save } from 'lucide-react';
+import { Printer, Plus, Building2, History, Lock, Save, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +33,7 @@ import {
   useCreateSimulationVersion,
   useAddSimulationService,
 } from '@/hooks/useSimulations';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
@@ -44,6 +45,9 @@ const DEFAULT_MIN_BILLING = 5500;
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlId = searchParams.get('id');
 
   // Customers Data
   const { data: customersData, isLoading: isLoadingCustomers } = useCustomers();
@@ -58,7 +62,7 @@ export function MaritimeSimulator() {
   const addServiceMutation = useAddSimulationService();
 
   // State Management
-  const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(null);
+  const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(urlId);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
@@ -97,9 +101,13 @@ export function MaritimeSimulator() {
 
   // Filter services based on stripping status
   const effectiveServicesList = useMemo(() => {
+    // Agora os serviços vêm da tabela SimulationService (relacional)
     const list = currentSimulationId ? (currentSimulation?.services || []) : localServices;
     if (!hasStripping) {
       return list.filter(s => {
+        // Se for snapshot, já temos o hasStripping nele
+        if ('hasStripping' in s) return !s.hasStripping;
+
         const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
         return !serviceDef?.hasStripping;
       });
@@ -172,6 +180,13 @@ export function MaritimeSimulator() {
     setCifBrl(formatCurrency((usd * rate), false));
   }, [cifUsd, dollarRate]);
 
+  // Sync currentSimulationId with URL
+  useEffect(() => {
+    if (urlId && urlId !== currentSimulationId) {
+      setCurrentSimulationId(urlId);
+    }
+  }, [urlId]);
+
   // Load current simulation data
   useEffect(() => {
     if (currentSimulation) {
@@ -241,7 +256,7 @@ export function MaritimeSimulator() {
 
     try {
       if (!currentSimulationId) {
-        // Create new simulation
+        // Create new simulation with initial services
         const newSimulation = await createSimulationMutation.mutateAsync({
           customerId: selectedCustomerId,
           cifUsd: parseFloat(cifUsd) || 0,
@@ -253,20 +268,12 @@ export function MaritimeSimulator() {
           transportCost: calculatedTransportCost,
           discount: discount ? parseFloat(discount) : 0,
           hasStripping,
-          minBillingValue: parseFloat(minBillingValue),
+          minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+          initialServices: localServices,
         });
 
-        // Add local services to the newly created simulation
-        if (localServices.length > 0) {
-          for (const service of localServices) {
-            await addServiceMutation.mutateAsync({
-              simulationId: newSimulation.id,
-              data: service,
-            });
-          }
-          // Clear local services after saving
-          setLocalServices([]);
-        }
+        // Clear local services after saving
+        setLocalServices([]);
 
         setCurrentSimulationId(newSimulation.id);
         toast.success('Simulação criada com sucesso!');
@@ -285,7 +292,7 @@ export function MaritimeSimulator() {
             transportCost: calculatedTransportCost,
             discount: discount ? parseFloat(discount) : 0,
             hasStripping,
-            minBillingValue: parseFloat(minBillingValue),
+            minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
           },
         });
         toast.success('Simulação atualizada com sucesso!');
@@ -314,7 +321,7 @@ export function MaritimeSimulator() {
         transportCost: calculatedTransportCost,
         discount: discount ? parseFloat(discount) : 0,
         hasStripping,
-        minBillingValue: parseFloat(minBillingValue),
+        minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -335,25 +342,36 @@ export function MaritimeSimulator() {
           <h1 className="text-3xl font-bold text-gray-900">
             Simulador de Custo EADI
           </h1>
-          {currentSimulation && (
-            <div className="flex items-center gap-3 mt-2">
-              <p className="text-sm text-gray-500 flex items-center gap-2">
-                ID da Simulação:
-                <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
-                  {currentSimulation.displayNumber}
-                </span>
-              </p>
-              <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
-                {currentSimulation.status}
-              </Badge>
-              {!currentSimulation.isCurrentVersion && (
-                <Badge variant="outline" className="text-gray-500">
-                  <Lock className="w-3 h-3 mr-1" />
-                  Versão Antiga
+          <div className="flex items-center gap-4 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/comercial/history')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Histórico
+            </Button>
+            {currentSimulation && (
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-500 flex items-center gap-2">
+                  ID da Simulação:
+                  <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
+                    {currentSimulation.displayNumber}
+                  </span>
+                </p>
+                <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
+                  {currentSimulation.status}
                 </Badge>
-              )}
-            </div>
-          )}
+                {!currentSimulation.isCurrentVersion && (
+                  <Badge variant="outline" className="text-gray-500">
+                    <Lock className="w-3 h-3 mr-1" />
+                    Versão Antiga
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           {isEditable && (
@@ -775,8 +793,8 @@ export function MaritimeSimulator() {
       </div >
 
       {/* DIALOG: NOVA VERSÃO */}
-      < Dialog open={isNewVersionDialogOpen} onOpenChange={setIsNewVersionDialogOpen} >
-        <DialogContent>
+      <Dialog open={isNewVersionDialogOpen} onOpenChange={setIsNewVersionDialogOpen}>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Criar Nova Versão</DialogTitle>
             <DialogDescription>
@@ -793,6 +811,7 @@ export function MaritimeSimulator() {
                 placeholder="Ex: Ajuste no desconto solicitado pelo cliente"
                 value={versionReason}
                 onChange={(e) => setVersionReason(e.target.value)}
+                autoFocus
               />
             </div>
           </div>
@@ -806,7 +825,7 @@ export function MaritimeSimulator() {
             </Button>
           </div>
         </DialogContent>
-      </Dialog >
-    </div >
+      </Dialog>
+    </div>
   );
 }

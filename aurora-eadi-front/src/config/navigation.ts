@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus, History as HistoryIcon } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -201,6 +201,11 @@ export const navigationContexts: NavigationContext[] = [
         path: '/comercial',
       },
       {
+        label: 'Histórico',
+        icon: HistoryIcon,
+        path: '/comercial/history',
+      },
+      {
         label: 'Lista Serviços',
         icon: List,
         path: '/servicos',
@@ -239,7 +244,7 @@ export const navigationContexts: NavigationContext[] = [
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
   },
-    {
+  {
     basePath: '/cliente',
     items: [
       {

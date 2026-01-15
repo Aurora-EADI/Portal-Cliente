@@ -45,8 +45,8 @@ export class SimulationsController {
   @ApiOperation({ summary: 'Listar todas as simulações' })
   @ApiQuery({ name: 'customerId', required: false, description: 'Filtrar por cliente' })
   @ApiResponse({ status: 200, description: 'Lista de simulações retornada com sucesso' })
-  findAll(@Query('customerId') customerId?: string, @Request() req?) {
-    return this.simulationsService.findAll(req?.user?.id, customerId);
+  findAll(@Query('customerId') customerId?: string) {
+    return this.simulationsService.findAll(customerId);
   }
 
   @Get('version-history/:simulationNumber')
