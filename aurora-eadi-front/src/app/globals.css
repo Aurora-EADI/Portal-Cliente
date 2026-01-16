@@ -100,3 +100,28 @@ html, body, #__next {
 .tabulator .tabulator-header {
   background-color: #f3f4f6;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-content, .print-content * {
+    visibility: visible;
+  }
+  .print-content {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Reset background restrictions for printing */
+  body {
+    background: white !important;
+  }
+}

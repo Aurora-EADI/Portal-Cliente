@@ -7,6 +7,15 @@ export interface Customer {
   id: string;
   code: string;
   name: string;
+  corporateName?: string;
+  contact?: string;
+  zipCode?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
   document: string;
   status: CustomerStatus;
   createdAt: string;
@@ -16,6 +25,15 @@ export interface Customer {
 export interface CreateCustomerDTO {
   code: string;
   name: string;
+  corporateName?: string;
+  contact?: string;
+  zipCode?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
   document: string;
 }
 

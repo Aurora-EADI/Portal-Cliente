@@ -400,8 +400,17 @@ enum CustomerStatus {
 model Customer {
   id          String         @id @default(uuid())
   code        String         @unique
-  name        String
-  document    String         @unique
+  name          String
+  corporateName String?
+  contact       String?
+  zipCode       String?
+  street        String?
+  number        String?
+  complement    String?
+  neighborhood  String?
+  city          String?
+  state         String?
+  document      String         @unique
   status      CustomerStatus @default(ACTIVE)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
