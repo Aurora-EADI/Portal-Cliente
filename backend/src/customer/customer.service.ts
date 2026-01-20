@@ -13,7 +13,7 @@ interface FindAllParams {
 
 @Injectable()
 export class CustomerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(dto: CreateCustomerDto) {
     // Verificar se já existe cliente com o mesmo código
@@ -39,6 +39,15 @@ export class CustomerService {
         code: dto.code,
         name: dto.name,
         document: dto.document,
+        corporateName: dto.corporateName,
+        contact: dto.contact,
+        zipCode: dto.zipCode,
+        street: dto.street,
+        number: dto.number,
+        complement: dto.complement,
+        neighborhood: dto.neighborhood,
+        city: dto.city,
+        state: dto.state,
       },
     });
   }

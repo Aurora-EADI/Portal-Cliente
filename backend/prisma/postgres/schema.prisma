@@ -45,6 +45,7 @@ model User {
   documents    Document[]
   serviceCosts ServiceCost[]
   simulationVersions SimulationVersion[] @relation("UserSimulationVersions")
+  AirSimulationVersion AirSimulationVersion[] @relation("UserAirSimulationVersions")
   moduleAccess UserModuleAccess[]
   tokens       UserToken[]
   company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -415,6 +416,86 @@ model Customer {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   simulations Simulation[]
+  AirSimulation AirSimulation[]
 
   @@map("customers")
+}
+
+// AirSimulation Schema
+ 
+model AirSimulation {
+  id               String                 @id @default(uuid())
+  simulationNumber String                 @unique
+  customerId       String
+  customer         Customer               @relation(fields: [customerId], references: [id])
+  versions         AirSimulationVersion[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+ 
+  @@map("air_simulations")
+}
+ 
+model AirSimulationVersion {
+  id               String           @id @default(uuid())
+  simulationId     String
+  simulation       AirSimulation    @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  version          Int
+  displayNumber    String
+  isCurrentVersion Boolean          @default(true)
+  versionReason    String?
+  status           SimulationStatus @default(DRAFT)
+ 
+  // Dados da Carga Aérea
+  cifUsd     Decimal  @db.Decimal(15, 2)
+  dollarRate Decimal  @db.Decimal(10, 4)
+  cifBrl     Decimal  @db.Decimal(15, 2)
+  weightKg   Decimal? @db.Decimal(15, 3)
+  volumeM3   Decimal? @db.Decimal(15, 3)
+ 
+  // Custos adicionais
+  storageCost   Decimal @default(0) @db.Decimal(15, 2)
+  transportCost Decimal @default(0) @db.Decimal(15, 2)
+  discount      Decimal @default(0) @db.Decimal(15, 2)
+ 
+  // Totalizadores
+  totalServices   Decimal @default(0) @db.Decimal(15, 2)
+  totalGeneral    Decimal @default(0) @db.Decimal(15, 2)
+  minBillingValue Decimal @default(350) @db.Decimal(10, 2)
+ 
+  createdBy String
+  user      User     @relation("UserAirSimulationVersions", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  services AirSimulationService[]
+ 
+  // Histórico de Versões
+  baseVersionId String?
+  baseVersion   AirSimulationVersion?  @relation("AirVersionHistory", fields: [baseVersionId], references: [id])
+  nextVersions  AirSimulationVersion[] @relation("AirVersionHistory")
+ 
+  @@map("air_simulation_versions")
+}
+ 
+model AirSimulationService {
+  id              String                    @id @default(uuid())
+  versionId       String
+  version         AirSimulationVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  serviceId       String?
+  serviceName     String
+  serviceCode     String
+  calculationType AirServiceCalculationType
+  costType        ServiceCostType
+  originalCost    Decimal                   @db.Decimal(10, 2)
+  appliedCost     Decimal                   @db.Decimal(10, 2)
+  customReason    String?
+ 
+  @@map("air_simulation_services")
+}
+ 
+// Novo enum para tipos de cálculo do modal aéreo
+enum AirServiceCalculationType {
+  FIXED
+  PERCENTAGE_CIF
+  PER_KG
 }
