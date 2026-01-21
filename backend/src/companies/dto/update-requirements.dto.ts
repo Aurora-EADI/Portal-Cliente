@@ -1,5 +1,5 @@
-import { IsArray, ValidateNested, IsInt, IsBoolean } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsArray, ValidateNested, IsInt, IsBoolean } from "class-validator";
+import { Type } from "class-transformer";
 
 class RequirementDto {
   @IsInt()

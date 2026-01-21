@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { PrismaPostgresService } from '../prisma/prisma.service';
-import { CreateServiceDto } from './dto/create-service.dto';
-import { UpdateServiceDto } from './dto/update-service.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../prisma/prisma.service";
+import { CreateServiceDto } from "./dto/create-service.dto";
+import { UpdateServiceDto } from "./dto/update-service.dto";
 
 @Injectable()
 export class ServicesService {
-  constructor(private readonly prisma: PrismaPostgresService) { }
+  constructor(private readonly prisma: PrismaPostgresService) {}
 
   async create(createServiceDto: CreateServiceDto, userId: string) {
     // Verifica se o código já existe
@@ -14,7 +19,9 @@ export class ServicesService {
     });
 
     if (existingService) {
-      throw new ConflictException(`Serviço com código ${createServiceDto.code} já existe`);
+      throw new ConflictException(
+        `Serviço com código ${createServiceDto.code} já existe`,
+      );
     }
 
     return this.prisma.service.create({
@@ -25,7 +32,7 @@ export class ServicesService {
   async findAll(includeInactive = false) {
     return this.prisma.service.findMany({
       where: includeInactive ? {} : { isActive: true },
-      orderBy: { code: 'asc' },
+      orderBy: { code: "asc" },
     });
   }
 
@@ -34,7 +41,7 @@ export class ServicesService {
       where: { id },
       include: {
         serviceCosts: {
-          orderBy: { validFrom: 'desc' },
+          orderBy: { validFrom: "desc" },
           take: 5, // Últimos 5 custos
         },
       },
@@ -54,12 +61,9 @@ export class ServicesService {
     const currentCost = await this.prisma.serviceCost.findFirst({
       where: {
         serviceId: id,
-        OR: [
-          { validUntil: null },
-          { validUntil: { gte: new Date() } },
-        ],
+        OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }],
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { validFrom: "desc" },
     });
 
     return {
@@ -82,7 +86,9 @@ export class ServicesService {
       });
 
       if (existingService && existingService.id !== id) {
-        throw new ConflictException(`Serviço com código ${updateServiceDto.code} já existe`);
+        throw new ConflictException(
+          `Serviço com código ${updateServiceDto.code} já existe`,
+        );
       }
     }
 
@@ -118,7 +124,7 @@ export class ServicesService {
     if (service.serviceCosts.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar serviço com ${service.serviceCosts.length} registro(s) de custo no histórico. ` +
-        `Este histórico é importante para auditoria. Use o método remove() para desativar o serviço.`,
+          `Este histórico é importante para auditoria. Use o método remove() para desativar o serviço.`,
       );
     }
 

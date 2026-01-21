@@ -1,6 +1,14 @@
-import { IsString, IsNumber, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { AddSimulationServiceDto } from './add-simulation-service.dto';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsInt,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { AddSimulationServiceDto } from "./add-simulation-service.dto";
 
 export class CreateSimulationDto {
   @IsString()

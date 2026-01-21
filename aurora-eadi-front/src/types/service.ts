@@ -7,6 +7,8 @@ export enum ServiceCalculationType {
   PERCENTAGE_CIF = 'PERCENTAGE_CIF', // Percentual sobre CIF BRL (ex: 0,35%)
   PER_CONTAINER = 'PER_CONTAINER', // Valor por container (ex: R$ 350 × qtd)
   PER_TONNE = 'PER_TONNE', // Valor por tonelada (ex: R$ 25 × toneladas)
+  PER_KG = 'PER_KG', // Valor por quilograma (ex: R$ 2,50 × kg) - Aéreo
+  PER_TONNE_OR_M3 = 'PER_TONNE_OR_M3', // Maior entre Ton e M3 - Aéreo
 }
 
 export interface Service {
