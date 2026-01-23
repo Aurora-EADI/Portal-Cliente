@@ -74,9 +74,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const login = async (email: string, password: string, role: UserRole) => {
     setIsLoading(true);
     try {
-      const user = await authService.login(email, password, role);
-      if (user) {
-        setCurrentUser(user);
+      const response = await authService.login(email, password, role);
+      if (response?.user) {
+        setCurrentUser(response.user);
         return { success: true };
       }
       return { success: false, error: 'Authentication failed' };
