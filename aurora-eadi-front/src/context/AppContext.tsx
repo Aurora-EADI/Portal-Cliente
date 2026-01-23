@@ -46,12 +46,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         if (currentUser.role === UserRole.ADMIN) {
           // Admin sees all suppliers and documents
-          const [allDocs, allSuppliers] = await Promise.all([
+          const [allDocs, suppliersResponse] = await Promise.all([
             documentService.getAll(),
             companyService.getAllWithResponsible()
           ]);
           setDocuments(allDocs);
-          setSuppliers(allSuppliers);
+          setSuppliers(suppliersResponse.data);
         } else {
           // Supplier sees only their company documents
           if (currentUser.companyId) {
