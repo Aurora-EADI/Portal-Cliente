@@ -13,7 +13,7 @@ export const useDocuments = (user: User | null) => {
       if (user.role === 'ADMIN') {
         return await documentService.getAll();
       } else if (user.companyId) {
-        return await documentService.getByCompany(user.companyId);
+        return await documentService.getByCompany(String(user.companyId));
       }
       return [];
     },
@@ -25,8 +25,15 @@ export const useUploadDocument = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file, name, user }: { file: File; name: string; user: User }) => {
-      return await documentService.upload(file, name, user);
+    mutationFn: async ({ file, name, user, dateIssue, dateExpiration, documentTypeId }: {
+      file: File;
+      name: string;
+      user: User;
+      dateIssue?: string;
+      dateExpiration?: string;
+      documentTypeId?: string;
+    }) => {
+      return await documentService.upload(file, name, user, dateIssue, dateExpiration, documentTypeId);
     },
     onSuccess: () => {
       // Invalida o cache para forçar recarregamento da lista

@@ -66,11 +66,37 @@ vercel-live-feedback {
   }
 }
 
+html, body, #__next {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 @layer base {
-  * {
-    @apply border-border;
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  [type="button"]:not(:disabled) {
+    cursor: pointer !important;
   }
-  body {
-    @apply bg-background text-foreground;
+  
+  button:disabled,
+  [role="button"]:disabled,
+  [type="button"]:disabled,
+  button[disabled],
+  button[data-disabled="true"] {
+    cursor: not-allowed !important;
   }
+}
+
+.tabulator {
+  font-size: 0.75rem;
+}
+
+.tabulator-row.tabulator-tree-level-0 {
+  font-weight: 500;
+}
+
+.tabulator .tabulator-header {
+  background-color: #f3f4f6;
 }

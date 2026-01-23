@@ -10,16 +10,26 @@ export const useLogin = () => {
     mutationFn: async ({ email, password, role }: { email: string; password: string; role: UserRole }) => {
       return await authService.login(email, password, role);
     },
-    onSuccess: (user) => {
-      loginUser(user);
+    onSuccess: async (data) => {
+      const { user, access_token, refresh_token } = data;
+      await loginUser(user, access_token, refresh_token);
+    },
+    onError: (error: any) => {
+      // Captura o erro para não quebrar a aplicação
+      // console.error('Erro de autenticação:', error.message);
+      // O erro agora fica disponível em loginMutation.error no componente
     },
   });
 };
 
 export const useRegister = () => {
   return useMutation({
-    mutationFn: async ({ company, user }: { company: CreateCompanyDTO; user: CreateUserDTO }) => {
-      return await authService.register({ company, user });
+    mutationFn: async ({ companyId, company, user }: { companyId?: string | null; company: CreateCompanyDTO; user: CreateUserDTO }) => {
+      return await authService.register({ companyId: companyId || undefined, company, user });
+    },
+    onError: (error: any) => {
+      // O erro é tratado no componente através do callback onError
+      // Não precisa fazer console.error aqui para evitar poluição do console
     },
   });
 };

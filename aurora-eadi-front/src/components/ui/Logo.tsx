@@ -5,10 +5,10 @@ import Image from 'next/image';
 interface LogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-  src: string
+  src?: string; // opcional agora
 }
 
-export function Logo({ className = '', size = 'md', src = '' }: LogoProps) {
+export function Logo({ className = '', size = 'md', src }: LogoProps) {
   
   const dimensions = {
     sm: { width: 120, height: 40 },
@@ -17,6 +17,8 @@ export function Logo({ className = '', size = 'md', src = '' }: LogoProps) {
   };
 
   const { width, height } = dimensions[size];
+
+  if (!src) return null; // não renderiza nada se src estiver vazio ou undefined
 
   return (
     <div className={`relative ${className}`}>

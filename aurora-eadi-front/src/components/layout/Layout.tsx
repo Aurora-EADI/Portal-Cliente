@@ -39,13 +39,13 @@ export const Layout: React.FC<LayoutProps> = ({
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Sidebar - Renderizado condicionalmente */}
       {showSidebar && <Sidebar />}
 
       {/* Main Content */}
-      <main className={`flex-1 p-4 md:p-8 overflow-y-auto h-screen ${className}`}>
-        <div className={`${maxWidthClasses[maxWidth]} mx-auto`}>
+      <main className={`flex-1 overflow-y-auto ${className}`}>
+        <div className={`${maxWidthClasses[maxWidth]} mx-auto p-4 md:p-8`}>
           {children}
         </div>
       </main>

@@ -1,0 +1,17 @@
+
+# MinIO data files
+data/
+*.xl.meta
+.minio.sys/
+
+# Variáveis de ambiente
+.env.dev
+.env.prod
+.env.*
+
+# Documentação
+.CLAUDE.md
+.DEPLOY_PROD.md
+.Docker.md
+.task.md
+*.md

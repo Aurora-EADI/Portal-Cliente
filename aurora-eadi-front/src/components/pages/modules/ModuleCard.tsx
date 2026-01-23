@@ -2,7 +2,7 @@ import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
 interface ModuleCardProps {
-  icon: LucideIcon;
+  icon: React.ElementType;
   title: string;
   description: string;
   onClick: () => void;
