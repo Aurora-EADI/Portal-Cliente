@@ -73,7 +73,10 @@ ENV NPM_CONFIG_STRICT_SSL=false
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Instalar todas as dependências (incluindo devDependencies para build)
-RUN npm ci
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci
 
 # Copiar código fonte
 COPY . .
@@ -138,7 +141,10 @@ ENV NPM_CONFIG_STRICT_SSL=false
 COPY package*.json ./
 
 # Instalar apenas dependências de produção
-RUN npm ci --only=production
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --omit=dev
 
 # Copiar arquivos buildados
 COPY --from=builder /app/dist ./dist
