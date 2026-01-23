@@ -1,110 +1,64 @@
-# # Build stage
-# FROM node:20-bullseye-slim AS builder
-
-# WORKDIR /app
-
-# COPY package*.json ./
-
-# # Configurar npm para ignorar certificados SSL
-# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-# ENV NPM_CONFIG_STRICT_SSL=false
-
-# # Instalar todas as dependências (incluindo devDependencies para build)
-# RUN npm ci
-
-# # Copiar código fonte
-# COPY . .
-
-# # Gerar clientes Prisma
-# RUN npx prisma generate --schema=prisma/postgres/schema.prisma
-# RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
-
-# # Build da aplicação
-# RUN npm run build
-
-# # Compilar o script de seed
-# RUN npx tsc prisma/postgres/seed.ts --esModuleInterop --module nodenext --outDir dist/seed
-
-# # Production stage
-# FROM node:20-bullseye-slim AS production
-
-# WORKDIR /app
-
-# # Instalar OpenSSL e certificados CA
-# RUN apt-get update && \
-#     apt-get install -y --no-install-recommends \
-#     openssl \
-#     ca-certificates && \
-#     rm -rf /var/lib/apt/lists/*
-
-# # Configurar npm
-# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-# ENV NPM_CONFIG_STRICT_SSL=false
-
-# # Copiar package files
-# COPY package*.json ./
-
-# # Instalar apenas dependências de produção
-# RUN npm ci --only=production
-
-# # Copiar arquivos buildados
-# COPY --from=builder /app/dist ./dist
-# COPY --from=builder /app/prisma ./prisma
-# COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-# COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# # Configurações de produção
-# ENV NODE_ENV=production
-
-# EXPOSE 5000
-
-# CMD ["node", "dist/src/main.js"]
-
+# =========================
 # Build stage
+# =========================
 FROM node:20-bullseye-slim AS builder
 
 WORKDIR /app
 
+# CA e ferramentas
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
+# Configurar npm ANTES
+RUN npm config set registry https://registry.npmmirror.com \
+ && npm config set maxsockets 3 \
+ && npm config set fetch-retries 10 \
+ && npm config set fetch-retry-mintimeout 30000 \
+ && npm config set fetch-retry-maxtimeout 180000 \
+ && npm config set fetch-timeout 900000 \
+ && npm config set strict-ssl false
+
 COPY package*.json ./
 
-# Configurar npm e Node.js para ignorar certificados SSL (apenas para build)
-# NOTA: Necessário apenas para npm install e Prisma generate durante build
-ENV NPM_CONFIG_STRICT_SSL=false
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+# Instalar com retry manual
+RUN npm ci || npm ci || npm ci
 
-# Instalar todas as dependências (incluindo devDependencies para build)
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci
-
-# Copiar código fonte
 COPY . .
 
-# Gerar clientes Prisma
 RUN npx prisma generate --schema=prisma/postgres/schema.prisma
-# DEPRECATED: Prisma SQL Server substituído por SqlServerService (mssql/tedious)
-# RUN npx prisma generate --schema=prisma/sqlserver/schema.prisma
-
-# Build da aplicação
 RUN npm run build
+RUN npx tsc prisma/postgres/seed.ts \
+  --esModuleInterop \
+  --module nodenext \
+  --outDir dist/seed
 
-# Compilar o script de seed
-RUN npx tsc prisma/postgres/seed.ts --esModuleInterop --module nodenext --outDir dist/seed
-
+# =========================
 # Production stage
+# =========================
 FROM node:20-bullseye-slim AS production
 
 WORKDIR /app
 
-# Instalar OpenSSL e configurar para aceitar protocolos legacy (TLS 1.0/1.1)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     openssl \
-    ca-certificates && \
+    ca-certificates \
+    curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Criar configuração OpenSSL que aceita TLS legacy (SQL Server 2008 R2)
+# OpenSSL legacy (SQL Server 2008 R2)
 RUN cat > /etc/ssl/openssl_legacy.cnf << 'EOL'
 openssl_conf = openssl_init
 
@@ -130,29 +84,32 @@ MinProtocol = TLSv1
 CipherString = DEFAULT@SECLEVEL=0
 EOL
 
-# Variáveis de ambiente para OpenSSL legacy
-# Configuração granular de TLS para SQL Server 2008 R2
 ENV OPENSSL_CONF=/etc/ssl/openssl_legacy.cnf
-# REMOVIDO: NODE_TLS_REJECT_UNAUTHORIZED=0 (inseguro - substituído por configurações granulares no SqlServerService)
-# ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
 
-# Copiar package files
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 COPY package*.json ./
 
-# Instalar apenas dependências de produção
-RUN npm config set fetch-retries 5 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --omit=dev
+RUN npm config set registry https://registry.npmmirror.com \
+ && npm config set maxsockets 3 \
+ && npm config set fetch-retries 10 \
+ && npm config set fetch-retry-mintimeout 30000 \
+ && npm config set fetch-retry-maxtimeout 180000 \
+ && npm config set fetch-timeout 900000 \
+ && npm config set strict-ssl false \
+ && (npm ci --omit=dev || npm ci --omit=dev || npm ci --omit=dev)
 
-# Copiar arquivos buildados
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Configurações de produção
 ENV NODE_ENV=production
 
 EXPOSE 5000

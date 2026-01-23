@@ -1,54 +1,80 @@
+# =========================
 # Build stage
+# =========================
 FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copiar package files
+# Certificados CA e ferramentas de rede
+RUN apk add --no-cache ca-certificates curl wget
+
+# Proxy args
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
+# Configurar npm ANTES de copiar package.json
+RUN npm config set registry https://registry.npmmirror.com \
+ && npm config set maxsockets 3 \
+ && npm config set fetch-retries 10 \
+ && npm config set fetch-retry-mintimeout 30000 \
+ && npm config set fetch-retry-maxtimeout 180000 \
+ && npm config set fetch-timeout 900000 \
+ && npm config set strict-ssl false
+
+# Copiar manifests
 COPY package*.json ./
 
-# Configurar npm para ignorar SSL
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
-
-# Instalar dependências
-RUN npm ci
+# Instalar dependências com retry manual
+RUN npm ci || npm ci || npm ci
 
 # Copiar código
 COPY . .
 
-# Definir variáveis de ambiente para build
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
-# Desabilitar telemetria do Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build da aplicação
 RUN npm run build
 
+# =========================
 # Production stage
+# =========================
 FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Configurar npm
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
+RUN apk add --no-cache ca-certificates curl
 
-# Copiar package files
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 COPY package*.json ./
 
-# Instalar apenas dependências de produção
-RUN npm ci --only=production
+RUN npm config set registry https://registry.npmmirror.com \
+ && npm config set maxsockets 3 \
+ && npm config set fetch-retries 10 \
+ && npm config set fetch-retry-mintimeout 30000 \
+ && npm config set fetch-retry-maxtimeout 180000 \
+ && npm config set fetch-timeout 900000 \
+ && npm config set strict-ssl false \
+ && (npm ci --omit=dev || npm ci --omit=dev || npm ci --omit=dev)
 
-# Copiar arquivos necessários do builder
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
-# Configurações de produção
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
