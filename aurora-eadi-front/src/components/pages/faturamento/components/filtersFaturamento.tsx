@@ -13,6 +13,12 @@ import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturame
 import { SelectModalidadeMulti } from "@/components/ui/SelectModalidade";
 import { PermissionRouteGuard } from "@/components/guards/PermissionRouteGuard";
 
+interface ColumnConfig {
+  id: string;
+  label: string;
+  visible: boolean;
+}
+
 interface FiltersProps {
   cliente: string;
   n_fatura: string;
@@ -34,9 +40,10 @@ interface Props {
   onFetch: () => void;
   clientes?: ClienteOption[];
   filteredData?: FaturamentoDetalhado[];
+  visibleColumns?: ColumnConfig[];
 }
 
-export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = [], filteredData = [] }: Props) {
+export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = [], filteredData = [], visibleColumns }: Props) {
   const [searchTerm, setSearchTerm] = useState(filters.cliente);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredClientes, setFilteredClientes] = useState<ClienteOption[]>([]);
@@ -364,7 +371,12 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
               </Button>
 
               <PermissionRouteGuard isBlockPage={false} moduleRoute="/faturamento" requiredPermissions={['FAT_EXPORT_DET']}>
-                <ExportExcelButton data={filteredData} />
+                <ExportExcelButton
+                  data={filteredData}
+                  visibleColumns={visibleColumns}
+                  dt_fatura_inicio={filters.dt_fatura_inicio}
+                  dt_fatura_fim={filters.dt_fatura_fim}
+                />
               </PermissionRouteGuard>
             </div>
 

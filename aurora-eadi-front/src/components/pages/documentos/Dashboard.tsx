@@ -8,11 +8,13 @@ import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus, Company } from '../../../types';
 import { documentService, documentTypeService, companyRequirementService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, AlertCircle, AlertTriangle, CheckCircle2, ShieldCheck, ChevronLeft, ChevronRight, Loader2, Clock, Calendar } from 'lucide-react';
+import { formatDateBR, getValidityStatus } from '@/lib/utils';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Pagination } from '../../ui/Pagination';
 import { DocumentsHistoryModal } from './modals/DocumentsHistoryModal';
 import { RejectionReasonModal } from './modals/RejectionReasonModal';
 import { CompanyDetailsModal } from './modals/CompanyDetailsModal';
+import { toast } from 'sonner';
 
 export function AdminDashboard() {
   const { currentUser } = useAuthContext();
@@ -72,7 +74,7 @@ export function AdminDashboard() {
       setCompanyRequirements(new Set(reqs.filter(r => r.isRequired).map(r => r.documentTypeId)));
     } catch (error) {
       console.error('Erro ao carregar requisitos:', error);
-      alert('Erro ao carregar requisitos.');
+      toast.error('Erro ao carregar requisitos.');
     } finally {
       setIsLoadingRequirements(false);
     }
@@ -125,9 +127,10 @@ export function AdminDashboard() {
 
     try {
       await companyRequirementService.updateRequirements(String(viewingCompany.id), [{ documentTypeId: typeId, isRequired }]);
+      toast.success('Requisito atualizado com sucesso!');
     } catch (error) {
       console.error('Erro ao atualizar requisito:', error);
-      alert('Erro ao atualizar requisito.');
+      toast.error('Erro ao atualizar requisito.');
       loadRequirements(String(viewingCompany.id));
     }
   };
@@ -142,20 +145,6 @@ export function AdminDashboard() {
     data: any;
   }>({ open: false, type: null, data: null });
 
-  const getValidityStatus = (dateExpiration?: string) => {
-    if (!dateExpiration) return 'OK';
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const exp = new Date(dateExpiration);
-    exp.setHours(0, 0, 0, 0);
-
-    const diffTime = exp.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return 'EXPIRED';
-    if (diffDays <= 15) return 'ALERT';
-    return 'OK';
-  };
 
   const selectedData = selectedSupplierId
     ? suppliers.find((s: Company) => String(s.id) === selectedSupplierId)
@@ -238,7 +227,7 @@ export function AdminDashboard() {
     } catch (error: any) {
       console.error('Erro ao fazer download:', error);
       const message = error.message || 'Erro ao fazer download do documento';
-      alert(message);
+      toast.error(message);
     }
   };
 

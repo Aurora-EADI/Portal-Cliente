@@ -176,19 +176,46 @@ export class AuthService {
           },
         });
 
-        // Cria o primeiro (e único) usuário SUPPLIER para a empresa
-        const newUser = await prisma.user.create({
-          data: {
-            name: user.name,
-            email: user.email,
-            password: hashedPassword,
-            role: 'SUPPLIER',
-            companyId: companyId,
-          },
-        });
+        // Se o usuário já existe para esta empresa, atualiza os dados
+        // Caso contrário, cria um novo usuário
+        if (existingUser && existingUser.companyId === companyId) {
+          // UPDATE: Usuário já existe, apenas atualiza senha e nome
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              name: user.name,
+              password: hashedPassword,
+              // Email não muda pois é o mesmo
+            },
+          });
 
-        // Libera permissões de Documentos
-        await this._grantSupplierPermissions(prisma, newUser.id);
+          // Verifica se o usuário já tem permissões de Documentos
+          const hasDocPermissions = await prisma.userModuleAccess.findFirst({
+            where: {
+              userId: existingUser.id,
+              module: { route: '/documentos' },
+            },
+          });
+
+          // Se não tem permissões, concede
+          if (!hasDocPermissions) {
+            await this._grantSupplierPermissions(prisma, existingUser.id);
+          }
+        } else {
+          // CREATE: Novo usuário para esta empresa
+          const newUser = await prisma.user.create({
+            data: {
+              name: user.name,
+              email: user.email,
+              password: hashedPassword,
+              role: 'SUPPLIER',
+              companyId: companyId,
+            },
+          });
+
+          // Libera permissões de Documentos apenas para novo usuário
+          await this._grantSupplierPermissions(prisma, newUser.id);
+        }
       });
 
       return {

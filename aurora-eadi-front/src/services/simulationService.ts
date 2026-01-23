@@ -15,9 +15,9 @@ export const simulationService = {
   /**
    * Lista todas as simulações (apenas versões correntes)
    */
-  getAll: async (supplierId?: string): Promise<Simulation[]> => {
+  getAll: async (customerId?: string): Promise<Simulation[]> => {
     try {
-      const params = supplierId ? { supplierId } : {};
+      const params = customerId ? { customerId } : {};
       const response = await api.get('/simulations', { params });
       return response.data;
     } catch (error: any) {

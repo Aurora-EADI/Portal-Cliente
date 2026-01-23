@@ -1,5 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, UserPermissionsResult } from '../types';
 import { useRouter } from "next/navigation";
 import Cookies from 'js-cookie';
@@ -31,6 +32,7 @@ const PERMISSIONS_KEY = 'user_permissions';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // 🚀 OTIMIZAÇÃO: Inicializa sempre com null para evitar erro de hidratação
   // SSR e cliente começam com mesmo estado
@@ -203,8 +205,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUser(null);
       setUserPermissions(null);
 
-      // Limpa todos os dados de autenticação
+      // Limpa os dados de autenticação (tokens, cookies, localStorage)
       clearAllAuthData();
+
+      // Limpa todos os caches do React Query
+      queryClient.clear();
 
       // Redireciona para login
       router.push("/login");

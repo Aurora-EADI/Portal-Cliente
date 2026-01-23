@@ -36,7 +36,14 @@ RUN npm ci || npm ci || npm ci
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_KEY
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+<<<<<<< HEAD
+=======
+ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
+
+# Desabilitar telemetria do Next.js
+>>>>>>> develop
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

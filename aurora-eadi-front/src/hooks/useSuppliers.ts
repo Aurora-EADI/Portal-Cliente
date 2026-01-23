@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService, PaginationParams } from '../services/api';
 import { CompanyStatus } from '../types';
+import { toast } from 'sonner';
 
 export const SUPPLIERS_KEY = ['suppliers'];
 
@@ -29,8 +30,14 @@ export const useUpdateCompanyStatus = () => {
     mutationFn: async ({ id, status }: { id: string; status: CompanyStatus }) => {
       return await companyService.updateStatus(id, status);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: SUPPLIERS_KEY });
+
+      if (variables.status === CompanyStatus.ACTIVE) {
+        toast.success('Empresa aprovada com sucesso!');
+      } else if (variables.status === CompanyStatus.REJECTED) {
+        toast.success('Empresa bloqueada.');
+      }
     },
   });
 };

@@ -99,3 +99,34 @@ export function formatDateBR(dateString?: string | Date | null): string {
   // Retorna formatado como dd/mm/yyyy
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * Tipos de status de validade de um documento
+ */
+export type ValidityStatus = 'OK' | 'ALERT' | 'EXPIRED';
+
+/**
+ * Calcula o status de validade de um documento com base na data de expiração.
+ * - EXPIRED: Já venceu.
+ * - ALERT: Vence em até 15 dias.
+ * - OK: Vence em mais de 15 dias ou não possui data de expiração.
+ *
+ * @param dateExpiration - Data de expiração (string ISO ou objeto Date)
+ * @returns Status da validade
+ */
+export function getValidityStatus(dateExpiration?: string | Date | null): ValidityStatus {
+  if (!dateExpiration) return 'OK';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const exp = dateExpiration instanceof Date ? dateExpiration : new Date(dateExpiration);
+  exp.setHours(0, 0, 0, 0);
+
+  const diffTime = exp.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return 'EXPIRED';
+  if (diffDays <= 15) return 'ALERT';
+  return 'OK';
+}

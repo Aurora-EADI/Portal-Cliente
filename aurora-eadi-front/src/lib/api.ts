@@ -11,6 +11,7 @@ export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333/api',
   headers: {
     'Content-Type': 'application/json',
+    ...(process.env.NEXT_PUBLIC_API_KEY ? { 'X-API-Key': process.env.NEXT_PUBLIC_API_KEY } : {}),
   },
 });
 
@@ -98,8 +99,8 @@ api.interceptors.request.use(
           clearAllAuthData();
 
           const currentPath = window.location.pathname;
-          if (currentPath !== '/' && currentPath !== '/login') {
-            window.location.href = '/';
+          if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+            window.location.href = '/session-expired';
           }
 
           return Promise.reject(new Error('Token expirado e renovação falhou'));
@@ -110,8 +111,8 @@ api.interceptors.request.use(
         clearAllAuthData();
 
         const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login') {
-          window.location.href = '/';
+        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+          window.location.href = '/session-expired';
         }
 
         return Promise.reject(error);
@@ -169,8 +170,8 @@ api.interceptors.response.use(
 
           if (typeof window !== 'undefined') {
             const currentPath = window.location.pathname;
-            if (currentPath !== '/' && currentPath !== '/login') {
-              window.location.href = '/';
+            if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+              window.location.href = '/session-expired';
             }
           }
 
@@ -183,8 +184,8 @@ api.interceptors.response.use(
 
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login') {
-          window.location.href = '/';
+        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+          window.location.href = '/session-expired';
         }
       }
     }

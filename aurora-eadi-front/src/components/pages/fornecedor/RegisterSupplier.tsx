@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Building2, User as UserIcon, CheckCircle, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRegister } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export function RegisterCompanies() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export function RegisterCompanies() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert("As senhas não conferem.");
+      toast.error("As senhas não conferem.");
       return;
     }
 
@@ -46,7 +47,7 @@ export function RegisterCompanies() {
         setIsSuccess(true);
       },
       onError: (err) => {
-        alert(err.message);
+        toast.error(err.message);
       }
     });
   };

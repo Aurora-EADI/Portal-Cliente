@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { documentTypeService } from '../../../services/api';
 import { DocumentType } from '../../../types';
 import { Plus, Trash2, Edit2, Check, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function DocumentTypesManager() {
     const [types, setTypes] = useState<DocumentType[]>([]);
@@ -23,7 +24,7 @@ export function DocumentTypesManager() {
             setTypes(data);
         } catch (error) {
             console.error('Erro ao carregar tipos:', error);
-            alert('Erro ao carregar lista de tipos de documentos.');
+            toast.error('Erro ao carregar lista de tipos de documentos.');
         } finally {
             setLoading(false);
         }
@@ -36,9 +37,10 @@ export function DocumentTypesManager() {
             setNewType({ name: '', description: '' });
             setIsCreating(false);
             loadTypes();
+            toast.success('Tipo de documento criado com sucesso!');
         } catch (error) {
             console.error('Erro ao criar:', error);
-            alert('Erro ao criar tipo de documento.');
+            toast.error('Erro ao criar tipo de documento.');
         }
     };
 
@@ -47,9 +49,10 @@ export function DocumentTypesManager() {
             await documentTypeService.update(id, editForm);
             setEditingId(null);
             loadTypes();
+            toast.success('Tipo de documento atualizado com sucesso!');
         } catch (error) {
             console.error('Erro ao atualizar:', error);
-            alert('Erro ao atualizar tipo de documento.');
+            toast.error('Erro ao atualizar tipo de documento.');
         }
     };
 
@@ -58,9 +61,10 @@ export function DocumentTypesManager() {
         try {
             await documentTypeService.delete(id);
             loadTypes();
+            toast.success('Tipo de documento excluído com sucesso!');
         } catch (error) {
             console.error('Erro ao excluir:', error);
-            alert('Erro ao excluir tipo de documento.');
+            toast.error('Erro ao excluir tipo de documento.');
         }
     };
 

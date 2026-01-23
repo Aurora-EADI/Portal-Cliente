@@ -2,7 +2,7 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
-import { DocumentStatus, CompanyStatus } from "@/types"
+import { DocumentStatus, CompanyStatus, CustomerStatus } from "@/types"
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -35,8 +35,8 @@ const badgeVariants = cva(
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
   VariantProps<typeof badgeVariants> {
-  status?: DocumentStatus | CompanyStatus;
-  context?: "document" | "company";
+  status?: DocumentStatus | CompanyStatus | CustomerStatus;
+  context?: "document" | "company" | "customer";
 }
 
 function Badge({ className, variant, status, context, children, ...props }: BadgeProps) {
@@ -69,7 +69,7 @@ function Badge({ className, variant, status, context, children, ...props }: Badg
         case CompanyStatus.PENDING_ACTIVE:
           autoVariant = "pending_active";
           text = "Em Aprovação";
-          break;  
+          break;
         case CompanyStatus.ACTIVE:
           autoVariant = "success";
           text = "Ativo";
@@ -77,6 +77,17 @@ function Badge({ className, variant, status, context, children, ...props }: Badg
         case CompanyStatus.REJECTED:
           autoVariant = "danger";
           text = "Bloqueado";
+          break;
+      }
+    } else if (context === "customer") {
+      switch (status) {
+        case CustomerStatus.ACTIVE:
+          autoVariant = "success";
+          text = "Ativo";
+          break;
+        case CustomerStatus.INACTIVE:
+          autoVariant = "danger";
+          text = "Inativo";
           break;
       }
     }

@@ -28,6 +28,7 @@ interface Props {
   data: FaturamentoDetalhado[];
   isLoading: boolean;
   itemsPerPage?: number;
+  onVisibleColumnsChange?: (columns: ColumnConfig[]) => void;
 }
 
 type GroupedData = {
@@ -86,12 +87,27 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "pes_bruto", label: "Peso Bruto", visible: false, width: 120, minWidth: 100 },
   { id: "m3", label: "M3", visible: false, width: 120, minWidth: 100 },
   { id: "servico_id", label: "Servico ID", visible: false, width: 120, minWidth: 100 },
+  { id: "quantidade", label: "Quantidade", visible: false, width: 200, minWidth: 100 },
+  { id: "valor", label: "Valor", visible: false, width: 200, minWidth: 100 },
+  { id: "servico", label: "Serviço", visible: false, width: 200, minWidth: 100 },
 ];
 
 const SKELETON_ROWS_COUNT = 10;
 
+
 const formatCurrency = (value: string | number): string => {
-  const num = typeof value === "string" ? parseFloat(value) : value;
+  // Remove pontos de milhares e substitui vírgula por ponto se necessário
+  let num: number;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/\./g, '').replace(',', '.');
+    num = parseFloat(cleaned);
+  } else {
+    num = value;
+  }
+  
+  // Verifica se é um número válido
+  if (isNaN(num)) return "R$ 0,00";
+  
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -113,16 +129,29 @@ const formatDate = (date?: string | null): string => {
   return `${day}/${month}/${year}`;
 };
 
-const getCellValue = (item: FaturamentoDetalhado, columnId: string): string | number => {
+
+const getCellValue = (item: FaturamentoDetalhado, columnId: string, group?: GroupedData): string | number => {
   const fieldName = columnId.replace('col_', '') as keyof FaturamentoDetalhado;
+
+  // Tratamento especial para a coluna "valor" - exibe o total geral do grupo
+  if (columnId === "valor" && group) {
+    const totalGeral = group.items.reduce((sum, i) => {
+      const val = parseFloat(i.valor?.toString() || "0");
+      return sum + val;
+    }, 0);
+    return formatCurrency(totalGeral);
+  }
 
   switch (fieldName) {
     case "valor_fatura":
     case "valor_servicos":
     case "iss_valor":
+    case "valor":
       return formatCurrency(item[fieldName]);
     case "dt_fatura":
     case "dt_vencimento":
+    case "dt_periodo_f":
+    case "dt_entrada":
       return formatDate(item[fieldName]);
     default:
       return item[fieldName];
@@ -204,9 +233,8 @@ interface ExpandedRowContentProps {
 const ExpandedRowContent = React.memo(({ group, visibleColumnsCount }: ExpandedRowContentProps) => {
   const totalGeral = useMemo(() =>
     group.items.reduce((sum, item) => {
-      const qtd = parseFloat(item.quantidade?.toString() || "0");
       const val = parseFloat(item.valor?.toString() || "0");
-      return sum + (qtd * val);
+      return sum + (val);
     }, 0),
     [group.items]
   );
@@ -222,30 +250,26 @@ const ExpandedRowContent = React.memo(({ group, visibleColumnsCount }: ExpandedR
             <TableHeader>
               <TableRow className="bg-blue-100">
                 <TableHead className="p-2 font-semibold">Nome do Serviço</TableHead>
-                <TableHead className="p-2 font-semibold text-center">Quantidade</TableHead>
-                <TableHead className="p-2 font-semibold text-right">Valor Unitário</TableHead>
+                {/* <TableHead className="p-2 font-semibold text-center">Quantidade</TableHead>
+                <TableHead className="p-2 font-semibold text-right">Valor Unitário</TableHead> */}
                 <TableHead className="p-2 font-semibold text-right">Total (Qtd × Valor)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {group.items.map((item, idx) => {
-                const quantidade = parseFloat(item.quantidade?.toString() || "0");
-                const valorUnitario = parseFloat(item.valor?.toString() || "0");
-                const total = quantidade * valorUnitario;
+                const valorUnitario = (item.valor?.toString() || "0");
 
                 return (
                   <TableRow key={idx} className="hover:bg-gray-50">
                     <TableCell className="p-2">{item.servico}</TableCell>
-                    <TableCell className="p-2 text-center">{quantidade}</TableCell>
-                    <TableCell className="p-2 text-right">{formatCurrency(valorUnitario)}</TableCell>
                     <TableCell className="p-2 text-right font-semibold text-blue-600">
-                      {formatCurrency(total)}
+                      {formatCurrency(valorUnitario)}
                     </TableCell>
                   </TableRow>
                 );
               })}
               <TableRow className="bg-blue-50 font-semibold">
-                <TableCell className="p-2" colSpan={3}>TOTAL GERAL</TableCell>
+                <TableCell className="p-2">TOTAL GERAL</TableCell>
                 <TableCell className="p-2 text-right text-blue-700">
                   {formatCurrency(totalGeral)}
                 </TableCell>
@@ -267,7 +291,7 @@ interface ResizableHeaderProps {
 // 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
 const ResizableHeader = React.memo(({ column, isResizing, onMouseDown }: ResizableHeaderProps) => (
   <TableHead
-    className="p-2 whitespace-nowrap font-semibold relative group select-none"
+    className="p-2 whitespace-nowrap font-semibold relative group select-none bg-gray-100"
     style={{ width: `${column.width}px`, minWidth: `${column.minWidth}px` }}
   >
     <div className="flex items-center justify-between pr-2">
@@ -324,7 +348,7 @@ const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalIte
   </div>
 ));
 
-export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) {
+export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisibleColumnsChange }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
@@ -368,6 +392,13 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
     [columns]
   );
 
+  // Notifica o componente pai sempre que as colunas visíveis mudarem
+  useEffect(() => {
+    if (onVisibleColumnsChange) {
+      onVisibleColumnsChange(visibleColumns);
+    }
+  }, [visibleColumns, onVisibleColumnsChange]);
+
   const toggleRow = useCallback((key: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
@@ -387,6 +418,17 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
       )
     );
   }, []);
+
+  const toggleAllColumns = useCallback((checked: boolean) => {
+    setColumns(prev =>
+      prev.map(col => ({ ...col, visible: checked }))
+    );
+  }, []);
+
+  const allColumnsVisible = useMemo(() =>
+    columns.every(col => col.visible),
+    [columns]
+  );
 
   const handleMouseDown = useCallback((e: React.MouseEvent, columnId: string) => {
     e.preventDefault();
@@ -495,6 +537,15 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Exibir Colunas</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={allColumnsVisible}
+              onCheckedChange={toggleAllColumns}
+              onSelect={(e) => e.preventDefault()}
+              className="font-semibold"
+            >
+              Selecionar Todas
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
             {columns.map(column => (
               <DropdownMenuCheckboxItem
                 key={column.id}
@@ -516,9 +567,9 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20 }: Props) 
 
         {data.length > 0 && (
           <>
-            <div className="overflow-auto rounded border max-h-[70vh]">
+            <div className="overflow-auto rounded border max-h-[90vh]">
               <Table className="text-xs w-full">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-20"    >
                   <TableRow className="bg-gray-100">
                     <TableHead className="p-2 w-8 sticky left-0 bg-gray-100 z-10"></TableHead>
                     {visibleColumns.map((column) => (

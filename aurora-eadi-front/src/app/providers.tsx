@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/context/AuthContext';
 import { ModuleAccessProvider } from '@/context/ModuleAccessContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { Toaster } from '@/components/ui/sonner';
 import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </ProtectedRoute>
         </ModuleAccessProvider>
       </AuthProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }

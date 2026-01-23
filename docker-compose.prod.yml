@@ -52,6 +52,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      PROTHEUS_API_KEY: ${PROTHEUS_API_KEY}
     env_file:
       - .env.prod
     ports:

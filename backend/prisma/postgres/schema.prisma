@@ -27,7 +27,6 @@ model Company {
   updatedAt            DateTime                     @updatedAt
   documentRequirements CompanyDocumentRequirement[]
   documents            Document[]
-  simulations          Simulation[]
   users                User[]
 
   @@map("companies")
@@ -45,7 +44,7 @@ model User {
   updatedAt    DateTime           @updatedAt
   documents    Document[]
   serviceCosts ServiceCost[]
-  simulations  Simulation[]
+  simulationVersions SimulationVersion[] @relation("UserSimulationVersions")
   moduleAccess UserModuleAccess[]
   tokens       UserToken[]
   company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -256,8 +255,8 @@ model Service {
   updatedAt          DateTime               @updatedAt
   calculationType    ServiceCalculationType @default(FIXED)
   formulaExpression  String?
+  hasStripping       Boolean                @default(false)
   serviceCosts       ServiceCost[]
-  simulationServices SimulationService[]
 
   @@map("services")
 }
@@ -280,53 +279,70 @@ model ServiceCost {
 
 model Simulation {
   id               String              @id @default(uuid())
-  simulationNumber String
-  version          Int                 @default(1)
-  displayNumber    String
-  baseSimulationId String?
-  isCurrentVersion Boolean             @default(true)
-  versionReason    String?
-  supplierId       String
-  cifUsd           Decimal             @db.Decimal(12, 2)
-  dollarRate       Decimal             @db.Decimal(8, 4)
-  cifBrl           Decimal             @db.Decimal(12, 2)
-  tonnes           Decimal?            @db.Decimal(10, 3)
-  cntrCount        Int?
-  cntrType         String?
-  storageCost      Decimal?            @db.Decimal(10, 2)
-  transportCost    Decimal?            @db.Decimal(10, 2)
-  discount         Decimal?            @db.Decimal(10, 2)
-  totalServices    Decimal?            @db.Decimal(12, 2)
-  totalGeneral     Decimal?            @db.Decimal(12, 2)
-  status           SimulationStatus    @default(DRAFT)
-  createdBy        String
+  simulationNumber String              @unique
+  customerId       String
+  customer         Customer            @relation(fields: [customerId], references: [id])
+  versions         SimulationVersion[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  services         SimulationService[]
-  baseSimulation   Simulation?         @relation("SimulationVersions", fields: [baseSimulationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  versions         Simulation[]        @relation("SimulationVersions")
-  user             User                @relation(fields: [createdBy], references: [id])
-  supplier         Company             @relation(fields: [supplierId], references: [id])
 
-  @@unique([simulationNumber, version])
-  @@index([supplierId, isCurrentVersion])
   @@map("simulations")
 }
 
-model SimulationService {
-  id           String          @id @default(uuid())
-  simulationId String
-  serviceId    String
-  costType     ServiceCostType @default(DEFAULT)
-  originalCost Decimal         @db.Decimal(10, 2)
-  appliedCost  Decimal         @db.Decimal(10, 2)
-  customReason String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  service      Service         @relation(fields: [serviceId], references: [id])
-  simulation   Simulation      @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+model SimulationVersion {
+  id               String              @id @default(uuid())
+  simulationId     String
+  simulation       Simulation          @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  version          Int
+  displayNumber    String
+  isCurrentVersion Boolean             @default(true)
+  versionReason    String?
+  status           SimulationStatus    @default(DRAFT)
+  
+  // Dados da Carga / Snapshot
+  cifUsd           Decimal             @db.Decimal(15, 2)
+  dollarRate       Decimal             @db.Decimal(10, 4)
+  cifBrl           Decimal             @db.Decimal(15, 2)
+  tonnes           Decimal?            @db.Decimal(15, 3)
+  cntrCount        Int?
+  cntrType         String?
+  storageCost      Decimal             @db.Decimal(15, 2) @default(0)
+  transportCost    Decimal             @db.Decimal(15, 2) @default(0)
+  discount         Decimal             @db.Decimal(15, 2) @default(0)
+  totalServices    Decimal             @db.Decimal(15, 2) @default(0)
+  totalGeneral     Decimal             @db.Decimal(15, 2) @default(0)
+  hasStripping     Boolean             @default(false)
+  minBillingValue  Decimal             @db.Decimal(10, 2) @default(5500)
+  
+  createdBy        String
+  user             User                @relation("UserSimulationVersions", fields: [createdBy], references: [id])
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  
+  services         SimulationService[]
 
-  @@unique([simulationId, serviceId])
+  // Histórico de Versões (Auto-relacionamento opcional na Versão)
+  baseVersionId    String?
+  baseVersion      SimulationVersion?  @relation("VersionHistory", fields: [baseVersionId], references: [id])
+  nextVersions     SimulationVersion[] @relation("VersionHistory")
+
+  @@map("simulation_versions")
+}
+
+model SimulationService {
+  id               String              @id @default(uuid())
+  versionId        String
+  version          SimulationVersion   @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  serviceId        String?
+  serviceName      String
+  serviceCode      String
+  calculationType  ServiceCalculationType
+  hasStripping     Boolean             @default(false)
+  costType         ServiceCostType
+  originalCost     Decimal             @db.Decimal(10, 2)
+  appliedCost      Decimal             @db.Decimal(10, 2)
+  customReason     String?
+
   @@map("simulation_services")
 }
 
@@ -374,4 +390,22 @@ enum ServiceCostType {
   DEFAULT
   CUSTOM
   ZEROED
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Customer {
+  id          String         @id @default(uuid())
+  code        String         @unique
+  name        String
+  document    String         @unique
+  status      CustomerStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  simulations Simulation[]
+
+  @@map("customers")
 }

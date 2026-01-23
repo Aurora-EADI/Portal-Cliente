@@ -10,7 +10,7 @@ export class ProtheusSupplierService {
 
   constructor(private prisma: PrismaService) {}
 
-  async createSupplier(dto: CreateSupplierFromProtheusDto) {
+  async createSupplier(dto: CreateSupplierFromProtheusDto) {  
     this.logger.log(`Iniciando criação de fornecedor: CNPJ ${dto.cnpj}`);
 
     // 1. VALIDAR UNICIDADE DE CNPJ

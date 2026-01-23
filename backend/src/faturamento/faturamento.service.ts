@@ -43,6 +43,23 @@ export class FaturamentoService {
       );
     `;
 
+
+
+    // const query = `
+    //         SELECT *
+    //   FROM dbo.fnConsulta_Faturamento_Por_Periodo(
+    //       @param1,
+    //       @param2
+    //   )
+    //   WHERE NOT (
+    //       dt_entrada IS NULL
+    //       AND CAST(
+    //           REPLACE(REPLACE(valor_cif, '.', ''), ',', '.') 
+    //           AS DECIMAL(18,2)
+    //       ) = 0
+    //   );
+    // `;
+
     return this.sqlServer.query<TypeDetailedBilling>(query, [inicio, fim]);
   }
 

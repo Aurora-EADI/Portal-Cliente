@@ -107,7 +107,7 @@ export function Login({ onRegisterClick }: LoginProps) {
             Gestão completa em um só lugar
           </h1>
           <p className="text-white/90 text-lg">
-            Acompanhe operações de armazém alfandegado, controle de frota, processos de comércio exterior e status de cargas. Tudo integrado para agilizar sua rotina e oferecer total transparência nas suas operações.
+            Acompanhe todas as operações em um só lugar Acesse informações de faturamento, movimentação de cargas, gestão de estoque e documento. Dados integrados e atualizados para facilitar sua rotina operacional.
           </p>
         </div>
 

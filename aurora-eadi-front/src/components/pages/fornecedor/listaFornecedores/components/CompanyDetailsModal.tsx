@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CompanyWithResponsible, documentTypeService, companyRequirementService } from '@/services/api';
 import { Badge } from '@/components/ui/Badge';
 import { Building2, X, ShieldCheck, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CompanyDetailsModalProps {
     companyData: CompanyWithResponsible;
@@ -32,7 +33,7 @@ export function CompanyDetailsModal({ companyData, onClose }: CompanyDetailsModa
             setCompanyRequirements(new Set(reqs.filter(r => r.isRequired).map(r => r.documentTypeId)));
         } catch (error) {
             console.error('Erro ao carregar requisitos:', error);
-            // alert('Erro ao carregar requisitos.'); // Removed alert for better UX, maybe toast later
+            toast.error('Erro ao carregar requisitos.');
         } finally {
             setIsLoadingRequirements(false);
         }
@@ -48,8 +49,10 @@ export function CompanyDetailsModal({ companyData, onClose }: CompanyDetailsModa
 
         try {
             await companyRequirementService.updateRequirements(String(companyData.company.id), [{ documentTypeId: typeId, isRequired }]);
+            toast.success('Requisito atualizado com sucesso!');
         } catch (error) {
             console.error('Erro ao atualizar requisito:', error);
+            toast.error('Erro ao atualizar requisito.');
             // Revert on error
             loadRequirements(String(companyData.company.id));
         }

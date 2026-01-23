@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
 import { PaginationQueryDto } from './dto/pagination-query.dto';
 import { UpdateCompanyStatusDto } from './dto/update-status.dto';
 import { UpdateRequirementsDto } from './dto/update-requirements.dto';
 import { CreateCompanyDto } from './dto/create-companies.dto';
+import { RequestAccessDto } from './dto/request-access.dto';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Empresas')
 @ApiBearerAuth()
@@ -73,5 +75,19 @@ export class CompaniesController {
     @Body() updateDto: UpdateRequirementsDto,
   ) {
     return this.companiesService.updateRequirements(companyId, updateDto);
+  }
+
+  @Public()
+  @Patch(':companyId/request-access')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Solicitar acesso: Atualiza empresa e usuário SUPPLIER' })
+  @ApiResponse({ status: 200, description: 'Solicitação enviada com sucesso' })
+  @ApiResponse({ status: 404, description: 'Empresa não encontrada' })
+  @ApiResponse({ status: 409, description: 'Email já cadastrado para outra empresa' })
+  requestAccess(
+    @Param('companyId') companyId: string,
+    @Body() requestAccessDto: RequestAccessDto,
+  ) {
+    return this.companiesService.requestAccess(companyId, requestAccessDto);
   }
 }

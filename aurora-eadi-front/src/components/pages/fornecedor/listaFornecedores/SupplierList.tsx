@@ -188,34 +188,6 @@ export function SupplierList() {
                         </button>
                     )}
                 </form>
-
-                {/* Status Filter - Agora sincronizado com os cards */}
-                {/* <div className="flex items-center gap-2">
-                    <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
-                        Filtrar por Status:
-                    </label>
-                    <select
-                        id="status-filter"
-                        value={statusFilter}
-                        onChange={(e) => {
-                            setStatusFilter(e.target.value);
-                            setPage(1);
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                    >
-                        <option value="">Todos os Status</option>
-                        <option value={CompanyStatus.PENDING}>Pendente</option>
-                        <option value={CompanyStatus.PENDING_ACTIVE}>Em Aprovação</option>
-                        <option value={CompanyStatus.ACTIVE}>Ativo</option>
-                        <option value={CompanyStatus.REJECTED}>Rejeitado</option>
-                    </select>
-                    {statusFilter && (
-                        <div className="flex items-center gap-1 px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm">
-                            <span>Filtrando: </span>
-                            <Badge status={statusFilter as CompanyStatus} context="company" />
-                        </div>
-                    )}
-                </div> */}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

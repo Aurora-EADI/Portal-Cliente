@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Printer, Plus, Building2, History, Lock, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Printer, Plus, Building2, History, Lock, Save, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useSuppliers } from '@/hooks/useSuppliers';
+import { useCustomers } from '@/hooks/useCustomers';
 import { useAuthContext } from '@/context/AuthContext';
 import {
   useCreateSimulation,
@@ -33,16 +33,24 @@ import {
   useCreateSimulationVersion,
   useAddSimulationService,
 } from '@/hooks/useSimulations';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
-import { formatCurrency, formatUSD } from '@/lib/utils';
+import { formatCurrency, formatUSD, formatPercent } from '@/lib/utils';
+import { calculateServiceCost } from '@/lib/calculations';
+import { ServiceCostType } from '@/types';
+
+const DEFAULT_MIN_BILLING = 5500;
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlId = searchParams.get('id');
 
-  // Suppliers Data
-  const { data: suppliersData, isLoading: isLoadingSuppliers } = useSuppliers();
+  // Customers Data
+  const { data: customersData, isLoading: isLoadingCustomers } = useCustomers();
 
   // Services Data
   const { data: servicesData, isLoading: isLoadingServices } = useServices(false);
@@ -54,21 +62,10 @@ export function MaritimeSimulator() {
   const addServiceMutation = useAddSimulationService();
 
   // State Management
-  const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(null);
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
+  const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(urlId);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
-
-  // Local state for services before saving simulation
-  const [localServices, setLocalServices] = useState<Array<{
-    serviceId: string;
-    costType: any;
-    appliedCost: number;
-    customReason?: string;
-  }>>([]);
-
-  // Current Simulation Data
-  const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
@@ -77,9 +74,104 @@ export function MaritimeSimulator() {
   const [tonnes, setTonnes] = useState<string>('');
   const [cntrCount, setCntrCount] = useState<string>('');
   const [cntrType, setCntrType] = useState<string>('');
-  const [storageCost, setStorageCost] = useState<string>('0');
-  const [transportCost, setTransportCost] = useState<string>('1700');
+  const [storageRate, setStorageRate] = useState<string>('0.35');
+  const [transportRate, setTransportRate] = useState<string>('1700');
   const [discount, setDiscount] = useState<string>('0');
+  const [hasStripping, setHasStripping] = useState<boolean>(false);
+  const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
+
+  // Local state for services before saving simulation
+  const [localServices, setLocalServices] = useState<Array<{
+    serviceId: string;
+    costType: any;
+    originalCost: number;
+    appliedCost: number;
+    customReason?: string;
+  }>>([]);
+
+  // Calculate CIF BRL numeric value
+  const cifBrlNum = useMemo(() => {
+    const usd = parseFloat(cifUsd) || 0;
+    const rate = parseFloat(dollarRate) || 0;
+    return usd * rate;
+  }, [cifUsd, dollarRate]);
+
+  // Current Simulation Data
+  const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
+
+  // Filter services based on stripping status
+  const effectiveServicesList = useMemo(() => {
+    // Agora os serviços vêm da tabela SimulationService (relacional)
+    const list = currentSimulationId ? (currentSimulation?.services || []) : localServices;
+    if (!hasStripping) {
+      return list.filter(s => {
+        // Se for snapshot, já temos o hasStripping nele
+        if ('hasStripping' in s) return !s.hasStripping;
+
+        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+        return !serviceDef?.hasStripping;
+      });
+    }
+    return list;
+  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, servicesData]);
+
+  // Calculate total services in real-time (summing appliedCost from the list, with reactive re-calculation for DEFAULT type)
+  const calculatedTotalServices = useMemo(() => {
+    const calcData = {
+      cifBrl: cifBrlNum,
+      tonnes: parseFloat(tonnes || '0'),
+      cntrCount: parseInt(cntrCount || '0'),
+    };
+
+    return effectiveServicesList.reduce((total, s) => {
+      // If DEFAULT, calculate reactively from originalCost and current cargo data
+      if (s.costType === ServiceCostType.DEFAULT) {
+        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+        if (serviceDef) {
+          return total + calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
+        }
+      }
+      return total + Number(s.appliedCost || 0);
+    }, 0);
+  }, [effectiveServicesList, cifBrlNum, tonnes, cntrCount, servicesData]);
+
+  // Count of selected services
+  const servicesCount = effectiveServicesList.length;
+
+
+  // Calculate costs based on rates
+  const calculatedStorageCost = useMemo(() => {
+    const rate = parseFloat(storageRate) || 0;
+    return (rate / 100) * (cifBrlNum || 0);
+  }, [storageRate, cifBrlNum]);
+
+  const calculatedTransportCost = useMemo(() => {
+    const rate = parseFloat(transportRate) || 0;
+    const count = parseInt(cntrCount) || 0;
+    return rate * count;
+  }, [transportRate, cntrCount]);
+
+  // Calculate total general in real-time
+  const { minDiff, minProfitMarginPct, totalGeneral } = useMemo(() => {
+    const services = calculatedTotalServices;
+    const storage = calculatedStorageCost;
+    const transport = calculatedTransportCost;
+    const discountValue = parseFloat(discount || '0');
+    const count = parseInt(cntrCount || '0');
+    const minThreshold = parseFloat(minBillingValue) || 0;
+
+    const minBillingThreshold = minThreshold * count;
+    const difference = (count > 0 && services < minBillingThreshold) ? minBillingThreshold - services : 0;
+    const marginPct = (difference > 0 && services > 0) ? (difference / services) * 100 : 0;
+
+    return {
+      minDiff: difference,
+      minProfitMarginPct: marginPct,
+      totalGeneral: services + difference + storage + transport - discountValue
+    };
+  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, cntrCount, minBillingValue]);
+
+  const calculatedTotalGeneral = totalGeneral;
 
   // Auto-calculate CIF BRL
   useEffect(() => {
@@ -88,30 +180,52 @@ export function MaritimeSimulator() {
     setCifBrl(formatCurrency((usd * rate), false));
   }, [cifUsd, dollarRate]);
 
+  // Sync currentSimulationId with URL
+  useEffect(() => {
+    if (urlId && urlId !== currentSimulationId) {
+      setCurrentSimulationId(urlId);
+    }
+  }, [urlId]);
+
   // Load current simulation data
   useEffect(() => {
     if (currentSimulation) {
-      setSelectedSupplierId(currentSimulation.supplierId);
+      setSelectedCustomerId(currentSimulation.customerId);
       setCifUsd(currentSimulation.cifUsd.toString());
       setDollarRate(currentSimulation.dollarRate.toString());
       setTonnes(currentSimulation.tonnes?.toString() || '');
       setCntrCount(currentSimulation.cntrCount?.toString() || '');
       setCntrType(currentSimulation.cntrType || '');
-      setStorageCost(currentSimulation.storageCost?.toString() || '0');
-      setTransportCost(currentSimulation.transportCost?.toString() || '0');
+
+      // Calculate rates from saved costs for consistency
+      const savedStorageCost = Number(currentSimulation.storageCost || 0);
+      const savedCifBrl = Number(currentSimulation.cifBrl || 0);
+      if (savedCifBrl > 0) {
+        setStorageRate(((savedStorageCost / savedCifBrl) * 100).toFixed(4).replace(/\.?0+$/, ''));
+      }
+
+      const savedTransportCost = Number(currentSimulation.transportCost || 0);
+      const savedCntrCount = Number(currentSimulation.cntrCount || 0);
+      if (savedCntrCount > 0) {
+        setTransportRate((savedTransportCost / savedCntrCount).toString());
+      }
+
       setDiscount(currentSimulation.discount?.toString() || '0');
+      setHasStripping(currentSimulation.hasStripping || false);
+      setMinBillingValue(currentSimulation.minBillingValue?.toString() || DEFAULT_MIN_BILLING.toString());
     }
   }, [currentSimulation]);
 
-  // Handler: Update supplier selection (local state only)
-  const handleSupplierChange = (supplierId: string) => {
-    setSelectedSupplierId(supplierId);
+  // Handler: Update customer selection (local state only)
+  const handleCustomerChange = (customerId: string) => {
+    setSelectedCustomerId(customerId);
   };
 
   // Handlers for local services management
   const handleAddLocalService = (service: {
     serviceId: string;
     costType: any;
+    originalCost: number;
     appliedCost: number;
     customReason?: string;
   }) => {
@@ -130,8 +244,8 @@ export function MaritimeSimulator() {
   // Handler: Save simulation (Create or Update)
   const handleSaveSimulation = async () => {
     // Validações
-    if (!selectedSupplierId) {
-      toast.error('Por favor, selecione um fornecedor');
+    if (!selectedCustomerId) {
+      toast.error('Por favor, selecione um cliente');
       return;
     }
 
@@ -142,30 +256,24 @@ export function MaritimeSimulator() {
 
     try {
       if (!currentSimulationId) {
-        // Create new simulation
+        // Create new simulation with initial services
         const newSimulation = await createSimulationMutation.mutateAsync({
-          supplierId: selectedSupplierId,
+          customerId: selectedCustomerId,
           cifUsd: parseFloat(cifUsd) || 0,
           dollarRate: parseFloat(dollarRate) || 5.85,
           tonnes: tonnes ? parseFloat(tonnes) : undefined,
           cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
           cntrType: cntrType || undefined,
-          storageCost: storageCost ? parseFloat(storageCost) : 0,
-          transportCost: transportCost ? parseFloat(transportCost) : 0,
+          storageCost: calculatedStorageCost,
+          transportCost: calculatedTransportCost,
           discount: discount ? parseFloat(discount) : 0,
+          hasStripping,
+          minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+          initialServices: localServices,
         });
 
-        // Add local services to the newly created simulation
-        if (localServices.length > 0) {
-          for (const service of localServices) {
-            await addServiceMutation.mutateAsync({
-              simulationId: newSimulation.id,
-              data: service,
-            });
-          }
-          // Clear local services after saving
-          setLocalServices([]);
-        }
+        // Clear local services after saving
+        setLocalServices([]);
 
         setCurrentSimulationId(newSimulation.id);
         toast.success('Simulação criada com sucesso!');
@@ -174,15 +282,17 @@ export function MaritimeSimulator() {
         await updateSimulationMutation.mutateAsync({
           id: currentSimulationId,
           data: {
-            supplierId: selectedSupplierId,
+            customerId: selectedCustomerId,
             cifUsd: parseFloat(cifUsd) || 0,
             dollarRate: parseFloat(dollarRate) || 0,
             tonnes: tonnes ? parseFloat(tonnes) : undefined,
             cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
             cntrType: cntrType || undefined,
-            storageCost: storageCost ? parseFloat(storageCost) : 0,
-            transportCost: transportCost ? parseFloat(transportCost) : 0,
+            storageCost: calculatedStorageCost,
+            transportCost: calculatedTransportCost,
             discount: discount ? parseFloat(discount) : 0,
+            hasStripping,
+            minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
           },
         });
         toast.success('Simulação atualizada com sucesso!');
@@ -201,15 +311,17 @@ export function MaritimeSimulator() {
       const newVersion = await createVersionMutation.mutateAsync({
         baseSimulationId: currentSimulation.id,
         versionReason: versionReason || undefined,
-        supplierId: selectedSupplierId,
+        customerId: selectedCustomerId,
         cifUsd: parseFloat(cifUsd) || 0,
         dollarRate: parseFloat(dollarRate) || 0,
         tonnes: tonnes ? parseFloat(tonnes) : undefined,
         cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
         cntrType: cntrType || undefined,
-        storageCost: storageCost ? parseFloat(storageCost) : 0,
-        transportCost: transportCost ? parseFloat(transportCost) : 0,
+        storageCost: calculatedStorageCost,
+        transportCost: calculatedTransportCost,
         discount: discount ? parseFloat(discount) : 0,
+        hasStripping,
+        minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -230,25 +342,36 @@ export function MaritimeSimulator() {
           <h1 className="text-3xl font-bold text-gray-900">
             Simulador de Custo EADI
           </h1>
-          {currentSimulation && (
-            <div className="flex items-center gap-3 mt-2">
-              <p className="text-sm text-gray-500 flex items-center gap-2">
-                ID da Simulação:
-                <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
-                  {currentSimulation.displayNumber}
-                </span>
-              </p>
-              <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
-                {currentSimulation.status}
-              </Badge>
-              {!currentSimulation.isCurrentVersion && (
-                <Badge variant="outline" className="text-gray-500">
-                  <Lock className="w-3 h-3 mr-1" />
-                  Versão Antiga
+          <div className="flex items-center gap-4 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/comercial/history')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Histórico
+            </Button>
+            {currentSimulation && (
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-500 flex items-center gap-2">
+                  ID da Simulação:
+                  <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
+                    {currentSimulation.displayNumber}
+                  </span>
+                </p>
+                <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
+                  {currentSimulation.status}
                 </Badge>
-              )}
-            </div>
-          )}
+                {!currentSimulation.isCurrentVersion && (
+                  <Badge variant="outline" className="text-gray-500">
+                    <Lock className="w-3 h-3 mr-1" />
+                    Versão Antiga
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           {isEditable && (
@@ -290,14 +413,14 @@ export function MaritimeSimulator() {
                 <TabsTrigger
                   value="carga"
                   className="rounded-b-none border-t border-l border-r border-transparent data-[state=active]:border-gray-200 data-[state=active]:bg-white data-[state=active]:shadow-none px-6 py-2.5 text-gray-500 data-[state=active]:text-primary-700 font-semibold relative top-[1px]"
-                  disabled={!selectedSupplierId}
+                  disabled={!selectedCustomerId}
                 >
                   Dados da Carga
                 </TabsTrigger>
                 <TabsTrigger
                   value="servico"
                   className="rounded-b-none border-t border-l border-r border-transparent data-[state=active]:border-gray-200 data-[state=active]:bg-white data-[state=active]:shadow-none px-6 py-2.5 text-gray-500 data-[state=active]:text-primary-700 font-semibold relative top-[1px]"
-                  disabled={!selectedSupplierId}
+                  disabled={!selectedCustomerId}
                 >
                   Serviço
                 </TabsTrigger>
@@ -313,50 +436,51 @@ export function MaritimeSimulator() {
                     <Building2 className="w-5 h-5 text-primary-600" />
                     Seleção de Cliente
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">Selecione o fornecedor/empresa para a simulação</p>
+                  <p className="text-sm text-gray-500 mt-1">Selecione o cliente para a simulação</p>
                 </div>
 
                 <div className="p-8">
-                  <Label htmlFor="supplier" className="text-base font-semibold text-gray-700 mb-3 block">
-                    Fornecedor
+                  <Label htmlFor="customer" className="text-base font-semibold text-gray-700 mb-3 block">
+                    Cliente
                   </Label>
                   <Select
-                    value={selectedSupplierId}
-                    onValueChange={handleSupplierChange}
+                    value={selectedCustomerId}
+                    onValueChange={handleCustomerChange}
                     disabled={!isEditable}
                   >
-                    <SelectTrigger id="supplier" className="w-full h-12 text-base">
-                      <SelectValue placeholder="Selecione um fornecedor..." />
+                    <SelectTrigger id="customer" className="w-full h-12 text-base">
+                      <SelectValue placeholder="Selecione um cliente..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {isLoadingSuppliers ? (
-                        <div className="p-4 text-center text-sm text-gray-500">Carregando fornecedores...</div>
+                      {isLoadingCustomers ? (
+                        <div className="p-4 text-center text-sm text-gray-500">Carregando clientes...</div>
                       ) : (
-                        suppliersData?.data?.map((item: any) => (
-                          <SelectItem key={item.company.id} value={item.company.id}>
-                            {item.company.fantasyName || item.company.socialReason}
-                            <span className="text-gray-400 text-xs ml-2">({item.company.cnpj})</span>
+                        customersData?.data?.map((customer: any) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                            <span className="text-gray-400 text-xs ml-2">({customer.document})</span>
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
 
-                  {selectedSupplierId && !currentSimulation && (
+                  {selectedCustomerId && !currentSimulation && (
                     <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-sm text-yellow-800">
-                        <strong>Fornecedor selecionado.</strong> Preencha os dados da carga e clique em{' '}
+                        <strong>Cliente selecionado.</strong> Preencha os dados da carga e clique em{' '}
                         <strong>"Salvar Simulação"</strong> para continuar.
                       </p>
                     </div>
                   )}
 
-                  {selectedSupplierId && currentSimulation && (
+                  {selectedCustomerId && currentSimulation && (
                     <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-                      <h3 className="font-semibold text-primary-800 mb-2">Empresa Selecionada</h3>
+                      <h3 className="font-semibold text-primary-800 mb-2">Cliente Selecionado</h3>
                       <div className="text-sm text-primary-700 space-y-1">
-                        <p><strong>Nome:</strong> {currentSimulation.supplier?.fantasyName || currentSimulation.supplier?.socialReason}</p>
-                        <p><strong>CNPJ:</strong> {currentSimulation.supplier?.cnpj}</p>
+                        <p><strong>Código:</strong> {currentSimulation.customer?.code}</p>
+                        <p><strong>Nome:</strong> {currentSimulation.customer?.name}</p>
+                        <p><strong>Documento:</strong> {currentSimulation.customer?.document}</p>
                         <div className="flex items-center">
                           <strong>Status:</strong>{' '}
                           <Badge className="ml-2" variant={isEditable ? 'default' : 'secondary'}>
@@ -459,28 +583,57 @@ export function MaritimeSimulator() {
                     </Select>
                   </div>
 
-                  {/* Row 4 */}
+                  {/* Row 4: Storage */}
                   <div className="space-y-2">
-                    <Label htmlFor="storageCost">Armazenagem R$ (2º Período de 15)</Label>
-                    <Input
-                      id="storageCost"
-                      value={storageCost}
-                      onChange={(e) => setStorageCost(e.target.value)}
-                      disabled={!isEditable}
-                    />
+                    <Label htmlFor="storageRate">Armazenagem (2º Período de 15) %</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="storageRate"
+                          value={storageRate}
+                          onChange={(e) => setStorageRate(e.target.value)}
+                          disabled={!isEditable}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedStorageCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* Row 5: Transport */}
                   <div className="space-y-2">
-                    <Label htmlFor="transportCost">Transporte de DTA + Devolução</Label>
-                    <Input
-                      id="transportCost"
-                      value={transportCost}
-                      onChange={(e) => setTransportCost(e.target.value)}
-                      disabled={!isEditable}
-                    />
+                    <Label htmlFor="transportRate">Transporte de DTA + Devolução</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                        <Input
+                          id="transportRate"
+                          value={transportRate}
+                          onChange={(e) => setTransportRate(e.target.value)}
+                          disabled={!isEditable}
+                          className="pl-8"
+                        />
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedTransportCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Row 5 */}
+                  {/* Row 6: Discount & Min Billing */}
                   <div className="space-y-2">
                     <Label htmlFor="discount">Desconto</Label>
                     <div className="relative">
@@ -494,6 +647,38 @@ export function MaritimeSimulator() {
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="minBillingValue">Faturamento Mínimo por CNTR</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                      <Input
+                        id="minBillingValue"
+                        value={minBillingValue}
+                        onChange={(e) => setMinBillingValue(e.target.value)}
+                        className="pl-9 bg-amber-50/30 border-amber-200/50 focus-visible:ring-amber-500"
+                        disabled={!isEditable}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 7: Desova */}
+                  <div className="md:col-span-2 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                    <input
+                      type="checkbox"
+                      id="hasStripping"
+                      checked={hasStripping}
+                      onChange={(e) => setHasStripping(e.target.checked)}
+                      disabled={!isEditable}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    />
+                    <Label htmlFor="hasStripping" className="font-semibold text-blue-900 cursor-pointer select-none">
+                      Desova?
+                      <p className="text-xs text-blue-700/70 font-normal">
+                        Marque esta opção se a carga precisar ser desovada para filtrar os serviços específicos.
+                      </p>
+                    </Label>
+                  </div>
                 </CardContent>
               </TabsContent>
 
@@ -505,13 +690,14 @@ export function MaritimeSimulator() {
                   isLoadingServices={isLoadingServices}
                   isEditable={isEditable}
                   simulationData={{
-                    cifBrl: parseFloat(cifBrl) || 0,
+                    cifBrl: cifBrlNum,
                     tonnes: parseFloat(tonnes) || 0,
                     cntrCount: parseInt(cntrCount) || 0,
                   }}
                   localServices={localServices}
                   onAddLocalService={handleAddLocalService}
                   onRemoveLocalService={handleRemoveLocalService}
+                  hasStripping={hasStripping}
                 />
               </TabsContent>
             </div>
@@ -532,7 +718,7 @@ export function MaritimeSimulator() {
                 <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-lg border border-blue-100">
                   <span className="text-blue-700 font-medium">Total Serviços</span>
                   <span className="text-lg font-bold text-blue-900">
-                    {formatCurrency(currentSimulation?.totalServices || 0)}
+                    {formatCurrency(calculatedTotalServices)}
                   </span>
                 </div>
 
@@ -540,14 +726,14 @@ export function MaritimeSimulator() {
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Armazenagem</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(parseFloat(storageCost || '0'))}
+                      {formatCurrency(calculatedStorageCost)}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Transporte</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(parseFloat(transportCost || '0'))}
+                      {formatCurrency(calculatedTransportCost)}
                     </span>
                   </div>
 
@@ -558,12 +744,33 @@ export function MaritimeSimulator() {
                     </span>
                   </div>
 
+                  {minDiff > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start group p-2 bg-amber-50 rounded border border-amber-100">
+                        <span className="text-amber-800 text-xs font-semibold uppercase leading-tight">
+                          Diferença mínima a ser cobrada para emissão de Nota Fiscal por contêiner
+                        </span>
+                        <span className="font-bold text-amber-900">
+                          {formatCurrency(minDiff)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center px-2 py-1 bg-green-50 rounded border border-green-100 italic">
+                        <span className="text-green-800 text-[10px] font-bold uppercase tracking-wider">
+                          Margem de lucro mínima
+                        </span>
+                        <span className="font-bold text-green-700 text-xs">
+                          {formatPercent(minProfitMarginPct)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <Separator className="my-2" />
 
                   <div className="flex justify-between items-center pt-1">
                     <span className="text-gray-600 font-medium">Serviços Diversos</span>
                     <span className="text-xs text-gray-400 italic">
-                      {currentSimulation?._count?.services || 0} selecionados
+                      {servicesCount} selecionados
                     </span>
                   </div>
                 </div>
@@ -576,18 +783,18 @@ export function MaritimeSimulator() {
                     <span className="text-xs text-gray-400">Com impostos</span>
                   </div>
                   <span className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(currentSimulation?.totalGeneral || 0)}
+                    {formatCurrency(calculatedTotalGeneral)}
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-      </div>
+      </div >
 
       {/* DIALOG: NOVA VERSÃO */}
       <Dialog open={isNewVersionDialogOpen} onOpenChange={setIsNewVersionDialogOpen}>
-        <DialogContent>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Criar Nova Versão</DialogTitle>
             <DialogDescription>
@@ -604,6 +811,7 @@ export function MaritimeSimulator() {
                 placeholder="Ex: Ajuste no desconto solicitado pelo cliente"
                 value={versionReason}
                 onChange={(e) => setVersionReason(e.target.value)}
+                autoFocus
               />
             </div>
           </div>

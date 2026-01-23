@@ -92,15 +92,19 @@ export async function refreshAccessToken(): Promise<string | null> {
       },
     );
 
-    const { access_token } = response.data;
+    const { access_token, refresh_token: newRefreshToken } = response.data;
 
     if (!access_token) {
       console.error('[TOKEN SERVICE] Resposta inválida do refresh endpoint');
       return null;
     }
 
-    // Salva o novo access token
-    localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+    // Salva os tokens recebidos (suporta rotação de refresh token)
+    if (newRefreshToken) {
+      saveTokens(access_token, newRefreshToken);
+    } else {
+      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+    }
 
     console.log('[TOKEN SERVICE] Access token renovado com sucesso');
     return access_token;

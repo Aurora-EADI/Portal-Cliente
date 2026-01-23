@@ -1,9 +1,10 @@
-import { IsString, IsNumber, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { AddSimulationServiceDto } from './add-simulation-service.dto';
 
 export class CreateSimulationDto {
   @IsString()
-  supplierId: string;
+  customerId: string;
 
   // Dados da carga
   @IsNumber()
@@ -42,4 +43,19 @@ export class CreateSimulationDto {
   @IsNumber()
   @Type(() => Number)
   discount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  hasStripping?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  minBillingValue?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AddSimulationServiceDto)
+  initialServices?: any[];
 }

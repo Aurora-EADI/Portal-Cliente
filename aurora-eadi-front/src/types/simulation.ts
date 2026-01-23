@@ -18,17 +18,19 @@ export enum ServiceCostType {
   ZEROED = 'ZEROED',
 }
 
+// Tipo para representar dados retornados do backend (formato unificado de versão)
 export interface Simulation {
-  id: string;
+  id: string; // ID da versão
+  simulationId?: string; // ID da capa (Simulation)
   simulationNumber: string; // Ex: "SIM-20241215-0001"
   version: number;
   displayNumber: string; // Ex: "SIM-001-V1"
-  baseSimulationId?: string | null;
+  baseVersionId?: string | null;
   isCurrentVersion: boolean;
   versionReason?: string | null;
 
   // Dados do cliente
-  supplierId: string;
+  customerId: string;
 
   // Dados da carga
   cifUsd: number;
@@ -49,48 +51,91 @@ export interface Simulation {
 
   // Status e controle
   status: SimulationStatus;
+  hasStripping: boolean;
+  minBillingValue: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
 
   // Relacionamentos
-  supplier?: {
+  customer?: {
     id: string;
-    fantasyName?: string;
-    socialReason: string;
-    cnpj: string;
+    code: string;
+    name: string;
+    document: string;
   };
   user?: {
     id: string;
     name: string;
-    email: string;
+    email?: string;
   };
   services?: SimulationService[];
+  // Para lista de simulações (quando retorna a capa com versões aninhadas)
+  versions?: SimulationVersionSummary[];
   _count?: {
     services: number;
   };
 }
 
+// Tipo para o item de serviço (agora é uma tabela real, não mais JSON)
 export interface SimulationService {
   id: string;
-  simulationId: string;
-  serviceId: string;
+  versionId: string;
+  serviceId: string | null;
+  serviceName: string;
+  serviceCode: string;
+  calculationType: string;
+  hasStripping: boolean;
   costType: ServiceCostType;
-  originalCost: number; // Custo da tabela no momento
-  appliedCost: number; // Custo aplicado na simulação
+  originalCost: number;
+  appliedCost: number;
   customReason?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  // Para compatibilidade com o formato aninhado
   service?: {
+    id: string | null;
     code: string;
     name: string;
-    category?: string;
+    calculationType: string;
+    hasStripping: boolean;
+  };
+}
+
+// Tipo para lista de simulações (header + versão corrente)
+export interface SimulationListItem {
+  id: string; // ID da capa
+  simulationNumber: string;
+  customerId: string;
+  customer?: {
+    id: string;
+    code: string;
+    name: string;
+    document: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  versions?: SimulationVersionSummary[];
+}
+
+export interface SimulationVersionSummary {
+  id: string;
+  version: number;
+  displayNumber: string;
+  isCurrentVersion: boolean;
+  status: SimulationStatus;
+  totalGeneral: number;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+  };
+  _count?: {
+    services: number;
   };
 }
 
 // DTOs
 export interface CreateSimulationDto {
-  supplierId: string;
+  customerId: string;
   cifUsd: number;
   dollarRate: number;
   tonnes?: number;
@@ -99,6 +144,9 @@ export interface CreateSimulationDto {
   storageCost?: number;
   transportCost?: number;
   discount?: number;
+  hasStripping?: boolean;
+  minBillingValue?: number;
+  initialServices?: AddSimulationServiceDto[];
 }
 
 export interface UpdateSimulationDto extends Partial<CreateSimulationDto> {
@@ -113,6 +161,7 @@ export interface CreateNewVersionDto extends CreateSimulationDto {
 export interface AddSimulationServiceDto {
   serviceId: string;
   costType: ServiceCostType;
-  appliedCost: number;
+  originalCost?: number;
+  appliedCost?: number;
   customReason?: string;
 }

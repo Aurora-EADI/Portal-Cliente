@@ -18,6 +18,7 @@ export interface Service {
   calculationType: ServiceCalculationType; // Tipo de cálculo do serviço
   formulaExpression?: string; // Fórmula para exibição (ex: "0.35% do CIF", "R$ 350/container")
   isActive: boolean;
+  hasStripping: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -55,9 +56,10 @@ export interface CreateServiceDto {
   calculationType: ServiceCalculationType;
   formulaExpression?: string;
   isActive?: boolean;
+  hasStripping?: boolean;
 }
 
-export interface UpdateServiceDto extends Partial<CreateServiceDto> {}
+export interface UpdateServiceDto extends Partial<CreateServiceDto> { }
 
 export interface CreateServiceCostDto {
   serviceId: string;
