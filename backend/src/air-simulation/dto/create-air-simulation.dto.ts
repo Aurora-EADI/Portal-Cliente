@@ -40,6 +40,11 @@ export class CreateAirSimulationDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  capataziaCost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
   transportCost?: number;
 
   @IsOptional()

@@ -137,8 +137,7 @@ export function ServicesTab({
       case ServiceCalculationType.PER_CONTAINER:
         return `${formatCurrency(rate)} × ${simulationData.cntrCount} containers`;
       case ServiceCalculationType.PER_TONNE:
-        const roundedTonnes = Math.ceil(simulationData.tonnes / 1000);
-        return `${formatCurrency(rate)} × ${roundedTonnes} ton (arr.)`;
+        return `${formatCurrency(rate)} × ${simulationData.tonnes} ton`;
       default:
         return formatCurrency(rate);
     }

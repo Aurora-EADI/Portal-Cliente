@@ -34,12 +34,13 @@ import {
   useAddAirSimulationService,
 } from '@/hooks/useAirSimulations';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useServices } from '@/hooks/useServices';
+import { useAirServices, useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { AirServicesTab } from './AirServicesTab';
-import { formatCurrency, formatPercent } from '@/lib/utils';
+import { formatCurrency, formatPercent, formatNumberBR, parseNumberBR } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
+import { exportAirSimulationToPDF } from '@/services/pdfService';
 
 const DEFAULT_MIN_BILLING = 350; // Regra 1.1.9 - Valor mínimo para emissão de NF
 
@@ -53,7 +54,7 @@ export function AirSimulator() {
   const { data: customersData, isLoading: isLoadingCustomers } = useCustomers();
 
   // Services Data
-  const { data: servicesData, isLoading: isLoadingServices } = useServices(false);
+  const { data: servicesData, isLoading: isLoadingServices } = useAirServices(false);
 
   // Mutations
   const createSimulationMutation = useCreateAirSimulation();
@@ -66,6 +67,7 @@ export function AirSimulator() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
+  const [isEditingVersion, setIsEditingVersion] = useState(false);
 
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
@@ -74,7 +76,6 @@ export function AirSimulator() {
   const [weightKg, setWeightKg] = useState<string>('');
   const [volumeM3, setVolumeM3] = useState<string>('');
   const [storageRate, setStorageRate] = useState<string>('0.35');
-  const [transportRate, setTransportRate] = useState<string>('80'); // Regra 1.1.5 - Transporte Aeroporto/EADI
   const [discount, setDiscount] = useState<string>('0');
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
 
@@ -89,8 +90,8 @@ export function AirSimulator() {
 
   // Calculate CIF BRL numeric value
   const cifBrlNum = useMemo(() => {
-    const usd = parseFloat(cifUsd) || 0;
-    const rate = parseFloat(dollarRate) || 0;
+    const usd = parseNumberBR(cifUsd);
+    const rate = parseNumberBR(dollarRate);
     return usd * rate;
   }, [cifUsd, dollarRate]);
 
@@ -107,10 +108,10 @@ export function AirSimulator() {
   const calculatedTotalServices = useMemo(() => {
     const calcData = {
       cifBrl: cifBrlNum,
-      tonnes: parseFloat(weightKg || '0') / 1000,
+      tonnes: parseNumberBR(weightKg) / 1000,
       cntrCount: 1,
-      weightKg: parseFloat(weightKg || '0'),
-      volumeM3: parseFloat(volumeM3 || '0'),
+      weightKg: parseNumberBR(weightKg),
+      volumeM3: parseNumberBR(volumeM3),
     };
 
     return effectiveServicesList.reduce((total, s) => {
@@ -122,48 +123,47 @@ export function AirSimulator() {
       }
       return total + Number(s.appliedCost || 0);
     }, 0);
-  }, [effectiveServicesList, cifBrlNum, weightKg, servicesData]);
+  }, [effectiveServicesList, cifBrlNum, weightKg, servicesData, volumeM3]);
 
   // Count of selected services
   const servicesCount = effectiveServicesList.length;
 
   // Calculate costs based on rates
   const calculatedStorageCost = useMemo(() => {
-    const rate = parseFloat(storageRate) || 0;
+    const rate = parseNumberBR(storageRate);
     return (rate / 100) * (cifBrlNum || 0);
   }, [storageRate, cifBrlNum]);
 
-  const calculatedTransportCost = useMemo(() => {
-    const rate = parseFloat(transportRate) || 0;
-    return rate;
-  }, [transportRate]);
+  // Calculate Capatazia cost
+  const calculatedCapataziaCost = useMemo(() => {
+    const weight = parseNumberBR(weightKg);
+    if (!weight || weight <= 0) return 0;
+    return Math.max(weight * 1.4104, 94.11);
+  }, [weightKg]);
 
   // Calculate total general in real-time
-  const { minDiff, minProfitMarginPct, totalGeneral } = useMemo(() => {
+  const { minDiff, totalGeneral } = useMemo(() => {
     const services = calculatedTotalServices;
     const storage = calculatedStorageCost;
-    const transport = calculatedTransportCost;
-    const discountValue = parseFloat(discount || '0');
-    const minThreshold = parseFloat(minBillingValue) || 0;
+    const capatazia = calculatedCapataziaCost;
+    const discountValue = parseNumberBR(discount);
+    const minThreshold = parseNumberBR(minBillingValue);
 
-    const difference = services < minThreshold ? minThreshold - services : 0;
-    const marginPct = (difference > 0 && services > 0) ? (difference / services) * 100 : 0;
+    const totalCurrentCosts = services + storage + capatazia;
+    const difference = totalCurrentCosts < minThreshold ? minThreshold - totalCurrentCosts : 0;
 
     return {
       minDiff: difference,
-      minProfitMarginPct: marginPct,
-      totalGeneral: services + difference + storage + transport - discountValue
+      totalGeneral: totalCurrentCosts + difference - discountValue
     };
-  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, minBillingValue]);
+  }, [calculatedTotalServices, calculatedStorageCost, calculatedCapataziaCost, discount, minBillingValue]);
 
   const calculatedTotalGeneral = totalGeneral;
 
   // Auto-calculate CIF BRL
   useEffect(() => {
-    const usd = parseFloat(cifUsd) || 0;
-    const rate = parseFloat(dollarRate) || 0;
-    setCifBrl(formatCurrency((usd * rate), false));
-  }, [cifUsd, dollarRate]);
+    setCifBrl(formatNumberBR(cifBrlNum));
+  }, [cifBrlNum]);
 
   // Sync currentSimulationId with URL
   useEffect(() => {
@@ -176,21 +176,20 @@ export function AirSimulator() {
   useEffect(() => {
     if (currentSimulation) {
       setSelectedCustomerId(currentSimulation.customerId);
-      setCifUsd(currentSimulation.cifUsd.toString());
-      setDollarRate(currentSimulation.dollarRate.toString());
-      setWeightKg(currentSimulation.weightKg?.toString() || '');
-      setVolumeM3(currentSimulation.volumeM3?.toString() || '');
+      setCifUsd(formatNumberBR(currentSimulation.cifUsd));
+      setDollarRate(formatNumberBR(currentSimulation.dollarRate));
+      setWeightKg(formatNumberBR(currentSimulation.weightKg));
+      setVolumeM3(formatNumberBR(currentSimulation.volumeM3));
 
       // Calculate rates from saved costs for consistency
       const savedStorageCost = Number(currentSimulation.storageCost || 0);
       const savedCifBrl = Number(currentSimulation.cifBrl || 0);
       if (savedCifBrl > 0) {
-        setStorageRate(((savedStorageCost / savedCifBrl) * 100).toFixed(4).replace(/\.?0+$/, ''));
+        setStorageRate(formatNumberBR((savedStorageCost / savedCifBrl) * 100, 4));
       }
 
-      setTransportRate((currentSimulation.transportCost || 0).toString());
-      setDiscount(currentSimulation.discount?.toString() || '0');
-      setMinBillingValue(currentSimulation.minBillingValue?.toString() || DEFAULT_MIN_BILLING.toString());
+      setDiscount(formatNumberBR(currentSimulation.discount || 0));
+      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
     }
   }, [currentSimulation]);
 
@@ -233,41 +232,62 @@ export function AirSimulator() {
       if (!currentSimulationId) {
         const newSimulation = await createSimulationMutation.mutateAsync({
           customerId: selectedCustomerId,
-          cifUsd: parseFloat(cifUsd) || 0,
-          dollarRate: parseFloat(dollarRate) || 5.85,
-          weightKg: weightKg ? parseFloat(weightKg) : undefined,
-          volumeM3: volumeM3 ? parseFloat(volumeM3) : undefined,
+          cifUsd: parseNumberBR(cifUsd),
+          dollarRate: parseNumberBR(dollarRate),
+          weightKg: parseNumberBR(weightKg) || undefined,
+          volumeM3: parseNumberBR(volumeM3) || undefined,
           storageCost: calculatedStorageCost,
-          transportCost: calculatedTransportCost,
-          discount: discount ? parseFloat(discount) : 0,
-          minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+          capataziaCost: calculatedCapataziaCost,
+          discount: parseNumberBR(discount),
+          minBillingValue: parseNumberBR(minBillingValue),
           initialServices: localServices,
         });
 
         setLocalServices([]);
         setCurrentSimulationId(newSimulation.id);
         toast.success('Simulação aérea criada com sucesso!');
+        router.push('/aereo/history');
       } else {
         await updateSimulationMutation.mutateAsync({
           id: currentSimulationId,
           data: {
             customerId: selectedCustomerId,
-            cifUsd: parseFloat(cifUsd) || 0,
-            dollarRate: parseFloat(dollarRate) || 0,
-            weightKg: weightKg ? parseFloat(weightKg) : undefined,
-            volumeM3: volumeM3 ? parseFloat(volumeM3) : undefined,
+            cifUsd: parseNumberBR(cifUsd),
+            dollarRate: parseNumberBR(dollarRate),
+            weightKg: parseNumberBR(weightKg) || undefined,
+            volumeM3: parseNumberBR(volumeM3) || undefined,
             storageCost: calculatedStorageCost,
-            transportCost: calculatedTransportCost,
-            discount: discount ? parseFloat(discount) : 0,
-            minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+            capataziaCost: calculatedCapataziaCost,
+            discount: parseNumberBR(discount),
+            minBillingValue: parseNumberBR(minBillingValue),
           },
         });
         toast.success('Simulação aérea atualizada com sucesso!');
+        setIsEditingVersion(false);
+        router.push('/aereo/history');
       }
     } catch (error) {
       console.error('Error saving simulation:', error);
       toast.error('Erro ao salvar simulação. Por favor, tente novamente.');
     }
+  };
+
+  // Handler: Export to PDF
+  const handleExportPDF = () => {
+    if (!currentSimulation) {
+      toast.error('Salve a simulação antes de exportar o PDF');
+      return;
+    }
+
+    // Preparamos um objeto enriquecido para o PDF caso alguns dados calculados localmente não estejam no objeto retornado
+    const simulationForPdf = {
+      ...currentSimulation,
+      // Se estivermos editando e ainda não salvamos, poderíamos usar os valores locais, 
+      // mas o requisito geralmente é exportar o que foi salvo ou o estado atual se estiver bloqueado.
+      // Vou passar o currentSimulation que é o que vem do hook useAirSimulation.
+    };
+
+    exportAirSimulationToPDF(simulationForPdf as any);
   };
 
   // Handler: Create new version
@@ -279,25 +299,30 @@ export function AirSimulator() {
         baseSimulationId: currentSimulation.id,
         versionReason: versionReason || undefined,
         customerId: selectedCustomerId,
-        cifUsd: parseFloat(cifUsd) || 0,
-        dollarRate: parseFloat(dollarRate) || 0,
-        weightKg: weightKg ? parseFloat(weightKg) : undefined,
-        volumeM3: volumeM3 ? parseFloat(volumeM3) : undefined,
+        cifUsd: parseNumberBR(cifUsd),
+        dollarRate: parseNumberBR(dollarRate),
+        weightKg: parseNumberBR(weightKg) || undefined,
+        volumeM3: parseNumberBR(volumeM3) || undefined,
         storageCost: calculatedStorageCost,
-        transportCost: calculatedTransportCost,
-        discount: discount ? parseFloat(discount) : 0,
-        minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+        capataziaCost: calculatedCapataziaCost,
+        discount: parseNumberBR(discount),
+        minBillingValue: parseNumberBR(minBillingValue),
       });
 
       setCurrentSimulationId(newVersion.id);
+      setIsEditingVersion(true);
       setIsNewVersionDialogOpen(false);
       setVersionReason('');
+
+      // Atualiza a URL sem recarregar para manter o estado local de edição
+      const newUrl = window.location.pathname + '?id=' + newVersion.id;
+      window.history.pushState({ path: newUrl }, '', newUrl);
     } catch (error) {
       console.error('Error creating new version:', error);
     }
   };
 
-  const isEditable = !currentSimulation || currentSimulation.status === SimulationStatus.DRAFT;
+  const isEditable = !currentSimulationId || isEditingVersion;
 
   return (
     <div className="container mx-auto py-8 max-w-7xl">
@@ -326,11 +351,37 @@ export function AirSimulator() {
                     {currentSimulation.displayNumber}
                   </span>
                 </p>
+
+                {/* Seletor de Versões */}
+                {currentSimulation.versions && currentSimulation.versions.length > 1 && (
+                  <div className="flex items-center gap-2 px-3 border-l border-gray-200">
+                    <Label className="text-[10px] uppercase font-bold text-gray-400">Versão</Label>
+                    <Select
+                      value={currentSimulation.id}
+                      onValueChange={(value) => {
+                        setIsEditingVersion(false);
+                        router.push(`/aereo?id=${value}`);
+                      }}
+                    >
+                      <SelectTrigger className="w-[110px] h-8 text-xs font-bold bg-white border-primary-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currentSimulation.versions.map((v: any) => (
+                          <SelectItem key={v.id} value={v.id} className="text-xs font-medium">
+                            Versão {v.version} {v.isCurrentVersion && '⭐'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
                   {currentSimulation.status}
                 </Badge>
                 {!currentSimulation.isCurrentVersion && (
-                  <Badge variant="outline" className="text-gray-500">
+                  <Badge variant="outline" className="text-gray-500 bg-gray-50">
                     <Lock className="w-3 h-3 mr-1" />
                     Versão Antiga
                   </Badge>
@@ -340,24 +391,40 @@ export function AirSimulator() {
           </div>
         </div>
         <div className="flex gap-2">
-          {isEditable && (
+          {/* Novo Simulado */}
+          {!currentSimulationId && (
             <Button
               onClick={handleSaveSimulation}
               className="gap-2"
-              disabled={createSimulationMutation.isPending || updateSimulationMutation.isPending}
+              disabled={createSimulationMutation.isPending}
             >
               <Save size={16} />
-              {!currentSimulationId ? 'Salvar Simulação' : 'Atualizar Simulação'}
+              Salvar Simulação
             </Button>
           )}
-          {currentSimulation && isEditable && (
+
+          {/* Simulação Existente Bloqueada */}
+          {currentSimulationId && !isEditingVersion && (
             <Button
               onClick={() => setIsNewVersionDialogOpen(true)}
               variant="outline"
               className="gap-2"
+              disabled={currentSimulation && !currentSimulation.isCurrentVersion}
             >
               <History size={16} />
               Nova Versão
+            </Button>
+          )}
+
+          {/* Editando Versão Existente */}
+          {isEditingVersion && (
+            <Button
+              onClick={handleSaveSimulation}
+              className="gap-2"
+              disabled={updateSimulationMutation.isPending}
+            >
+              <Save size={16} />
+              Salvar Atualização
             </Button>
           )}
         </div>
@@ -431,31 +498,7 @@ export function AirSimulator() {
                     </SelectContent>
                   </Select>
 
-                  {selectedCustomerId && !currentSimulation && (
-                    <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <p className="text-sm text-yellow-800">
-                        <strong>Cliente selecionado.</strong> Preencha os dados da carga e clique em{' '}
-                        <strong>"Salvar Simulação"</strong> para continuar.
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedCustomerId && currentSimulation && (
-                    <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-                      <h3 className="font-semibold text-primary-800 mb-2">Cliente Selecionado</h3>
-                      <div className="text-sm text-primary-700 space-y-1">
-                        <p><strong>Código:</strong> {currentSimulation.customer?.code}</p>
-                        <p><strong>Nome:</strong> {currentSimulation.customer?.name}</p>
-                        <p><strong>Documento:</strong> {currentSimulation.customer?.document}</p>
-                        <div className="flex items-center">
-                          <strong>Status:</strong>{' '}
-                          <Badge className="ml-2" variant={isEditable ? 'default' : 'secondary'}>
-                            {isEditable ? 'Editável' : 'Bloqueada'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Removido card redundante de cliente selecionado */}
                 </div>
               </TabsContent>
 
@@ -476,9 +519,10 @@ export function AirSimulator() {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                       <Input
                         id="cifUsd"
-                        placeholder="0.00"
+                        placeholder="0,00"
                         value={cifUsd}
                         onChange={(e) => setCifUsd(e.target.value)}
+                        onBlur={(e) => setCifUsd(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-7"
                         disabled={!isEditable}
                       />
@@ -491,6 +535,7 @@ export function AirSimulator() {
                       id="dollarRate"
                       value={dollarRate}
                       onChange={(e) => setDollarRate(e.target.value)}
+                      onBlur={(e) => setDollarRate(formatNumberBR(parseNumberBR(e.target.value)))}
                       disabled={!isEditable}
                     />
                   </div>
@@ -514,13 +559,27 @@ export function AirSimulator() {
                     <div className="relative">
                       <Input
                         id="weightKg"
-                        placeholder="0.00"
+                        placeholder="0,00"
                         value={weightKg}
                         onChange={(e) => setWeightKg(e.target.value)}
+                        onBlur={(e) => setWeightKg(formatNumberBR(parseNumberBR(e.target.value)))}
                         disabled={!isEditable}
                         className="pr-10"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">kg</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="capatazia">Capatazia</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
+                      <Input
+                        id="capatazia"
+                        value={formatNumberBR(calculatedCapataziaCost)}
+                        readOnly
+                        className="bg-gray-50 text-gray-600 font-medium pl-9"
+                      />
                     </div>
                   </div>
 
@@ -530,9 +589,10 @@ export function AirSimulator() {
                     <div className="relative">
                       <Input
                         id="volumeM3"
-                        placeholder="0.00"
+                        placeholder="0,00"
                         value={volumeM3}
                         onChange={(e) => setVolumeM3(e.target.value)}
+                        onBlur={(e) => setVolumeM3(formatNumberBR(parseNumberBR(e.target.value)))}
                         disabled={!isEditable}
                         className="pr-10"
                       />
@@ -549,6 +609,7 @@ export function AirSimulator() {
                           id="storageRate"
                           value={storageRate}
                           onChange={(e) => setStorageRate(e.target.value)}
+                          onBlur={(e) => setStorageRate(formatNumberBR(parseNumberBR(e.target.value), 4))}
                           disabled={!isEditable}
                           className="pr-8"
                         />
@@ -565,21 +626,6 @@ export function AirSimulator() {
                     </div>
                   </div>
 
-                  {/* Row 5: Transport */}
-                  <div className="space-y-2">
-                    <Label htmlFor="transportRate">Transporte</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
-                      <Input
-                        id="transportRate"
-                        value={transportRate}
-                        onChange={(e) => setTransportRate(e.target.value)}
-                        disabled={!isEditable}
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-
                   {/* Row 6: Discount & Min Billing */}
                   <div className="space-y-2">
                     <Label htmlFor="discount">Desconto</Label>
@@ -589,6 +635,7 @@ export function AirSimulator() {
                         id="discount"
                         value={discount}
                         onChange={(e) => setDiscount(e.target.value)}
+                        onBlur={(e) => setDiscount(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-9"
                         disabled={!isEditable}
                       />
@@ -603,6 +650,7 @@ export function AirSimulator() {
                         id="minBillingValue"
                         value={minBillingValue}
                         onChange={(e) => setMinBillingValue(e.target.value)}
+                        onBlur={(e) => setMinBillingValue(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-9 bg-amber-50/30 border-amber-200/50 focus-visible:ring-amber-500"
                         disabled={!isEditable}
                       />
@@ -637,7 +685,14 @@ export function AirSimulator() {
           <Card className="sticky top-6 shadow-md border-gray-200 overflow-hidden ring-1 ring-gray-950/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gray-50/80">
               <CardTitle className="text-lg font-bold text-gray-900">Resumo da Simulação</CardTitle>
-              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white"
+                onClick={handleExportPDF}
+                title="Exportar PDF"
+                disabled={!currentSimulation}
+              >
                 <Printer size={18} />
               </Button>
             </CardHeader>
@@ -659,9 +714,9 @@ export function AirSimulator() {
                   </div>
 
                   <div className="flex justify-between items-start group">
-                    <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Transporte</span>
+                    <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Capatazia</span>
                     <span className="font-semibold text-gray-900">
-                      {formatCurrency(calculatedTransportCost)}
+                      {formatCurrency(calculatedCapataziaCost)}
                     </span>
                   </div>
 
@@ -680,14 +735,6 @@ export function AirSimulator() {
                         </span>
                         <span className="font-bold text-amber-900">
                           {formatCurrency(minDiff)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center px-2 py-1 bg-green-50 rounded border border-green-100 italic">
-                        <span className="text-green-800 text-[10px] font-bold uppercase tracking-wider">
-                          Margem de lucro mínima
-                        </span>
-                        <span className="font-bold text-green-700 text-xs">
-                          {formatPercent(minProfitMarginPct)}
                         </span>
                       </div>
                     </div>

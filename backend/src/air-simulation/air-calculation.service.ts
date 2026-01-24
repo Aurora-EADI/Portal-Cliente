@@ -36,7 +36,7 @@ export class AirCalculationService {
       case AirServiceCalculationType.PER_KG:
         return this.calculatePerKg(rate, simulationData.weightKg);
 
-      case AirServiceCalculationType.PER_TONNE_OR_M3:
+      case AirServiceCalculationType.PER_TONNE:
         return this.calculatePerTonneOrM3(
           rate,
           simulationData.weightKg,
@@ -113,7 +113,7 @@ export class AirCalculationService {
   }
 
   /**
-   * PER_TONNE_OR_M3: Cobra pelo maior entre toneladas e metros cúbicos
+   * PER_TONNE: Cobra pelo maior entre toneladas e metros cúbicos
    * Fórmula: rate * max(weightKg/1000, volumeM3)
    * Regra 1.1.3: Movimentação de Carga - R$ 2,62 por tonelada;
    * quando cubagem for superior ao peso, cobrança será por m³
@@ -124,30 +124,36 @@ export class AirCalculationService {
     volumeM3?: number,
   ): number {
     if (!rate || rate <= 0) {
-      throw new BadRequestException(
-        "Taxa por tonelada/m³ deve ser maior que zero",
-      );
+      throw new BadRequestException("Taxa por tonelada/m³ deve ser maior que zero");
     }
 
+    // O Peso continua sendo obrigatório
     if (weightKg === undefined || weightKg === null || weightKg <= 0) {
-      throw new BadRequestException(
-        "Peso em KG é obrigatório e deve ser maior que zero",
-      );
+      throw new BadRequestException("Peso em KG é obrigatório e deve ser maior que zero");
     }
 
-    if (volumeM3 === undefined || volumeM3 === null || volumeM3 <= 0) {
-      throw new BadRequestException(
-        "Volume em m³ é obrigatório e deve ser maior que zero",
-      );
-    }
+    // TRATAMENTO PARA VOLUME OPCIONAL:
+    // Se volumeM3 for null, undefined ou 0, usamos 0 para a comparação.
+    const vM3 = volumeM3 || 0;
 
     // Converte peso de KG para toneladas
     const tonnes = weightKg / 1000;
 
-    // Usa o maior entre toneladas e m³
-    const billingUnit = Math.max(tonnes, volumeM3);
+    // Usa o maior entre toneladas e m³. Se m³ for 0, o 'tonnes' sempre vencerá.
+    // Aplicamos Math.ceil para respeitar a regra de "tonelada ou fração"
+    const billingUnit = Math.ceil(Math.max(tonnes, vM3));
 
     return rate * billingUnit;
+  }
+
+  /**
+   * Calcula o valor da Capatazia
+   * Regra: 1,4104 por kg, cobrança mínima de 94,11
+   */
+  calculateCapatazia(weightKg: number): number {
+    if (!weightKg || weightKg <= 0) return 0;
+    const calculated = weightKg * 1.4104;
+    return Math.max(calculated, 94.11);
   }
 
   /**
@@ -171,7 +177,7 @@ export class AirCalculationService {
       case AirServiceCalculationType.PER_KG:
         return `R$ ${rate.toFixed(2).replace(".", ",")} por KG`;
 
-      case AirServiceCalculationType.PER_TONNE_OR_M3:
+      case AirServiceCalculationType.PER_TONNE:
         return `R$ ${rate.toFixed(2).replace(".", ",")} por ton/m³ (maior)`;
 
       default:
@@ -214,15 +220,10 @@ export class AirCalculationService {
         }
         return true;
 
-      case AirServiceCalculationType.PER_TONNE_OR_M3:
+      case AirServiceCalculationType.PER_TONNE:
         if (!simulationData.weightKg || simulationData.weightKg <= 0) {
           throw new BadRequestException(
             "Peso em KG válido é obrigatório para movimentação de carga",
-          );
-        }
-        if (!simulationData.volumeM3 || simulationData.volumeM3 <= 0) {
-          throw new BadRequestException(
-            "Volume em m³ válido é obrigatório para movimentação de carga",
           );
         }
         return true;

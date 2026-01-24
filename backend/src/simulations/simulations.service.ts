@@ -263,7 +263,7 @@ export class SimulationsService {
   async findOne(id: string) {
     // ID pode ser da Simulation (capa) ou da SimulationVersion
     // Primeiro, tentamos buscar como Simulation
-    let simulation = await this.prisma.simulation.findUnique({
+    const simulation = await this.prisma.simulation.findUnique({
       where: { id },
       include: {
         customer: true,

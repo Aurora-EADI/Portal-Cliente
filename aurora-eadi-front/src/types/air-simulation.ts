@@ -27,6 +27,7 @@ export interface AirSimulation {
 
   // Custos adicionais
   storageCost?: number | null;
+  capataziaCost?: number | null;
   transportCost?: number | null;
   discount?: number | null;
 
@@ -86,6 +87,7 @@ export interface CreateAirSimulationDto {
   weightKg?: number;
   volumeM3?: number;
   storageCost?: number;
+  capataziaCost?: number;
   transportCost?: number;
   discount?: number;
   minBillingValue?: number;

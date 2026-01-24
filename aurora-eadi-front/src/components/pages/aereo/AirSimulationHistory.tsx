@@ -70,7 +70,7 @@ export function AirSimulationHistory() {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
                         <Plane className="w-8 h-8 text-primary-600" />
-                        Histórico de Simulações Aéreas
+                        Lista de Simulações Aéreas
                     </h1>
                     <p className="text-gray-500 mt-1">
                         Gerencie e localize suas simulações aéreas salvas.

@@ -251,6 +251,7 @@ model Service {
   name               String
   description        String?
   category           String?
+  modal              ServiceModal           @default(BOTH)
   isActive           Boolean                @default(true)
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
@@ -454,6 +455,7 @@ model AirSimulationVersion {
  
   // Custos adicionais
   storageCost   Decimal @default(0) @db.Decimal(15, 2)
+  capataziaCost Decimal @default(0) @db.Decimal(15, 2)
   transportCost Decimal @default(0) @db.Decimal(15, 2)
   discount      Decimal @default(0) @db.Decimal(15, 2)
  
@@ -490,6 +492,7 @@ model AirSimulationService {
   appliedCost     Decimal                   @db.Decimal(10, 2)
   customReason    String?
  
+  @@unique([versionId, serviceId])
   @@map("air_simulation_services")
 }
  
@@ -498,5 +501,11 @@ enum AirServiceCalculationType {
   FIXED
   PERCENTAGE_CIF
   PER_KG
-  PER_TONNE_OR_M3  // Cobra pelo maior: toneladas (peso/1000) ou m³
+  PER_TONNE  // Cobra pelo maior: toneladas (peso/1000) ou m³
+}
+
+enum ServiceModal {
+  AIR      // Aéreo
+  MARITIME // Marítimo
+  BOTH     // Serviços que podem ser usados em ambos
 }
