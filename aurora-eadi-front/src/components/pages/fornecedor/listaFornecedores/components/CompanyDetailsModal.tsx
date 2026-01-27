@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CompanyWithResponsible, documentTypeService, companyRequirementService } from '@/services/api';
 import { Badge } from '@/components/ui/Badge';
 import { Building2, X, ShieldCheck, Loader2 } from 'lucide-react';
+import { formatCNPJ } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface CompanyDetailsModalProps {
@@ -110,7 +111,7 @@ export function CompanyDetailsModal({ companyData, onClose }: CompanyDetailsModa
                                     </div>
                                     <div className="p-3 bg-gray-50 rounded-lg">
                                         <span className="text-xs text-gray-500 block">CNPJ</span>
-                                        <span className="text-sm font-medium text-gray-900">{companyData.company.cnpj}</span>
+                                        <span className="text-sm font-medium text-gray-900">{formatCNPJ(companyData.company.cnpj)}</span>
                                     </div>
                                 </div>
                             </section>

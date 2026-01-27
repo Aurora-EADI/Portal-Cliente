@@ -8,7 +8,7 @@ import { Badge } from '../../ui/Badge';
 import { DocumentStatus, Document, CompanyStatus, Company } from '../../../types';
 import { documentService, documentTypeService, companyRequirementService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, AlertCircle, AlertTriangle, CheckCircle2, ShieldCheck, ChevronLeft, ChevronRight, Loader2, Clock, Calendar } from 'lucide-react';
-import { formatDateBR, getValidityStatus } from '@/lib/utils';
+import { formatDateBR, getValidityStatus, formatCNPJ } from '@/lib/utils';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Pagination } from '../../ui/Pagination';
 import { DocumentsHistoryModal } from './modals/DocumentsHistoryModal';
@@ -284,7 +284,7 @@ export function AdminDashboard() {
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium text-gray-900 truncate">{company.fantasyName}</div>
-                          <div className="text-xs text-gray-500">{company.cnpj}</div>
+                          <div className="text-xs text-gray-500">{formatCNPJ(company.cnpj)}</div>
                         </div>
                       </div>
                     </td>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     useServices, 
     useRemoveService, 
@@ -8,13 +8,16 @@ import {
 import { Service, ServiceCalculationType, ServiceModal } from '@/types';
 import { 
     Loader2, Wrench, Search, CheckCircle, XCircle, 
-    Plus, FileText, DollarSign, Plane, Ship, Globe 
+    Plus, FileText, DollarSign, Plane, Ship, Globe,
+    Package
 } from "lucide-react";
 import { formatNumber } from '@/lib/utils';
 import { ServiceDetailsModal } from './components/ServiceDetailsModal';
 import { EditServiceModal } from './components/EditServiceModal';
-import { Edit } from 'lucide-react';
+import { UpdateCostModal } from './components/UpdateCostModal';
+import { Edit, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import { Pagination } from '@/components/ui/Pagination';
 
 const calculationTypeLabels: Record<ServiceCalculationType, string> = {
     [ServiceCalculationType.FIXED]: 'Valor Fixo',
@@ -44,16 +47,22 @@ const modalColors: Record<string, string> = {
 
 export function ServiceList() {
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const [filterModal, setFilterModal] = useState<'all' | 'AIR' | 'MARITIME' | 'BOTH'>('all');
     const [searchInput, setSearchInput] = useState('');
 
-    const { data: services, isLoading, isError } = useServices(true);
+    // Pagination constants
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    const { data: services, isLoading, isError } = useServices(true, filterModal === 'all' ? undefined : filterModal as any);
     const { mutateAsync: removeService, isPending: isRemoving } = useRemoveService();
     const { mutateAsync: activateService, isPending: isActivating } = useActivateService();
 
     const [viewingService, setViewingService] = useState<Service | null>(null);
     const [editingService, setEditingService] = useState<Service | null>(null);
+    const [updatingCostService, setUpdatingCostService] = useState<{ service: Service, cost?: number } | null>(null);
 
-    const filteredServices = React.useMemo(() => {
+    const filteredServices = useMemo(() => {
         if (!services) return [];
         return services.filter(service => {
             const matchesSearch = service.name.toLowerCase().includes(searchInput.toLowerCase()) ||
@@ -63,6 +72,16 @@ export function ServiceList() {
             return matchesSearch && matchesStatus;
         });
     }, [services, searchInput, filterStatus]);
+
+    // Reset pagination on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchInput, filterStatus, filterModal]);
+
+    const paginatedServices = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredServices.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredServices, currentPage]);
 
     if (isLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary-600" size={40} /></div>;
 
@@ -89,15 +108,27 @@ export function ServiceList() {
                         onChange={(e) => setSearchInput(e.target.value)}
                     />
                 </div>
-                <select 
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value as any)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                    <option value="all">Todos os Status</option>
-                    <option value="active">Apenas Ativos</option>
-                    <option value="inactive">Apenas Inativos</option>
-                </select>
+                <div className="flex flex-col md:flex-row gap-4">
+                    <select 
+                        value={filterModal}
+                        onChange={(e) => setFilterModal(e.target.value as any)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                    >
+                        <option value="all">Todas as Modalidades</option>
+                        <option value="AIR">Aéreo</option>
+                        <option value="MARITIME">Marítimo</option>
+                        <option value="BOTH">Ambos</option>
+                    </select>
+                    <select 
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as any)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                    >
+                        <option value="all">Todos os Status</option>
+                        <option value="active">Apenas Ativos</option>
+                        <option value="inactive">Apenas Inativos</option>
+                    </select>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -113,12 +144,13 @@ export function ServiceList() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {filteredServices.map(service => (
+                        {paginatedServices.map(service => (
                             <TableRow 
                                 key={service.id} 
                                 service={service} 
                                 onView={() => setViewingService(service)}
                                 onEdit={() => setEditingService(service)}
+                                onUpdateCost={(cost) => setUpdatingCostService({ service, cost })}
                                 onToggleStatus={() => service.isActive ? removeService(service.id) : activateService(service.id)}
                                 isUpdating={isRemoving || isActivating}
                             />
@@ -126,6 +158,15 @@ export function ServiceList() {
                     </tbody>
                 </table>
             </div>
+
+            {filteredServices.length > itemsPerPage && (
+                <Pagination
+                    page={currentPage}
+                    total={filteredServices.length}
+                    limit={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                />
+            )}
 
             {viewingService && (
                 <ServiceDetailsModal 
@@ -142,14 +183,25 @@ export function ServiceList() {
                     onClose={() => setEditingService(null)}
                 />
             )}
+
+            {updatingCostService && (
+                <UpdateCostModal
+                    key={`cost-update-${updatingCostService.service.id}`}
+                    service={updatingCostService.service}
+                    currentCost={updatingCostService.cost}
+                    isOpen={!!updatingCostService}
+                    onClose={() => setUpdatingCostService(null)}
+                />
+            )}
         </div>
     );
 }
 
-function TableRow({ service, onView, onEdit, onToggleStatus, isUpdating }: {
+function TableRow({ service, onView, onEdit, onUpdateCost, onToggleStatus, isUpdating }: {
     service: Service,
     onView: () => void,
     onEdit: () => void,
+    onUpdateCost: (cost?: number) => void,
     onToggleStatus: () => void,
     isUpdating: boolean
 }) {
@@ -189,11 +241,21 @@ function TableRow({ service, onView, onEdit, onToggleStatus, isUpdating }: {
             </td>
 
             <td className="px-6 py-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 group">
                     <DollarSign size={14} className="text-green-600" />
                     <span className="font-semibold text-gray-900">
                         {formatCost(costData?.cost, service.calculationType)}
                     </span>
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateCost(costData?.cost);
+                        }}
+                        className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-all"
+                        title="Atualizar Valor"
+                    >
+                        <Pencil size={14} />
+                    </button>
                 </div>
             </td>
 

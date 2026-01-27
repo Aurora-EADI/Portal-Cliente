@@ -3,7 +3,7 @@ import { useCustomers, useUpdateCustomerStatus } from "@/hooks/useCustomers";
 import { Customer, CustomerStatus } from '@/types';
 import { Badge } from "@/components/ui/Badge";
 import { Loader2, Building2, User as UserIcon, FileText, Search, CheckCircle, XCircle, Plus } from "lucide-react";
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatDocument } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
 import { CustomerDetailsModal } from './components/CustomerDetailsModal';
 import Link from 'next/link';
@@ -261,7 +261,7 @@ function TableRow({ customer, onView, onToggleStatus, isUpdating }: {
                 </div>
             </td>
             <td className="px-6 py-4 text-gray-600">
-                {customer.document}
+                {formatDocument(customer.document)}
             </td>
             <td className="px-6 py-4">
                 <Badge status={customer.status} context="customer" />

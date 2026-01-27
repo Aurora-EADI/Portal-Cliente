@@ -11,8 +11,8 @@ import {
     useServiceCostCurrent 
 } from '@/hooks/useServices';
 import { 
-    X, Wrench, Save, Loader2, DollarSign, 
-    Calculator, Info, Plane, Ship, Globe 
+    X, Wrench, Save, Loader2,
+    Calculator, Plane, Ship, Globe 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,9 +31,7 @@ const calculationTypeLabels: Record<ServiceCalculationType, string> = {
 };
 
 export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
-    const { data: costData, isLoading: isLoadingCost } = useServiceCostCurrent(service.id);
     const { mutateAsync: updateService, isPending: isUpdatingService } = useUpdateService();
-    const { mutateAsync: createServiceCost, isPending: isCreatingCost } = useCreateServiceCost();
 
     const [formData, setFormData] = useState({
         name: service.name,
@@ -41,16 +39,7 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
         calculationType: service.calculationType,
         modal: service.modal,
         hasStripping: service.hasStripping,
-        currentCost: '',
     });
-
-    const [costReason, setCostReason] = useState('');
-
-    useEffect(() => {
-        if (costData) {
-            setFormData(prev => ({ ...prev, currentCost: costData.cost.toString() }));
-        }
-    }, [costData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -78,27 +67,13 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
                 await updateService({ id: service.id, data: serviceChanges });
             }
 
-            // 2. Update cost if changed
-            const newCost = parseFloat(formData.currentCost.replace(',', '.'));
-            if (costData && newCost !== costData.cost) {
-                if (!costReason.trim()) {
-                    toast.error('Informe o motivo da alteração de valor');
-                    return;
-                }
-                await createServiceCost({
-                    serviceId: service.id,
-                    cost: newCost,
-                    reason: costReason,
-                });
-            }
-
             onClose();
         } catch (error) {
             console.error('Erro ao atualizar serviço:', error);
         }
     };
 
-    const isPending = isUpdatingService || isCreatingCost;
+    const isPending = isUpdatingService;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -154,7 +129,7 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
                         </div>
 
                         {/* Tipo de Cálculo */}
-                        <div>
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Cálculo</label>
                             <select
                                 name="calculationType"
@@ -166,44 +141,6 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
                                     <option key={value} value={value}>{label}</option>
                                 ))}
                             </select>
-                        </div>
-
-                        {/* Valor Atual */}
-                        <div className="md:col-span-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <DollarSign size={16} className="text-green-600" />
-                                Gestão de Valor Padrão
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Taxa / Valor Base</label>
-                                    <input
-                                        name="currentCost"
-                                        type="text"
-                                        value={formData.currentCost}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none font-semibold text-gray-900"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">Motivo da Alteração</label>
-                                    <input
-                                        placeholder="Ex: Reajuste anual..."
-                                        value={costReason}
-                                        onChange={(e) => setCostReason(e.target.value)}
-                                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 outline-none ${
-                                            costData && parseFloat(formData.currentCost) !== costData.cost && !costReason ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
-                                        }`}
-                                        disabled={costData && parseFloat(formData.currentCost) === costData.cost}
-                                    />
-                                </div>
-                            </div>
-                            {costData && parseFloat(formData.currentCost) !== costData.cost && (
-                                <p className="mt-2 text-[11px] text-orange-600 flex items-center gap-1">
-                                    <Info size={12} />
-                                    Ao alterar o valor, um novo registro histórico será criado.
-                                </p>
-                            )}
                         </div>
 
                         {/* Descrição */}

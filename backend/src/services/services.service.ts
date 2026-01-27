@@ -41,7 +41,7 @@ export class ServicesService {
 
     return this.prisma.service.findMany({
       where,
-      orderBy: { code: "asc" },
+      orderBy: { name: "asc" },
     });
   }
 

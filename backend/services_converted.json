@@ -1,0 +1,402 @@
+﻿[
+  {
+    "id": "9e9ebf81-2890-4425-bf0b-14fb555a82d3",
+    "code": "DESOVA",
+    "name": "Desova",
+    "description": "Desova (por CNTR 40┬┤ e 20┬┤) ",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:52:08.346Z",
+    "updatedAt": "2026-01-14T20:30:34.276Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": true,
+    "serviceCosts": [
+      {
+        "id": "3ca6cef3-ef90-44b4-95a1-d8a83b0eace8",
+        "serviceId": "9e9ebf81-2890-4425-bf0b-14fb555a82d3",
+        "cost": "500",
+        "validFrom": "2026-01-14T16:52:08.427Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:52:08.446Z"
+      }
+    ]
+  },
+  {
+    "id": "8360ad6b-6483-478a-8a44-926d2f2a7ef4",
+    "code": "OVA",
+    "name": "Ova",
+    "description": "Ova (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:01:25.279Z",
+    "updatedAt": "2026-01-14T20:30:34.276Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": true,
+    "serviceCosts": [
+      {
+        "id": "5af08c30-73ee-415d-b471-45afec638d11",
+        "serviceId": "8360ad6b-6483-478a-8a44-926d2f2a7ef4",
+        "cost": "550",
+        "validFrom": "2026-01-14T17:01:25.348Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:01:25.366Z"
+      }
+    ]
+  },
+  {
+    "id": "e4911b25-26d3-4550-9849-edadd1ced896",
+    "code": "QUEBRA-COLOCACAO-DE-",
+    "name": "Quebra/coloca├º├úo de lacre",
+    "description": "Quebra/coloca├º├úo de lacre  (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:05:20.210Z",
+    "updatedAt": "2026-01-14T20:30:34.276Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": true,
+    "serviceCosts": [
+      {
+        "id": "eae7e695-417a-4c16-b301-f68631977a14",
+        "serviceId": "e4911b25-26d3-4550-9849-edadd1ced896",
+        "cost": "25",
+        "validFrom": "2026-01-14T17:05:20.330Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:05:20.356Z"
+      }
+    ]
+  },
+  {
+    "id": "e38d21a8-4644-4c3c-b4ee-1364b423682a",
+    "code": "ALUGUEL-DE-CONTEINER",
+    "name": "Aluguel de Cont├¬iner ",
+    "description": "Aluguel de Cont├¬iner ",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:05:56.946Z",
+    "updatedAt": "2026-01-14T20:30:34.276Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": true,
+    "serviceCosts": [
+      {
+        "id": "9bea461f-9db6-48a2-bf92-29a14a63146d",
+        "serviceId": "e38d21a8-4644-4c3c-b4ee-1364b423682a",
+        "cost": "1200",
+        "validFrom": "2026-01-14T17:05:57.012Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:05:57.036Z"
+      }
+    ]
+  },
+  {
+    "id": "c63c5d92-29bc-446d-a1ee-2f7b7a56e734",
+    "code": "FORNECIMENTO-DE-ENER",
+    "name": "Fornecimento de Energia",
+    "description": "Fornecimento de Energia",
+    "category": null,
+    "isActive": false,
+    "createdAt": "2026-01-16T14:47:01.537Z",
+    "updatedAt": "2026-01-19T21:30:09.856Z",
+    "calculationType": "FIXED",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "fb317220-5d25-4233-91d6-5a79bb3cd7ce",
+        "serviceId": "c63c5d92-29bc-446d-a1ee-2f7b7a56e734",
+        "cost": "200",
+        "validFrom": "2026-01-16T14:47:01.626Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-16T14:47:01.653Z"
+      }
+    ]
+  },
+  {
+    "id": "13146555-6a87-413b-a70e-489b515879e0",
+    "code": "ARMAZENAGEM-R-1-PERI",
+    "name": "Armazenagem R$ (1┬║ Per├¡odo de 10)",
+    "description": "Armazenagem",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:25:31.158Z",
+    "updatedAt": "2026-01-14T16:25:31.158Z",
+    "calculationType": "PERCENTAGE_CIF",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "28ba3abc-aa8c-4b2c-a417-6b028505cebb",
+        "serviceId": "13146555-6a87-413b-a70e-489b515879e0",
+        "cost": "0.35",
+        "validFrom": "2026-01-14T16:25:31.251Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:25:31.273Z"
+      }
+    ]
+  },
+  {
+    "id": "c7c1e7b1-1e30-4a66-bc30-dcc695643252",
+    "code": "HANDLING-IN-OUT",
+    "name": "Handling IN/OUT",
+    "description": "Handling IN/OUT por CNTR) - (recebimento) ",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:30:26.039Z",
+    "updatedAt": "2026-01-14T16:30:26.039Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "f843de43-7584-4bae-8a72-a183be5c3806",
+        "serviceId": "c7c1e7b1-1e30-4a66-bc30-dcc695643252",
+        "cost": "399",
+        "validFrom": "2026-01-14T16:30:26.122Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:30:26.137Z"
+      }
+    ]
+  },
+  {
+    "id": "d6190402-4759-4352-af90-ec632ef5991d",
+    "code": "PESAGEM",
+    "name": "Pesagem",
+    "description": "Pesagem (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:30:48.875Z",
+    "updatedAt": "2026-01-14T16:30:48.875Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "34769168-c8d0-40ac-8a15-05866d1c4a70",
+        "serviceId": "d6190402-4759-4352-af90-ec632ef5991d",
+        "cost": "109",
+        "validFrom": "2026-01-14T16:30:48.996Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:30:49.011Z"
+      }
+    ]
+  },
+  {
+    "id": "7b94a689-c7e4-453b-b94b-7d51074f9170",
+    "code": "MOVIMENTACAO-DE-CARG",
+    "name": "Movimenta├º├úo de Carga",
+    "description": "Movimenta├º├úo de Carga - (entrada/saida) p/Ton",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:45:10.705Z",
+    "updatedAt": "2026-01-14T16:45:10.705Z",
+    "calculationType": "PER_TONNE",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "e4f7e2be-2593-4a30-9d00-1f232fe0c3db",
+        "serviceId": "7b94a689-c7e4-453b-b94b-7d51074f9170",
+        "cost": "7.06",
+        "validFrom": "2026-01-14T16:45:10.775Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:45:10.791Z"
+      }
+    ]
+  },
+  {
+    "id": "5dd02943-5ccc-44ec-865f-257250d9d2df",
+    "code": "EMISSAO-DE-DTA",
+    "name": "Emiss├úo de DTA",
+    "description": "Emiss├úo de DTA (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:47:28.400Z",
+    "updatedAt": "2026-01-14T16:47:28.400Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "401eedaf-213f-4b4e-b030-733f099770d7",
+        "serviceId": "5dd02943-5ccc-44ec-865f-257250d9d2df",
+        "cost": "350",
+        "validFrom": "2026-01-14T16:47:28.477Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:47:28.487Z"
+      }
+    ]
+  },
+  {
+    "id": "5d586a5a-7088-4292-ab52-cb8df2d85b4c",
+    "code": "GRIS",
+    "name": "GRIS",
+    "description": "GRIS ÔÇô Gerenciamento de Risco",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:51:01.858Z",
+    "updatedAt": "2026-01-14T16:51:01.858Z",
+    "calculationType": "PERCENTAGE_CIF",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "12ff5aa6-33b7-427d-898a-96b8fab55c33",
+        "serviceId": "5d586a5a-7088-4292-ab52-cb8df2d85b4c",
+        "cost": "0.1",
+        "validFrom": "2026-01-14T16:51:01.948Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:51:01.969Z"
+      }
+    ]
+  },
+  {
+    "id": "ba8c6049-134b-4898-b6ef-e1b5afebc45c",
+    "code": "TRANSITO-DE-CNTR-INT",
+    "name": "Transito de CNTR Interno",
+    "description": "Transito de CNTR Interno (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T16:53:28.189Z",
+    "updatedAt": "2026-01-14T16:53:28.189Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "43490bb8-25d5-4745-b83d-3c98c3fa82cd",
+        "serviceId": "ba8c6049-134b-4898-b6ef-e1b5afebc45c",
+        "cost": "218",
+        "validFrom": "2026-01-14T16:53:28.264Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T16:53:28.279Z"
+      }
+    ]
+  },
+  {
+    "id": "056f6495-82d7-479c-9c57-8757a7b5571a",
+    "code": "TARIFA-DE-AVERBACAO",
+    "name": "Tarifa de averba├º├úo",
+    "description": "Tarifa de averba├º├úo (por DI)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:03:09.944Z",
+    "updatedAt": "2026-01-14T17:03:09.944Z",
+    "calculationType": "FIXED",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "a1566f76-45a4-450d-998e-c2e5218b0bf0",
+        "serviceId": "056f6495-82d7-479c-9c57-8757a7b5571a",
+        "cost": "79",
+        "validFrom": "2026-01-14T17:03:10.010Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:03:10.027Z"
+      }
+    ]
+  },
+  {
+    "id": "3db1ed98-56b2-4be9-860a-6386cd49356a",
+    "code": "SERVICO-ADMINISTRATI",
+    "name": "Servi├ºo Administrativo ",
+    "description": "Servi├ºo Administrativo (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:06:20.139Z",
+    "updatedAt": "2026-01-14T17:06:20.139Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "db8d3f67-c5e4-4130-9612-4db89901f5b3",
+        "serviceId": "3db1ed98-56b2-4be9-860a-6386cd49356a",
+        "cost": "99",
+        "validFrom": "2026-01-14T17:06:20.235Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:06:20.252Z"
+      }
+    ]
+  },
+  {
+    "id": "92ed8e24-a9f1-4df8-97cb-aefd20eaa7cf",
+    "code": "INFRAESTRUTURA-PORTU",
+    "name": "Infraestrutura Portu├íria",
+    "description": "Infraestrutura Portu├íria (por CNTR)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:04:25.204Z",
+    "updatedAt": "2026-01-14T18:31:30.156Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": false,
+    "serviceCosts": [
+      {
+        "id": "68cdd6e5-ee83-4f80-9baf-ac41811bd097",
+        "serviceId": "92ed8e24-a9f1-4df8-97cb-aefd20eaa7cf",
+        "cost": "519",
+        "validFrom": "2026-01-14T17:04:25.284Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:04:25.297Z"
+      }
+    ]
+  },
+  {
+    "id": "a5a21541-0a7c-4e2d-af3d-8981ac007562",
+    "code": "HANDLING-IN-OUT-DESO",
+    "name": "Handling IN/OUT- (desova/VistorIa)",
+    "description": "Handling IN/OUT por CNTR) - (desova/VistorIa)",
+    "category": null,
+    "isActive": true,
+    "createdAt": "2026-01-14T17:00:52.632Z",
+    "updatedAt": "2026-01-14T20:30:34.276Z",
+    "calculationType": "PER_CONTAINER",
+    "formulaExpression": null,
+    "hasStripping": true,
+    "serviceCosts": [
+      {
+        "id": "d1725940-84de-4705-9d9f-ba28b7fa7753",
+        "serviceId": "a5a21541-0a7c-4e2d-af3d-8981ac007562",
+        "cost": "399",
+        "validFrom": "2026-01-14T17:00:52.705Z",
+        "validUntil": null,
+        "createdBy": "ae910290-0b5d-4577-868c-54712248832c",
+        "reason": "Valor inicial do servi├ºo",
+        "createdAt": "2026-01-14T17:00:52.751Z"
+      }
+    ]
+  }
+]

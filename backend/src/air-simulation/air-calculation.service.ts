@@ -56,8 +56,8 @@ export class AirCalculationService {
    * Exemplo: R$ 350,00 fixo (tarifa mínima emissão NFE)
    */
   private calculateFixed(rate: number): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException("Taxa deve ser maior que zero");
+    if (rate < 0) {
+      throw new BadRequestException("Taxa deve ser maior ou igual a zero");
     }
     return rate;
   }
@@ -68,8 +68,8 @@ export class AirCalculationService {
    * Exemplo: 0.35% de R$ 630.000 = (0.35/100) × 630.000 = R$ 2.205
    */
   private calculatePercentageCif(rate: number, cifBrl?: number): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException("Taxa percentual deve ser maior que zero");
+    if (rate < 0) {
+      throw new BadRequestException("Taxa percentual deve ser maior ou igual a zero");
     }
 
     if (cifBrl === undefined || cifBrl === null) {
@@ -93,9 +93,9 @@ export class AirCalculationService {
    * Exemplo: R$ 2,62 × 430 kg = R$ 1.126,60
    */
   private calculatePerKg(rate: number, weightKg?: number): number {
-    if (!rate || rate <= 0) {
+    if (rate < 0) {
       throw new BadRequestException(
-        "Taxa por quilograma deve ser maior que zero",
+        "Taxa por quilograma deve ser maior ou igual a zero",
       );
     }
 
@@ -123,8 +123,8 @@ export class AirCalculationService {
     weightKg?: number,
     volumeM3?: number,
   ): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException("Taxa por tonelada/m³ deve ser maior que zero");
+    if (rate < 0) {
+      throw new BadRequestException("Taxa por tonelada/m³ deve ser maior ou igual a zero");
     }
 
     // O Peso continua sendo obrigatório

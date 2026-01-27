@@ -52,8 +52,8 @@ export class CalculationService {
    * Exemplo: R$ 500,00 fixo
    */
   private calculateFixed(rate: number): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException("Taxa deve ser maior que zero");
+    if (rate < 0) {
+      throw new BadRequestException("Taxa deve ser maior ou igual a zero");
     }
     return rate;
   }
@@ -64,8 +64,8 @@ export class CalculationService {
    * Exemplo: 0.35% de R$ 100.000 = (0.35/100) × 100.000 = R$ 350
    */
   private calculatePercentageCif(rate: number, cifBrl?: number): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException("Taxa percentual deve ser maior que zero");
+    if (rate < 0) {
+      throw new BadRequestException("Taxa percentual deve ser maior ou igual a zero");
     }
 
     if (cifBrl === undefined || cifBrl === null) {
@@ -89,9 +89,9 @@ export class CalculationService {
    * Exemplo: R$ 350 × 5 containers = R$ 1.750
    */
   private calculatePerContainer(rate: number, cntrCount?: number): number {
-    if (!rate || rate <= 0) {
+    if (rate < 0) {
       throw new BadRequestException(
-        "Taxa por container deve ser maior que zero",
+        "Taxa por container deve ser maior ou igual a zero",
       );
     }
 
@@ -116,9 +116,9 @@ export class CalculationService {
    * Exemplo: R$ 25 × 20 toneladas = R$ 500
    */
   private calculatePerTonne(rate: number, tonnes?: number): number {
-    if (!rate || rate <= 0) {
+    if (rate < 0) {
       throw new BadRequestException(
-        "Taxa por tonelada deve ser maior que zero",
+        "Taxa por tonelada deve ser maior ou igual a zero",
       );
     }
 

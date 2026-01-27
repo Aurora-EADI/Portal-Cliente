@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/Badge';
 import { useAirSimulations } from '@/hooks/useAirSimulations';
-import { formatCurrency, formatDateBR } from '@/lib/utils';
+import { formatCurrency, formatDateBR, formatDocument } from '@/lib/utils';
 import { AirVersionHistoryModal } from './modals/AirVersionHistoryModal';
 import { Pagination } from '@/components/ui/Pagination';
 
@@ -146,10 +146,6 @@ export function AirSimulationHistory() {
                                                                 <History className="w-3 h-3" />
                                                             </Button>
                                                         </span>
-                                                        <span className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                                            <Package className="w-3 h-3" />
-                                                            {(currentVersion?._count?.services || 0)} serviços
-                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -162,7 +158,7 @@ export function AirSimulationHistory() {
                                                                 {sim.customer?.name}
                                                             </span>
                                                             <span className="text-xs text-gray-500">
-                                                                {sim.customer?.document}
+                                                                {formatDocument(sim.customer?.document || '')}
                                                             </span>
                                                         </div>
                                                     </div>

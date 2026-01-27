@@ -1,3 +1,4 @@
+import { ServiceModal } from "@prisma/client-postgres";
 import {
   Controller,
   Get,
@@ -45,13 +46,22 @@ export class ServicesController {
     description: "Incluir serviços inativos",
     type: Boolean,
   })
+  @ApiQuery({
+    name: "modal",
+    required: false,
+    description: "Filtrar por modal (AIR, MARITIME, BOTH)",
+    enum: ServiceModal,
+  })
   @ApiResponse({
     status: 200,
     description: "Lista de serviços retornada com sucesso",
   })
-  findAll(@Query("includeInactive") includeInactive?: string) {
+  findAll(
+    @Query("includeInactive") includeInactive?: string,
+    @Query("modal") modal?: ServiceModal,
+  ) {
     const include = includeInactive === "true";
-    return this.servicesService.findAll(include);
+    return this.servicesService.findAll(include, modal);
   }
 
   @Get(":id")

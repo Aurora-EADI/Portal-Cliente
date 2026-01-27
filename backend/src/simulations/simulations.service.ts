@@ -80,12 +80,8 @@ export class SimulationsService {
               : null,
             cntrCount: createSimulationDto.cntrCount || null,
             cntrType: createSimulationDto.cntrType || null,
-            storageCost: new Prisma.Decimal(
-              createSimulationDto.storageCost || 0,
-            ),
-            transportCost: new Prisma.Decimal(
-              createSimulationDto.transportCost || 0,
-            ),
+            storageCost: new Prisma.Decimal(0),
+            transportCost: new Prisma.Decimal(0),
             discount: new Prisma.Decimal(createSimulationDto.discount || 0),
             hasStripping: createSimulationDto.hasStripping || false,
             minBillingValue: new Prisma.Decimal(
@@ -198,10 +194,8 @@ export class SimulationsService {
             : null,
           cntrCount: createNewVersionDto.cntrCount || null,
           cntrType: createNewVersionDto.cntrType || null,
-          storageCost: new Prisma.Decimal(createNewVersionDto.storageCost || 0),
-          transportCost: new Prisma.Decimal(
-            createNewVersionDto.transportCost || 0,
-          ),
+          storageCost: new Prisma.Decimal(0),
+          transportCost: new Prisma.Decimal(0),
           discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
           hasStripping: createNewVersionDto.hasStripping || false,
           minBillingValue: new Prisma.Decimal(
@@ -268,8 +262,7 @@ export class SimulationsService {
       include: {
         customer: true,
         versions: {
-          where: { isCurrentVersion: true },
-          take: 1,
+          orderBy: { version: "desc" },
           include: {
             user: { select: { id: true, name: true, email: true } },
             services: true,
@@ -292,7 +285,20 @@ export class SimulationsService {
     const version = await this.prisma.simulationVersion.findUnique({
       where: { id: versionId },
       include: {
-        simulation: { include: { customer: true } },
+        simulation: {
+          include: {
+            customer: true,
+            versions: {
+              orderBy: { version: "desc" },
+              select: {
+                id: true,
+                version: true,
+                isCurrentVersion: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
         user: { select: { id: true, name: true, email: true } },
         services: true,
       },
@@ -346,6 +352,13 @@ export class SimulationsService {
             hasStripping: s.hasStripping,
           },
         })) || [],
+      // Include version history list
+      versions: simulation.versions?.map((v: any) => ({
+        id: v.id,
+        version: v.version,
+        isCurrentVersion: v.isCurrentVersion,
+        createdAt: v.createdAt,
+      })) || [],
     };
   }
 
@@ -615,18 +628,28 @@ export class SimulationsService {
       (sum, s) => sum + Number(s.appliedCost),
       0,
     );
-    const storageCost = Number(version.storageCost || 0);
-    const transportCost = Number(version.transportCost || 0);
+
+    const eligibleServicesTotal = effectiveServices.reduce((sum, s) => {
+      const name = s.serviceName || '';
+      const normalized = name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const isExcluded =
+        normalized.includes('transporte') && normalized.includes('dta');
+
+      return isExcluded ? sum : sum + Number(s.appliedCost);
+    }, 0);
+
     const discount = Number(version.discount || 0);
     const cntrCount = Number(version.cntrCount || 0);
     const minBillingPerCntr = Number(version.minBillingValue || 5500);
     const minBillingThreshold = minBillingPerCntr * cntrCount;
     const minDiff =
-      totalServices < minBillingThreshold
-        ? minBillingThreshold - totalServices
+      eligibleServicesTotal < minBillingThreshold
+        ? minBillingThreshold - eligibleServicesTotal
         : 0;
-    const totalGeneral =
-      totalServices + minDiff + storageCost + transportCost - discount;
+    const totalGeneral = totalServices + minDiff - discount;
 
     await prisma.simulationVersion.update({
       where: { id: versionId },

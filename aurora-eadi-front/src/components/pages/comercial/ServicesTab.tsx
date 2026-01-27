@@ -617,12 +617,12 @@ export function ServicesTab({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleSaveCustom}
-              size="sm"
-              className="bg-orange-600 hover:bg-orange-700"
-              disabled={!customRate || parseFloat(customRate) < 0}
-            >
+              <Button
+                onClick={handleSaveCustom}
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700"
+                disabled={customRate === '' || parseFloat(customRate) < 0}
+              >
               Aplicar Valor
             </Button>
           </DialogFooter>

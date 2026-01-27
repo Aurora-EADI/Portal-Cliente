@@ -185,3 +185,46 @@ export function parseNumberBR(value: string): number {
   return isNaN(num) ? 0 : num;
 }
 
+
+/**
+ * Remove todos os caracteres não numéricos de uma string
+ */
+export function unmask(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+/**
+ * Formata um CNPJ (00.000.000/0000-00)
+ */
+export function formatCNPJ(value: string): string {
+  const digits = unmask(value);
+  return digits
+    .slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
+/**
+ * Formata um CPF (000.000.000-00)
+ */
+export function formatCPF(value: string): string {
+  const digits = unmask(value);
+  return digits
+    .slice(0, 11)
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+}
+
+/**
+ * Formata um documento (CPF ou CNPJ) com base no tamanho
+ */
+export function formatDocument(value: string): string {
+  const digits = unmask(value);
+  if (digits.length <= 11) {
+    return formatCPF(digits);
+  }
+  return formatCNPJ(digits);
+}

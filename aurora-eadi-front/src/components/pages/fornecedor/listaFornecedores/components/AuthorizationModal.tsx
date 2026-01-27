@@ -4,6 +4,7 @@ import { CompanyWithResponsible } from '@/services/api';
 import { CompanyStatus } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Check, X, ShieldAlert, Loader2, AlertCircle } from 'lucide-react';
+import { formatCNPJ } from '@/lib/utils';
 
 interface AuthorizationModalProps {
     companyData: CompanyWithResponsible;
@@ -55,7 +56,7 @@ export function AuthorizationModal({ companyData, onClose, onAuthorize, isUpdati
                         <div>
                             <h4 className="font-medium text-gray-900">{companyData.company.fantasyName}</h4>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-gray-500">CNPJ: {companyData.company.cnpj}</span>
+                                <span className="text-xs text-gray-500">CNPJ: {formatCNPJ(companyData.company.cnpj)}</span>
                                 <Badge status={companyData.company.status} context="company" />
                             </div>
                         </div>

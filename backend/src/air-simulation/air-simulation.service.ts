@@ -323,15 +323,21 @@ export class AirSimulationsService {
     }
 
     const rate = dto.originalCost ?? Number(currentCost?.cost || 0);
-    const appliedCost = this.calculationService.calculateServiceCost(
-      service.calculationType as any,
-      rate,
-      {
-        cifBrl: Number(version.cifBrl),
-        weightKg: Number(version.weightKg),
-        volumeM3: Number(version.volumeM3),
-      },
-    );
+    let appliedCost: number;
+
+    if (dto.costType === ServiceCostType.ZEROED) {
+      appliedCost = 0;
+    } else {
+      appliedCost = this.calculationService.calculateServiceCost(
+        service.calculationType as any,
+        rate,
+        {
+          cifBrl: Number(version.cifBrl),
+          weightKg: Number(version.weightKg),
+          volumeM3: Number(version.volumeM3),
+        },
+      );
+    }
 
     const existing = await this.prisma.airSimulationService.findFirst({
       where: { versionId, serviceId: dto.serviceId },
@@ -408,8 +414,25 @@ export class AirSimulationsService {
       (sum, s) => sum + Number(s.appliedCost),
       0,
     );
-    const base = Math.max(
-      totalServices + Number(version.storageCost) + Number(version.capataziaCost),
+
+    const excludedServicesTotal = version.services.reduce((sum, s) => {
+      const name = s.serviceName || '';
+      const normalized = name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      const isExcluded =
+        normalized.includes('transporte') && normalized.includes('dta');
+
+      return isExcluded ? sum + Number(s.appliedCost) : sum;
+    }, 0);
+
+    const eligibleServicesTotal = totalServices - excludedServicesTotal;
+
+    const baseForMin = Math.max(
+      eligibleServicesTotal +
+        Number(version.storageCost) +
+        Number(version.capataziaCost),
       Number(version.minBillingValue),
     );
 
@@ -418,7 +441,10 @@ export class AirSimulationsService {
       data: {
         totalServices: new Prisma.Decimal(totalServices),
         totalGeneral: new Prisma.Decimal(
-          base + Number(version.transportCost) - Number(version.discount),
+          baseForMin +
+            excludedServicesTotal +
+            Number(version.transportCost) -
+            Number(version.discount),
         ),
       },
     });

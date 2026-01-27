@@ -104,8 +104,15 @@ export function AirSimulator() {
     return list;
   }, [localServices, currentSimulationId, currentSimulation?.services]);
 
+  // Helper function to identify services excluded from minimum billing (Transporte DTA)
+  const isExcludedFromMinBilling = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes('transporte') && normalized.includes('dta');
+  };
+
   // Calculate total services in real-time
-  const calculatedTotalServices = useMemo(() => {
+  const { totalServices: calculatedTotalServices, eligibleServicesTotal, excludedServicesTotal } = useMemo(() => {
     const calcData = {
       cifBrl: cifBrlNum,
       tonnes: parseNumberBR(weightKg) / 1000,
@@ -114,15 +121,31 @@ export function AirSimulator() {
       volumeM3: parseNumberBR(volumeM3),
     };
 
-    return effectiveServicesList.reduce((total, s) => {
+    return effectiveServicesList.reduce((acc, s) => {
+      let cost = 0;
+      const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+
       if (s.costType === ServiceCostType.DEFAULT) {
-        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
         if (serviceDef) {
-          return total + calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
+          cost = calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
         }
+      } else {
+        cost = Number(s.appliedCost || 0);
       }
-      return total + Number(s.appliedCost || 0);
-    }, 0);
+
+      // Check name against service definition or snapshot name
+      const sName = serviceDef?.name || (s as any).serviceName || '';
+      const isExcluded = isExcludedFromMinBilling(sName);
+
+      if (isExcluded) {
+        acc.excludedServicesTotal += cost;
+      } else {
+        acc.eligibleServicesTotal += cost;
+      }
+      acc.totalServices += cost;
+
+      return acc;
+    }, { totalServices: 0, eligibleServicesTotal: 0, excludedServicesTotal: 0 });
   }, [effectiveServicesList, cifBrlNum, weightKg, servicesData, volumeM3]);
 
   // Count of selected services
@@ -142,21 +165,24 @@ export function AirSimulator() {
   }, [weightKg]);
 
   // Calculate total general in real-time
+  // Business Rule: Adjustment = Max(0, Threshold - (EligibleServices + Storage + Capatazia))
+  // Final Total = (EligibleServices + Storage + Capatazia + Adjustment) + ExcludedServices - Discount
   const { minDiff, totalGeneral } = useMemo(() => {
-    const services = calculatedTotalServices;
+    const eligibleServices = eligibleServicesTotal;
+    const excludedServices = excludedServicesTotal;
     const storage = calculatedStorageCost;
     const capatazia = calculatedCapataziaCost;
     const discountValue = parseNumberBR(discount);
     const minThreshold = parseNumberBR(minBillingValue);
 
-    const totalCurrentCosts = services + storage + capatazia;
+    const totalCurrentCosts = eligibleServices + storage + capatazia;
     const difference = totalCurrentCosts < minThreshold ? minThreshold - totalCurrentCosts : 0;
 
     return {
       minDiff: difference,
-      totalGeneral: totalCurrentCosts + difference - discountValue
+      totalGeneral: totalCurrentCosts + difference + excludedServices - discountValue
     };
-  }, [calculatedTotalServices, calculatedStorageCost, calculatedCapataziaCost, discount, minBillingValue]);
+  }, [eligibleServicesTotal, excludedServicesTotal, calculatedStorageCost, calculatedCapataziaCost, discount, minBillingValue]);
 
   const calculatedTotalGeneral = totalGeneral;
 
