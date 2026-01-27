@@ -9,3 +9,4 @@ export * from './document';
 export * from './service';
 export * from './simulation';
 export * from './customer';
+export * from './container-kanban';

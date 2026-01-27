@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus, History as HistoryIcon } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus, History as HistoryIcon, Container, Kanban, Package } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -261,6 +261,32 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Clientes',
         icon: Building2,
         path: '/cliente/cadastro',
+      },
+    ],
+    allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
+  },
+
+  // Navegação para a página de Armazém
+  {
+    basePath: '/armazem',
+    items: [
+      {
+        label: 'Home',
+        icon: Home,
+        path: '/modules',
+      },
+      {
+        label: 'Armazém',
+        icon: Package,
+        path: '/armazem',
+        isGroup: true,
+        children: [
+          {
+            label: 'Kanban Containers',
+            icon: Kanban,
+            path: '/armazem/kanban',
+          },
+        ],
       },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
