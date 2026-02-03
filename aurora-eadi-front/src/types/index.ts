@@ -8,4 +8,5 @@ export * from './access-control';
 export * from './document';
 export * from './service';
 export * from './simulation';
+export * from './air-simulation';
 export * from './customer';

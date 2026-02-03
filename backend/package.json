@@ -10,6 +10,7 @@
     "_prisma:generate:sql_DEPRECATED": "echo 'DEPRECATED: Prisma SQL Server substituído por SqlServerService (mssql/tedious). Mantido para fallback.'",
     "prisma:migrate:pg": "npx prisma migrate dev --schema=prisma/postgres/schema.prisma",
     "prisma:push:pg": "npx prisma db push --schema=prisma/postgres/schema.prisma",
+    "prisma:pull:pg": "npx prisma db pull --schema=prisma/postgres/schema.prisma",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

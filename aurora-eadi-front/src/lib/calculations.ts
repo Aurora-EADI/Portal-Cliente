@@ -1,9 +1,11 @@
-import { Service, ServiceCalculationType } from '@/types';
+import { ServiceCalculationType } from '@/types';
 
 export interface CalculationData {
     cifBrl: number;
     tonnes: number;
     cntrCount: number;
+    weightKg?: number;
+    volumeM3?: number;
 }
 
 export const calculateServiceCost = (
@@ -19,8 +21,13 @@ export const calculateServiceCost = (
         case ServiceCalculationType.PER_CONTAINER:
             return rate * data.cntrCount;
         case ServiceCalculationType.PER_TONNE:
-            // Excel style: ROUNDUP(val; -3) / 1000 -> Math.ceil(val / 1000)
-            return rate * Math.ceil(data.tonnes / 1000);
+            // Regra: Maior entre toneladas (peso/1000) e volume (m3), sempre arredondando a unidade para cima (tonelada/m3 ou fração)
+            const t = data.tonnes || (data.weightKg ? data.weightKg / 1000 : 0);
+            const v = data.volumeM3 || 0;
+            const unit = Math.max(t, v);
+            return rate * Math.ceil(unit);
+        case ServiceCalculationType.PER_KG:
+            return rate * (data.weightKg || 1);
         default:
             return rate;
     }

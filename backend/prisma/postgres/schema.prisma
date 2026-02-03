@@ -10,44 +10,52 @@ datasource db {
 }
 
 model Company {
-  id                   String                       @id @default(uuid())
-  cnpj                 String                       @unique
-  fantasyName          String
-  socialReason         String
-  zipCode              String
-  address              String
-  number               String
-  complement           String?
-  neighborhood         String
-  city                 String
-  state                String
-  phone                String
-  status               CompanyStatus                @default(PENDING)
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  documentRequirements CompanyDocumentRequirement[]
-  documents            Document[]
-  users                User[]
+  id                     String                       @id @default(uuid())
+  cnpj                   String                       @unique
+  fantasyName            String
+  socialReason           String
+  zipCode                String
+  address                String
+  number                 String
+  complement             String?
+  neighborhood           String
+  city                   String
+  state                  String
+  phone                  String
+  status                 CompanyStatus                @default(PENDING)
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  businessClassification BusinessClassification?
+  eadiRegime             EadiRegime?
+  statusChangedAt        DateTime?
+  statusReason           String?
+  documentRequirements   CompanyDocumentRequirement[]
+  company_supplier_types company_supplier_types[]
+  documents              Document[]
+  third_parties          third_parties[]
+  users                  User[]
 
   @@map("companies")
 }
 
 model User {
-  id           String             @id @default(uuid())
-  name         String
-  email        String             @unique
-  password     String
-  role         UserRole
-  companyId    String?
-  position     String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  documents    Document[]
-  serviceCosts ServiceCost[]
-  simulationVersions SimulationVersion[] @relation("UserSimulationVersions")
-  moduleAccess UserModuleAccess[]
-  tokens       UserToken[]
-  company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                    String                  @id @default(uuid())
+  name                  String
+  email                 String                  @unique
+  password              String
+  role                  UserRole
+  companyId             String?
+  position              String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  AirSimulationVersion  AirSimulationVersion[]  @relation("UserAirSimulationVersions")
+  documents             Document[]
+  serviceCosts          ServiceCost[]
+  simulationVersions    SimulationVersion[]     @relation("UserSimulationVersions")
+  third_party_documents third_party_documents[]
+  moduleAccess          UserModuleAccess[]
+  tokens                UserToken[]
+  company               Company?                @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -79,12 +87,12 @@ model Document {
   fileUrl         String
   status          DocumentStatus @default(PENDING)
   rejectionReason String?
+  dateIssue       DateTime?
+  dateExpiration  DateTime?
   uploadedAt      DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   userId          String
   companyId       String
-  dateExpiration  DateTime?
-  dateIssue       DateTime?
   documentTypeId  Int?
   isLatest        Boolean        @default(true)
   company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -95,27 +103,34 @@ model Document {
 }
 
 model DocumentType {
-  id                  Int                          @id @default(autoincrement())
-  name                String                       @unique
-  description         String?
-  active              Boolean                      @default(true)
-  createdAt           DateTime                     @default(now())
-  updatedAt           DateTime                     @updatedAt
-  companyRequirements CompanyDocumentRequirement[]
-  documents           Document[]
+  id                                  Int                                   @id @default(autoincrement())
+  name                                String                                @unique
+  description                         String?
+  active                              Boolean                               @default(true)
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime                              @updatedAt
+  acceptsPositiveCertificate          Boolean                               @default(false)
+  frequency                           DocumentFrequency                     @default(UNICO)
+  hasExpirationControl                Boolean                               @default(false)
+  companyRequirements                 CompanyDocumentRequirement[]
+  documents                           Document[]
+  supplier_type_document_requirements supplier_type_document_requirements[]
+  third_party_documents               third_party_documents[]
 
   @@map("document_types")
 }
 
 model CompanyDocumentRequirement {
-  id             Int          @id @default(autoincrement())
-  companyId      String
-  documentTypeId Int
-  isRequired     Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+  id              Int                     @id @default(autoincrement())
+  companyId       String
+  documentTypeId  Int
+  isRequired      Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  isAutomatic     Boolean                 @default(false)
+  requirementType DocumentRequirementType @default(IMPEDITIVO)
+  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType    DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, documentTypeId])
   @@map("company_document_requirements")
@@ -135,9 +150,9 @@ model Module {
   id          Int                @id @default(autoincrement())
   name        String             @unique
   description String?
-  active      Boolean            @default(true)
-  icon        String?
   route       String?
+  icon        String?
+  active      Boolean            @default(true)
   activities  Activity[]
   userAccess  UserModuleAccess[]
 
@@ -147,9 +162,9 @@ model Module {
 model Activity {
   id          Int                  @id @default(autoincrement())
   name        String
+  description String?
   moduleId    Int
   isMandatory Boolean              @default(false)
-  description String?
   module      Module               @relation(fields: [moduleId], references: [id])
   permissions ActivityPermission[]
   userAccess  UserActivityAccess[]
@@ -245,18 +260,19 @@ model Faturamento {
 }
 
 model Service {
-  id                 String                 @id @default(uuid())
-  code               String                 @unique
-  name               String
-  description        String?
-  category           String?
-  isActive           Boolean                @default(true)
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  calculationType    ServiceCalculationType @default(FIXED)
-  formulaExpression  String?
-  hasStripping       Boolean                @default(false)
-  serviceCosts       ServiceCost[]
+  id                String                 @id @default(uuid())
+  code              String                 @unique
+  name              String
+  description       String?
+  category          String?
+  calculationType   ServiceCalculationType @default(FIXED)
+  formulaExpression String?
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  hasStripping      Boolean                @default(false)
+  modal             ServiceModal           @default(BOTH)
+  serviceCosts      ServiceCost[]
 
   @@map("services")
 }
@@ -280,11 +296,11 @@ model ServiceCost {
 model Simulation {
   id               String              @id @default(uuid())
   simulationNumber String              @unique
-  customerId       String
-  customer         Customer            @relation(fields: [customerId], references: [id])
-  versions         SimulationVersion[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
+  customerId       String
+  versions         SimulationVersion[]
+  customer         Customer            @relation(fields: [customerId], references: [id])
 
   @@map("simulations")
 }
@@ -292,58 +308,207 @@ model Simulation {
 model SimulationVersion {
   id               String              @id @default(uuid())
   simulationId     String
-  simulation       Simulation          @relation(fields: [simulationId], references: [id], onDelete: Cascade)
   version          Int
   displayNumber    String
   isCurrentVersion Boolean             @default(true)
   versionReason    String?
   status           SimulationStatus    @default(DRAFT)
-  
-  // Dados da Carga / Snapshot
   cifUsd           Decimal             @db.Decimal(15, 2)
   dollarRate       Decimal             @db.Decimal(10, 4)
   cifBrl           Decimal             @db.Decimal(15, 2)
   tonnes           Decimal?            @db.Decimal(15, 3)
   cntrCount        Int?
   cntrType         String?
-  storageCost      Decimal             @db.Decimal(15, 2) @default(0)
-  transportCost    Decimal             @db.Decimal(15, 2) @default(0)
-  discount         Decimal             @db.Decimal(15, 2) @default(0)
-  totalServices    Decimal             @db.Decimal(15, 2) @default(0)
-  totalGeneral     Decimal             @db.Decimal(15, 2) @default(0)
+  storageCost      Decimal             @default(0) @db.Decimal(15, 2)
+  transportCost    Decimal             @default(0) @db.Decimal(15, 2)
+  discount         Decimal             @default(0) @db.Decimal(15, 2)
+  totalServices    Decimal             @default(0) @db.Decimal(15, 2)
+  totalGeneral     Decimal             @default(0) @db.Decimal(15, 2)
   hasStripping     Boolean             @default(false)
-  minBillingValue  Decimal             @db.Decimal(10, 2) @default(5500)
-  
+  minBillingValue  Decimal             @default(5500) @db.Decimal(10, 2)
   createdBy        String
-  user             User                @relation("UserSimulationVersions", fields: [createdBy], references: [id])
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
-  
-  services         SimulationService[]
-
-  // Histórico de Versões (Auto-relacionamento opcional na Versão)
   baseVersionId    String?
+  services         SimulationService[]
   baseVersion      SimulationVersion?  @relation("VersionHistory", fields: [baseVersionId], references: [id])
   nextVersions     SimulationVersion[] @relation("VersionHistory")
+  user             User                @relation("UserSimulationVersions", fields: [createdBy], references: [id])
+  simulation       Simulation          @relation(fields: [simulationId], references: [id], onDelete: Cascade)
 
   @@map("simulation_versions")
 }
 
 model SimulationService {
-  id               String              @id @default(uuid())
-  versionId        String
-  version          SimulationVersion   @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  serviceId        String?
-  serviceName      String
-  serviceCode      String
-  calculationType  ServiceCalculationType
-  hasStripping     Boolean             @default(false)
-  costType         ServiceCostType
-  originalCost     Decimal             @db.Decimal(10, 2)
-  appliedCost      Decimal             @db.Decimal(10, 2)
-  customReason     String?
+  id              String                 @id @default(uuid())
+  versionId       String
+  serviceId       String?
+  serviceName     String
+  serviceCode     String
+  calculationType ServiceCalculationType
+  hasStripping    Boolean                @default(false)
+  costType        ServiceCostType
+  originalCost    Decimal                @db.Decimal(10, 2)
+  appliedCost     Decimal                @db.Decimal(10, 2)
+  customReason    String?
+  version         SimulationVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
 
   @@map("simulation_services")
+}
+
+model Customer {
+  id            String          @id @default(uuid())
+  code          String          @unique
+  name          String
+  document      String          @unique
+  status        CustomerStatus  @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  city          String?
+  complement    String?
+  contact       String?
+  corporateName String?
+  neighborhood  String?
+  number        String?
+  state         String?
+  street        String?
+  zipCode       String?
+  AirSimulation AirSimulation[]
+  simulations   Simulation[]
+
+  @@map("customers")
+}
+
+model AirSimulation {
+  id               String                 @id @default(uuid())
+  simulationNumber String                 @unique
+  customerId       String
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  versions         AirSimulationVersion[]
+  customer         Customer               @relation(fields: [customerId], references: [id])
+
+  @@map("air_simulations")
+}
+
+model AirSimulationVersion {
+  id               String                 @id @default(uuid())
+  simulationId     String
+  version          Int
+  displayNumber    String
+  isCurrentVersion Boolean                @default(true)
+  versionReason    String?
+  status           SimulationStatus       @default(DRAFT)
+  cifUsd           Decimal                @db.Decimal(15, 2)
+  dollarRate       Decimal                @db.Decimal(10, 4)
+  cifBrl           Decimal                @db.Decimal(15, 2)
+  weightKg         Decimal?               @db.Decimal(15, 3)
+  volumeM3         Decimal?               @db.Decimal(15, 3)
+  storageCost      Decimal                @default(0) @db.Decimal(15, 2)
+  transportCost    Decimal                @default(0) @db.Decimal(15, 2)
+  discount         Decimal                @default(0) @db.Decimal(15, 2)
+  totalServices    Decimal                @default(0) @db.Decimal(15, 2)
+  totalGeneral     Decimal                @default(0) @db.Decimal(15, 2)
+  minBillingValue  Decimal                @default(350) @db.Decimal(10, 2)
+  createdBy        String
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  baseVersionId    String?
+  capataziaCost    Decimal                @default(0) @db.Decimal(15, 2)
+  services         AirSimulationService[]
+  baseVersion      AirSimulationVersion?  @relation("AirVersionHistory", fields: [baseVersionId], references: [id])
+  nextVersions     AirSimulationVersion[] @relation("AirVersionHistory")
+  user             User                   @relation("UserAirSimulationVersions", fields: [createdBy], references: [id])
+  simulation       AirSimulation          @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+
+  @@map("air_simulation_versions")
+}
+
+model AirSimulationService {
+  id              String                    @id @default(uuid())
+  versionId       String
+  serviceId       String?
+  serviceName     String
+  serviceCode     String
+  calculationType AirServiceCalculationType
+  costType        ServiceCostType
+  originalCost    Decimal                   @db.Decimal(10, 2)
+  appliedCost     Decimal                   @db.Decimal(10, 2)
+  customReason    String?
+  version         AirSimulationVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, serviceId])
+  @@map("air_simulation_services")
+}
+
+model company_supplier_types {
+  companyId      String
+  supplierTypeId Int
+  createdAt      DateTime       @default(now())
+  companies      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier_types supplier_types @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, supplierTypeId])
+}
+
+model supplier_type_document_requirements {
+  id              Int                     @id @default(autoincrement())
+  supplierTypeId  Int
+  documentTypeId  Int
+  requirementType DocumentRequirementType @default(IMPEDITIVO)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime
+  document_types  DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+  supplier_types  supplier_types          @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierTypeId, documentTypeId])
+}
+
+model supplier_types {
+  id                                  Int                                   @id @default(autoincrement())
+  name                                String                                @unique
+  description                         String?
+  active                              Boolean                               @default(true)
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime
+  company_supplier_types              company_supplier_types[]
+  supplier_type_document_requirements supplier_type_document_requirements[]
+}
+
+model third_parties {
+  id                    String                  @id
+  companyId             String
+  name                  String
+  cpf                   String
+  birthDate             DateTime
+  position              String
+  status                ThirdPartyStatus        @default(ACTIVE)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime
+  companies             Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  third_party_documents third_party_documents[]
+
+  @@unique([companyId, cpf])
+}
+
+model third_party_documents {
+  id              String         @id
+  thirdPartyId    String
+  name            String
+  fileType        String
+  fileUrl         String
+  status          DocumentStatus @default(PENDING)
+  rejectionReason String?
+  uploadedAt      DateTime       @default(now())
+  updatedAt       DateTime
+  dateIssue       DateTime?
+  dateExpiration  DateTime?
+  documentTypeId  Int?
+  isLatest        Boolean        @default(true)
+  uploadedBy      String
+  document_types  DocumentType?  @relation(fields: [documentTypeId], references: [id])
+  third_parties   third_parties  @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
+  users           User           @relation(fields: [uploadedBy], references: [id])
 }
 
 enum UserRole {
@@ -360,9 +525,11 @@ enum DocumentStatus {
 
 enum CompanyStatus {
   PENDING
+  PENDING_ACTIVE
   ACTIVE
   REJECTED
-  PENDING_ACTIVE
+  INACTIVE
+  BLOCKED
 }
 
 enum TokenType {
@@ -397,15 +564,48 @@ enum CustomerStatus {
   INACTIVE
 }
 
-model Customer {
-  id          String         @id @default(uuid())
-  code        String         @unique
-  name        String
-  document    String         @unique
-  status      CustomerStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  simulations Simulation[]
+enum AirServiceCalculationType {
+  FIXED
+  PERCENTAGE_CIF
+  PER_KG
+  PER_TONNE
+}
 
-  @@map("customers")
+enum ServiceModal {
+  AIR
+  MARITIME
+  BOTH
+}
+
+enum BusinessClassification {
+  MEI
+  ME
+  EPP
+  EIRELI
+  LTDA
+  SA
+  OUTROS
+}
+
+enum DocumentRequirementType {
+  IMPEDITIVO
+  PENDENCIA
+}
+
+enum EadiRegime {
+  SEM_ALOCACAO
+  COM_ALOCACAO_INTEGRAL
+}
+
+enum DocumentFrequency {
+  UNICO
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum ThirdPartyStatus {
+  ACTIVE
+  INACTIVE
 }

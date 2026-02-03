@@ -1,8 +1,12 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto } from './dto/create-customer.dto';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { CustomerStatus } from '@prisma/client-postgres';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { CustomerStatus } from "@prisma/client-postgres";
 
 interface FindAllParams {
   page?: number;
@@ -22,7 +26,7 @@ export class CustomerService {
     });
 
     if (existingByCode) {
-      throw new ConflictException('Já existe um cliente com este código.');
+      throw new ConflictException("Já existe um cliente com este código.");
     }
 
     // Verificar se já existe cliente com o mesmo documento
@@ -31,7 +35,7 @@ export class CustomerService {
     });
 
     if (existingByDocument) {
-      throw new ConflictException('Já existe um cliente com este documento.');
+      throw new ConflictException("Já existe um cliente com este documento.");
     }
 
     return this.prisma.customer.create({
@@ -51,9 +55,9 @@ export class CustomerService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { document: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { code: { contains: search, mode: "insensitive" } },
+        { document: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -66,7 +70,7 @@ export class CustomerService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       this.prisma.customer.count({ where }),
       this.getStatusCounts(),
@@ -90,7 +94,7 @@ export class CustomerService {
 
   private async getStatusCounts() {
     const counts = await this.prisma.customer.groupBy({
-      by: ['status'],
+      by: ["status"],
       _count: { status: true },
     });
 
@@ -109,7 +113,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Cliente não encontrado.');
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return customer;
@@ -121,7 +125,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Cliente não encontrado.');
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     // Verificar unicidade do código se estiver sendo alterado
@@ -131,7 +135,7 @@ export class CustomerService {
       });
 
       if (existingByCode) {
-        throw new ConflictException('Já existe um cliente com este código.');
+        throw new ConflictException("Já existe um cliente com este código.");
       }
     }
 
@@ -142,7 +146,7 @@ export class CustomerService {
       });
 
       if (existingByDocument) {
-        throw new ConflictException('Já existe um cliente com este documento.');
+        throw new ConflictException("Já existe um cliente com este documento.");
       }
     }
 
@@ -158,7 +162,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Cliente não encontrado.');
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return this.prisma.customer.update({
@@ -173,7 +177,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException('Cliente não encontrado.');
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return this.prisma.customer.delete({

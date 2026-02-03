@@ -1,10 +1,18 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 // import { PrismaClient as PrismaClientSqlServer } from '@prisma/client-sqlserver'; // DEPRECATED: Usar SqlServerService
-import { PrismaClient as PrismaClientPostgres } from '@prisma/client-postgres';
+import { PrismaClient as PrismaClientPostgres } from "@prisma/client-postgres";
 
 @Injectable()
-export class PrismaPostgresService extends PrismaClientPostgres implements OnModuleInit {
+export class PrismaPostgresService
+  extends PrismaClientPostgres
+  implements OnModuleInit
+{
   async onModuleInit() {
     await this.$connect();
   }
@@ -53,5 +61,3 @@ export class PrismaPostgresService extends PrismaClientPostgres implements OnMod
 //     return this.connected;
 //   }
 // }
-
-

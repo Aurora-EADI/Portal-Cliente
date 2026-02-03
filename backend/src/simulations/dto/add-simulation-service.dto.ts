@@ -1,6 +1,6 @@
-import { IsString, IsNumber, IsEnum, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ServiceCostType } from '@prisma/client-postgres';
+import { IsString, IsNumber, IsEnum, IsOptional } from "class-validator";
+import { Type } from "class-transformer";
+import { ServiceCostType } from "@prisma/client-postgres";
 
 export class AddSimulationServiceDto {
   @IsString()
