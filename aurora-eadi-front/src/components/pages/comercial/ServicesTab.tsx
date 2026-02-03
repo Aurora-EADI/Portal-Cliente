@@ -56,6 +56,7 @@ interface ServicesTabProps {
   onAddLocalService?: (service: LocalService) => void;
   onRemoveLocalService?: (serviceId: string) => void;
   hasStripping?: boolean;
+  hasLCL?: boolean;
 }
 
 // Helper to calculate final cost based on calculationType
@@ -98,6 +99,7 @@ export function ServicesTab({
   onAddLocalService,
   onRemoveLocalService,
   hasStripping = false,
+  hasLCL = false,
 }: ServicesTabProps) {
   // Working mode: local (before save) or saved (with simulationId)
   const isLocalMode = !simulationId;
@@ -346,9 +348,18 @@ export function ServicesTab({
             <TableBody>
               {services
                 .filter(service => {
+                  const isLCLService = service.name.toUpperCase().includes('LCL');
+                  
                   // Se o serviço é de desova, só mostra se a simulação tem desova.
                   // Se o serviço NÃO é de desova, mostra sempre.
                   if (service.hasStripping && !hasStripping) return false;
+                  
+                  // Oculta serviços LCL por padrão, mostra apenas quando hasLCL está ativo
+                  if (isLCLService && !hasLCL) return false;
+                  
+                  // Se hasLCL está ativo, mostra APENAS serviços LCL
+                  if (hasLCL && !isLCLService) return false;
+                  
                   return true;
                 })
                 .map((service) => {

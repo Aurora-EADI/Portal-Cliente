@@ -177,10 +177,6 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   // Seção 5: Comparativo de Mercado (Aurora vs Vinci)
   const comparisonY = totalY + 20;
-  doc.setFontSize(12);
-  doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
-  doc.setFont('helvetica', 'bold');
-  doc.text('COMPARATIVO DE MERCADO', 15, comparisonY);
 
   const vinciStorageRate = 0.75;
   const vinciStorageCost = (Number(simulation.cifBrl) || 0) * (vinciStorageRate / 100);
@@ -196,43 +192,44 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const auroraTotalGeneral = Number(simulation.totalGeneral) || 0;
   const savings = vinciTotalEstimated - auroraTotalGeneral;
 
-  const comparisonTableData = [
-    ['Armazenagem', `${formatNumberBR(vinciStorageRate, 2)}% - ${formatCurrency(vinciStorageCost)}`],
-    ['Capatazia', formatCurrency(vinciCapatazia)],
-    ['TOTAL ESTIMADO (Vinci)', formatCurrency(vinciTotalEstimated)],
-  ];
-
-  autoTable(doc, {
-    startY: comparisonY + 5,
-    head: [['Descrição do Custo', '']],
-    body: comparisonTableData,
-    headStyles: { 
-      fillColor: auroraDarkGray as any,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold'
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { textColor: [100, 100, 100], fontStyle: 'bold', halign: 'right' }
-    },
-    alternateRowStyles: { fillColor: auroraLightGray as any },
-    margin: { left: 15, right: 15 },
-    styles: { fontSize: 9 }
-  });
-
-  const economyY = (doc as any).lastAutoTable.finalY + 12;
+  // Só exibe se a Aurora for mais barata (savings > 0)
   if (savings > 0) {
+    doc.setFontSize(12);
+    doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPARATIVO DE MERCADO', 15, comparisonY);
+
+    const comparisonTableData = [
+      ['Armazenagem', `${formatNumberBR(vinciStorageRate, 2)}% - ${formatCurrency(vinciStorageCost)}`],
+      ['Capatazia', formatCurrency(vinciCapatazia)],
+      ['TOTAL ESTIMADO (Vinci)', formatCurrency(vinciTotalEstimated)],
+    ];
+
+    autoTable(doc, {
+      startY: comparisonY + 5,
+      head: [['Descrição do Custo', '']],
+      body: comparisonTableData,
+      headStyles: { 
+        fillColor: auroraDarkGray as any,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 60 },
+        1: { textColor: [100, 100, 100], fontStyle: 'bold', halign: 'right' }
+      },
+      alternateRowStyles: { fillColor: auroraLightGray as any },
+      margin: { left: 15, right: 15 },
+      styles: { fontSize: 9 }
+    });
+
+    const economyY = (doc as any).lastAutoTable.finalY + 12;
     doc.setFillColor(232, 245, 233); // Verde claro
     doc.rect(15, economyY - 6, pageWidth - 30, 10, 'F');
     doc.setFontSize(11);
     doc.setTextColor(46, 125, 50); // Verde escuro
     doc.setFont('helvetica', 'bold');
     doc.text(`ECONOMIA ESTIMADA COM A AURORA: ${formatCurrency(savings)}`, pageWidth / 2, economyY + 1, { align: 'center' });
-  } else if (savings < 0) {
-    doc.setFontSize(10);
-    doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
-    doc.setFont('helvetica', 'italic');
-    doc.text(`Diferença competitiva: ${formatCurrency(Math.abs(savings))}`, pageWidth / 2, economyY + 1, { align: 'center' });
   }
 
   // Rodapé

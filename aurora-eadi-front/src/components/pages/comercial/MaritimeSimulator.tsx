@@ -79,6 +79,7 @@ export function MaritimeSimulator() {
 
   const [discount, setDiscount] = useState<string>('0');
   const [hasStripping, setHasStripping] = useState<boolean>(false);
+  const [hasLCL, setHasLCL] = useState<boolean>(false);
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
 
   // Local state for services before saving simulation
@@ -100,21 +101,33 @@ export function MaritimeSimulator() {
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
-  // Filter services based on stripping status
+  // Filter services based on stripping status and LCL
   const effectiveServicesList = useMemo(() => {
     // Agora os serviços vêm da tabela SimulationService (relacional)
     const list = currentSimulationId ? (currentSimulation?.services || []) : localServices;
-    if (!hasStripping) {
-      return list.filter(s => {
-        // Se for snapshot, já temos o hasStripping nele
-        if ('hasStripping' in s) return !s.hasStripping;
+    
+    return list.filter(s => {
+      const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+      const serviceName = serviceDef?.name || (s as any).serviceName || '';
+      const isLCLService = serviceName.toUpperCase().includes('LCL');
 
-        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
-        return !serviceDef?.hasStripping;
-      });
-    }
-    return list;
-  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, servicesData]);
+      // Filter by stripping
+      if (!hasStripping) {
+        // Se for snapshot, já temos o hasStripping nele
+        if ('hasStripping' in s && s.hasStripping) return false;
+
+        if (serviceDef?.hasStripping) return false;
+      }
+
+      // Filter by LCL: Hide LCL services by default, show only when hasLCL is true
+      if (isLCLService && !hasLCL) return false;
+      
+      // If hasLCL is true, show ONLY LCL services
+      if (hasLCL && !isLCLService) return false;
+
+      return true;
+    });
+  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, hasLCL, servicesData]);
 
   // Helper function to identify services excluded from minimum billing (Transporte DTA)
   const isExcludedFromMinBilling = (name: string | undefined): boolean => {
@@ -683,6 +696,24 @@ export function MaritimeSimulator() {
                       </p>
                     </Label>
                   </div>
+
+                  {/* Row 8: Carga Solta (LCL) */}
+                  <div className="md:col-span-2 flex items-center gap-3 bg-green-50/50 p-4 rounded-xl border border-green-100/50">
+                    <input
+                      type="checkbox"
+                      id="hasLCL"
+                      checked={hasLCL}
+                      onChange={(e) => setHasLCL(e.target.checked)}
+                      disabled={!isEditable}
+                      className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                    />
+                    <Label htmlFor="hasLCL" className="font-semibold text-green-900 cursor-pointer select-none">
+                      Carga Solta?
+                      <p className="text-xs text-green-700/70 font-normal">
+                        Marque esta opção para exibir apenas os serviços LCL (Less than Container Load).
+                      </p>
+                    </Label>
+                  </div>
                 </CardContent>
               </TabsContent>
 
@@ -702,6 +733,7 @@ export function MaritimeSimulator() {
                   onAddLocalService={handleAddLocalService}
                   onRemoveLocalService={handleRemoveLocalService}
                   hasStripping={hasStripping}
+                  hasLCL={hasLCL}
                 />
               </TabsContent>
             </div>

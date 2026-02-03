@@ -199,11 +199,19 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Simulações',
         icon: Calculator,
         path: '/simulacoes',
-      },
-      {
-        label: 'Simulação Marítima',
-        icon: Ship,
-        path: '/comercial',
+        isGroup: true,
+        children: [
+          {
+            label: 'Simulação Marítima',
+            icon: Ship,
+            path: '/comercial',
+          },
+          {
+            label: 'Simulação Aérea',
+            icon: Plane,
+            path: '/aereo',
+          },
+        ],
       },
       {
         label: 'Lista de simulação Marítima',
@@ -211,7 +219,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/comercial/history',
       },
       {
-        label: 'Módulo de serviços',
+        label: 'Serviços',
         icon: Wrench,
         path: '/servicos',
       },
@@ -230,11 +238,19 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Simulações',
         icon: Calculator,
         path: '/simulacoes',
-      },
-      {
-        label: 'Simulação Aérea',
-        icon: Plane,
-        path: '/aereo',
+        isGroup: true,
+        children: [
+          {
+            label: 'Simulação Marítima',
+            icon: Ship,
+            path: '/comercial',
+          },
+          {
+            label: 'Simulação Aérea',
+            icon: Plane,
+            path: '/aereo',
+          },
+        ],
       },
       {
         label: 'Lista de simulação Aérea',
@@ -242,7 +258,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/aereo/history',
       },
       {
-        label: 'Módulo de serviços',
+        label: 'Serviços',
         icon: Wrench,
         path: '/servicos',
       },
@@ -258,7 +274,7 @@ export const navigationContexts: NavigationContext[] = [
         path: '/modules',
       },
       {
-        label: 'Módulo de serviços',
+        label: 'Serviços',
         icon: Wrench,
         path: '/servicos',
       },
@@ -282,6 +298,24 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Simulações',
         icon: Calculator,
         path: '/simulacoes',
+        isGroup: true,
+        children: [
+          {
+            label: 'Simulação Marítima',
+            icon: Ship,
+            path: '/comercial',
+          },
+          {
+            label: 'Simulação Aérea',
+            icon: Plane,
+            path: '/aereo',
+          },
+        ],
+      },
+      {
+        label: 'Serviços',
+        icon: Wrench,
+        path: '/servicos',
       },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
