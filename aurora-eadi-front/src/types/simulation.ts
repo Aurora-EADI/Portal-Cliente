@@ -44,6 +44,7 @@ export interface Simulation {
   storageCost?: number | null;
   transportCost?: number | null;
   discount?: number | null;
+  auroraPeriods?: number;
 
   // Totalizadores
   totalServices?: number | null;
@@ -145,6 +146,7 @@ export interface CreateSimulationDto {
   transportCost?: number;
   discount?: number;
   hasStripping?: boolean;
+  auroraPeriods?: number;
   minBillingValue?: number;
   initialServices?: AddSimulationServiceDto[];
 }

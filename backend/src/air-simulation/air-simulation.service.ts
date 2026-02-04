@@ -92,6 +92,8 @@ export class AirSimulationsService {
           minBillingValue: new Prisma.Decimal(
             createAirSimulationDto.minBillingValue || 350,
           ),
+          auroraPeriods: createAirSimulationDto.auroraPeriods ?? 1,
+          vinciPeriods: createAirSimulationDto.vinciPeriods ?? 1,
           user: { connect: { id: userId } },
         },
       });
@@ -183,6 +185,8 @@ export class AirSimulationsService {
           transportCost: new Prisma.Decimal(dto.transportCost || 0),
           discount: new Prisma.Decimal(dto.discount || 0),
           minBillingValue: new Prisma.Decimal(dto.minBillingValue || 350),
+          auroraPeriods: dto.auroraPeriods ?? baseVersion.auroraPeriods,
+          vinciPeriods: dto.vinciPeriods ?? baseVersion.vinciPeriods,
           createdBy: userId,
         },
       });
@@ -395,6 +399,18 @@ export class AirSimulationsService {
     }
 
     await this.prisma.airSimulationVersion.update({ where: { id }, data: updateData });
+    
+    // Explicitly update periods if they are in the DTO (since they were removed by destructuring)
+    if (dto.auroraPeriods !== undefined || dto.vinciPeriods !== undefined) {
+      await this.prisma.airSimulationVersion.update({
+        where: { id },
+        data: {
+          ...(dto.auroraPeriods !== undefined && { auroraPeriods: dto.auroraPeriods }),
+          ...(dto.vinciPeriods !== undefined && { vinciPeriods: dto.vinciPeriods }),
+        }
+      });
+    }
+
     await this.recalculateAllServices(id);
     return this.findOneVersion(id);
   }

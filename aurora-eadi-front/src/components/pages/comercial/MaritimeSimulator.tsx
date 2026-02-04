@@ -81,6 +81,7 @@ export function MaritimeSimulator() {
   const [hasStripping, setHasStripping] = useState<boolean>(false);
   const [hasLCL, setHasLCL] = useState<boolean>(false);
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
+  const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -136,6 +137,12 @@ export function MaritimeSimulator() {
     // Rule: Anything containing "transporte" and "dta" is excluded from the minimum billing floor calculation
     return normalized.includes('transporte') && normalized.includes('dta');
   };
+
+  // Calculate storage cost based on periods
+  const calculatedStorageCost = useMemo(() => {
+    const rate = 0.35 * (parseInt(auroraPeriods) || 1);
+    return (rate / 100) * (cifBrlNum || 0);
+  }, [auroraPeriods, cifBrlNum]);
 
   // Calculate total services in real-time
   const { totalServices: calculatedTotalServices, eligibleServicesTotal, excludedServicesTotal } = useMemo(() => {
@@ -193,7 +200,7 @@ export function MaritimeSimulator() {
     
     return {
       minDiff: difference,
-      totalGeneral: eligible + difference + excluded - discountValue
+      totalGeneral: eligible + difference + excluded + calculatedStorageCost - discountValue
     };
   }, [eligibleServicesTotal, excludedServicesTotal, discount, cntrCount, minBillingValue]);
 
@@ -230,6 +237,7 @@ export function MaritimeSimulator() {
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
       setHasStripping(currentSimulation.hasStripping || false);
       setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
+      setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
     }
   }, [currentSimulation]);
 
@@ -284,6 +292,8 @@ export function MaritimeSimulator() {
           discount: discount ? parseNumberBR(discount) : 0,
           hasStripping,
           minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+          auroraPeriods: parseInt(auroraPeriods) || 1,
+          storageCost: calculatedStorageCost,
           initialServices: localServices,
         });
 
@@ -306,6 +316,8 @@ export function MaritimeSimulator() {
             discount: discount ? parseNumberBR(discount) : 0,
             hasStripping,
             minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+            auroraPeriods: parseInt(auroraPeriods) || 1,
+            storageCost: calculatedStorageCost,
           },
         });
         toast.success('Simulação atualizada com sucesso!');
@@ -345,6 +357,8 @@ export function MaritimeSimulator() {
         discount: discount ? parseNumberBR(discount) : 0,
         hasStripping,
         minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+        auroraPeriods: parseInt(auroraPeriods) || 1,
+        storageCost: calculatedStorageCost,
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -678,6 +692,31 @@ export function MaritimeSimulator() {
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="auroraPeriods">Períodos Aurora (10 dias cada)</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="auroraPeriods"
+                          type="number"
+                          min="1"
+                          value={auroraPeriods}
+                          onChange={(e) => setAuroraPeriods(e.target.value)}
+                          disabled={!isEditable}
+                        />
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedStorageCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
+                  </div>
+
 
                   {/* Row 7: Desova */}
                   <div className="md:col-span-2 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">

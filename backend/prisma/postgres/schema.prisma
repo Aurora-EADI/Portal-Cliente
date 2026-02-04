@@ -326,6 +326,7 @@ model SimulationVersion {
   totalGeneral     Decimal             @default(0) @db.Decimal(15, 2)
   hasStripping     Boolean             @default(false)
   minBillingValue  Decimal             @default(5500) @db.Decimal(10, 2)
+  auroraPeriods    Int                 @default(1)
   createdBy        String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
@@ -410,6 +411,8 @@ model AirSimulationVersion {
   totalServices    Decimal                @default(0) @db.Decimal(15, 2)
   totalGeneral     Decimal                @default(0) @db.Decimal(15, 2)
   minBillingValue  Decimal                @default(350) @db.Decimal(10, 2)
+  auroraPeriods    Int                    @default(1)
+  vinciPeriods     Int                    @default(1)
   createdBy        String
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt

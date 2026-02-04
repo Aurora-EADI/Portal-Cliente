@@ -30,6 +30,8 @@ export interface AirSimulation {
   capataziaCost?: number | null;
   transportCost?: number | null;
   discount?: number | null;
+  auroraPeriods?: number;
+  vinciPeriods?: number;
 
   // Totalizadores
   totalServices?: number | null;
@@ -91,6 +93,8 @@ export interface CreateAirSimulationDto {
   transportCost?: number;
   discount?: number;
   minBillingValue?: number;
+  auroraPeriods?: number;
+  vinciPeriods?: number;
   initialServices?: AddAirSimulationServiceDto[];
 }
 

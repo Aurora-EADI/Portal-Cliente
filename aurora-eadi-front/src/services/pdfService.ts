@@ -71,6 +71,8 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const col2X = pageWidth / 2 + 10;
   doc.text(`Peso Bruto: ${formatNumberBR(simulation.weightKg)} kg`, col2X, cargaY);
   doc.text(`Volume: ${formatNumberBR(simulation.volumeM3)} m³`, col2X, cargaY + 5);
+  doc.text(`Períodos Aurora: ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
+  doc.text(`Períodos Vinci: ${simulation.vinciPeriods || 1}`, col2X, cargaY + 10);
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 
@@ -128,6 +130,13 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   doc.text('Capatazia:', labelX, currentY);
   doc.text(formatCurrency(simulation.capataziaCost || 0), valueX, currentY, { align: 'right' });
 
+  // Armazenagem Aurora
+  if (simulation.storageCost && Number(simulation.storageCost) > 0) {
+    currentY += 7;
+    doc.text(`Armazenagem Aurora (${simulation.auroraPeriods || 1} per.):`, labelX, currentY);
+    doc.text(formatCurrency(simulation.storageCost), valueX, currentY, { align: 'right' });
+  }
+
   // Desconto
   if (simulation.discount && simulation.discount > 0) {
     currentY += 7;
@@ -178,7 +187,15 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   // Seção 5: Comparativo de Mercado (Aurora vs Vinci)
   const comparisonY = totalY + 20;
 
-  const vinciStorageRate = 0.75;
+  const getVinciStorageRate = (periods: number) => {
+    if (periods <= 1) return 0.75;
+    if (periods === 2) return 1.50;
+    if (periods === 3) return 2.25;
+    if (periods === 4) return 4.50;
+    return 6.75; // 5 or more
+  };
+
+  const vinciStorageRate = getVinciStorageRate(simulation.vinciPeriods || 1);
   const vinciStorageCost = (Number(simulation.cifBrl) || 0) * (vinciStorageRate / 100);
   const capatazia = Number(simulation.capataziaCost) || 0;
 
@@ -307,6 +324,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.text(`Tonelagem: ${formatNumberBR(simulation.tonnes || 0, 3)} t`, col2X, cargaY);
   doc.text(`Quantidade CNTR: ${simulation.cntrCount || 0}`, col2X, cargaY + 5);
   doc.text(`Tipo CNTR: ${simulation.cntrType || '-'}`, col2X, cargaY + 10);
+  doc.text(`Períodos Aurora: ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 
@@ -408,6 +426,16 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
   doc.text('VALOR TOTAL DA SIMULAÇÃO:', 15, totalY);
   doc.text(formatCurrency(simulation.totalGeneral || 0), pageWidth - 15, totalY, { align: 'right' });
+
+  // Aurora Storage Item in Summary
+  if (simulation.storageCost && Number(simulation.storageCost) > 0) {
+    currentY += 7;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
+    doc.text(`Armazenagem Aurora (${simulation.auroraPeriods || 1} per.):`, labelX, currentY);
+    doc.text(formatCurrency(simulation.storageCost), valueX, currentY, { align: 'right' });
+  }
 
   // Salvar o arquivo
   doc.save(`Simulacao_Aurora_${simulation.displayNumber}.pdf`);
