@@ -217,7 +217,7 @@ export class TokenService {
    */
   async refreshAccessToken(
     refreshToken: string,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ access_token: string }> {
     // Valida o refresh token
     const payload = await this.validateRefreshToken(refreshToken);
 
@@ -238,7 +238,7 @@ export class TokenService {
       user.companyId ?? undefined, // Converte null para undefined
     );
 
-    return { accessToken };
+    return { access_token: accessToken };
   }
 
   /**
