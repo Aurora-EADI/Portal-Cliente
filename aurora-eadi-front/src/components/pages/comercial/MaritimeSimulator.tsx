@@ -41,6 +41,7 @@ import { formatCurrency, formatUSD, formatPercent, formatNumberBR, parseNumberBR
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
 import { exportMaritimeSimulationToPDF } from '@/services/pdfService';
+import { SimulationPresentation } from './SimulationPresentation';
 
 const DEFAULT_MIN_BILLING = 5500;
 
@@ -68,6 +69,7 @@ export function MaritimeSimulator() {
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
   const [isEditingVersion, setIsEditingVersion] = useState(false);
+  const [showPresentation, setShowPresentation] = useState(false);
 
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
@@ -784,13 +786,12 @@ export function MaritimeSimulator() {
           <Card className="sticky top-6 shadow-md border-gray-200 overflow-hidden ring-1 ring-gray-950/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gray-50/80">
               <CardTitle className="text-lg font-bold text-gray-900">Resumo da Simulação</CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white"
-                onClick={handleExportPDF}
+                onClick={() => setShowPresentation(true)}
                 title="Exportar PDF"
-                disabled={!currentSimulation}
               >
                 <Printer size={18} />
               </Button>
@@ -886,6 +887,33 @@ export function MaritimeSimulator() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* PRESENTATION VIEW OVERLAY */}
+      {showPresentation && (
+        <SimulationPresentation
+          simulation={currentSimulation || {
+            // Fallback for draft/new simulation data
+            customer: customersData?.data?.find((c: any) => c.id === selectedCustomerId),
+            cifUsd: parseFloat(cifUsd) || 0,
+            dollarRate: parseFloat(dollarRate) || 0,
+            tonnes: parseFloat(tonnes) || 0,
+            cntrCount: parseInt(cntrCount) || 0,
+            cntrType: cntrType,
+            services: effectiveServicesList,
+            displayNumber: 'RASCUNHO'
+          }}
+          calculatedValues={{
+            totalServices: calculatedTotalServices,
+            storageCost: calculatedStorageCost,
+            transportCost: 0,
+            minDiff: minDiff,
+            minProfitMarginPct: 0,
+            totalGeneral: calculatedTotalGeneral,
+            discount: parseFloat(discount) || 0,
+            servicesCount: servicesCount
+          }}
+          onClose={() => setShowPresentation(false)}
+        />
+      )}
     </div>
   );
 }

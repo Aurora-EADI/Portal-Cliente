@@ -333,11 +333,6 @@ export const navigationContexts: NavigationContext[] = [
         icon: List,
         path: '/cliente',
       },
-      {
-        label: 'Clientes',
-        icon: Building2,
-        path: '/cliente/cadastro',
-      },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
   },

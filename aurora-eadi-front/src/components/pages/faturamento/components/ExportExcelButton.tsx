@@ -125,15 +125,17 @@ export function ExportExcelButton({
 
       const worksheet = XLSX.utils.json_to_sheet(formatted);
 
-      worksheet["!cols"] = Object.keys(formatted[0] || {}).map((col) => ({
-        wch: Math.min(
-          Math.max(
-            col.length,
-            ...formatted.map((row) => String(row[col] || "").length)
-          ) + 2,
-          50
-        ),
-      }));
+      worksheet["!cols"] = Object.keys(formatted[0] || {}).map((col) => {
+        // Calcula o tamanho máximo do conteúdo da coluna de forma segura (sem spread operator)
+        const maxContentLength = formatted.reduce((max, row) => {
+          const cellValue = String(row[col] || "");
+          return Math.max(max, cellValue.length);
+        }, 0);
+
+        return {
+          wch: Math.min(Math.max(col.length, maxContentLength) + 2, 50),
+        };
+      });
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Faturamento");

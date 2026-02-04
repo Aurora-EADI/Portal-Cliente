@@ -36,6 +36,8 @@ export class FaturamentoService {
     //   FROM dbo.fnConsulta_Faturamento_Por_Periodo(@param1, @param2) AS a
     // `;
 
+
+
     const query = `
             SELECT *
       FROM dbo.fnConsulta_Faturamento_Por_Periodo(
