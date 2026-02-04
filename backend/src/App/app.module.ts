@@ -6,6 +6,7 @@ import { EmployeesModule } from '../employee/employee.module';
 import { AdminModule } from '../admin/admin.module';
 import { SupplierModule } from 'src/supplier/supplier.module';
 import { FaturamentoModule } from 'src/faturamento/faturamento.module';
+import { KanbanModule } from 'src/kanban/kanban.module';
 import { ModulesModule } from 'src/modules/modules.module';
 import { UserModule } from 'src/user/user.module';
 import { PermissionsModule } from 'src/permissions/permissions.module';
@@ -32,6 +33,7 @@ import { CustomerModule } from 'src/customer/customer.module';
     AdminModule,
     SupplierModule,
     FaturamentoModule,
+    KanbanModule,
     ModulesModule,
     UserModule,
     PermissionsModule,

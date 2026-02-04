@@ -1,6 +1,5 @@
 "use client";
 
-import { Droppable } from "@hello-pangea/dnd";
 import { KanbanColumn as KanbanColumnType } from "@/types";
 import { KanbanCard } from "./KanbanCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,8 +14,8 @@ interface KanbanColumnProps {
 export function KanbanColumn({ column, isTvMode = false }: KanbanColumnProps) {
   return (
     <div className={cn(
-      "flex flex-col bg-gray-50 rounded-xl min-w-[340px] w-full",
-      isTvMode && "min-w-[400px]"
+      "flex flex-col bg-gray-50 rounded-xl w-full flex-1",
+      isTvMode && "min-w-[300px]"
     )}>
       {/* Column Header */}
       <div className={cn(
@@ -56,54 +55,43 @@ export function KanbanColumn({ column, isTvMode = false }: KanbanColumnProps) {
       </div>
 
       {/* Column Content */}
-      <Droppable droppableId={column.id}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={cn(
-              "flex-1 p-3 transition-colors duration-200 rounded-b-xl",
-              snapshot.isDraggingOver && "bg-blue-50",
-              isTvMode && "p-4"
-            )}
-          >
-            <ScrollArea className={cn(
-              "pr-2",
-              isTvMode ? "h-[calc(100vh-280px)]" : "h-[calc(100vh-350px)]"
-            )}>
-              <div className="space-y-3">
-                {column.containers.map((container, index) => (
-                  <KanbanCard
-                    key={container.id}
-                    container={container}
-                    index={index}
-                    isTvMode={isTvMode}
-                  />
-                ))}
-                {provided.placeholder}
+      <div className={cn(
+        "flex-1 p-3 rounded-b-xl",
+        isTvMode && "p-4"
+      )}>
+        <ScrollArea className={cn(
+          "pr-2",
+          isTvMode ? "h-[calc(100vh-280px)]" : "h-[calc(100vh-350px)]"
+        )}>
+          <div className="space-y-3">
+            {column.containers.map((container) => (
+              <KanbanCard
+                key={container.id}
+                container={container}
+                isTvMode={isTvMode}
+              />
+            ))}
 
-                {column.containers.length === 0 && (
-                  <div className={cn(
-                    "flex flex-col items-center justify-center py-12 text-gray-400",
-                    isTvMode && "py-16"
-                  )}>
-                    <Package className={cn(
-                      "h-12 w-12 mb-3 opacity-50",
-                      isTvMode && "h-16 w-16 mb-4"
-                    )} />
-                    <p className={cn(
-                      "text-sm",
-                      isTvMode && "text-base"
-                    )}>
-                      Nenhum container
-                    </p>
-                  </div>
-                )}
+            {column.containers.length === 0 && (
+              <div className={cn(
+                "flex flex-col items-center justify-center py-12 text-gray-400",
+                isTvMode && "py-16"
+              )}>
+                <Package className={cn(
+                  "h-12 w-12 mb-3 opacity-50",
+                  isTvMode && "h-16 w-16 mb-4"
+                )} />
+                <p className={cn(
+                  "text-sm",
+                  isTvMode && "text-base"
+                )}>
+                  Nenhum container
+                </p>
               </div>
-            </ScrollArea>
+            )}
           </div>
-        )}
-      </Droppable>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
