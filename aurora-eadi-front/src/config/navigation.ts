@@ -339,7 +339,7 @@ export const navigationContexts: NavigationContext[] = [
 
   // Navegação para a página de Armazém
   {
-    basePath: '/armazem',
+    basePath: '/dashboard',
     items: [
       {
         label: 'Home',
@@ -349,13 +349,13 @@ export const navigationContexts: NavigationContext[] = [
       {
         label: 'Armazém',
         icon: Package,
-        path: '/armazem',
+        path: '/dashboard',
         isGroup: true,
         children: [
           {
             label: 'Kanban Containers',
             icon: Kanban,
-            path: '/armazem/kanban',
+            path: '/dashboard/kanban',
           },
         ],
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { KanbanFilters as KanbanFiltersType, ContainerType } from "@/types";
+import { KanbanFilters as KanbanFiltersType, ContainerType, ContainerStatus } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,44 +11,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Search,
   Filter,
   X,
   Tv,
   Minimize2,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface KanbanFiltersProps {
   filters: KanbanFiltersType;
   setFilters: React.Dispatch<React.SetStateAction<KanbanFiltersType>>;
-  clients: string[];
+  companies: string[];
+  documentos: string[];
+  entradas: string[];
   onReset: () => void;
   isTvMode: boolean;
   onToggleTvMode: () => void;
   onRefresh: () => void;
   totalContainers: number;
+  isRefreshing?: boolean;
 }
 
 export function KanbanFilters({
   filters,
   setFilters,
-  clients,
+  companies,
+  documentos,
+  entradas,
   onReset,
   isTvMode,
   onToggleTvMode,
   onRefresh,
-  totalContainers
+  totalContainers,
+  isRefreshing = false
 }: KanbanFiltersProps) {
   const hasActiveFilters =
     filters.search ||
+    filters.entryNumbers.length > 0 ||
+    filters.documento ||
     filters.containerType ||
-    filters.client ||
+    filters.status ||
+    filters.company ||
     filters.dateFrom ||
-    filters.dateTo ||
-    filters.priority;
+    filters.dateTo;
+
+  const entryOptions = entradas.map((entry) => ({
+    value: entry,
+    label: entry,
+  }));
+
+  const statusLabels: Record<ContainerStatus, string> = {
+    [ContainerStatus.FULL]: "Cheio",
+    [ContainerStatus.IN_PROCESS]: "Processando",
+    [ContainerStatus.EMPTY]: "Liberado",
+  };
 
   const handleFilterChange = (key: keyof KanbanFiltersType, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -63,13 +84,13 @@ export function KanbanFilters({
         {/* Search */}
         <div className="flex-1 min-w-[200px]">
           <Label htmlFor="search" className="text-xs text-gray-500 mb-1.5 block">
-            Buscar Container / BL / DI
+            Buscar Container / Placa
           </Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               id="search"
-              placeholder="MSKU1234567, BL, DI..."
+              placeholder="MSKU1234567, ABC-1234..."
               value={filters.search}
               onChange={(e) => handleFilterChange("search", e.target.value)}
               className={cn(
@@ -80,10 +101,49 @@ export function KanbanFilters({
           </div>
         </div>
 
+        {/* Entrada */}
+        <div className="min-w-[160px]">
+          <Label className="text-xs text-gray-500 mb-1.5 block">
+            Entrada
+          </Label>
+          <MultiSelect
+            options={entryOptions}
+            selected={filters.entryNumbers}
+            onChange={(selected) => setFilters(prev => ({ ...prev, entryNumbers: selected }))}
+            placeholder="Selecione..."
+            searchPlaceholder="Buscar entrada..."
+            emptyMessage="Nenhuma entrada encontrada."
+            className={cn(isTvMode && "h-12 text-lg")}
+          />
+        </div>
+
+        {/* Documento */}
+        <div className="min-w-[140px]">
+          <Label className="text-xs text-gray-500 mb-1.5 block">
+            Documento
+          </Label>
+          <Select
+            value={filters.documento}
+            onValueChange={(value) => handleFilterChange("documento", value)}
+          >
+            <SelectTrigger className={cn(isTvMode && "h-12 text-lg")}>
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {documentos.map((doc) => (
+                <SelectItem key={doc} value={doc}>
+                  {doc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Container Type */}
         <div className="min-w-[160px]">
           <Label className="text-xs text-gray-500 mb-1.5 block">
-            Tipo Container
+            Tipo de Entrada
           </Label>
           <Select
             value={filters.containerType}
@@ -103,47 +163,48 @@ export function KanbanFilters({
           </Select>
         </div>
 
-        {/* Client */}
-        <div className="min-w-[200px]">
+        {/* Status */}
+        <div className="min-w-[160px]">
           <Label className="text-xs text-gray-500 mb-1.5 block">
-            Cliente
+            Status
           </Label>
           <Select
-            value={filters.client}
-            onValueChange={(value) => handleFilterChange("client", value)}
+            value={filters.status}
+            onValueChange={(value) => handleFilterChange("status", value)}
           >
             <SelectTrigger className={cn(isTvMode && "h-12 text-lg")}>
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              {clients.map((client) => (
-                <SelectItem key={client} value={client}>
-                  {client}
+              {Object.values(ContainerStatus).map((status) => (
+                <SelectItem key={status} value={status}>
+                  {statusLabels[status]}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Priority */}
-        <div className="min-w-[140px]">
+        {/* Company */}
+        <div className="min-w-[200px]">
           <Label className="text-xs text-gray-500 mb-1.5 block">
-            Prioridade
+            Empresa
           </Label>
           <Select
-            value={filters.priority}
-            onValueChange={(value) => handleFilterChange("priority", value)}
+            value={filters.company}
+            onValueChange={(value) => handleFilterChange("company", value)}
           >
             <SelectTrigger className={cn(isTvMode && "h-12 text-lg")}>
               <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="urgent">Urgente</SelectItem>
-              <SelectItem value="high">Alta</SelectItem>
-              <SelectItem value="medium">Media</SelectItem>
-              <SelectItem value="low">Baixa</SelectItem>
+              {companies.map((company) => (
+                <SelectItem key={company} value={company}>
+                  {company}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -151,7 +212,7 @@ export function KanbanFilters({
         {/* Date From */}
         <div className="min-w-[150px]">
           <Label className="text-xs text-gray-500 mb-1.5 block">
-            Data Chegada De
+            Data Entrada De
           </Label>
           <Input
             type="date"
@@ -164,7 +225,7 @@ export function KanbanFilters({
         {/* Date To */}
         <div className="min-w-[150px]">
           <Label className="text-xs text-gray-500 mb-1.5 block">
-            Data Chegada Ate
+            Data Entrada Ate
           </Label>
           <Input
             type="date"
@@ -192,10 +253,15 @@ export function KanbanFilters({
             variant="outline"
             size={isTvMode ? "lg" : "default"}
             onClick={onRefresh}
+            disabled={isRefreshing}
             className="gap-2"
           >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {isRefreshing ? "Atualizando..." : "Atualizar"}
           </Button>
 
           <Button
