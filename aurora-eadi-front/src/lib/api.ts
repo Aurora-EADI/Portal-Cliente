@@ -17,22 +17,30 @@ export const api = axios.create({
 
 // Controle de estado para evitar múltiplas renovações simultâneas
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+
+// Fila de requisições aguardando renovação do token
+// Armazena as funções resolve/reject das Promises pausadas
+type QueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+};
+
+let failedQueue: QueueItem[] = [];
 
 /**
- * Adiciona callback para ser executado quando o token for renovado
+ * Adiciona requisição à fila de espera
  */
-function subscribeTokenRefresh(callback: (token: string) => void): void {
-  refreshSubscribers.push(callback);
-}
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
 
-/**
- * Notifica todos os callbacks aguardando pela renovação do token
- */
-function onTokenRefreshed(token: string): void {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-}
+  failedQueue = [];
+};
 
 /**
  * REQUEST INTERCEPTOR
@@ -64,14 +72,19 @@ api.interceptors.request.use(
 
     // Verifica se o token está expirado
     if (isTokenExpired(token)) {
+      // Se já houver um refresh em andamento, enfileira esta requisição
       if (isRefreshing) {
-        // Já está renovando, aguarda renovação
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((newToken: string) => {
-            if (config.headers) {
-              config.headers.Authorization = `Bearer ${newToken}`;
-            }
-            resolve(config);
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (newToken: string) => {
+              if (config.headers) {
+                config.headers.Authorization = `Bearer ${newToken}`;
+              }
+              resolve(config);
+            },
+            reject: (err) => {
+              reject(err);
+            },
           });
         });
       }
@@ -88,26 +101,22 @@ api.interceptors.request.use(
             config.headers.Authorization = `Bearer ${newToken}`;
           }
 
-          // Notifica requisições pendentes
-          onTokenRefreshed(newToken);
+          // Processa a fila com sucesso
+          processQueue(null, newToken);
           isRefreshing = false;
 
           return config;
         } else {
-          // Renovação falhou, limpa tudo e redireciona
-          isRefreshing = false;
-          clearAllAuthData();
-
-          const currentPath = window.location.pathname;
-          if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-            window.location.href = '/session-expired';
-          }
-
-          return Promise.reject(new Error('Token expirado e renovação falhou'));
+          // Renovação falhou
+          throw new Error('Falha ao renovar token');
         }
       } catch (error) {
         // Erro na renovação
         isRefreshing = false;
+
+        // Rejeita todas as requisições na fila
+        processQueue(error, null);
+
         clearAllAuthData();
 
         const currentPath = window.location.pathname;
@@ -149,44 +158,64 @@ api.interceptors.response.use(
       requestUrl.includes('/auth/register') ||
       requestUrl.includes('/auth/refresh');
 
-    if (status === 401 && !isPublicRoute) {
-      // Tenta renovar token uma vez
-      if (!originalRequest._retry) {
-        originalRequest._retry = true;
+    if (status === 401 && !isPublicRoute && !originalRequest._retry) {
+      // Marca como retry para não entrar em loop infinito
+      originalRequest._retry = true;
 
-        try {
-          const newToken = await refreshAccessToken();
-
-          if (newToken && originalRequest.headers) {
-            // Atualiza header da requisição original
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-            // Retry da requisição original
-            return api(originalRequest);
-          }
-        } catch (refreshError) {
-          // Renovação falhou, limpa tudo
-          clearAllAuthData();
-
-          if (typeof window !== 'undefined') {
-            const currentPath = window.location.pathname;
-            if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-              window.location.href = '/session-expired';
-            }
-          }
-
-          return Promise.reject(refreshError);
-        }
+      if (isRefreshing) {
+        // Se já está renovando, adiciona à fila e aguarda
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (newToken: string) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              }
+              // Refaz a requisição original
+              resolve(api(originalRequest));
+            },
+            reject: (err) => {
+              reject(err);
+            },
+          });
+        });
       }
 
-      // Já tentou renovar e falhou, limpa tudo
-      clearAllAuthData();
+      isRefreshing = true;
 
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-          window.location.href = '/session-expired';
+      try {
+        const newToken = await refreshAccessToken();
+
+        if (newToken) {
+          // Atualiza header da requisição original
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
+
+          // Processa fila de requisições pendentes
+          processQueue(null, newToken);
+          isRefreshing = false;
+
+          // Retry da requisição original
+          return api(originalRequest);
+        } else {
+          throw new Error('Refresh token falhou');
         }
+      } catch (refreshError) {
+        isRefreshing = false;
+
+        // Rejeita fila
+        processQueue(refreshError, null);
+
+        clearAllAuthData();
+
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+            window.location.href = '/session-expired';
+          }
+        }
+
+        return Promise.reject(refreshError);
       }
     }
 

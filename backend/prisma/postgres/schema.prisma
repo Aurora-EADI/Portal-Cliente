@@ -10,52 +10,46 @@ datasource db {
 }
 
 model Company {
-  id                     String                       @id @default(uuid())
-  cnpj                   String                       @unique
-  fantasyName            String
-  socialReason           String
-  zipCode                String
-  address                String
-  number                 String
-  complement             String?
-  neighborhood           String
-  city                   String
-  state                  String
-  phone                  String
-  status                 CompanyStatus                @default(PENDING)
-  createdAt              DateTime                     @default(now())
-  updatedAt              DateTime                     @updatedAt
-  businessClassification BusinessClassification?
-  eadiRegime             EadiRegime?
-  statusChangedAt        DateTime?
-  statusReason           String?
-  documentRequirements   CompanyDocumentRequirement[]
-  company_supplier_types company_supplier_types[]
-  documents              Document[]
-  third_parties          third_parties[]
-  users                  User[]
+  id              String        @id @default(uuid())
+  cnpj            String        @unique
+  fantasyName     String
+  socialReason    String
+  zipCode         String
+  address         String
+  number          String
+  complement      String?
+  neighborhood    String
+  city            String
+  state           String
+  phone           String
+  status          CompanyStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  statusChangedAt DateTime?
+  statusReason    String?
+  documents       Document[]
+  users           User[]
 
   @@map("companies")
 }
 
 model User {
-  id                    String                  @id @default(uuid())
-  name                  String
-  email                 String                  @unique
-  password              String
-  role                  UserRole
-  companyId             String?
-  position              String?
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  AirSimulationVersion  AirSimulationVersion[]  @relation("UserAirSimulationVersions")
-  documents             Document[]
-  serviceCosts          ServiceCost[]
-  simulationVersions    SimulationVersion[]     @relation("UserSimulationVersions")
-  third_party_documents third_party_documents[]
-  moduleAccess          UserModuleAccess[]
-  tokens                UserToken[]
-  company               Company?                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id           String             @id @default(uuid())
+  name         String
+  email        String             @unique
+  password     String
+  role         UserRole
+  companyId    String?
+  position     String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  documents            Document[]
+  serviceCosts         ServiceCost[]
+  simulationVersions   SimulationVersion[]      @relation("UserSimulationVersions")
+  AirSimulationVersion AirSimulationVersion[]   @relation("UserAirSimulationVersions")
+  moduleAccess         UserModuleAccess[]
+  tokens               UserToken[]
+  company              Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -103,37 +97,18 @@ model Document {
 }
 
 model DocumentType {
-  id                                  Int                                   @id @default(autoincrement())
-  name                                String                                @unique
-  description                         String?
-  active                              Boolean                               @default(true)
-  createdAt                           DateTime                              @default(now())
-  updatedAt                           DateTime                              @updatedAt
-  acceptsPositiveCertificate          Boolean                               @default(false)
-  frequency                           DocumentFrequency                     @default(UNICO)
-  hasExpirationControl                Boolean                               @default(false)
-  companyRequirements                 CompanyDocumentRequirement[]
-  documents                           Document[]
-  supplier_type_document_requirements supplier_type_document_requirements[]
-  third_party_documents               third_party_documents[]
+  id                         Int               @id @default(autoincrement())
+  name                       String            @unique
+  description                String?
+  active                     Boolean           @default(true)
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  acceptsPositiveCertificate Boolean           @default(false)
+  frequency                  DocumentFrequency @default(UNICO)
+  hasExpirationControl       Boolean           @default(false)
+  documents                  Document[]
 
   @@map("document_types")
-}
-
-model CompanyDocumentRequirement {
-  id              Int                     @id @default(autoincrement())
-  companyId       String
-  documentTypeId  Int
-  isRequired      Boolean                 @default(true)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  isAutomatic     Boolean                 @default(false)
-  requirementType DocumentRequirementType @default(IMPEDITIVO)
-  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  documentType    DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([companyId, documentTypeId])
-  @@map("company_document_requirements")
 }
 
 model Permission {
@@ -326,6 +301,7 @@ model SimulationVersion {
   totalGeneral     Decimal             @default(0) @db.Decimal(15, 2)
   hasStripping     Boolean             @default(false)
   minBillingValue  Decimal             @default(5500) @db.Decimal(10, 2)
+  auroraPeriods    Int                 @default(1)
   createdBy        String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
@@ -410,6 +386,8 @@ model AirSimulationVersion {
   totalServices    Decimal                @default(0) @db.Decimal(15, 2)
   totalGeneral     Decimal                @default(0) @db.Decimal(15, 2)
   minBillingValue  Decimal                @default(350) @db.Decimal(10, 2)
+  auroraPeriods    Int                    @default(1)
+  vinciPeriods     Int                    @default(1)
   createdBy        String
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
@@ -439,76 +417,6 @@ model AirSimulationService {
 
   @@unique([versionId, serviceId])
   @@map("air_simulation_services")
-}
-
-model company_supplier_types {
-  companyId      String
-  supplierTypeId Int
-  createdAt      DateTime       @default(now())
-  companies      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier_types supplier_types @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
-
-  @@id([companyId, supplierTypeId])
-}
-
-model supplier_type_document_requirements {
-  id              Int                     @id @default(autoincrement())
-  supplierTypeId  Int
-  documentTypeId  Int
-  requirementType DocumentRequirementType @default(IMPEDITIVO)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime
-  document_types  DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-  supplier_types  supplier_types          @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([supplierTypeId, documentTypeId])
-}
-
-model supplier_types {
-  id                                  Int                                   @id @default(autoincrement())
-  name                                String                                @unique
-  description                         String?
-  active                              Boolean                               @default(true)
-  createdAt                           DateTime                              @default(now())
-  updatedAt                           DateTime
-  company_supplier_types              company_supplier_types[]
-  supplier_type_document_requirements supplier_type_document_requirements[]
-}
-
-model third_parties {
-  id                    String                  @id
-  companyId             String
-  name                  String
-  cpf                   String
-  birthDate             DateTime
-  position              String
-  status                ThirdPartyStatus        @default(ACTIVE)
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime
-  companies             Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  third_party_documents third_party_documents[]
-
-  @@unique([companyId, cpf])
-}
-
-model third_party_documents {
-  id              String         @id
-  thirdPartyId    String
-  name            String
-  fileType        String
-  fileUrl         String
-  status          DocumentStatus @default(PENDING)
-  rejectionReason String?
-  uploadedAt      DateTime       @default(now())
-  updatedAt       DateTime
-  dateIssue       DateTime?
-  dateExpiration  DateTime?
-  documentTypeId  Int?
-  isLatest        Boolean        @default(true)
-  uploadedBy      String
-  document_types  DocumentType?  @relation(fields: [documentTypeId], references: [id])
-  third_parties   third_parties  @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
-  users           User           @relation(fields: [uploadedBy], references: [id])
 }
 
 enum UserRole {
@@ -568,33 +476,6 @@ enum AirServiceCalculationType {
   FIXED
   PERCENTAGE_CIF
   PER_KG
-  PER_TONNE
-}
-
-enum ServiceModal {
-  AIR
-  MARITIME
-  BOTH
-}
-
-enum BusinessClassification {
-  MEI
-  ME
-  EPP
-  EIRELI
-  LTDA
-  SA
-  OUTROS
-}
-
-enum DocumentRequirementType {
-  IMPEDITIVO
-  PENDENCIA
-}
-
-enum EadiRegime {
-  SEM_ALOCACAO
-  COM_ALOCACAO_INTEGRAL
 }
 
 enum DocumentFrequency {
@@ -605,7 +486,8 @@ enum DocumentFrequency {
   ANUAL
 }
 
-enum ThirdPartyStatus {
-  ACTIVE
-  INACTIVE
+enum ServiceModal {
+  MARITIME
+  AIR
+  BOTH
 }

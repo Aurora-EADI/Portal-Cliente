@@ -10,3 +10,4 @@ export * from './service';
 export * from './simulation';
 export * from './air-simulation';
 export * from './customer';
+export * from './container-kanban';

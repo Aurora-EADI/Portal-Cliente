@@ -62,6 +62,11 @@ export class CreateSimulationDto {
   minBillingValue?: number;
 
   @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  auroraPeriods?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AddSimulationServiceDto)

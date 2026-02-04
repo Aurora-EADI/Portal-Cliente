@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsArray,
   ValidateNested,
+  IsInt,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { AddAirSimulationServiceDto } from "./add-air-simulation-service.dto";
@@ -56,6 +57,16 @@ export class CreateAirSimulationDto {
   @IsNumber()
   @Type(() => Number)
   minBillingValue?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  auroraPeriods?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  vinciPeriods?: number;
 
   @IsOptional()
   @IsArray()

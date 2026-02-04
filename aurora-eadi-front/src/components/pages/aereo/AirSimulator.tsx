@@ -78,6 +78,8 @@ export function AirSimulator() {
   const [storageRate, setStorageRate] = useState<string>('0.35');
   const [discount, setDiscount] = useState<string>('0');
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
+  const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
+  const [vinciPeriods, setVinciPeriods] = useState<string>('1');
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -153,9 +155,9 @@ export function AirSimulator() {
 
   // Calculate costs based on rates
   const calculatedStorageCost = useMemo(() => {
-    const rate = parseNumberBR(storageRate);
+    const rate = 0.35 * (parseInt(auroraPeriods) || 1);
     return (rate / 100) * (cifBrlNum || 0);
-  }, [storageRate, cifBrlNum]);
+  }, [auroraPeriods, cifBrlNum]);
 
   // Calculate Capatazia cost
   const calculatedCapataziaCost = useMemo(() => {
@@ -216,6 +218,8 @@ export function AirSimulator() {
 
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
       setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
+      setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
+      setVinciPeriods(currentSimulation.vinciPeriods?.toString() || '1');
     }
   }, [currentSimulation]);
 
@@ -266,6 +270,8 @@ export function AirSimulator() {
           capataziaCost: calculatedCapataziaCost,
           discount: parseNumberBR(discount),
           minBillingValue: parseNumberBR(minBillingValue),
+          auroraPeriods: parseInt(auroraPeriods) || 1,
+          vinciPeriods: parseInt(vinciPeriods) || 1,
           initialServices: localServices,
         });
 
@@ -286,6 +292,8 @@ export function AirSimulator() {
             capataziaCost: calculatedCapataziaCost,
             discount: parseNumberBR(discount),
             minBillingValue: parseNumberBR(minBillingValue),
+            auroraPeriods: parseInt(auroraPeriods) || 1,
+            vinciPeriods: parseInt(vinciPeriods) || 1,
           },
         });
         toast.success('Simulação aérea atualizada com sucesso!');
@@ -333,6 +341,8 @@ export function AirSimulator() {
         capataziaCost: calculatedCapataziaCost,
         discount: parseNumberBR(discount),
         minBillingValue: parseNumberBR(minBillingValue),
+        auroraPeriods: parseInt(auroraPeriods) || 1,
+        vinciPeriods: parseInt(vinciPeriods) || 1,
       });
 
       setCurrentSimulationId(newVersion.id);
@@ -626,20 +636,19 @@ export function AirSimulator() {
                     </div>
                   </div>
 
-                  {/* Row 4: Storage */}
+                  {/* Row 4: Storage Periods */}
                   <div className="space-y-2">
-                    <Label htmlFor="storageRate">Armazenagem (%)</Label>
+                    <Label htmlFor="auroraPeriods">Períodos Aurora (10 dias cada)</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input
-                          id="storageRate"
-                          value={storageRate}
-                          onChange={(e) => setStorageRate(e.target.value)}
-                          onBlur={(e) => setStorageRate(formatNumberBR(parseNumberBR(e.target.value), 4))}
+                          id="auroraPeriods"
+                          type="number"
+                          min="1"
+                          value={auroraPeriods}
+                          onChange={(e) => setAuroraPeriods(e.target.value)}
                           disabled={!isEditable}
-                          className="pr-8"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                       </div>
                       <div className="relative flex-[1.5]">
                         <Input
@@ -649,6 +658,20 @@ export function AirSimulator() {
                         />
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="vinciPeriods">Períodos Vinci </Label>
+                    <div className="relative">
+                      <Input
+                        id="vinciPeriods"
+                        type="number"
+                        min="1"
+                        value={vinciPeriods}
+                        onChange={(e) => setVinciPeriods(e.target.value)}
+                        disabled={!isEditable}
+                      />
                     </div>
                   </div>
 

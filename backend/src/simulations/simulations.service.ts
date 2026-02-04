@@ -84,6 +84,7 @@ export class SimulationsService {
             transportCost: new Prisma.Decimal(0),
             discount: new Prisma.Decimal(createSimulationDto.discount || 0),
             hasStripping: createSimulationDto.hasStripping || false,
+            auroraPeriods: createSimulationDto.auroraPeriods ?? 1,
             minBillingValue: new Prisma.Decimal(
               createSimulationDto.minBillingValue || 5500,
             ),
@@ -198,6 +199,7 @@ export class SimulationsService {
           transportCost: new Prisma.Decimal(0),
           discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
           hasStripping: createNewVersionDto.hasStripping || false,
+          auroraPeriods: createNewVersionDto.auroraPeriods ?? baseVersion.auroraPeriods,
           minBillingValue: new Prisma.Decimal(
             createNewVersionDto.minBillingValue || 5500,
           ),
@@ -337,6 +339,7 @@ export class SimulationsService {
       totalServices: version.totalServices,
       totalGeneral: version.totalGeneral,
       hasStripping: version.hasStripping,
+      auroraPeriods: version.auroraPeriods,
       minBillingValue: version.minBillingValue,
       createdBy: version.createdBy,
       createdAt: version.createdAt,
@@ -428,6 +431,9 @@ export class SimulationsService {
       updateData.minBillingValue = new Prisma.Decimal(
         updateSimulationDto.minBillingValue,
       );
+    }
+    if (updateSimulationDto.auroraPeriods !== undefined) {
+      updateData.auroraPeriods = updateSimulationDto.auroraPeriods;
     }
 
     // Recalcula CIF BRL
