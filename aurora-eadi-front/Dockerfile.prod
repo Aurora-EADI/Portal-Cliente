@@ -17,8 +17,8 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-# Configurar npm ANTES de copiar package.json
-RUN npm config set registry https://registry.npmmirror.com \
+# Configurar npm
+RUN npm config set registry https://registry.npmjs.org \
  && npm config set maxsockets 3 \
  && npm config set fetch-retries 10 \
  && npm config set fetch-retry-mintimeout 30000 \
@@ -29,21 +29,19 @@ RUN npm config set registry https://registry.npmmirror.com \
 # Copiar manifests
 COPY package*.json ./
 
-# Instalar dependências com retry manual
-RUN npm ci || npm ci || npm ci
+# Instalar dependências
+RUN npm ci --verbose
 
 # Copiar código
 COPY . .
 
+# Build args
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_API_KEY
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-<<<<<<< HEAD
-=======
-ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 
-# Desabilitar telemetria do Next.js
->>>>>>> develop
+# Environment variables
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
@@ -67,14 +65,14 @@ ENV NO_PROXY=${NO_PROXY}
 
 COPY package*.json ./
 
-RUN npm config set registry https://registry.npmmirror.com \
+RUN npm config set registry https://registry.npmjs.org \
  && npm config set maxsockets 3 \
  && npm config set fetch-retries 10 \
  && npm config set fetch-retry-mintimeout 30000 \
  && npm config set fetch-retry-maxtimeout 180000 \
  && npm config set fetch-timeout 900000 \
  && npm config set strict-ssl false \
- && (npm ci --omit=dev || npm ci --omit=dev || npm ci --omit=dev)
+ && npm ci --omit=dev --verbose
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public

@@ -412,8 +412,6 @@ export const supplierRequirementsService = {
     }
   },
 };
-<<<<<<< HEAD
-=======
 
 /**
  * Serviço de clientes
@@ -640,4 +638,3 @@ export const serviceService = {
     }
   },
 };
->>>>>>> develop
