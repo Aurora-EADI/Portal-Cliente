@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { IconWithTooltip } from '../ui/utils/icon-with-tooltip';
 import { companyService } from '@/services/api';
 import { useMutation } from '@tanstack/react-query';
+import { formatCNPJ } from '@/lib/utils';
 
 export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> = ({ setView }) => {
   const { mutate: register, isPending: isRegisterLoading } = useRegister();
@@ -43,18 +44,6 @@ export const Register: React.FC<{ setView: (v: 'login' | 'register') => void }> 
   const [state, setState] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Função para formatar CNPJ
-  const formatCNPJ = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 14) {
-      return numbers
-        .replace(/^(\d{2})(\d)/, '$1.$2')
-        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-        .replace(/\.(\d{3})(\d)/, '.$1/$2')
-        .replace(/(\d{4})(\d)/, '$1-$2');
-    }
-    return value;
-  };
 
   // Cleanup do timeout ao desmontar
   useEffect(() => {

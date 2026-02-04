@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, User as UserIcon, CheckCircle, Lock } from 'lucid
 import { useRouter } from 'next/navigation';
 import { useRegister } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { formatCNPJ } from '@/lib/utils';
 
 export function RegisterCompanies() {
   const router = useRouter();
@@ -201,14 +202,15 @@ export function RegisterCompanies() {
                       CNPJ
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input
-                      required
-                      value={cnpj}
-                      onChange={e => setCnpj(e.target.value)}
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                      placeholder="00.000.000/0000-00"
-                    />
+                      <input
+                        required
+                        value={cnpj}
+                        onChange={e => setCnpj(formatCNPJ(e.target.value))}
+                        type="text"
+                        maxLength={18}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        placeholder="00.000.000/0000-00"
+                      />
                   </div>
 
                   <div>

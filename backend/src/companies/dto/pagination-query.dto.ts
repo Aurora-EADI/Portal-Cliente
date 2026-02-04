@@ -1,5 +1,5 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from "class-validator";
+import { Type } from "class-transformer";
 
 export class PaginationQueryDto {
   @IsOptional()
@@ -21,11 +21,11 @@ export class PaginationQueryDto {
 
   @IsOptional()
   @IsString()
-  sortBy?: string = 'createdAt';
+  sortBy?: string = "createdAt";
 
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  @IsEnum(["asc", "desc"])
+  sortOrder?: "asc" | "desc" = "desc";
 
   @IsOptional()
   @IsString()

@@ -1,22 +1,25 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { SqlServerService } from 'src/prisma/sqlserver.service';
-import { TypeDetailedBilling } from './type/DetailedBilling.type'
-import { TypeBillingCutOff } from './type/BillingCutOff.type';
+import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { SqlServerService } from "src/prisma/sqlserver.service";
+import { TypeDetailedBilling } from "./type/DetailedBilling.type";
+import { TypeBillingCutOff } from "./type/BillingCutOff.type";
 
 @Injectable()
 export class FaturamentoService {
-  constructor(private sqlServer: SqlServerService) { }
+  constructor(private sqlServer: SqlServerService) {}
 
   private checkSqlServerConnection() {
     if (!this.sqlServer.isConnected()) {
       throw new HttpException(
-        'SQL Server (Siaum) not available. Legacy billing data is currently unavailable.',
-        HttpStatus.SERVICE_UNAVAILABLE
+        "SQL Server (Siaum) not available. Legacy billing data is currently unavailable.",
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
   }
 
-  async findAll(dataInicio?: Date, dataFim?: Date): Promise<TypeDetailedBilling[]> {
+  async findAll(
+    dataInicio?: Date,
+    dataFim?: Date,
+  ): Promise<TypeDetailedBilling[]> {
     this.checkSqlServerConnection();
 
     const toSqlString = (d?: Date) => {
@@ -43,8 +46,6 @@ export class FaturamentoService {
       );
     `;
 
-
-
     // const query = `
     //         SELECT *
     //   FROM dbo.fnConsulta_Faturamento_Por_Periodo(
@@ -54,7 +55,7 @@ export class FaturamentoService {
     //   WHERE NOT (
     //       dt_entrada IS NULL
     //       AND CAST(
-    //           REPLACE(REPLACE(valor_cif, '.', ''), ',', '.') 
+    //           REPLACE(REPLACE(valor_cif, '.', ''), ',', '.')
     //           AS DECIMAL(18,2)
     //       ) = 0
     //   );
@@ -66,7 +67,8 @@ export class FaturamentoService {
   async getDetailBillingCutOff() {
     this.checkSqlServerConnection();
 
-    return this.sqlServer.executeProcedure<TypeBillingCutOff>('stpRelatorio_Servicos_Pivot');
+    return this.sqlServer.executeProcedure<TypeBillingCutOff>(
+      "stpRelatorio_Servicos_Pivot",
+    );
   }
-
 }

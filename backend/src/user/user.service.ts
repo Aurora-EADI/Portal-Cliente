@@ -4,30 +4,33 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UserQueryDto } from './dto/user-query.dto';
-import * as bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client-postgres';
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { UserQueryDto } from "./dto/user-query.dto";
+import * as bcrypt from "bcrypt";
+import { UserRole } from "@prisma/client-postgres";
 import {
   UserActivityResponse,
   UserPermissionResponse,
   UserPermissionsResult,
-} from './types/user-responses.type';
+} from "./types/user-responses.type";
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
     const { name, email, password, role, companyId, position } = createUserDto;
 
     // Validação: SUPPLIER e EMPLOYEE precisam de companyId
-    if ((role === UserRole.SUPPLIER || role === UserRole.EMPLOYEE) && !companyId) {
+    if (
+      (role === UserRole.SUPPLIER || role === UserRole.EMPLOYEE) &&
+      !companyId
+    ) {
       throw new BadRequestException(
-        'companyId é obrigatório para SUPPLIER e EMPLOYEE',
+        "companyId é obrigatório para SUPPLIER e EMPLOYEE",
       );
     }
 
@@ -37,7 +40,7 @@ export class UsersService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email já cadastrado');
+      throw new ConflictException("Email já cadastrado");
     }
 
     // Verifica se a empresa existe (se companyId foi fornecido)
@@ -47,7 +50,7 @@ export class UsersService {
       });
 
       if (!company) {
-        throw new NotFoundException('Empresa não encontrada');
+        throw new NotFoundException("Empresa não encontrada");
       }
     }
 
@@ -85,8 +88,8 @@ export class UsersService {
       page = 1,
       limit = 10,
       search,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
+      sortBy = "createdAt",
+      sortOrder = "desc",
       role,
       roles,
     } = query;
@@ -107,8 +110,8 @@ export class UsersService {
     // Search by name or email
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -183,7 +186,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     // Remove a senha da resposta
@@ -198,7 +201,7 @@ export class UsersService {
     });
 
     if (!existingUser) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     const { email, password, role, ...restDto } = updateUserDto;
@@ -210,7 +213,7 @@ export class UsersService {
       });
 
       if (emailInUse) {
-        throw new ConflictException('Email já está em uso');
+        throw new ConflictException("Email já está em uso");
       }
     }
 
@@ -257,7 +260,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     // CRÍTICO: Verificar se há documentos vinculados
@@ -265,7 +268,7 @@ export class UsersService {
     if (user.documents.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar usuário com ${user.documents.length} documento(s) vinculado(s). ` +
-        `Os documentos pertencem à empresa e devem ser reatribuídos antes da deleção do usuário.`,
+          `Os documentos pertencem à empresa e devem ser reatribuídos antes da deleção do usuário.`,
       );
     }
 
@@ -273,7 +276,7 @@ export class UsersService {
     if (user.simulationVersions.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar usuário com ${user.simulationVersions.length} simulação(ões) vinculada(s). ` +
-        `Reatribua as simulações para outro usuário antes de deletar.`,
+          `Reatribua as simulações para outro usuário antes de deletar.`,
       );
     }
 
@@ -281,7 +284,7 @@ export class UsersService {
     if (user.serviceCosts.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar usuário com ${user.serviceCosts.length} alteração(ões) de custo no histórico. ` +
-        `Este histórico é importante para auditoria e não pode ser perdido.`,
+          `Este histórico é importante para auditoria e não pode ser perdido.`,
       );
     }
 
@@ -291,7 +294,7 @@ export class UsersService {
       where: { id },
     });
 
-    return { message: 'Usuário deletado com sucesso' };
+    return { message: "Usuário deletado com sucesso" };
   }
 
   async getUserModules(id: string) {
@@ -301,7 +304,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     // Busca os módulos do usuário
@@ -325,7 +328,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     const moduleAccess = await this.prisma.userModuleAccess.findMany({
@@ -386,7 +389,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException("Usuário não encontrado");
     }
 
     const moduleAccess = await this.prisma.userModuleAccess.findMany({
@@ -441,7 +444,7 @@ export class UsersService {
                 key: ap.permission.key,
                 description: ap.permission.description,
                 category: ap.permission.category,
-                source: 'mandatory_activity',
+                source: "mandatory_activity",
                 activityName: act.name,
                 moduleName: access.module.name,
               });
@@ -459,7 +462,7 @@ export class UsersService {
               key: ap.permission.key,
               description: ap.permission.description,
               category: ap.permission.category,
-              source: 'optional_activity',
+              source: "optional_activity",
               activityName: actAccess.activity.name,
               moduleName: access.module.name,
             });

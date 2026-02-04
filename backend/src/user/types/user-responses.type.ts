@@ -1,4 +1,3 @@
-
 export interface UserActivityResponse {
   id: number;
   name: string;
@@ -13,7 +12,7 @@ export interface UserPermissionResponse {
   key: string;
   description: string | null;
   category: string | null;
-  source: 'mandatory_activity' | 'optional_activity';
+  source: "mandatory_activity" | "optional_activity";
   activityName: string;
   moduleName: string;
 }

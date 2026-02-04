@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCreateCustomer } from '@/hooks/useCustomers';
 import { CreateCustomerDTO } from '@/types';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
+import { formatDocument } from '@/lib/utils';
 import Link from 'next/link';
 
 export function RegisterCustomer() {
@@ -21,7 +22,13 @@ export function RegisterCustomer() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        let finalValue = value;
+        if (name === 'document') {
+            finalValue = formatDocument(value);
+        }
+
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
         // Limpar erro do campo quando o usuário começar a digitar
         if (errors[name as keyof CreateCustomerDTO]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -115,6 +122,7 @@ export function RegisterCustomer() {
                                 name="document"
                                 value={formData.document}
                                 onChange={handleChange}
+                                maxLength={18}
                                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                                     errors.document ? 'border-red-500' : 'border-gray-300'
                                 }`}

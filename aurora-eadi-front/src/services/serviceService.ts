@@ -7,154 +7,90 @@ import {
   CreateServiceCostDto,
 } from '@/types';
 
-/**
- * Serviço de API para gerenciar Serviços do Simulador Marítimo
- */
 export const serviceService = {
   /**
-   * Lista todos os serviços ativos
+   * Mantém o endpoint /services, mas adiciona o filtro 'modal' como opcional
    */
-  getAll: async (includeInactive = false): Promise<Service[]> => {
+  getAll: async (includeInactive = false, modal?: 'AIR' | 'MARITIME' | 'BOTH'): Promise<Service[]> => {
     try {
-      const params = includeInactive ? { includeInactive: 'true' } : {};
+      const params: any = {};
+      if (includeInactive) params.includeInactive = 'true';
+      if (modal) params.modal = modal; // Passa o filtro via query string: /services?modal=AIR
+
       const response = await api.get('/services', { params });
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao buscar serviços';
-
-      if (typeof backendMessage === 'string') {
-        message = backendMessage;
-      } else if (Array.isArray(backendMessage)) {
-        message = backendMessage.join(', ');
-      }
-
-      return Promise.reject(new Error(message));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar serviços'));
     }
   },
 
-  /**
-   * Busca um serviço por ID
-   */
+  // Funções de conveniência que usam o getAll acima (Mais seguro que criar novas URLs)
+  getAirServices: (includeInactive = false) => serviceService.getAll(includeInactive, 'AIR'),
+  getMaritimeServices: (includeInactive = false) => serviceService.getAll(includeInactive, 'MARITIME'),
+
   getById: async (id: string): Promise<Service> => {
     try {
       const response = await api.get(`/services/${id}`);
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao buscar serviço'));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar serviço'));
     }
   },
 
-  /**
-   * Busca o custo vigente de um serviço
-   */
   getCurrentCost: async (id: string): Promise<{ service: any; currentCost: ServiceCost | null }> => {
     try {
       const response = await api.get(`/services/${id}/current-cost`);
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao buscar custo vigente'));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar custo vigente'));
     }
   },
 
-  /**
-   * Cria um novo serviço
-   */
   create: async (data: CreateServiceDto): Promise<Service> => {
     try {
       const response = await api.post('/services', data);
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao criar serviço';
-
-      if (typeof backendMessage === 'string') {
-        message = backendMessage;
-      } else if (Array.isArray(backendMessage)) {
-        message = backendMessage.join(', ');
-      }
-
-      return Promise.reject(new Error(message));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao criar serviço'));
     }
   },
 
-  /**
-   * Atualiza um serviço
-   */
   update: async (id: string, data: UpdateServiceDto): Promise<Service> => {
     try {
       const response = await api.patch(`/services/${id}`, data);
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao atualizar serviço'));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao atualizar serviço'));
     }
   },
 
-  /**
-   * Desativa um serviço (soft delete)
-   */
+  activate: async (id: string): Promise<Service> => {
+    // Tenta ativar via update para ser compatível com qualquer backend
+    return serviceService.update(id, { isActive: true } as any);
+  },
+
   remove: async (id: string): Promise<Service> => {
     try {
       const response = await api.delete(`/services/${id}`);
       return response.data;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao desativar serviço'));
+      return Promise.reject(new Error(error.response?.data?.message || 'Erro ao desativar serviço'));
     }
   },
 };
 
-/**
- * Serviço de API para gerenciar Custos de Serviços
- */
+// Mantendo o serviceCostService intacto (Vital para o seu histórico)
 export const serviceCostService = {
-  /**
-   * Cria um novo custo (marca o anterior como expirado automaticamente)
-   */
   create: async (data: CreateServiceCostDto): Promise<ServiceCost> => {
-    try {
-      const response = await api.post('/service-costs', data);
-      return response.data;
-    } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao criar custo';
-
-      if (typeof backendMessage === 'string') {
-        message = backendMessage;
-      } else if (Array.isArray(backendMessage)) {
-        message = backendMessage.join(', ');
-      }
-
-      return Promise.reject(new Error(message));
-    }
+    const response = await api.post('/service-costs', data);
+    return response.data;
   },
-
-  /**
-   * Busca histórico de custos de um serviço
-   */
   getByService: async (serviceId: string): Promise<ServiceCost[]> => {
-    try {
-      const response = await api.get(`/service-costs/by-service/${serviceId}`);
-      return response.data;
-    } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao buscar histórico de custos'));
-    }
+    const response = await api.get(`/service-costs/by-service/${serviceId}`);
+    return response.data;
   },
-
-  /**
-   * Busca custo vigente de um serviço
-   */
   getCurrent: async (serviceId: string): Promise<ServiceCost> => {
-    try {
-      const response = await api.get(`/service-costs/current/${serviceId}`);
-      return response.data;
-    } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      return Promise.reject(new Error(backendMessage || 'Erro ao buscar custo vigente'));
-    }
-  },
+    const response = await api.get(`/service-costs/current/${serviceId}`);
+    return response.data;
+  }
 };

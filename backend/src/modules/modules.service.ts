@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { CreateModuleDto } from './dto/create-module.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreateModuleDto } from "./dto/create-module.dto";
 
 @Injectable()
 export class ModulesService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async findAll() {
     return this.prisma.module.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       include: {
         activities: {
           include: {
@@ -54,8 +58,8 @@ export class ModulesService {
     if (module.activities.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar módulo com ${module.activities.length} atividade(s) vinculada(s). ` +
-        `Remova ou reatribua as atividades antes de deletar o módulo. ` +
-        `Ou use o campo 'active' para desativar ao invés de deletar.`,
+          `Remova ou reatribua as atividades antes de deletar o módulo. ` +
+          `Ou use o campo 'active' para desativar ao invés de deletar.`,
       );
     }
 
@@ -63,7 +67,7 @@ export class ModulesService {
     if (module.userAccess.length > 0) {
       throw new BadRequestException(
         `Não é possível deletar módulo com ${module.userAccess.length} acesso(s) de usuário(s) configurado(s). ` +
-        `Use o campo 'active' para desativar ao invés de deletar.`,
+          `Use o campo 'active' para desativar ao invés de deletar.`,
       );
     }
 

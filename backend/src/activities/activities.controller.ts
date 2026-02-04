@@ -12,16 +12,16 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client-postgres';
-import { ActivitiesService } from './activities.service';
-import { CreateActivityDto } from './dto/create-activity.dto';
-import { UpdateActivityDto } from './dto/update-activity.dto';
-import { UpdateActivityPermissionsDto } from './dto/update-activity-permissions.dto';
+} from "@nestjs/common";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client-postgres";
+import { ActivitiesService } from "./activities.service";
+import { CreateActivityDto } from "./dto/create-activity.dto";
+import { UpdateActivityDto } from "./dto/update-activity.dto";
+import { UpdateActivityPermissionsDto } from "./dto/update-activity-permissions.dto";
 
-@Controller('activities')
+@Controller("activities")
 @UseGuards(JwtAuthGuard)
 export class ActivitiesController {
   constructor(private readonly activitiesService: ActivitiesService) {}
@@ -34,7 +34,9 @@ export class ActivitiesController {
    */
   @Get()
   @Roles(UserRole.ADMIN)
-  async findAll(@Query('moduleId', new ParseIntPipe({ optional: true })) moduleId?: number) {
+  async findAll(
+    @Query("moduleId", new ParseIntPipe({ optional: true })) moduleId?: number,
+  ) {
     return this.activitiesService.findAll(moduleId);
   }
 
@@ -42,7 +44,7 @@ export class ActivitiesController {
    * GET /activities/without-permissions
    * Lista atividades sem permissões vinculadas
    */
-  @Get('without-permissions')
+  @Get("without-permissions")
   @Roles(UserRole.ADMIN)
   async findWithoutPermissions() {
     return this.activitiesService.findWithoutPermissions();
@@ -52,9 +54,9 @@ export class ActivitiesController {
    * GET /activities/by-category/:category
    * Lista atividades por categoria de permissão
    */
-  @Get('by-category/:category')
+  @Get("by-category/:category")
   @Roles(UserRole.ADMIN)
-  async findByPermissionCategory(@Param('category') category: string) {
+  async findByPermissionCategory(@Param("category") category: string) {
     return this.activitiesService.findByPermissionCategory(category);
   }
 
@@ -62,9 +64,9 @@ export class ActivitiesController {
    * GET /activities/:id
    * Busca uma atividade específica
    */
-  @Get(':id')
+  @Get(":id")
   @Roles(UserRole.ADMIN)
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param("id", ParseIntPipe) id: number) {
     return this.activitiesService.findOne(id);
   }
 
@@ -83,10 +85,10 @@ export class ActivitiesController {
    * PATCH /activities/:id
    * Atualiza uma atividade (nome, módulo, isMandatory)
    */
-  @Patch(':id')
+  @Patch(":id")
   @Roles(UserRole.ADMIN)
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() updateActivityDto: UpdateActivityDto,
   ) {
     return this.activitiesService.update(id, updateActivityDto);
@@ -96,10 +98,10 @@ export class ActivitiesController {
    * PUT /activities/:id/permissions
    * Atualiza as permissões vinculadas (substitui todas)
    */
-  @Put(':id/permissions')
+  @Put(":id/permissions")
   @Roles(UserRole.ADMIN)
   async updatePermissions(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() updatePermissionsDto: UpdateActivityPermissionsDto,
   ) {
     return this.activitiesService.updatePermissions(id, updatePermissionsDto);
@@ -110,10 +112,10 @@ export class ActivitiesController {
    * Remove uma atividade
    * Só permite se não houver usuários com acesso
    */
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param("id", ParseIntPipe) id: number) {
     return this.activitiesService.remove(id);
   }
 }

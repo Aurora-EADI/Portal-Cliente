@@ -24,6 +24,7 @@ import {
   Wrench,
   Database,
   AlertCircle,
+  Calculator,
 } from 'lucide-react';
 import { userModuleAccessService } from '@/services/access/user-module-access.service';
 import { ModuleAccess } from '@/types/access-control';
@@ -49,6 +50,7 @@ const ICON_COMPONENTS: Record<string, React.ElementType> = {
   'Layers': Layers,
   'Wrench': Wrench,
   'Database': Database,
+  'Calculator': Calculator,
 };
 
 export function ModulesPage() {
@@ -152,22 +154,23 @@ export function ModulesPage() {
           {/* Grid de Módulos */}
           {modules.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
-              {modules.map((module) => {
-                const Icon = getModuleIcon(module.icon);
+                  {modules.map((module) => {
 
-                return (
-                  <ModuleCard
-                    key={module.id}
-                    icon={Icon}
-                    title={module.name}
-                    description={module.description}
-                    onClick={() => handleModuleClick(module)}
-                    disabled={false}
-                  />
-                );
-              })}
-            </div>
-          ) : (
+                    const Icon = getModuleIcon(module.icon);
+
+                    return (
+                      <ModuleCard
+                        key={module.id}
+                        icon={Icon}
+                        title={module.name}
+                        description={module.description}
+                        onClick={() => handleModuleClick(module)}
+                        disabled={false}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">

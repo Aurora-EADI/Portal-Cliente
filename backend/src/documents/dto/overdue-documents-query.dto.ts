@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from "class-validator";
+import { Type } from "class-transformer";
 
 export class OverdueDocumentsQueryDto {
   @IsOptional()
@@ -20,12 +20,12 @@ export class OverdueDocumentsQueryDto {
   companyId?: string;
 
   @IsOptional()
-  @IsEnum(['dateExpiration', 'uploadedAt', 'name'])
-  sortBy?: string = 'dateExpiration';
+  @IsEnum(["dateExpiration", "uploadedAt", "name"])
+  sortBy?: string = "dateExpiration";
 
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
-  sortOrder?: 'asc' | 'desc' = 'asc';
+  @IsEnum(["asc", "desc"])
+  sortOrder?: "asc" | "desc" = "asc";
 
   @IsOptional()
   @IsString()

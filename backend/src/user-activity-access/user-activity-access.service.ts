@@ -2,10 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { ToggleActivityDto } from './dto/toggle-activity.dto';
-import { BulkConfigureActivitiesDto } from './dto/bulk-configure-activities.dto';
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { ToggleActivityDto } from "./dto/toggle-activity.dto";
+import { BulkConfigureActivitiesDto } from "./dto/bulk-configure-activities.dto";
 
 @Injectable()
 export class UserActivityAccessService {
@@ -39,7 +39,7 @@ export class UserActivityAccessService {
               },
             },
           },
-          orderBy: { name: 'asc' },
+          orderBy: { name: "asc" },
         },
       },
     });
@@ -71,7 +71,7 @@ export class UserActivityAccessService {
           description: module.description,
         },
         hasModuleAccess: false,
-        message: 'Usuário não tem acesso a este módulo',
+        message: "Usuário não tem acesso a este módulo",
         activities: module.activities.map((activity) => ({
           id: activity.id,
           name: activity.name,
@@ -229,7 +229,7 @@ export class UserActivityAccessService {
     }
 
     return {
-      message: `Atividade "${activity.name}" ${isEnabled ? 'habilitada' : 'desabilitada'} para ${user.name} no módulo "${activity.module.name}"`,
+      message: `Atividade "${activity.name}" ${isEnabled ? "habilitada" : "desabilitada"} para ${user.name} no módulo "${activity.module.name}"`,
       userActivityAccess: {
         id: userActivityAccess.id,
         activityId: userActivityAccess.activityId,
@@ -290,37 +290,42 @@ export class UserActivityAccessService {
       const foundIds = moduleActivities.map((a) => a.id);
       const missingIds = activityIds.filter((id) => !foundIds.includes(id));
       throw new NotFoundException(
-        `Atividades não encontradas no módulo: ${missingIds.join(', ')}`,
+        `Atividades não encontradas no módulo: ${missingIds.join(", ")}`,
       );
     }
 
     // Valida que não está tentando desabilitar atividades obrigatórias
     const invalidAttempts = activities.filter((configActivity) => {
-      const activity = moduleActivities.find((a) => a.id === configActivity.activityId);
+      const activity = moduleActivities.find(
+        (a) => a.id === configActivity.activityId,
+      );
       return activity?.isMandatory && !configActivity.isEnabled;
     });
 
     if (invalidAttempts.length > 0) {
       const invalidIds = invalidAttempts.map((a) => a.activityId);
       throw new BadRequestException(
-        `As seguintes atividades são obrigatórias e não podem ser desabilitadas: ${invalidIds.join(', ')}`,
+        `As seguintes atividades são obrigatórias e não podem ser desabilitadas: ${invalidIds.join(", ")}`,
       );
     }
 
     // Processa cada atividade
     const results = await Promise.all(
       activities.map(async (configActivity) => {
-        const activity = moduleActivities.find((a) => a.id === configActivity.activityId);
+        const activity = moduleActivities.find(
+          (a) => a.id === configActivity.activityId,
+        );
 
         // Busca ou cria o acesso
-        let userActivityAccess = await this.prisma.userActivityAccess.findUnique({
-          where: {
-            userModuleAccessId_activityId: {
-              userModuleAccessId: userModuleAccess.id,
-              activityId: configActivity.activityId,
+        let userActivityAccess =
+          await this.prisma.userActivityAccess.findUnique({
+            where: {
+              userModuleAccessId_activityId: {
+                userModuleAccessId: userModuleAccess.id,
+                activityId: configActivity.activityId,
+              },
             },
-          },
-        });
+          });
 
         if (userActivityAccess) {
           userActivityAccess = await this.prisma.userActivityAccess.update({
@@ -429,7 +434,7 @@ export class UserActivityAccessService {
     });
 
     return {
-      message: `Exceção removida. A atividade "${activity.name}" voltou ao padrão ${activity.isMandatory ? '(habilitada - obrigatória)' : '(desabilitada - opcional)'}`,
+      message: `Exceção removida. A atividade "${activity.name}" voltou ao padrão ${activity.isMandatory ? "(habilitada - obrigatória)" : "(desabilitada - opcional)"}`,
       activity: {
         id: activity.id,
         name: activity.name,
@@ -529,7 +534,7 @@ export class UserActivityAccessService {
           },
         },
       },
-      orderBy: [{ moduleId: 'asc' }, { name: 'asc' }],
+      orderBy: [{ moduleId: "asc" }, { name: "asc" }],
     });
 
     return activities.map((activity) => ({

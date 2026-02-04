@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Company } from '@/types';
 import { Building2, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { formatCNPJ } from '@/lib/utils';
 
 interface CompanyDetailsModalProps {
   open: boolean;
@@ -133,7 +134,7 @@ export function CompanyDetailsModal({
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <span className="text-xs text-muted-foreground block">CNPJ</span>
                     <span className="text-sm font-medium text-foreground">
-                      {company.cnpj}
+                      {formatCNPJ(company.cnpj)}
                     </span>
                   </div>
                 </div>

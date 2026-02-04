@@ -130,3 +130,101 @@ export function getValidityStatus(dateExpiration?: string | Date | null): Validi
   if (diffDays <= 15) return 'ALERT';
   return 'OK';
 }
+
+/**
+ * Formata um número para o padrão brasileiro (milhares com ponto, decimais com vírgula)
+ * sem o símbolo de moeda.
+ * 
+ * @param value - Valor numérico ou string
+ * @param decimals - Quantidade de casas decimais (padrão: 2)
+ * @returns String formatada (ex: 1.234,56)
+ */
+export function formatNumberBR(value: number | string | undefined | null, decimals: number = 2): string {
+  if (value === undefined || value === null) return '';
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+
+  if (isNaN(numValue)) return '';
+
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(numValue);
+}
+
+/**
+ * Converte uma string no formato brasileiro (1.234,56) para um número (1234.56)
+ * 
+ * @param value - String formatada
+ * @returns Número ou 0 se inválido
+ */
+export function parseNumberBR(value: string): number {
+  if (!value) return 0;
+  
+  // Se contiver vírgula, assume o padrão brasileiro (ponto=milhar, vírgula=decimal)
+  if (value.includes(',')) {
+    const cleanValue = value.replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(cleanValue);
+    return isNaN(num) ? 0 : num;
+  }
+  
+  // Se não contiver vírgula, mas contiver ponto(s)
+  if (value.includes('.')) {
+    const parts = value.split('.');
+    // Se houver apenas um ponto, tratamos como decimal (facilitando teclado numérico)
+    if (parts.length === 2) {
+      const num = parseFloat(value);
+      return isNaN(num) ? 0 : num;
+    }
+    // Se houver múltiplos pontos, tratamos como separadores de milhar
+    const cleanValue = value.replace(/\./g, '');
+    const num = parseFloat(cleanValue);
+    return isNaN(num) ? 0 : num;
+  }
+
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+}
+
+
+/**
+ * Remove todos os caracteres não numéricos de uma string
+ */
+export function unmask(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+/**
+ * Formata um CNPJ (00.000.000/0000-00)
+ */
+export function formatCNPJ(value: string): string {
+  const digits = unmask(value);
+  return digits
+    .slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
+/**
+ * Formata um CPF (000.000.000-00)
+ */
+export function formatCPF(value: string): string {
+  const digits = unmask(value);
+  return digits
+    .slice(0, 11)
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+}
+
+/**
+ * Formata um documento (CPF ou CNPJ) com base no tamanho
+ */
+export function formatDocument(value: string): string {
+  const digits = unmask(value);
+  if (digits.length <= 11) {
+    return formatCPF(digits);
+  }
+  return formatCNPJ(digits);
+}
