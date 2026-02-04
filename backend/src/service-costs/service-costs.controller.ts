@@ -7,12 +7,12 @@ import {
   UseGuards,
   Request,
   Query,
-} from '@nestjs/common';
-import { ServiceCostsService } from './service-costs.service';
-import { CreateServiceCostDto } from './dto/create-service-cost.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+} from "@nestjs/common";
+import { ServiceCostsService } from "./service-costs.service";
+import { CreateServiceCostDto } from "./dto/create-service-cost.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 
-@Controller('service-costs')
+@Controller("service-costs")
 @UseGuards(JwtAuthGuard)
 export class ServiceCostsController {
   constructor(private readonly serviceCostsService: ServiceCostsService) {}
@@ -27,27 +27,27 @@ export class ServiceCostsController {
     return this.serviceCostsService.findAll();
   }
 
-  @Get('by-service/:serviceId')
-  findByService(@Param('serviceId') serviceId: string) {
+  @Get("by-service/:serviceId")
+  findByService(@Param("serviceId") serviceId: string) {
     return this.serviceCostsService.findByService(serviceId);
   }
 
-  @Get('current/:serviceId')
-  getCurrentCost(@Param('serviceId') serviceId: string) {
+  @Get("current/:serviceId")
+  getCurrentCost(@Param("serviceId") serviceId: string) {
     return this.serviceCostsService.getCurrentCost(serviceId);
   }
 
-  @Get('at-date/:serviceId')
+  @Get("at-date/:serviceId")
   getCostAtDate(
-    @Param('serviceId') serviceId: string,
-    @Query('date') date: string,
+    @Param("serviceId") serviceId: string,
+    @Query("date") date: string,
   ) {
     const parsedDate = new Date(date);
     return this.serviceCostsService.getCostAtDate(serviceId, parsedDate);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
+  @Get(":id")
+  findOne(@Param("id") id: string) {
     return this.serviceCostsService.findOne(id);
   }
 }

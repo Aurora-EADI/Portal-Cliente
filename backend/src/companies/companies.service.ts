@@ -1,15 +1,19 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaPostgresService } from '../prisma/prisma.service';
-import { CompanyStatus, Prisma } from '@prisma/client-postgres';
-import { CreateCompanyDto } from './dto/create-companies.dto';
-import { PaginationQueryDto } from './dto/pagination-query.dto';
-import { UpdateRequirementsDto } from './dto/update-requirements.dto';
-import { RequestAccessDto } from './dto/request-access.dto';
-import * as bcrypt from 'bcrypt';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../prisma/prisma.service";
+import { CompanyStatus, Prisma } from "@prisma/client-postgres";
+import { CreateCompanyDto } from "./dto/create-companies.dto";
+import { PaginationQueryDto } from "./dto/pagination-query.dto";
+import { UpdateRequirementsDto } from "./dto/update-requirements.dto";
+import { RequestAccessDto } from "./dto/request-access.dto";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaPostgresService) { }
+  constructor(private prisma: PrismaPostgresService) {}
 
   async create(createCompaniesDTO: CreateCompanyDto) {
     return this.prisma.company.create({
@@ -22,7 +26,14 @@ export class CompaniesService {
   }
 
   async getAllWithResponsible(query: PaginationQueryDto) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', status } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      status,
+    } = query;
 
     const skip = (page - 1) * limit;
 
@@ -40,8 +51,8 @@ export class CompaniesService {
       whereWithoutPending = {
         ...where,
         status: {
-          not: 'PENDING'
-        }
+          not: "PENDING",
+        },
       };
     }
 
@@ -54,7 +65,7 @@ export class CompaniesService {
         where: whereWithoutPending, // Usar o mesmo where
         include: {
           users: {
-            where: { role: 'SUPPLIER' },
+            where: { role: "SUPPLIER" },
             take: 1,
           },
         },
@@ -67,7 +78,9 @@ export class CompaniesService {
     ]);
 
     // Formatar dados
-    const data = companies.map((company) => this.formatCompanyResponse(company));
+    const data = companies.map((company) =>
+      this.formatCompanyResponse(company),
+    );
 
     // Calcular metadados
     const totalPages = Math.ceil(total / limit);
@@ -87,7 +100,13 @@ export class CompaniesService {
   }
 
   async getActiveCompanies(query: PaginationQueryDto) {
-    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = query;
 
     const skip = (page - 1) * limit;
 
@@ -109,9 +128,9 @@ export class CompaniesService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: companies.map(c => ({
+      data: companies.map((c) => ({
         ...c,
-        createdAt: c.createdAt.toISOString()
+        createdAt: c.createdAt.toISOString(),
       })),
       pagination: {
         page,
@@ -125,16 +144,16 @@ export class CompaniesService {
   }
 
   async findByCnpj(cnpj: string) {
-    const cleanCnpj = cnpj.replace(/\D/g, '');
+    const cleanCnpj = cnpj.replace(/\D/g, "");
 
     const company = await this.prisma.company.findFirst({
       where: {
         cnpj: { contains: cleanCnpj },
-        status: { in: ['PENDING', 'PENDING_ACTIVE'] },
+        status: { in: ["PENDING", "PENDING_ACTIVE"] },
       },
       include: {
         users: {
-          where: { role: 'SUPPLIER' },
+          where: { role: "SUPPLIER" },
           select: { id: true },
         },
       },
@@ -159,7 +178,7 @@ export class CompaniesService {
         data: { status },
       });
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         throw new NotFoundException(`Empresa com ID ${id} não encontrada`);
       }
       throw error;
@@ -180,14 +199,19 @@ export class CompaniesService {
       });
 
       if (!company) {
-        throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
+        throw new NotFoundException(
+          `Empresa com ID ${companyId} não encontrada`,
+        );
       }
     }
 
     return requirements;
   }
 
-  async updateRequirements(companyId: string, updateDto: UpdateRequirementsDto) {
+  async updateRequirements(
+    companyId: string,
+    updateDto: UpdateRequirementsDto,
+  ) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
     });
@@ -230,13 +254,13 @@ export class CompaniesService {
       where: { id: companyId },
       include: {
         users: {
-          where: { role: 'SUPPLIER' },
+          where: { role: "SUPPLIER" },
         },
       },
     });
 
     if (!existingCompany) {
-      throw new NotFoundException('Empresa não encontrada');
+      throw new NotFoundException("Empresa não encontrada");
     }
 
     // Verifica se já existe outro usuário com este email em outra empresa
@@ -244,8 +268,11 @@ export class CompaniesService {
       where: { email: user.email },
     });
 
-    if (existingUserWithEmail && existingUserWithEmail.companyId !== companyId) {
-      throw new ConflictException('Email já cadastrado para outra empresa');
+    if (
+      existingUserWithEmail &&
+      existingUserWithEmail.companyId !== companyId
+    ) {
+      throw new ConflictException("Email já cadastrado para outra empresa");
     }
 
     // Hash da senha
@@ -267,7 +294,7 @@ export class CompaniesService {
           city: company.city,
           state: company.state,
           phone: company.phone,
-          status: 'PENDING_ACTIVE', // Atualiza status para aguardar aprovação
+          status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovação
         },
       });
 
@@ -289,7 +316,7 @@ export class CompaniesService {
         const hasDocPermissions = await prisma.userModuleAccess.findFirst({
           where: {
             userId: supplierUser.id,
-            module: { route: '/documentos' },
+            module: { route: "/documentos" },
           },
         });
 
@@ -304,7 +331,7 @@ export class CompaniesService {
             name: user.name,
             email: user.email,
             password: hashedPassword,
-            role: 'SUPPLIER',
+            role: "SUPPLIER",
             companyId: companyId,
           },
         });
@@ -316,7 +343,8 @@ export class CompaniesService {
 
     return {
       success: true,
-      message: 'Solicitação de acesso enviada com sucesso. Aguardando aprovação do administrador.',
+      message:
+        "Solicitação de acesso enviada com sucesso. Aguardando aprovação do administrador.",
     };
   }
 
@@ -328,11 +356,13 @@ export class CompaniesService {
   private async grantSupplierPermissions(tx: any, userId: string) {
     // 1. Busca o módulo "/documentos"
     const docModule = await tx.module.findFirst({
-      where: { route: '/documentos' },
+      where: { route: "/documentos" },
     });
 
     if (!docModule) {
-      console.warn('[COMPANIES] Módulo /documentos não encontrado. Permissões não concedidas.');
+      console.warn(
+        "[COMPANIES] Módulo /documentos não encontrado. Permissões não concedidas.",
+      );
       return;
     }
 
@@ -340,7 +370,7 @@ export class CompaniesService {
     const attachActivity = await tx.activity.findFirst({
       where: {
         moduleId: docModule.id,
-        name: 'Anexar documento',
+        name: "Anexar documento",
       },
     });
 
@@ -377,13 +407,13 @@ export class CompaniesService {
     const whereWithoutPending: Prisma.CompanyWhereInput = {
       ...baseWhere,
       status: {
-        not: 'PENDING'
-      }
+        not: "PENDING",
+      },
     };
 
     // Buscar contagem agrupada por status
     const counts = await this.prisma.company.groupBy({
-      by: ['status'],
+      by: ["status"],
       where: whereWithoutPending,
       _count: {
         status: true,
@@ -391,15 +421,20 @@ export class CompaniesService {
     });
 
     // Formatar resultado em objeto { ACTIVE: 25, REJECTED: 5, ... }
-    const statusCounts = counts.reduce((acc, item) => {
-      if (item._count) {
-        acc[item.status] = item._count.status;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+    const statusCounts = counts.reduce(
+      (acc, item) => {
+        if (item._count) {
+          acc[item.status] = item._count.status;
+        }
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Garantir que todos os status existam no objeto (exceto PENDING, com valor 0)
-    const allStatus = Object.values(CompanyStatus).filter(status => status !== 'PENDING');
+    const allStatus = Object.values(CompanyStatus).filter(
+      (status) => status !== "PENDING",
+    );
     allStatus.forEach((status) => {
       if (!statusCounts[status]) {
         statusCounts[status] = 0;
@@ -409,18 +444,21 @@ export class CompaniesService {
     return statusCounts;
   }
 
-  private buildWhereClause(search?: string, status?: string): Prisma.CompanyWhereInput {
+  private buildWhereClause(
+    search?: string,
+    status?: string,
+  ): Prisma.CompanyWhereInput {
     const where: Prisma.CompanyWhereInput = {};
 
     if (search) {
       const orConditions: any[] = [
-        { fantasyName: { contains: search, mode: 'insensitive' } },
-        { socialReason: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
+        { fantasyName: { contains: search, mode: "insensitive" } },
+        { socialReason: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
       ];
 
       // Só adiciona filtro de CNPJ se houver números no termo de busca
-      const cleanedSearch = search.replace(/\D/g, '');
+      const cleanedSearch = search.replace(/\D/g, "");
       if (cleanedSearch.length > 0) {
         orConditions.push({ cnpj: { contains: cleanedSearch } });
       }
@@ -435,9 +473,19 @@ export class CompaniesService {
     return where;
   }
 
-  private buildOrderBy(sortBy: string, sortOrder: 'asc' | 'desc'): Prisma.CompanyOrderByWithRelationInput {
-    const validFields = ['createdAt', 'fantasyName', 'socialReason', 'cnpj', 'city', 'status'];
-    const field = validFields.includes(sortBy) ? sortBy : 'createdAt';
+  private buildOrderBy(
+    sortBy: string,
+    sortOrder: "asc" | "desc",
+  ): Prisma.CompanyOrderByWithRelationInput {
+    const validFields = [
+      "createdAt",
+      "fantasyName",
+      "socialReason",
+      "cnpj",
+      "city",
+      "status",
+    ];
+    const field = validFields.includes(sortBy) ? sortBy : "createdAt";
     return { [field]: sortOrder };
   }
 
@@ -461,12 +509,12 @@ export class CompaniesService {
       },
       responsible: company.users[0]
         ? {
-          id: company.users[0].id,
-          name: company.users[0].name,
-          email: company.users[0].email,
-          role: company.users[0].role,
-          companyId: company.users[0].companyId,
-        }
+            id: company.users[0].id,
+            name: company.users[0].name,
+            email: company.users[0].email,
+            role: company.users[0].role,
+            companyId: company.users[0].companyId,
+          }
         : null,
     };
   }

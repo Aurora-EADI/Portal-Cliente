@@ -1,12 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { CreateSupplierDto } from './dto/create-supplier.dto';
-import * as bcrypt from 'bcrypt';
-import { UserRole } from '@prisma/client-postgres';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreateSupplierDto } from "./dto/create-supplier.dto";
+import * as bcrypt from "bcrypt";
+import { UserRole } from "@prisma/client-postgres";
 
 @Injectable()
 export class SupplierService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateSupplierDto) {
     const company = await this.prisma.company.findUnique({
@@ -14,7 +14,7 @@ export class SupplierService {
     });
 
     if (!company) {
-      throw new NotFoundException('Empresa não encontrada.');
+      throw new NotFoundException("Empresa não encontrada.");
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -44,7 +44,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException('Supplier não encontrado.');
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     return supplier;
@@ -56,7 +56,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException('Supplier não encontrado.');
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     const data: any = { ...dto };
@@ -77,7 +77,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException('Supplier não encontrado.');
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     return this.prisma.user.delete({
@@ -92,7 +92,7 @@ export class SupplierService {
     });
 
     if (!user || !user.companyId) {
-      throw new NotFoundException('Empresa não encontrada para este usuário.');
+      throw new NotFoundException("Empresa não encontrada para este usuário.");
     }
 
     return this.prisma.companyDocumentRequirement.findMany({

@@ -8,14 +8,14 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ModulesService } from './modules.service';
-import { CreateModuleDto } from './dto/create-module.dto';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client-postgres';
+} from "@nestjs/common";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { ModulesService } from "./modules.service";
+import { CreateModuleDto } from "./dto/create-module.dto";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client-postgres";
 
-@Controller('modules')
+@Controller("modules")
 @UseGuards(JwtAuthGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
@@ -32,9 +32,9 @@ export class ModulesController {
     return this.modulesService.create(createModuleDto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string) {
+  async remove(@Param("id") id: string) {
     await this.modulesService.remove(id);
   }
 }

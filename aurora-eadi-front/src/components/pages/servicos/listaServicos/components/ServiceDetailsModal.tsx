@@ -5,6 +5,7 @@ import { X, Wrench, Calculator, FileText, Calendar, CheckCircle, XCircle, Dollar
 
 interface ServiceDetailsModalProps {
     service: Service;
+    isOpen: boolean;
     onClose: () => void;
 }
 
@@ -12,7 +13,8 @@ const calculationTypeLabels: Record<ServiceCalculationType, string> = {
     [ServiceCalculationType.FIXED]: 'Valor Fixo (R$)',
     [ServiceCalculationType.PERCENTAGE_CIF]: 'Percentual sobre CIF (%)',
     [ServiceCalculationType.PER_CONTAINER]: 'Valor por Container (R$)',
-    [ServiceCalculationType.PER_TONNE]: 'Valor por Tonelada (R$)',
+    [ServiceCalculationType.PER_TONNE]: 'Ton ou M³ (R$)',
+    [ServiceCalculationType.PER_KG]: 'Por Quilo (R$)',
 };
 
 export function ServiceDetailsModal({ service, onClose }: ServiceDetailsModalProps) {

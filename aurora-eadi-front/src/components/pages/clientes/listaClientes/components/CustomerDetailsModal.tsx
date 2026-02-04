@@ -2,6 +2,7 @@ import React from 'react';
 import { Customer } from '@/types';
 import { Badge } from '@/components/ui/Badge';
 import { Building2, X } from 'lucide-react';
+import { formatDocument } from '@/lib/utils';
 
 interface CustomerDetailsModalProps {
     customer: Customer;
@@ -59,7 +60,7 @@ export function CustomerDetailsModal({ customer, onClose }: CustomerDetailsModal
                             </div>
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <span className="text-xs text-gray-500 block">Documento (CNPJ/CPF)</span>
-                                <span className="text-sm font-medium text-gray-900">{customer.document}</span>
+                                <span className="text-sm font-medium text-gray-900">{formatDocument(customer.document)}</span>
                             </div>
                             <div className="p-3 bg-gray-50 rounded-lg md:col-span-2">
                                 <span className="text-xs text-gray-500 block">Nome</span>

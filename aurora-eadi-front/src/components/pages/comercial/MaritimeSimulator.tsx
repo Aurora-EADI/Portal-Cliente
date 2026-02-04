@@ -34,12 +34,13 @@ import {
   useAddSimulationService,
 } from '@/hooks/useSimulations';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useServices } from '@/hooks/useServices';
+import { useMaritimeServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
-import { formatCurrency, formatUSD, formatPercent } from '@/lib/utils';
+import { formatCurrency, formatUSD, formatPercent, formatNumberBR, parseNumberBR } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
+import { exportMaritimeSimulationToPDF } from '@/services/pdfService';
 
 const DEFAULT_MIN_BILLING = 5500;
 
@@ -53,7 +54,7 @@ export function MaritimeSimulator() {
   const { data: customersData, isLoading: isLoadingCustomers } = useCustomers();
 
   // Services Data
-  const { data: servicesData, isLoading: isLoadingServices } = useServices(false);
+  const { data: servicesData, isLoading: isLoadingServices } = useMaritimeServices(false);
 
   // Mutations
   const createSimulationMutation = useCreateSimulation();
@@ -66,19 +67,21 @@ export function MaritimeSimulator() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
+  const [isEditingVersion, setIsEditingVersion] = useState(false);
 
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
-  const [dollarRate, setDollarRate] = useState<string>('5.85');
+  const [dollarRate, setDollarRate] = useState<string>('5,85');
   const [cifBrl, setCifBrl] = useState<string>('0');
   const [tonnes, setTonnes] = useState<string>('');
   const [cntrCount, setCntrCount] = useState<string>('');
   const [cntrType, setCntrType] = useState<string>('');
-  const [storageRate, setStorageRate] = useState<string>('0.35');
-  const [transportRate, setTransportRate] = useState<string>('1700');
+
   const [discount, setDiscount] = useState<string>('0');
   const [hasStripping, setHasStripping] = useState<boolean>(false);
+  const [hasLCL, setHasLCL] = useState<boolean>(false);
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
+  const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -91,94 +94,127 @@ export function MaritimeSimulator() {
 
   // Calculate CIF BRL numeric value
   const cifBrlNum = useMemo(() => {
-    const usd = parseFloat(cifUsd) || 0;
-    const rate = parseFloat(dollarRate) || 0;
+    const usd = parseNumberBR(cifUsd) || 0;
+    const rate = parseNumberBR(dollarRate) || 0;
     return usd * rate;
   }, [cifUsd, dollarRate]);
 
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
 
-  // Filter services based on stripping status
+  // Filter services based on stripping status and LCL
   const effectiveServicesList = useMemo(() => {
     // Agora os serviços vêm da tabela SimulationService (relacional)
     const list = currentSimulationId ? (currentSimulation?.services || []) : localServices;
-    if (!hasStripping) {
-      return list.filter(s => {
+    
+    return list.filter(s => {
+      const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+      const serviceName = serviceDef?.name || (s as any).serviceName || '';
+      const isLCLService = serviceName.toUpperCase().includes('LCL');
+
+      // Filter by stripping
+      if (!hasStripping) {
         // Se for snapshot, já temos o hasStripping nele
-        if ('hasStripping' in s) return !s.hasStripping;
+        if ('hasStripping' in s && s.hasStripping) return false;
 
-        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
-        return !serviceDef?.hasStripping;
-      });
-    }
-    return list;
-  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, servicesData]);
+        if (serviceDef?.hasStripping) return false;
+      }
 
-  // Calculate total services in real-time (summing appliedCost from the list, with reactive re-calculation for DEFAULT type)
-  const calculatedTotalServices = useMemo(() => {
+      // Filter by LCL: Hide LCL services by default, show only when hasLCL is true
+      if (isLCLService && !hasLCL) return false;
+      
+      // If hasLCL is true, show ONLY LCL services
+      if (hasLCL && !isLCLService) return false;
+
+      return true;
+    });
+  }, [localServices, currentSimulationId, currentSimulation?.services, hasStripping, hasLCL, servicesData]);
+
+  // Helper function to identify services excluded from minimum billing (Transporte DTA)
+  const isExcludedFromMinBilling = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    // Rule: Anything containing "transporte" and "dta" is excluded from the minimum billing floor calculation
+    return normalized.includes('transporte') && normalized.includes('dta');
+  };
+
+  // Calculate storage cost based on periods
+  const calculatedStorageCost = useMemo(() => {
+    const rate = 0.35 * (parseInt(auroraPeriods) || 1);
+    return (rate / 100) * (cifBrlNum || 0);
+  }, [auroraPeriods, cifBrlNum]);
+
+  // Calculate total services in real-time
+  const { totalServices: calculatedTotalServices, eligibleServicesTotal, excludedServicesTotal } = useMemo(() => {
     const calcData = {
       cifBrl: cifBrlNum,
-      tonnes: parseFloat(tonnes || '0'),
+      tonnes: parseNumberBR(tonnes || '0'),
       cntrCount: parseInt(cntrCount || '0'),
     };
 
-    return effectiveServicesList.reduce((total, s) => {
-      // If DEFAULT, calculate reactively from originalCost and current cargo data
+    return effectiveServicesList.reduce((acc, s) => {
+      let cost = 0;
+      const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+      
       if (s.costType === ServiceCostType.DEFAULT) {
-        const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
         if (serviceDef) {
-          return total + calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
+          cost = calculateServiceCost(Number(s.originalCost || 0), serviceDef.calculationType, calcData);
         }
+      } else {
+        cost = Number(s.appliedCost || 0);
       }
-      return total + Number(s.appliedCost || 0);
-    }, 0);
+
+      // Check name against service definition or snapshot name
+      const sName = serviceDef?.name || (s as any).serviceName || '';
+      const isExcluded = isExcludedFromMinBilling(sName);
+
+      if (isExcluded) {
+        acc.excludedServicesTotal += cost;
+      } else {
+        acc.eligibleServicesTotal += cost;
+      }
+      acc.totalServices += cost;
+
+      return acc;
+    }, { totalServices: 0, eligibleServicesTotal: 0, excludedServicesTotal: 0 });
   }, [effectiveServicesList, cifBrlNum, tonnes, cntrCount, servicesData]);
 
   // Count of selected services
   const servicesCount = effectiveServicesList.length;
 
-
-  // Calculate costs based on rates
-  const calculatedStorageCost = useMemo(() => {
-    const rate = parseFloat(storageRate) || 0;
-    return (rate / 100) * (cifBrlNum || 0);
-  }, [storageRate, cifBrlNum]);
-
-  const calculatedTransportCost = useMemo(() => {
-    const rate = parseFloat(transportRate) || 0;
-    const count = parseInt(cntrCount) || 0;
-    return rate * count;
-  }, [transportRate, cntrCount]);
-
   // Calculate total general in real-time
-  const { minDiff, minProfitMarginPct, totalGeneral } = useMemo(() => {
-    const services = calculatedTotalServices;
-    const storage = calculatedStorageCost;
-    const transport = calculatedTransportCost;
-    const discountValue = parseFloat(discount || '0');
+  // Business Rule: Adjustment = Max(0, Threshold - EligibleTotal)
+  // Final Total = (EligibleTotal + Adjustment) + ExcludedTotal - Discount
+  const { minDiff, totalGeneral } = useMemo(() => {
+    const eligible = eligibleServicesTotal;
+    const excluded = excludedServicesTotal;
+    const discountValue = parseNumberBR(discount || '0');
     const count = parseInt(cntrCount || '0');
-    const minThreshold = parseFloat(minBillingValue) || 0;
+    const minThreshold = parseNumberBR(minBillingValue) || 0;
 
     const minBillingThreshold = minThreshold * count;
-    const difference = (count > 0 && services < minBillingThreshold) ? minBillingThreshold - services : 0;
-    const marginPct = (difference > 0 && services > 0) ? (difference / services) * 100 : 0;
-
+    
+    // MATHEMATICAL GUARANTEE: Only "eligible" services reduce the difference to the minimum floor.
+    // Excluded services (Transporte DTA) are added ON TOP, never reducing this adjustment.
+    const difference = (count > 0 && eligible < minBillingThreshold) ? minBillingThreshold - eligible : 0;
+    
     return {
       minDiff: difference,
-      minProfitMarginPct: marginPct,
-      totalGeneral: services + difference + storage + transport - discountValue
+      totalGeneral: eligible + difference + excluded + calculatedStorageCost - discountValue
     };
-  }, [calculatedTotalServices, calculatedStorageCost, calculatedTransportCost, discount, cntrCount, minBillingValue]);
+  }, [eligibleServicesTotal, excludedServicesTotal, discount, cntrCount, minBillingValue]);
 
   const calculatedTotalGeneral = totalGeneral;
 
   // Auto-calculate CIF BRL
   useEffect(() => {
-    const usd = parseFloat(cifUsd) || 0;
-    const rate = parseFloat(dollarRate) || 0;
-    setCifBrl(formatCurrency((usd * rate), false));
-  }, [cifUsd, dollarRate]);
+    // Only format if we have valid numbers
+    if (cifBrlNum > 0) {
+      setCifBrl(formatCurrency(cifBrlNum, false));
+    } else {
+      setCifBrl('0,00');
+    }
+  }, [cifBrlNum]);
 
   // Sync currentSimulationId with URL
   useEffect(() => {
@@ -191,28 +227,17 @@ export function MaritimeSimulator() {
   useEffect(() => {
     if (currentSimulation) {
       setSelectedCustomerId(currentSimulation.customerId);
-      setCifUsd(currentSimulation.cifUsd.toString());
-      setDollarRate(currentSimulation.dollarRate.toString());
-      setTonnes(currentSimulation.tonnes?.toString() || '');
+      setCifUsd(formatNumberBR(currentSimulation.cifUsd));
+      setDollarRate(formatNumberBR(currentSimulation.dollarRate));
+      setTonnes(formatNumberBR(currentSimulation.tonnes));
       setCntrCount(currentSimulation.cntrCount?.toString() || '');
       setCntrType(currentSimulation.cntrType || '');
 
-      // Calculate rates from saved costs for consistency
-      const savedStorageCost = Number(currentSimulation.storageCost || 0);
-      const savedCifBrl = Number(currentSimulation.cifBrl || 0);
-      if (savedCifBrl > 0) {
-        setStorageRate(((savedStorageCost / savedCifBrl) * 100).toFixed(4).replace(/\.?0+$/, ''));
-      }
 
-      const savedTransportCost = Number(currentSimulation.transportCost || 0);
-      const savedCntrCount = Number(currentSimulation.cntrCount || 0);
-      if (savedCntrCount > 0) {
-        setTransportRate((savedTransportCost / savedCntrCount).toString());
-      }
-
-      setDiscount(currentSimulation.discount?.toString() || '0');
+      setDiscount(formatNumberBR(currentSimulation.discount || 0));
       setHasStripping(currentSimulation.hasStripping || false);
-      setMinBillingValue(currentSimulation.minBillingValue?.toString() || DEFAULT_MIN_BILLING.toString());
+      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
+      setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
     }
   }, [currentSimulation]);
 
@@ -249,7 +274,7 @@ export function MaritimeSimulator() {
       return;
     }
 
-    if (!cifUsd || parseFloat(cifUsd) <= 0) {
+    if (!cifUsd || parseNumberBR(cifUsd) <= 0) {
       toast.error('Por favor, informe o valor CIF USD válido');
       return;
     }
@@ -259,48 +284,60 @@ export function MaritimeSimulator() {
         // Create new simulation with initial services
         const newSimulation = await createSimulationMutation.mutateAsync({
           customerId: selectedCustomerId,
-          cifUsd: parseFloat(cifUsd) || 0,
-          dollarRate: parseFloat(dollarRate) || 5.85,
-          tonnes: tonnes ? parseFloat(tonnes) : undefined,
+          cifUsd: parseNumberBR(cifUsd) || 0,
+          dollarRate: parseNumberBR(dollarRate) || 5.85,
+          tonnes: tonnes ? parseNumberBR(tonnes) : undefined,
           cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
           cntrType: cntrType || undefined,
-          storageCost: calculatedStorageCost,
-          transportCost: calculatedTransportCost,
-          discount: discount ? parseFloat(discount) : 0,
+          discount: discount ? parseNumberBR(discount) : 0,
           hasStripping,
-          minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+          minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+          auroraPeriods: parseInt(auroraPeriods) || 1,
+          storageCost: calculatedStorageCost,
           initialServices: localServices,
         });
 
         // Clear local services after saving
         setLocalServices([]);
-
         setCurrentSimulationId(newSimulation.id);
         toast.success('Simulação criada com sucesso!');
+        router.push('/comercial/history');
       } else {
         // Update existing simulation
         await updateSimulationMutation.mutateAsync({
           id: currentSimulationId,
           data: {
             customerId: selectedCustomerId,
-            cifUsd: parseFloat(cifUsd) || 0,
-            dollarRate: parseFloat(dollarRate) || 0,
-            tonnes: tonnes ? parseFloat(tonnes) : undefined,
+            cifUsd: parseNumberBR(cifUsd) || 0,
+            dollarRate: parseNumberBR(dollarRate) || 0,
+            tonnes: tonnes ? parseNumberBR(tonnes) : undefined,
             cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
             cntrType: cntrType || undefined,
-            storageCost: calculatedStorageCost,
-            transportCost: calculatedTransportCost,
-            discount: discount ? parseFloat(discount) : 0,
+            discount: discount ? parseNumberBR(discount) : 0,
             hasStripping,
-            minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+            minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+            auroraPeriods: parseInt(auroraPeriods) || 1,
+            storageCost: calculatedStorageCost,
           },
         });
         toast.success('Simulação atualizada com sucesso!');
+        setIsEditingVersion(false);
+        router.push('/comercial/history');
       }
     } catch (error) {
       console.error('Error saving simulation:', error);
       toast.error('Erro ao salvar simulação. Por favor, tente novamente.');
     }
+  };
+
+  // Handler: Export to PDF
+  const handleExportPDF = () => {
+    if (!currentSimulation) {
+      toast.error('Salve a simulação antes de exportar o PDF');
+      return;
+    }
+
+    exportMaritimeSimulationToPDF(currentSimulation as any);
   };
 
   // Handler: Create new version
@@ -312,27 +349,32 @@ export function MaritimeSimulator() {
         baseSimulationId: currentSimulation.id,
         versionReason: versionReason || undefined,
         customerId: selectedCustomerId,
-        cifUsd: parseFloat(cifUsd) || 0,
-        dollarRate: parseFloat(dollarRate) || 0,
-        tonnes: tonnes ? parseFloat(tonnes) : undefined,
+        cifUsd: parseNumberBR(cifUsd) || 0,
+        dollarRate: parseNumberBR(dollarRate) || 0,
+        tonnes: tonnes ? parseNumberBR(tonnes) : undefined,
         cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
         cntrType: cntrType || undefined,
-        storageCost: calculatedStorageCost,
-        transportCost: calculatedTransportCost,
-        discount: discount ? parseFloat(discount) : 0,
+        discount: discount ? parseNumberBR(discount) : 0,
         hasStripping,
-        minBillingValue: parseFloat(minBillingValue) || DEFAULT_MIN_BILLING,
+        minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+        auroraPeriods: parseInt(auroraPeriods) || 1,
+        storageCost: calculatedStorageCost,
       });
 
       setCurrentSimulationId(newVersion.id);
+      setIsEditingVersion(true);
       setIsNewVersionDialogOpen(false);
       setVersionReason('');
+
+      // Atualiza a URL sem recarregar para manter o estado local de edição
+      const newUrl = window.location.pathname + '?id=' + newVersion.id;
+      window.history.pushState({ path: newUrl }, '', newUrl);
     } catch (error) {
       console.error('Error creating new version:', error);
     }
   };
 
-  const isEditable = !currentSimulation || currentSimulation.status === SimulationStatus.DRAFT;
+  const isEditable = !currentSimulationId || isEditingVersion;
 
   return (
     <div className="container mx-auto py-8 max-w-7xl">
@@ -360,6 +402,32 @@ export function MaritimeSimulator() {
                     {currentSimulation.displayNumber}
                   </span>
                 </p>
+
+                {/* Seletor de Versões */}
+                {currentSimulation.versions && currentSimulation.versions.length > 1 && (
+                  <div className="flex items-center gap-2 px-3 border-l border-gray-200">
+                    <Label className="text-[10px] uppercase font-bold text-gray-400">Versão</Label>
+                    <Select
+                      value={currentSimulation.id}
+                      onValueChange={(value) => {
+                        setIsEditingVersion(false);
+                        router.push(`/comercial?id=${value}`);
+                      }}
+                    >
+                      <SelectTrigger className="w-[110px] h-8 text-xs font-bold bg-white border-primary-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currentSimulation.versions.map((v: any) => (
+                          <SelectItem key={v.id} value={v.id} className="text-xs font-medium">
+                            Versão {v.version} {v.isCurrentVersion && '⭐'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
                   {currentSimulation.status}
                 </Badge>
@@ -374,24 +442,40 @@ export function MaritimeSimulator() {
           </div>
         </div>
         <div className="flex gap-2">
-          {isEditable && (
+          {/* Novo Simulado */}
+          {!currentSimulationId && (
             <Button
               onClick={handleSaveSimulation}
               className="gap-2"
-              disabled={createSimulationMutation.isPending || updateSimulationMutation.isPending}
+              disabled={createSimulationMutation.isPending}
             >
               <Save size={16} />
-              {!currentSimulationId ? 'Salvar Simulação' : 'Atualizar Simulação'}
+              Salvar Simulação
             </Button>
           )}
-          {currentSimulation && isEditable && (
+
+          {/* Simulação Existente Bloqueada */}
+          {currentSimulationId && !isEditingVersion && (
             <Button
               onClick={() => setIsNewVersionDialogOpen(true)}
               variant="outline"
               className="gap-2"
+              disabled={currentSimulation && !currentSimulation.isCurrentVersion}
             >
               <History size={16} />
               Nova Versão
+            </Button>
+          )}
+
+          {/* Editando Versão Existente */}
+          {isEditingVersion && (
+            <Button
+              onClick={handleSaveSimulation}
+              className="gap-2"
+              disabled={updateSimulationMutation.isPending}
+            >
+              <Save size={16} />
+              Salvar Atualização
             </Button>
           )}
         </div>
@@ -474,22 +558,7 @@ export function MaritimeSimulator() {
                     </div>
                   )}
 
-                  {selectedCustomerId && currentSimulation && (
-                    <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100">
-                      <h3 className="font-semibold text-primary-800 mb-2">Cliente Selecionado</h3>
-                      <div className="text-sm text-primary-700 space-y-1">
-                        <p><strong>Código:</strong> {currentSimulation.customer?.code}</p>
-                        <p><strong>Nome:</strong> {currentSimulation.customer?.name}</p>
-                        <p><strong>Documento:</strong> {currentSimulation.customer?.document}</p>
-                        <div className="flex items-center">
-                          <strong>Status:</strong>{' '}
-                          <Badge className="ml-2" variant={isEditable ? 'default' : 'secondary'}>
-                            {isEditable ? 'Editável' : 'Bloqueada'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Removido card redundante de cliente selecionado */}
                 </div>
               </TabsContent>
 
@@ -510,9 +579,10 @@ export function MaritimeSimulator() {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                       <Input
                         id="cifUsd"
-                        placeholder="0.00"
+                        placeholder="0,00"
                         value={cifUsd}
                         onChange={(e) => setCifUsd(e.target.value)}
+                        onBlur={(e) => setCifUsd(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-7"
                         disabled={!isEditable}
                       />
@@ -525,6 +595,7 @@ export function MaritimeSimulator() {
                       id="dollarRate"
                       value={dollarRate}
                       onChange={(e) => setDollarRate(e.target.value)}
+                      onBlur={(e) => setDollarRate(formatNumberBR(parseNumberBR(e.target.value)))}
                       disabled={!isEditable}
                     />
                   </div>
@@ -547,21 +618,26 @@ export function MaritimeSimulator() {
                     <Label htmlFor="tonnes">Tonelada</Label>
                     <Input
                       id="tonnes"
-                      placeholder="0.000"
+                      placeholder="0,000"
                       value={tonnes}
                       onChange={(e) => setTonnes(e.target.value)}
+                      onBlur={(e) => setTonnes(formatNumberBR(parseNumberBR(e.target.value), 3))}
                       disabled={!isEditable}
                     />
                   </div>
 
                   {/* Row 3 */}
                   <div className="space-y-2">
-                    <Label htmlFor="cntrCount">Qnt. De CNTR</Label>
+                    <Label htmlFor="cntrCount">Quantidade de CNTR</Label>
                     <Input
                       id="cntrCount"
                       placeholder="0"
                       value={cntrCount}
-                      onChange={(e) => setCntrCount(e.target.value)}
+                      onChange={(e) => {
+                        // Allow only integers
+                        const value = e.target.value.replace(/\D/g, '');
+                        setCntrCount(value);
+                      }}
                       disabled={!isEditable}
                     />
                   </div>
@@ -583,55 +659,8 @@ export function MaritimeSimulator() {
                     </Select>
                   </div>
 
-                  {/* Row 4: Storage */}
-                  <div className="space-y-2">
-                    <Label htmlFor="storageRate">Armazenagem (2º Período de 15) %</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          id="storageRate"
-                          value={storageRate}
-                          onChange={(e) => setStorageRate(e.target.value)}
-                          disabled={!isEditable}
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                      </div>
-                      <div className="relative flex-[1.5]">
-                        <Input
-                          value={formatCurrency(calculatedStorageCost)}
-                          readOnly
-                          className="bg-gray-50 text-gray-600 font-medium pl-9"
-                        />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 5: Transport */}
-                  <div className="space-y-2">
-                    <Label htmlFor="transportRate">Transporte de DTA + Devolução</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">R$</span>
-                        <Input
-                          id="transportRate"
-                          value={transportRate}
-                          onChange={(e) => setTransportRate(e.target.value)}
-                          disabled={!isEditable}
-                          className="pl-8"
-                        />
-                      </div>
-                      <div className="relative flex-[1.5]">
-                        <Input
-                          value={formatCurrency(calculatedTransportCost)}
-                          readOnly
-                          className="bg-gray-50 text-gray-600 font-medium pl-9"
-                        />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Row 4: Storage - Removed as per request */}
+                  {/* Row 5: Transport - Removed as per request */}
 
                   {/* Row 6: Discount & Min Billing */}
                   <div className="space-y-2">
@@ -642,6 +671,7 @@ export function MaritimeSimulator() {
                         id="discount"
                         value={discount}
                         onChange={(e) => setDiscount(e.target.value)}
+                        onBlur={(e) => setDiscount(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-9"
                         disabled={!isEditable}
                       />
@@ -656,11 +686,37 @@ export function MaritimeSimulator() {
                         id="minBillingValue"
                         value={minBillingValue}
                         onChange={(e) => setMinBillingValue(e.target.value)}
+                        onBlur={(e) => setMinBillingValue(formatNumberBR(parseNumberBR(e.target.value)))}
                         className="pl-9 bg-amber-50/30 border-amber-200/50 focus-visible:ring-amber-500"
                         disabled={!isEditable}
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="auroraPeriods">Períodos Aurora (10 dias cada)</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          id="auroraPeriods"
+                          type="number"
+                          min="1"
+                          value={auroraPeriods}
+                          onChange={(e) => setAuroraPeriods(e.target.value)}
+                          disabled={!isEditable}
+                        />
+                      </div>
+                      <div className="relative flex-[1.5]">
+                        <Input
+                          value={formatCurrency(calculatedStorageCost)}
+                          readOnly
+                          className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">R$</span>
+                      </div>
+                    </div>
+                  </div>
+
 
                   {/* Row 7: Desova */}
                   <div className="md:col-span-2 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
@@ -679,6 +735,24 @@ export function MaritimeSimulator() {
                       </p>
                     </Label>
                   </div>
+
+                  {/* Row 8: Carga Solta (LCL) */}
+                  <div className="md:col-span-2 flex items-center gap-3 bg-green-50/50 p-4 rounded-xl border border-green-100/50">
+                    <input
+                      type="checkbox"
+                      id="hasLCL"
+                      checked={hasLCL}
+                      onChange={(e) => setHasLCL(e.target.checked)}
+                      disabled={!isEditable}
+                      className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                    />
+                    <Label htmlFor="hasLCL" className="font-semibold text-green-900 cursor-pointer select-none">
+                      Carga Solta?
+                      <p className="text-xs text-green-700/70 font-normal">
+                        Marque esta opção para exibir apenas os serviços LCL (Less than Container Load).
+                      </p>
+                    </Label>
+                  </div>
                 </CardContent>
               </TabsContent>
 
@@ -691,13 +765,14 @@ export function MaritimeSimulator() {
                   isEditable={isEditable}
                   simulationData={{
                     cifBrl: cifBrlNum,
-                    tonnes: parseFloat(tonnes) || 0,
+                    tonnes: parseNumberBR(tonnes) || 0,
                     cntrCount: parseInt(cntrCount) || 0,
                   }}
                   localServices={localServices}
                   onAddLocalService={handleAddLocalService}
                   onRemoveLocalService={handleRemoveLocalService}
                   hasStripping={hasStripping}
+                  hasLCL={hasLCL}
                 />
               </TabsContent>
             </div>
@@ -709,7 +784,14 @@ export function MaritimeSimulator() {
           <Card className="sticky top-6 shadow-md border-gray-200 overflow-hidden ring-1 ring-gray-950/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gray-50/80">
               <CardTitle className="text-lg font-bold text-gray-900">Resumo da Simulação</CardTitle>
-              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white"
+                onClick={handleExportPDF}
+                title="Exportar PDF"
+                disabled={!currentSimulation}
+              >
                 <Printer size={18} />
               </Button>
             </CardHeader>
@@ -724,23 +806,9 @@ export function MaritimeSimulator() {
 
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between items-start group">
-                    <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Armazenagem</span>
-                    <span className="font-semibold text-gray-900">
-                      {formatCurrency(calculatedStorageCost)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-start group">
-                    <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Transporte</span>
-                    <span className="font-semibold text-gray-900">
-                      {formatCurrency(calculatedTransportCost)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-start group">
                     <span className="text-gray-500 group-hover:text-gray-700 transition-colors">Desconto</span>
                     <span className="font-semibold text-red-600">
-                      - {formatCurrency(parseFloat(discount || '0'))}
+                      - {formatCurrency(parseNumberBR(discount || '0'))}
                     </span>
                   </div>
 
@@ -752,14 +820,6 @@ export function MaritimeSimulator() {
                         </span>
                         <span className="font-bold text-amber-900">
                           {formatCurrency(minDiff)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center px-2 py-1 bg-green-50 rounded border border-green-100 italic">
-                        <span className="text-green-800 text-[10px] font-bold uppercase tracking-wider">
-                          Margem de lucro mínima
-                        </span>
-                        <span className="font-bold text-green-700 text-xs">
-                          {formatPercent(minProfitMarginPct)}
                         </span>
                       </div>
                     </div>

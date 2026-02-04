@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Loader2, Eye, ShieldCheck, Building2, User as UserIcon, FileText, Search, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react";
 import { CompanyDetailsModal } from './components/CompanyDetailsModal';
 import { AuthorizationModal } from './components/AuthorizationModal';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatCNPJ } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
 
 // Configuração dos cards de status
@@ -273,7 +273,7 @@ function TableRow({ item, onView, onAuthorize }: {
                     </div>
                     <div className="min-w-0">
                         <div className="font-medium text-gray-900 truncate">{company.fantasyName}</div>
-                        <div className="text-xs text-gray-500">{company.cnpj}</div>
+                        <div className="text-xs text-gray-500">{formatCNPJ(company.cnpj)}</div>
                     </div>
                 </div>
             </td>

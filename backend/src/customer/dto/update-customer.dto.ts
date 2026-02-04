@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsEnum } from 'class-validator';
-import { CustomerStatus } from '@prisma/client-postgres';
+import { IsOptional, IsString, IsEnum } from "class-validator";
+import { CustomerStatus } from "@prisma/client-postgres";
 
 export class UpdateCustomerDto {
   @IsOptional()
@@ -15,6 +15,6 @@ export class UpdateCustomerDto {
   document?: string;
 
   @IsOptional()
-  @IsEnum(CustomerStatus, { message: 'Status inválido.' })
+  @IsEnum(CustomerStatus, { message: "Status inválido." })
   status?: CustomerStatus;
 }

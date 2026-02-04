@@ -3,22 +3,21 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
-import { CreatePermissionDto } from './dto/create-permission.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreatePermissionDto } from "./dto/create-permission.dto";
+import { UpdatePermissionDto } from "./dto/update-permission.dto";
 
 @Injectable()
 export class PermissionsService {
   constructor(private prisma: PrismaService) {}
-
 
   async findAll(category?: string) {
     const where = category ? { category } : {};
 
     const permissions = await this.prisma.permission.findMany({
       where,
-      orderBy: [{ category: 'asc' }, { key: 'asc' }],
+      orderBy: [{ category: "asc" }, { key: "asc" }],
       include: {
         activities: {
           select: {
@@ -93,7 +92,9 @@ export class PermissionsService {
     });
 
     if (!permission) {
-      throw new NotFoundException(`Permissão com chave "${key}" não encontrada`);
+      throw new NotFoundException(
+        `Permissão com chave "${key}" não encontrada`,
+      );
     }
 
     return permission;
@@ -122,7 +123,7 @@ export class PermissionsService {
     });
 
     return {
-      message: 'Permissão criada com sucesso',
+      message: "Permissão criada com sucesso",
       permission,
     };
   }
@@ -159,7 +160,7 @@ export class PermissionsService {
     });
 
     return {
-      message: 'Permissão atualizada com sucesso',
+      message: "Permissão atualizada com sucesso",
       permission: updatedPermission,
     };
   }
@@ -180,7 +181,7 @@ export class PermissionsService {
     if (linkedActivities > 0) {
       throw new BadRequestException(
         `Não é possível deletar esta permissão pois existem ${linkedActivities} atividade(s) vinculada(s). ` +
-        `Remova os vínculos antes de deletar.`,
+          `Remova os vínculos antes de deletar.`,
       );
     }
 
@@ -189,7 +190,7 @@ export class PermissionsService {
     });
 
     return {
-      message: 'Permissão deletada com sucesso',
+      message: "Permissão deletada com sucesso",
     };
   }
 
@@ -207,7 +208,7 @@ export class PermissionsService {
       select: {
         category: true,
       },
-      distinct: ['category'],
+      distinct: ["category"],
     });
 
     return permissions

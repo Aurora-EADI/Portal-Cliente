@@ -1,6 +1,14 @@
-import { IsString, IsNumber, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { AddSimulationServiceDto } from './add-simulation-service.dto';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsInt,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { AddSimulationServiceDto } from "./add-simulation-service.dto";
 
 export class CreateSimulationDto {
   @IsString()
@@ -52,6 +60,11 @@ export class CreateSimulationDto {
   @IsNumber()
   @Type(() => Number)
   minBillingValue?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Type(() => Number)
+  auroraPeriods?: number;
 
   @IsOptional()
   @IsArray()

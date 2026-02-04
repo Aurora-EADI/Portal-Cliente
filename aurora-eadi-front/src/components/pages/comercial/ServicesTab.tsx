@@ -56,6 +56,7 @@ interface ServicesTabProps {
   onAddLocalService?: (service: LocalService) => void;
   onRemoveLocalService?: (serviceId: string) => void;
   hasStripping?: boolean;
+  hasLCL?: boolean;
 }
 
 // Helper to calculate final cost based on calculationType
@@ -98,6 +99,7 @@ export function ServicesTab({
   onAddLocalService,
   onRemoveLocalService,
   hasStripping = false,
+  hasLCL = false,
 }: ServicesTabProps) {
   // Working mode: local (before save) or saved (with simulationId)
   const isLocalMode = !simulationId;
@@ -137,8 +139,7 @@ export function ServicesTab({
       case ServiceCalculationType.PER_CONTAINER:
         return `${formatCurrency(rate)} × ${simulationData.cntrCount} containers`;
       case ServiceCalculationType.PER_TONNE:
-        const roundedTonnes = Math.ceil(simulationData.tonnes / 1000);
-        return `${formatCurrency(rate)} × ${roundedTonnes} ton (arr.)`;
+        return `${formatCurrency(rate)} × ${simulationData.tonnes} ton`;
       default:
         return formatCurrency(rate);
     }
@@ -347,9 +348,18 @@ export function ServicesTab({
             <TableBody>
               {services
                 .filter(service => {
+                  const isLCLService = service.name.toUpperCase().includes('LCL');
+                  
                   // Se o serviço é de desova, só mostra se a simulação tem desova.
                   // Se o serviço NÃO é de desova, mostra sempre.
                   if (service.hasStripping && !hasStripping) return false;
+                  
+                  // Oculta serviços LCL por padrão, mostra apenas quando hasLCL está ativo
+                  if (isLCLService && !hasLCL) return false;
+                  
+                  // Se hasLCL está ativo, mostra APENAS serviços LCL
+                  if (hasLCL && !isLCLService) return false;
+                  
                   return true;
                 })
                 .map((service) => {
@@ -618,12 +628,12 @@ export function ServicesTab({
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleSaveCustom}
-              size="sm"
-              className="bg-orange-600 hover:bg-orange-700"
-              disabled={!customRate || parseFloat(customRate) < 0}
-            >
+              <Button
+                onClick={handleSaveCustom}
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700"
+                disabled={customRate === '' || parseFloat(customRate) < 0}
+              >
               Aplicar Valor
             </Button>
           </DialogFooter>

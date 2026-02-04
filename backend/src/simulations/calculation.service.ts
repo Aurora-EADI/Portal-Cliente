@@ -1,5 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { ServiceCalculationType } from '@prisma/client-postgres';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { ServiceCalculationType } from "@prisma/client-postgres";
 
 /**
  * CalculationService
@@ -52,8 +52,8 @@ export class CalculationService {
    * Exemplo: R$ 500,00 fixo
    */
   private calculateFixed(rate: number): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException('Taxa deve ser maior que zero');
+    if (rate < 0) {
+      throw new BadRequestException("Taxa deve ser maior ou igual a zero");
     }
     return rate;
   }
@@ -63,22 +63,19 @@ export class CalculationService {
    * Fórmula: (rate / 100) * cifBrl
    * Exemplo: 0.35% de R$ 100.000 = (0.35/100) × 100.000 = R$ 350
    */
-  private calculatePercentageCif(
-    rate: number,
-    cifBrl?: number,
-  ): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException('Taxa percentual deve ser maior que zero');
+  private calculatePercentageCif(rate: number, cifBrl?: number): number {
+    if (rate < 0) {
+      throw new BadRequestException("Taxa percentual deve ser maior ou igual a zero");
     }
 
     if (cifBrl === undefined || cifBrl === null) {
       throw new BadRequestException(
-        'CIF BRL é obrigatório para cálculo percentual',
+        "CIF BRL é obrigatório para cálculo percentual",
       );
     }
 
     if (cifBrl <= 0) {
-      throw new BadRequestException('CIF BRL deve ser maior que zero');
+      throw new BadRequestException("CIF BRL deve ser maior que zero");
     }
 
     // rate já vem como 0.35 (para 0.35%)
@@ -91,25 +88,22 @@ export class CalculationService {
    * Fórmula: rate * cntrCount
    * Exemplo: R$ 350 × 5 containers = R$ 1.750
    */
-  private calculatePerContainer(
-    rate: number,
-    cntrCount?: number,
-  ): number {
-    if (!rate || rate <= 0) {
+  private calculatePerContainer(rate: number, cntrCount?: number): number {
+    if (rate < 0) {
       throw new BadRequestException(
-        'Taxa por container deve ser maior que zero',
+        "Taxa por container deve ser maior ou igual a zero",
       );
     }
 
     if (cntrCount === undefined || cntrCount === null) {
       throw new BadRequestException(
-        'Quantidade de containers é obrigatória para este tipo de cálculo',
+        "Quantidade de containers é obrigatória para este tipo de cálculo",
       );
     }
 
     if (cntrCount <= 0) {
       throw new BadRequestException(
-        'Quantidade de containers deve ser maior que zero',
+        "Quantidade de containers deve ser maior que zero",
       );
     }
 
@@ -121,22 +115,21 @@ export class CalculationService {
    * Fórmula: rate * tonnes
    * Exemplo: R$ 25 × 20 toneladas = R$ 500
    */
-  private calculatePerTonne(
-    rate: number,
-    tonnes?: number,
-  ): number {
-    if (!rate || rate <= 0) {
-      throw new BadRequestException('Taxa por tonelada deve ser maior que zero');
+  private calculatePerTonne(rate: number, tonnes?: number): number {
+    if (rate < 0) {
+      throw new BadRequestException(
+        "Taxa por tonelada deve ser maior ou igual a zero",
+      );
     }
 
     if (tonnes === undefined || tonnes === null) {
       throw new BadRequestException(
-        'Toneladas é obrigatório para este tipo de cálculo',
+        "Toneladas é obrigatório para este tipo de cálculo",
       );
     }
 
     if (tonnes <= 0) {
-      throw new BadRequestException('Toneladas deve ser maior que zero');
+      throw new BadRequestException("Toneladas deve ser maior que zero");
     }
 
     // Excel style: ROUNDUP(val; -3) / 1000 -> Math.ceil(val / 1000)
@@ -156,19 +149,19 @@ export class CalculationService {
   ): string {
     switch (calculationType) {
       case ServiceCalculationType.FIXED:
-        return `R$ ${rate.toFixed(2).replace('.', ',')} fixo`;
+        return `R$ ${rate.toFixed(2).replace(".", ",")} fixo`;
 
       case ServiceCalculationType.PERCENTAGE_CIF:
         return `${rate}% do CIF`;
 
       case ServiceCalculationType.PER_CONTAINER:
-        return `R$ ${rate.toFixed(2).replace('.', ',')} por container`;
+        return `R$ ${rate.toFixed(2).replace(".", ",")} por container`;
 
       case ServiceCalculationType.PER_TONNE:
-        return `R$ ${rate.toFixed(2).replace('.', ',')} por tonelada`;
+        return `R$ ${rate.toFixed(2).replace(".", ",")} por tonelada`;
 
       default:
-        return 'Fórmula não definida';
+        return "Fórmula não definida";
     }
   }
 
@@ -194,7 +187,7 @@ export class CalculationService {
       case ServiceCalculationType.PERCENTAGE_CIF:
         if (!simulationData.cifBrl || simulationData.cifBrl <= 0) {
           throw new BadRequestException(
-            'CIF BRL válido é obrigatório para serviços com cálculo percentual',
+            "CIF BRL válido é obrigatório para serviços com cálculo percentual",
           );
         }
         return true;
@@ -202,7 +195,7 @@ export class CalculationService {
       case ServiceCalculationType.PER_CONTAINER:
         if (!simulationData.cntrCount || simulationData.cntrCount <= 0) {
           throw new BadRequestException(
-            'Quantidade de containers válida é obrigatória para este serviço',
+            "Quantidade de containers válida é obrigatória para este serviço",
           );
         }
         return true;
@@ -210,7 +203,7 @@ export class CalculationService {
       case ServiceCalculationType.PER_TONNE:
         if (!simulationData.tonnes || simulationData.tonnes <= 0) {
           throw new BadRequestException(
-            'Toneladas válidas são obrigatórias para este serviço',
+            "Toneladas válidas são obrigatórias para este serviço",
           );
         }
         return true;

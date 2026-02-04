@@ -1,11 +1,11 @@
 // faturamento/faturamento.controller.ts
-import { Controller, Get, Query } from '@nestjs/common';
-import { FaturamentoService } from './faturamento.service';
-import { FaturamentoQueryDto } from './dto/faturamentoDetalhado.dto'
+import { Controller, Get, Query } from "@nestjs/common";
+import { FaturamentoService } from "./faturamento.service";
+import { FaturamentoQueryDto } from "./dto/faturamentoDetalhado.dto";
 
-@Controller('faturamento')
+@Controller("faturamento")
 export class FaturamentoController {
-  constructor(private readonly faturamentoService: FaturamentoService) { }
+  constructor(private readonly faturamentoService: FaturamentoService) {}
 
   @Get()
   async findAll(@Query() query: FaturamentoQueryDto) {
@@ -17,9 +17,8 @@ export class FaturamentoController {
     return this.faturamentoService.findAll(inicio, fim);
   }
 
-  @Get('/cutoff')
+  @Get("/cutoff")
   async getDetailBillingCutOff(@Query() query: FaturamentoQueryDto) {
-
     return this.faturamentoService.getDetailBillingCutOff();
   }
 }
