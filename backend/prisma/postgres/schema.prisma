@@ -10,25 +10,26 @@ datasource db {
 }
 
 model Company {
-  id              String        @id @default(uuid())
-  cnpj            String        @unique
-  fantasyName     String
-  socialReason    String
-  zipCode         String
-  address         String
-  number          String
-  complement      String?
-  neighborhood    String
-  city            String
-  state           String
-  phone           String
-  status          CompanyStatus @default(PENDING)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  statusChangedAt DateTime?
-  statusReason    String?
-  documents       Document[]
-  users           User[]
+  id                   String                       @id @default(uuid())
+  cnpj                 String                       @unique
+  fantasyName          String
+  socialReason         String
+  zipCode              String
+  address              String
+  number               String
+  complement           String?
+  neighborhood         String
+  city                 String
+  state                String
+  phone                String
+  status               CompanyStatus                @default(PENDING)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  statusChangedAt      DateTime?
+  statusReason         String?
+  documents            Document[]
+  users                User[]
+  documentRequirements CompanyDocumentRequirement[]
 
   @@map("companies")
 }
@@ -97,18 +98,33 @@ model Document {
 }
 
 model DocumentType {
-  id                         Int               @id @default(autoincrement())
-  name                       String            @unique
+  id                         Int                          @id @default(autoincrement())
+  name                       String                       @unique
   description                String?
-  active                     Boolean           @default(true)
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
-  acceptsPositiveCertificate Boolean           @default(false)
-  frequency                  DocumentFrequency @default(UNICO)
-  hasExpirationControl       Boolean           @default(false)
+  active                     Boolean                      @default(true)
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  acceptsPositiveCertificate Boolean                      @default(false)
+  frequency                  DocumentFrequency            @default(UNICO)
+  hasExpirationControl       Boolean                      @default(false)
   documents                  Document[]
+  companyRequirements        CompanyDocumentRequirement[]
 
   @@map("document_types")
+}
+
+model CompanyDocumentRequirement {
+  id             String       @id @default(uuid())
+  companyId      String
+  documentTypeId Int
+  isRequired     Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, documentTypeId])
+  @@map("company_document_requirements")
 }
 
 model Permission {
@@ -476,6 +492,7 @@ enum AirServiceCalculationType {
   FIXED
   PERCENTAGE_CIF
   PER_KG
+  PER_TONNE
 }
 
 enum DocumentFrequency {
