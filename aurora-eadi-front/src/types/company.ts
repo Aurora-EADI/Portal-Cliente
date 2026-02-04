@@ -2,17 +2,17 @@ export interface Company {
     id: string;
     cnpj: string;
     fantasyName: string;
-    socialReason?: string;
-    zipCode?: string;
-    address?: string;
-    number?: string;
+    socialReason: string;
+    zipCode: string;
+    address: string;
+    number: string;
     complement?: string;
-    neighborhood?: string;
-    city?: string;
-    state?: string;
-    phone?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    phone: string;
     status?: CompanyStatus;
-    hasUser?: boolean; // Indica se a empresa já tem usuário cadastrado
+    hasUser?: boolean; // Indica se a empresa já tem usuário cadastrado (virtual field if applicable)
     createdAt?: string;
     updatedAt?: string;
 }
@@ -24,4 +24,4 @@ export enum CompanyStatus {
     REJECTED = 'REJECTED'
 }
 
-export interface CreateCompanyDTO extends Omit<Company, 'id' | 'createdAt' | 'status'> { }
+export interface CreateCompanyDTO extends Omit<Company, 'id' | 'createdAt' | 'status' | 'updatedAt' | 'hasUser'> { }
