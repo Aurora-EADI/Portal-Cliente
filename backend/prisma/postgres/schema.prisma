@@ -10,30 +10,25 @@ datasource db {
 }
 
 model Company {
-  id                     String                       @id @default(uuid())
-  cnpj                   String                       @unique
-  fantasyName            String
-  socialReason           String
-  zipCode                String
-  address                String
-  number                 String
-  complement             String?
-  neighborhood           String
-  city                   String
-  state                  String
-  phone                  String
-  status                 CompanyStatus                @default(PENDING)
-  createdAt              DateTime                     @default(now())
-  updatedAt              DateTime                     @updatedAt
-  businessClassification BusinessClassification?
-  eadiRegime             EadiRegime?
-  statusChangedAt        DateTime?
-  statusReason           String?
-  documentRequirements   CompanyDocumentRequirement[]
-  company_supplier_types company_supplier_types[]
-  documents              Document[]
-  third_parties          third_parties[]
-  users                  User[]
+  id              String        @id @default(uuid())
+  cnpj            String        @unique
+  fantasyName     String
+  socialReason    String
+  zipCode         String
+  address         String
+  number          String
+  complement      String?
+  neighborhood    String
+  city            String
+  state           String
+  phone           String
+  status          CompanyStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  statusChangedAt DateTime?
+  statusReason    String?
+  documents       Document[]
+  users           User[]
 
   @@map("companies")
 }
@@ -48,13 +43,13 @@ model User {
   position     String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
-  documents    Document[]
-  serviceCosts ServiceCost[]
-  simulationVersions SimulationVersion[] @relation("UserSimulationVersions")
-  AirSimulationVersion AirSimulationVersion[] @relation("UserAirSimulationVersions")
-  moduleAccess UserModuleAccess[]
-  tokens       UserToken[]
-  company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents            Document[]
+  serviceCosts         ServiceCost[]
+  simulationVersions   SimulationVersion[]      @relation("UserSimulationVersions")
+  AirSimulationVersion AirSimulationVersion[]   @relation("UserAirSimulationVersions")
+  moduleAccess         UserModuleAccess[]
+  tokens               UserToken[]
+  company              Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -102,37 +97,18 @@ model Document {
 }
 
 model DocumentType {
-  id                                  Int                                   @id @default(autoincrement())
-  name                                String                                @unique
-  description                         String?
-  active                              Boolean                               @default(true)
-  createdAt                           DateTime                              @default(now())
-  updatedAt                           DateTime                              @updatedAt
-  acceptsPositiveCertificate          Boolean                               @default(false)
-  frequency                           DocumentFrequency                     @default(UNICO)
-  hasExpirationControl                Boolean                               @default(false)
-  companyRequirements                 CompanyDocumentRequirement[]
-  documents                           Document[]
-  supplier_type_document_requirements supplier_type_document_requirements[]
-  third_party_documents               third_party_documents[]
+  id                         Int               @id @default(autoincrement())
+  name                       String            @unique
+  description                String?
+  active                     Boolean           @default(true)
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  acceptsPositiveCertificate Boolean           @default(false)
+  frequency                  DocumentFrequency @default(UNICO)
+  hasExpirationControl       Boolean           @default(false)
+  documents                  Document[]
 
   @@map("document_types")
-}
-
-model CompanyDocumentRequirement {
-  id              Int                     @id @default(autoincrement())
-  companyId       String
-  documentTypeId  Int
-  isRequired      Boolean                 @default(true)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  isAutomatic     Boolean                 @default(false)
-  requirementType DocumentRequirementType @default(IMPEDITIVO)
-  company         Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  documentType    DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([companyId, documentTypeId])
-  @@map("company_document_requirements")
 }
 
 model Permission {
@@ -443,76 +419,6 @@ model AirSimulationService {
   @@map("air_simulation_services")
 }
 
-model company_supplier_types {
-  companyId      String
-  supplierTypeId Int
-  createdAt      DateTime       @default(now())
-  companies      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  supplier_types supplier_types @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
-
-  @@id([companyId, supplierTypeId])
-}
-
-model supplier_type_document_requirements {
-  id              Int                     @id @default(autoincrement())
-  supplierTypeId  Int
-  documentTypeId  Int
-  requirementType DocumentRequirementType @default(IMPEDITIVO)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime
-  document_types  DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
-  supplier_types  supplier_types          @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([supplierTypeId, documentTypeId])
-}
-
-model supplier_types {
-  id                                  Int                                   @id @default(autoincrement())
-  name                                String                                @unique
-  description                         String?
-  active                              Boolean                               @default(true)
-  createdAt                           DateTime                              @default(now())
-  updatedAt                           DateTime
-  company_supplier_types              company_supplier_types[]
-  supplier_type_document_requirements supplier_type_document_requirements[]
-}
-
-model third_parties {
-  id                    String                  @id
-  companyId             String
-  name                  String
-  cpf                   String
-  birthDate             DateTime
-  position              String
-  status                ThirdPartyStatus        @default(ACTIVE)
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime
-  companies             Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  third_party_documents third_party_documents[]
-
-  @@unique([companyId, cpf])
-}
-
-model third_party_documents {
-  id              String         @id
-  thirdPartyId    String
-  name            String
-  fileType        String
-  fileUrl         String
-  status          DocumentStatus @default(PENDING)
-  rejectionReason String?
-  uploadedAt      DateTime       @default(now())
-  updatedAt       DateTime
-  dateIssue       DateTime?
-  dateExpiration  DateTime?
-  documentTypeId  Int?
-  isLatest        Boolean        @default(true)
-  uploadedBy      String
-  document_types  DocumentType?  @relation(fields: [documentTypeId], references: [id])
-  third_parties   third_parties  @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
-  users           User           @relation(fields: [uploadedBy], references: [id])
-}
-
 enum UserRole {
   ADMIN
   SUPPLIER
@@ -566,104 +472,22 @@ enum CustomerStatus {
   INACTIVE
 }
 
-model Customer {
-  id          String         @id @default(uuid())
-  code        String         @unique
-  name          String
-  corporateName String?
-  contact       String?
-  zipCode       String?
-  street        String?
-  number        String?
-  complement    String?
-  neighborhood  String?
-  city          String?
-  state         String?
-  document      String         @unique
-  status      CustomerStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  simulations Simulation[]
-  AirSimulation AirSimulation[]
-
-  @@map("customers")
-}
-
-// AirSimulation Schema
- 
-model AirSimulation {
-  id               String                 @id @default(uuid())
-  simulationNumber String                 @unique
-  customerId       String
-  customer         Customer               @relation(fields: [customerId], references: [id])
-  versions         AirSimulationVersion[]
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
- 
-  @@map("air_simulations")
-}
- 
-model AirSimulationVersion {
-  id               String           @id @default(uuid())
-  simulationId     String
-  simulation       AirSimulation    @relation(fields: [simulationId], references: [id], onDelete: Cascade)
-  version          Int
-  displayNumber    String
-  isCurrentVersion Boolean          @default(true)
-  versionReason    String?
-  status           SimulationStatus @default(DRAFT)
- 
-  // Dados da Carga Aérea
-  cifUsd     Decimal  @db.Decimal(15, 2)
-  dollarRate Decimal  @db.Decimal(10, 4)
-  cifBrl     Decimal  @db.Decimal(15, 2)
-  weightKg   Decimal? @db.Decimal(15, 3)
-  volumeM3   Decimal? @db.Decimal(15, 3)
- 
-  // Custos adicionais
-  storageCost   Decimal @default(0) @db.Decimal(15, 2)
-  transportCost Decimal @default(0) @db.Decimal(15, 2)
-  discount      Decimal @default(0) @db.Decimal(15, 2)
- 
-  // Totalizadores
-  totalServices   Decimal @default(0) @db.Decimal(15, 2)
-  totalGeneral    Decimal @default(0) @db.Decimal(15, 2)
-  minBillingValue Decimal @default(350) @db.Decimal(10, 2)
- 
-  createdBy String
-  user      User     @relation("UserAirSimulationVersions", fields: [createdBy], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
- 
-  services AirSimulationService[]
- 
-  // Histórico de Versões
-  baseVersionId String?
-  baseVersion   AirSimulationVersion?  @relation("AirVersionHistory", fields: [baseVersionId], references: [id])
-  nextVersions  AirSimulationVersion[] @relation("AirVersionHistory")
- 
-  @@map("air_simulation_versions")
-}
- 
-model AirSimulationService {
-  id              String                    @id @default(uuid())
-  versionId       String
-  version         AirSimulationVersion      @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  serviceId       String?
-  serviceName     String
-  serviceCode     String
-  calculationType AirServiceCalculationType
-  costType        ServiceCostType
-  originalCost    Decimal                   @db.Decimal(10, 2)
-  appliedCost     Decimal                   @db.Decimal(10, 2)
-  customReason    String?
- 
-  @@map("air_simulation_services")
-}
- 
-// Novo enum para tipos de cálculo do modal aéreo
 enum AirServiceCalculationType {
   FIXED
   PERCENTAGE_CIF
   PER_KG
+}
+
+enum DocumentFrequency {
+  UNICO
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum ServiceModal {
+  MARITIME
+  AIR
+  BOTH
 }

@@ -349,7 +349,7 @@ export const navigationContexts: NavigationContext[] = [
       {
         label: 'Armazém',
         icon: Package,
-        path: '/dashboard',
+        path: '/dashboard/kanban',
         isGroup: true,
         children: [
           {
