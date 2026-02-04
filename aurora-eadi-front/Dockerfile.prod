@@ -1,14 +1,19 @@
 # =========================
 # Build stage
 # =========================
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Certificados CA e ferramentas de rede
-RUN apk add --no-cache ca-certificates curl wget
+# Certificados e ferramentas
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Proxy args
+# Proxy args (opcional)
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -17,20 +22,18 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-# Configurar npm
+# Configuração npm (mais estável)
 RUN npm config set registry https://registry.npmjs.org \
- && npm config set maxsockets 3 \
  && npm config set fetch-retries 10 \
  && npm config set fetch-retry-mintimeout 30000 \
  && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false
+ && npm config set fetch-timeout 900000
 
 # Copiar manifests
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 # Instalar dependências
-RUN npm ci --verbose
+RUN npm ci
 
 # Copiar código
 COPY . .
@@ -44,43 +47,26 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Build do Next
 RUN npm run build
 
 # =========================
 # Production stage
 # =========================
-FROM node:18-alpine AS production
+FROM node:18-bullseye-slim AS production
 
 WORKDIR /app
-
-RUN apk add --no-cache ca-certificates curl
-
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-ARG NO_PROXY
-
-ENV HTTP_PROXY=${HTTP_PROXY}
-ENV HTTPS_PROXY=${HTTPS_PROXY}
-ENV NO_PROXY=${NO_PROXY}
-
-COPY package*.json ./
-
-RUN npm config set registry https://registry.npmjs.org \
- && npm config set maxsockets 3 \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false \
- && npm ci --omit=dev --verbose
-
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copiar apenas o necessário
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
