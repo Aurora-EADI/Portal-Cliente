@@ -24,6 +24,11 @@ export class ModulesService {
             },
           },
         },
+        _count: {
+          select: {
+            userAccess: true,
+          },
+        },
       },
     });
   }
@@ -83,6 +88,11 @@ export class ModulesService {
                 permission: true,
               },
             },
+          },
+        },
+        _count: {
+          select: {
+            userAccess: true,
           },
         },
       },
