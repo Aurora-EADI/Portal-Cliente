@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Plus, Trash2, Package, Truck, FileText, Users, BarChart3, Settings,
-  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail, 
+import {
+  Plus, Trash2, Edit, Package, Truck, FileText, Users, BarChart3, Settings,
+  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail,
   Bell, Shield, LayoutDashboard, Layers, Wrench, Database, AlertCircle, X, Activity
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { EditModuleModal } from "./gestao/EditModuleModal";
+import type { Module as ModuleType, UpdateModuleDto } from "@/types/module";
 
 // Mapa de ícones disponíveis
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -60,6 +62,11 @@ export function PermissoesDashboard() {
     route: "",
     icon: "Package",
   });
+
+  // Modal de edição
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<ModuleType | null>(null);
+  const [moduleError, setModuleError] = useState<string | null>(null);
 
   // Carrega módulos do backend
   useEffect(() => {
@@ -154,6 +161,50 @@ export function PermissoesDashboard() {
     setFormData({ name: "", description: "", route: "", icon: "Package" });
     setIsAdding(false);
     setError(null);
+  };
+
+  // Abre o modal de edição
+  const handleEditModule = (module: Module) => {
+    // Converte o módulo local para o tipo esperado pelo modal
+    const moduleForEdit: ModuleType = {
+      ...module,
+      id: Number(module.id),
+      activities: module.activities?.map((a) => ({
+        ...a,
+        id: Number(a.id),
+        permissions: a.permissions.map((p) => ({
+          permission: {
+            id: Number(p.permission.id),
+            key: p.permission.key,
+            description: p.permission.description,
+            category: "",
+          },
+        })),
+      })),
+    };
+    setSelectedModule(moduleForEdit);
+    setModuleError(null);
+    setEditModalOpen(true);
+  };
+
+  // Salva as alterações do módulo
+  const handleSaveModule = async (id: number, data: UpdateModuleDto) => {
+    try {
+      const response = await api.patch(`/modules/${id}`, data);
+      setModules((prev) =>
+        prev.map((m) => (String(m.id) === String(id) ? response.data : m))
+      );
+      setEditModalOpen(false);
+      setSelectedModule(null);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message;
+      if (Array.isArray(errorMessage)) {
+        setModuleError(errorMessage.join(", "));
+      } else {
+        setModuleError(errorMessage || "Erro ao salvar módulo. Tente novamente.");
+      }
+      throw err;
+    }
   };
 
   // Helper para renderizar o ícone dinamicamente
@@ -384,18 +435,27 @@ export function PermissoesDashboard() {
                   <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                     {renderIcon(module.icon)}
                   </div>
-                  <button
-                    onClick={() => handleDelete(module.id)}
-                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Excluir módulo"
-                    disabled={deletingId === module.id}
-                  >
-                    {deletingId === module.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={() => handleEditModule(module)}
+                      className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-all"
+                      title="Editar módulo"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(module.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Excluir módulo"
+                      disabled={deletingId === module.id}
+                    >
+                      {deletingId === module.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <h3 className="font-bold text-lg text-gray-900 mb-1">
                   {module.name}
@@ -453,6 +513,19 @@ export function PermissoesDashboard() {
           </button>
         </div>
       )}
+
+      {/* Modal de Edição de Módulo */}
+      <EditModuleModal
+        isOpen={editModalOpen}
+        module={selectedModule}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedModule(null);
+        }}
+        onSave={handleSaveModule}
+        error={moduleError}
+        onClearError={() => setModuleError(null)}
+      />
     </div>
   );
 }

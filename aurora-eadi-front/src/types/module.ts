@@ -28,6 +28,14 @@ export interface Module {
 export interface CreateModuleDto {
     name: string;
     description?: string;
+    route: string;
+    icon: string;
+}
+
+export interface UpdateModuleDto {
+    name?: string;
+    description?: string;
     route?: string;
     icon?: string;
+    active?: boolean;
 }
