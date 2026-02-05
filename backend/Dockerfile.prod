@@ -114,4 +114,4 @@ ENV NODE_ENV=production
 
 EXPOSE 5000
 
-CMD ["node", "dist/src/main.js"]
+CMD npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate && node dist/src/main.js

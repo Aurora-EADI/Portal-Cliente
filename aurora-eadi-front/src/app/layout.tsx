@@ -8,7 +8,7 @@ export const metadata = {
   },
   description: 'Portal - Aurora EADI',
   icons: {
-    icon: '/favicon-Aurora.png  '
+    icon: '/favicon-Aurora.png'
   }
 };
 
