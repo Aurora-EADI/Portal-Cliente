@@ -73,7 +73,7 @@ export const navigationContexts: NavigationContext[] = [
             icon: Shield,
             path: '/documentos',
             requiredPermissions: ['DOC_VIEW'],
-            requiredRoles: [UserRole.ADMIN],
+            requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
           },
           {
             label: 'Anexar Documentos',

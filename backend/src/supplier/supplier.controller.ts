@@ -67,7 +67,7 @@ export class SupplierController {
   }
 
   @Get("me/requirements")
-  @Roles(UserRole.ADMIN, UserRole.SUPPLIER)
+  @Roles(UserRole.ADMIN, UserRole.SUPPLIER, UserRole.EMPLOYEE)
   getRequirements(@Request() req) {
     return this.supplierService.getRequirements(req.user.id);
   }
