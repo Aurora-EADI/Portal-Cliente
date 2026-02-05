@@ -7,7 +7,7 @@ import {
   IsArray,
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole, CompanyStatus } from "@prisma/client-postgres";
 
 export class UserQueryDto {
   @IsOptional()
@@ -46,4 +46,8 @@ export class UserQueryDto {
   })
   @IsArray()
   roles?: UserRole[]; // Array de roles permitidos (ex: "ADMIN,EMPLOYEE")
+
+  @IsOptional()
+  @IsEnum(CompanyStatus)
+  companyStatus?: CompanyStatus; // Filtrar por status da empresa
 }

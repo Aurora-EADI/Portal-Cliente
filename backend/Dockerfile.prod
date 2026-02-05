@@ -114,4 +114,5 @@ ENV NODE_ENV=production
 
 EXPOSE 5000
 
+# Sincroniza o schema do banco e inicia a aplicação
 CMD npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate && node dist/src/main.js

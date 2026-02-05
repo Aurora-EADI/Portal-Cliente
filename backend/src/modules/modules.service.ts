@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { CreateModuleDto } from "./dto/create-module.dto";
+import { UpdateModuleDto } from "./dto/update-module.dto";
 
 @Injectable()
 export class ModulesService {
@@ -34,6 +35,56 @@ export class ModulesService {
         description: createModuleDto.description,
         route: createModuleDto.route,
         icon: createModuleDto.icon,
+      },
+    });
+  }
+
+  async findOne(id: number) {
+    const module = await this.prisma.module.findUnique({
+      where: { id },
+      include: {
+        activities: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!module) {
+      throw new NotFoundException(`Módulo com ID ${id} não encontrado`);
+    }
+
+    return module;
+  }
+
+  async update(id: number, updateModuleDto: UpdateModuleDto) {
+    // Verificar se o módulo existe
+    const module = await this.prisma.module.findUnique({
+      where: { id },
+    });
+
+    if (!module) {
+      throw new NotFoundException(`Módulo com ID ${id} não encontrado`);
+    }
+
+    return this.prisma.module.update({
+      where: { id },
+      data: updateModuleDto,
+      include: {
+        activities: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
       },
     });
   }

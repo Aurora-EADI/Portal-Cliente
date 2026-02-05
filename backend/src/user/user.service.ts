@@ -86,12 +86,13 @@ export class UsersService {
   async findAll(query: UserQueryDto = {}) {
     const {
       page = 1,
-      limit = 10,
+      limit,
       search,
       sortBy = "createdAt",
       sortOrder = "desc",
       role,
       roles,
+      companyStatus,
     } = query;
 
     // Build where clause for filtering
@@ -107,6 +108,13 @@ export class UsersService {
       where.role = { in: roles };
     }
 
+    // Filter by company status
+    if (companyStatus) {
+      where.company = {
+        status: companyStatus,
+      };
+    }
+
     // Search by name or email
     if (search) {
       where.OR = [
@@ -115,16 +123,16 @@ export class UsersService {
       ];
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
-    const take = limit;
+    // Calculate pagination (limit is optional - if not provided, return all)
+    const skip = limit ? (page - 1) * limit : undefined;
+    const take = limit || undefined;
 
     // Execute query with filters and pagination
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
-        skip,
-        take,
+        ...(skip !== undefined && { skip }),
+        ...(take !== undefined && { take }),
         include: {
           company: {
             select: {
@@ -148,9 +156,10 @@ export class UsersService {
     ]);
 
     // Calculate pagination metadata
-    const totalPages = Math.ceil(total / limit);
-    const hasNext = page < totalPages;
-    const hasPrev = page > 1;
+    const effectiveLimit = limit || total;
+    const totalPages = effectiveLimit > 0 ? Math.ceil(total / effectiveLimit) : 1;
+    const hasNext = limit ? page < totalPages : false;
+    const hasPrev = limit ? page > 1 : false;
 
     // Remove passwords from response
     const usersWithoutPassword = users.map(({ password, ...user }) => user);
@@ -159,7 +168,7 @@ export class UsersService {
       data: usersWithoutPassword,
       pagination: {
         page,
-        limit,
+        limit: effectiveLimit,
         total,
         totalPages,
         hasNext,

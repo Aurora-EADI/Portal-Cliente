@@ -148,7 +148,7 @@ export function PermissionManagerPage() {
       setError(null);
 
       const [usersResponse, modulesData, activitiesData] = await Promise.all([
-        usersService.findAll({ limit: 100 }),
+        usersService.findAll({ companyStatus: 'ACTIVE' }),
         modulesService.findAll(),
         activitiesService.findAll(),
       ]);

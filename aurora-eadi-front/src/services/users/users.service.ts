@@ -10,6 +10,7 @@ export interface UserQueryParams {
     sortOrder?: 'asc' | 'desc';
     role?: string;
     roles?: string; // Comma-separated roles (ex: "ADMIN,EMPLOYEE")
+    companyStatus?: 'PENDING' | 'PENDING_ACTIVE' | 'ACTIVE' | 'REJECTED' | 'INACTIVE';
 }
 
 export interface PaginatedUsersResponse {
