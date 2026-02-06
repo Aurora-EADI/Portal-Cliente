@@ -15,6 +15,7 @@ import {
   FileText
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/ui/Logo";
 
 interface AirportTableProps {
   containers: ContainerCard[];
@@ -75,7 +76,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
 
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return "--:--";
-    const date = new Date(dateStr);
+    // Remove o sufixo Z para evitar conversão UTC -> Local
+    const localDateStr = dateStr.replace("Z", "");
+    const date = new Date(localDateStr);
     return date.toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit"
@@ -84,7 +87,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "--/--";
-    const date = new Date(dateStr);
+    // Remove o sufixo Z para evitar conversão UTC -> Local
+    const localDateStr = dateStr.replace("Z", "");
+    const date = new Date(localDateStr);
     return date.toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit"
@@ -123,25 +128,25 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
         )}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={cn(
+              <Logo src="/logo_principal.png" size="md" />
+              {/* <div className={cn(
                 "p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-500/25",
                 isTvMode && "p-2"
               )}>
                 <Package className={cn("text-white", isTvMode ? "h-6 w-6" : "h-7 w-7")} />
-              </div>
+              </div> */}
               <div>
                 <h2 className={cn(
-                  "font-bold text-white tracking-wide",
-                  isTvMode ? "text-xl" : "text-2xl"
+                  "font-bold text-primary-300 tracking-wide",
+                  isTvMode ? "text-lg" : "text-2xl"
                 )}>
                   PAINEL DE CONTAINERS
                 </h2>
-                <p className={cn(
-                  "text-slate-400",
-                  isTvMode ? "text-sm" : "text-sm"
-                )}>
-                  Monitoramento em tempo real
-                </p>
+                {!isTvMode && (
+                  <p className="text-slate-400 text-sm">
+                    Monitoramento em tempo real
+                  </p>
+                )}
               </div>
             </div>
 
@@ -154,7 +159,7 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                     "px-4 py-2 rounded-xl border backdrop-blur-sm",
                     "h-20 w-48 flex flex-col justify-between",
                     config.bgColor,
-                    isTvMode && "px-3 py-2 h-14 w-36"
+                    isTvMode && "px-3 py-1.5 h-12 w-32"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -164,7 +169,7 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                     </span>
                   </div>
 
-                  <p className={cn("font-bold", config.color, isTvMode ? "text-xl" : "text-2xl")}>
+                  <p className={cn("font-bold", config.color, isTvMode ? "text-lg" : "text-2xl")}>
                     {counts[key as ContainerStatus]}
                   </p>
                 </div>
@@ -175,17 +180,17 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                 "flex flex-col items-end ml-4 pl-4 border-l border-slate-700",
                 isTvMode && "ml-2 pl-2"
               )}>
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className={cn("flex items-center gap-2 text-slate-500", isTvMode && "hidden")}>
                   <Clock className="h-4 w-4" />
                   <span className="text-xs">HORA ATUAL</span>
                 </div>
                 <p className={cn(
                   "font-mono font-bold text-white",
-                  isTvMode ? "text-2xl" : "text-3xl"
+                  isTvMode ? "text-xl" : "text-3xl"
                 )}>
                   {currentTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </p>
-                <span className="text-slate-500 text-xs">
+                <span className={cn("text-slate-500", isTvMode ? "text-[10px]" : "text-xs")}>
                   Atualizado em {currentTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
@@ -204,8 +209,7 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
         <table className="w-full">
           <thead className="sticky top-0 z-10">
             <tr className={cn(
-              "bg-slate-800 text-slate-400 uppercase tracking-wider border-b border-slate-700/50",
-              isTvMode ? "text-sm" : "text-xs"
+              "bg-slate-800 text-slate-400 uppercase tracking-wider border-b border-slate-700/50 text-xs"
             )}>
               <th className={cn("px-4 py-3 text-left font-semibold", isTvMode && "px-3 py-2")}>
                 <div className="flex items-center gap-2">
@@ -283,7 +287,7 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                     <span className={cn(
                       "font-mono font-bold",
                       textColor,
-                      isTvMode ? "text-base" : "text-base"
+                      "text-base"
                     )}>
                       {container.entryNumber}
                     </span>
@@ -295,47 +299,43 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                       <span className={cn(
                         "font-mono font-bold block",
                         textColor,
-                        isTvMode ? "text-base" : "text-base"
+                        "text-base"
                       )}>
                         {container.containerNumber}
                       </span>
-                      <span className={cn(
-                        "text-slate-500",
-                        isTvMode ? "text-xs" : "text-xs"
-                      )}>
-                        {container.containerType}
-                      </span>
+                      {!isTvMode && (
+                        <span className="text-slate-500 text-xs">
+                          {container.containerType}
+                        </span>
+                      )}
                     </div>
                   </td>
 
                   {/* Empresa */}
-                  <td className={cn("px-4 py-3 max-w-[200px]", isTvMode && "px-3 py-2 max-w-[220px]")}>
+                  <td className={cn("px-4 py-3 max-w-[200px]", isTvMode && "px-3 py-2 max-w-[200px]")}>
                     <span className={cn(
-                      "truncate block",
-                      textColor,
-                      isTvMode ? "text-sm" : "text-sm"
+                      "truncate block text-sm",
+                      textColor
                     )}>
                       {container.company}
                     </span>
                   </td>
 
                   {/* Transportadora */}
-                  <td className={cn("px-4 py-3 max-w-[180px]", isTvMode && "px-3 py-2 max-w-[180px]")}>
+                  <td className={cn("px-4 py-3 max-w-[180px]", isTvMode && "px-3 py-2 max-w-[160px]")}>
                     <span className={cn(
-                      "truncate block",
-                      timeClass === "normal" ? "text-slate-400" : textColor,
-                      isTvMode ? "text-sm" : "text-sm"
+                      "truncate block text-sm",
+                      timeClass === "normal" ? "text-slate-400" : textColor
                     )}>
                       {container.carrier}
                     </span>
                   </td>
 
                   {/* Motorista */}
-                  <td className={cn("px-4 py-3 max-w-[150px]", isTvMode && "px-3 py-2 max-w-[150px]")}>
+                  <td className={cn("px-4 py-3 max-w-[150px]", isTvMode && "px-3 py-2 max-w-[130px]")}>
                     <span className={cn(
-                      "truncate block",
-                      timeClass === "normal" ? "text-slate-400" : textColor,
-                      isTvMode ? "text-sm" : "text-sm"
+                      "truncate block text-sm",
+                      timeClass === "normal" ? "text-slate-400" : textColor
                     )}>
                       {container.motorista}
                     </span>
@@ -344,10 +344,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                   {/* Placa */}
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <span className={cn(
-                      "inline-block font-mono font-bold px-2 py-1 rounded-lg",
+                      "inline-block font-mono font-bold rounded-lg px-2 py-1",
                       "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300",
-                      "border border-cyan-500/30",
-                      isTvMode ? "text-sm" : "text-sm"
+                      "border border-cyan-500/30 text-sm"
                     )}>
                       {container.licensePlate}
                     </span>
@@ -356,10 +355,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                   {/* Documento/Abreviatura */}
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <span className={cn(
-                      "inline-block font-mono px-2 py-1 rounded-lg",
+                      "inline-block font-mono rounded-lg px-2 py-1",
                       "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300",
-                      "border border-purple-500/30",
-                      isTvMode ? "text-sm" : "text-sm"
+                      "border border-purple-500/30 text-sm"
                     )}>
                       {container.abreviatura}
                     </span>
@@ -368,18 +366,14 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                   {/* Hora Entrada */}
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <div className="flex flex-col items-center">
-                      <span className={cn(
-                        "font-mono font-bold text-emerald-400",
-                        isTvMode ? "text-base" : "text-base"
-                      )}>
+                      <span className="font-mono font-bold text-emerald-400 text-base">
                         {formatTime(container.entryDate)}
                       </span>
-                      <span className={cn(
-                        "text-slate-500",
-                        isTvMode ? "text-xs" : "text-xs"
-                      )}>
-                        {formatDate(container.entryDate)}
-                      </span>
+                      {!isTvMode && (
+                        <span className="text-slate-500 text-xs">
+                          {formatDate(container.entryDate)}
+                        </span>
+                      )}
                     </div>
                   </td>
 
@@ -387,29 +381,26 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <div className="flex flex-col items-center">
                       <span className={cn(
-                        "font-mono font-bold",
-                        container.exitDate ? "text-rose-400" : "text-slate-600",
-                        isTvMode ? "text-base" : "text-base"
+                        "font-mono font-bold text-base",
+                        container.exitDate ? "text-rose-400" : "text-slate-600"
                       )}>
                         {formatTime(container.exitDate)}
                       </span>
-                      <span className={cn(
-                        "text-slate-500",
-                        isTvMode ? "text-xs" : "text-xs"
-                      )}>
-                        {formatDate(container.exitDate)}
-                      </span>
+                      {!isTvMode && (
+                        <span className="text-slate-500 text-xs">
+                          {formatDate(container.exitDate)}
+                        </span>
+                      )}
                     </div>
                   </td>
 
                   {/* Tempo */}
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <span className={cn(
-                      "inline-flex items-center gap-1 font-mono font-bold px-2 py-1 rounded-lg border",
-                      badgeStyle,
-                      isTvMode ? "text-sm" : "text-sm"
+                      "inline-flex items-center gap-1 font-mono font-bold rounded-lg border px-2 py-1 text-sm",
+                      badgeStyle
                     )}>
-                      <Timer className={cn("h-3 w-3", isTvMode && "h-3.5 w-3.5")} />
+                      <Timer className="h-3 w-3" />
                       {formatMinutes(container.tempoMinutos)}
                     </span>
                   </td>
@@ -417,10 +408,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                   {/* Status */}
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <span className={cn(
-                      "inline-flex items-center gap-1.5 font-bold px-3 py-1 rounded-full border",
+                      "inline-flex items-center gap-1.5 font-bold rounded-full border text-xs px-3 py-1",
                       status.color,
-                      status.bgColor,
-                      isTvMode ? "text-xs" : "text-xs"
+                      status.bgColor
                     )}>
                       <span className={cn(
                         "w-1.5 h-1.5 rounded-full",
@@ -457,7 +447,7 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
             <span className="text-sm">
               Total de registros:
             </span>
-            <span className="font-bold text-white text-base">
+            <span className={cn("font-bold text-white", isTvMode ? "text-sm" : "text-base")}>
               {containers.length}
             </span>
           </div>
