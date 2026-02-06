@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { EditModuleModal } from "./gestao/EditModuleModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Module as ModuleType, UpdateModuleDto } from "@/types/module";
 
 // Mapa de ícones disponíveis
@@ -39,7 +40,11 @@ interface Module {
   description: string;
   route?: string;
   icon?: string;
+  active?: boolean;
   activities?: Activity[];
+  _count?: {
+    userAccess: number;
+  };
 }
 
 interface ModuleFormData {
@@ -67,6 +72,10 @@ export function PermissoesDashboard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<ModuleType | null>(null);
   const [moduleError, setModuleError] = useState<string | null>(null);
+
+  // Dialog de confirmação de deleção
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
 
   // Carrega módulos do backend
   useEffect(() => {
@@ -138,11 +147,17 @@ export function PermissoesDashboard() {
     }
   };
 
-  // Deleta módulo
-  const handleDelete = async (moduleId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este módulo? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+  // Abre o dialog de confirmação de deleção
+  const handleDeleteClick = (module: Module) => {
+    setModuleToDelete(module);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirma e deleta o módulo
+  const handleConfirmDelete = async () => {
+    if (!moduleToDelete) return;
+
+    const moduleId = moduleToDelete.id;
 
     try {
       setDeletingId(moduleId);
@@ -154,6 +169,8 @@ export function PermissoesDashboard() {
       setError(err.response?.data?.message || 'Erro ao excluir módulo. Verifique se não há dependências.');
     } finally {
       setDeletingId(null);
+      setDeleteDialogOpen(false);
+      setModuleToDelete(null);
     }
   };
 
@@ -190,10 +207,9 @@ export function PermissoesDashboard() {
   // Salva as alterações do módulo
   const handleSaveModule = async (id: number, data: UpdateModuleDto) => {
     try {
-      const response = await api.patch(`/modules/${id}`, data);
-      setModules((prev) =>
-        prev.map((m) => (String(m.id) === String(id) ? response.data : m))
-      );
+      await api.patch(`/modules/${id}`, data);
+      // Recarrega todos os módulos para garantir dados atualizados
+      await fetchModules();
       setEditModalOpen(false);
       setSelectedModule(null);
     } catch (err: any) {
@@ -225,41 +241,47 @@ export function PermissoesDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Error Alert */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
-          <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-red-800">Erro</h3>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header Fixo */}
+      <div className="flex-shrink-0 space-y-4 pb-4">
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-red-800">Erro</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-600 transition-colors"
+              aria-label="Fechar alerta"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Fechar alerta"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Módulos</h1>
-          <p className="text-gray-500 mt-1">Gerencie os macro-módulos e permissões do sistema</p>
-        </div>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-all shadow-sm hover:shadow text-sm font-medium"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Módulo
-          </button>
         )}
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Módulos</h1>
+            <p className="text-gray-500 mt-1">Gerencie os macro-módulos e permissões do sistema</p>
+          </div>
+          {!isAdding && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-all shadow-sm hover:shadow text-sm font-medium"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Módulo
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Conteúdo Scrollável */}
+      <div className="flex-1 overflow-auto space-y-6 pb-6">
 
       {/* Form */}
       {isAdding && (
@@ -428,9 +450,9 @@ export function PermissoesDashboard() {
           {modules.map((module) => (
             <div
               key={module.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all p-5 flex flex-col justify-between group"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all p-5 flex flex-col group min-h-[200px]"
             >
-              <div>
+              <div className="flex-grow">
                 <div className="flex justify-between items-start mb-3">
                   <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                     {renderIcon(module.icon)}
@@ -444,7 +466,7 @@ export function PermissoesDashboard() {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(module.id)}
+                      onClick={() => handleDeleteClick(module)}
                       className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Excluir módulo"
                       disabled={deletingId === module.id}
@@ -481,11 +503,18 @@ export function PermissoesDashboard() {
                   </div>
                 )}
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                {/* <span title={module.id}>ID: {module.id.slice(0, 8)}...</span> */}
-                <span className="bg-green-100 px-2 py-1 rounded text-green-700 font-medium">
-                  Ativo
-                </span>
+              <div className="mt-auto pt-4">
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-end text-xs text-gray-400">
+                  {module.active !== false ? (
+                    <span className="bg-green-100 px-2 py-1 rounded text-green-700 font-medium">
+                      Ativo
+                    </span>
+                  ) : (
+                    <span className="bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">
+                      Inativo
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -513,6 +542,7 @@ export function PermissoesDashboard() {
           </button>
         </div>
       )}
+      </div>
 
       {/* Modal de Edição de Módulo */}
       <EditModuleModal
@@ -525,6 +555,51 @@ export function PermissoesDashboard() {
         onSave={handleSaveModule}
         error={moduleError}
         onClearError={() => setModuleError(null)}
+      />
+
+      {/* Dialog de Confirmação de Deleção */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeleteDialogOpen(false);
+            setModuleToDelete(null);
+          }
+        }}
+        title="Excluir Módulo"
+        description={(() => {
+          const activitiesCount = moduleToDelete?.activities?.length || 0;
+          const userAccessCount = moduleToDelete?._count?.userAccess || 0;
+          const hasDependencies = activitiesCount > 0 || userAccessCount > 0;
+
+          if (hasDependencies) {
+            const parts = [];
+            if (activitiesCount > 0) {
+              parts.push(`${activitiesCount} atividade(s)`);
+            }
+            if (userAccessCount > 0) {
+              parts.push(`${userAccessCount} acesso(s) de usuário(s)`);
+            }
+            return `O módulo "${moduleToDelete?.name}" possui ${parts.join(' e ')} vinculado(s) e não pode ser excluído. Remova as dependências primeiro ou desative o módulo.`;
+          }
+          return `Tem certeza que deseja excluir o módulo "${moduleToDelete?.name}"? Esta ação não pode ser desfeita.`;
+        })()}
+        confirmText={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies ? "Entendi" : "Excluir";
+        })()}
+        cancelText="Cancelar"
+        variant={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies ? "default" : "destructive";
+        })()}
+        onConfirm={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies
+            ? () => { setDeleteDialogOpen(false); setModuleToDelete(null); }
+            : handleConfirmDelete;
+        })()}
+        isLoading={!!deletingId}
       />
     </div>
   );

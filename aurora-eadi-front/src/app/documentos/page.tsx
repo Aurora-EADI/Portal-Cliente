@@ -8,7 +8,7 @@ import { UserRole } from '@/types'
 
 export default function DocumentosPageRoute() {
   return (
-    <RoleGuard allowedRoles={[UserRole.ADMIN]} redirectTo="/documentos/empresa">
+    <RoleGuard allowedRoles={[UserRole.ADMIN, UserRole.EMPLOYEE]} redirectTo="/documentos/empresa">
       <div className="h-screen flex flex-col overflow-hidden">
         <Header />
         <Layout>

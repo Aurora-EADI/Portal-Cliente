@@ -304,11 +304,11 @@ export function UserRegistryPage() {
                   <input
                     type="text"
                     required
-                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="Ex: João da Silva"
+                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed uppercase"
+                    placeholder="Ex: JOÃO DA SILVA"
                     value={formData.name}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({ ...formData, name: e.target.value.toUpperCase() })
                     }
                     disabled={isSaving}
                   />
@@ -453,7 +453,13 @@ export function UserRegistryPage() {
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={
+                  isSaving ||
+                  !formData.name.trim() ||
+                  !formData.email.trim() ||
+                  !formData.password.trim() ||
+                  ((formData.role === UserRole.EMPLOYEE || formData.role === UserRole.SUPPLIER) && !formData.companyId)
+                }
                 className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium flex items-center shadow-lg transform hover:translate-y-[-1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isSaving ? (
