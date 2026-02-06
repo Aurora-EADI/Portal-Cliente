@@ -222,8 +222,8 @@ export function AdminDashboard() {
 
   const handleDownload = async (docId: string) => {
     try {
-      const url = await documentService.getDownloadUrl(docId);
-      window.open(url, '_blank');
+      await documentService.download(docId);
+      toast.success('Download iniciado!');
     } catch (error: any) {
       console.error('Erro ao fazer download:', error);
       const message = error.message || 'Erro ao fazer download do documento';

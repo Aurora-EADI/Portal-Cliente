@@ -142,6 +142,35 @@ export class DocumentsService {
     }
   }
 
+  async getFileStream(id: string) {
+    const document = await this.prisma.document.findUnique({ where: { id } });
+    if (!document)
+      throw new NotFoundException("Documento não encontrado no banco de dados");
+
+    try {
+      const stream = await this.minio.getFileStream(document.fileUrl);
+      const stat = await this.minio.getFileStat(document.fileUrl);
+
+      // Extrai o nome original do arquivo da URL
+      const filename = document.fileUrl.split("-").slice(1).join("-");
+
+      return {
+        stream,
+        filename,
+        contentType: stat.metaData["content-type"] || "application/octet-stream",
+        size: stat.size,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Erro ao obter stream do arquivo ${document.fileUrl}:`,
+        error,
+      );
+      throw new InternalServerErrorException(
+        "Erro ao recuperar o arquivo do servidor de armazenamento (MinIO)",
+      );
+    }
+  }
+
   async findOverdueDocuments(query: OverdueDocumentsQueryDto) {
     const {
       page = 1,

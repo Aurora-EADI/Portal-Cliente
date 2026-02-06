@@ -11,7 +11,9 @@ import {
   UploadedFile,
   Request,
   ForbiddenException,
+  Res,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiTags,
@@ -123,14 +125,23 @@ export class DocumentsController {
   }
 
   @Get(":id/download")
-  @ApiOperation({ summary: "Obter URL de download do documento" })
+  @ApiOperation({ summary: "Fazer download do documento" })
   @ApiResponse({
     status: 200,
-    description: "URL de download gerada com sucesso",
+    description: "Download do documento via streaming",
   })
   @ApiResponse({ status: 404, description: "Documento não encontrado" })
-  async getDownloadUrl(@Param("id") id: string) {
-    const url = await this.documentsService.getFileUrl(id);
-    return { url };
+  async downloadFile(@Param("id") id: string, @Res() res: Response) {
+    // Obtém stream do arquivo via MinIO (acesso interno)
+    const { stream, filename, contentType, size } =
+      await this.documentsService.getFileStream(id);
+
+    // Define headers para download
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", size);
+
+    // Faz streaming do arquivo para o cliente
+    stream.pipe(res);
   }
 }

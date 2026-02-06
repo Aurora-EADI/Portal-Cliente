@@ -205,15 +205,80 @@ export const documentService = {
   },
 
   /**
-   * Busca URL de download do documento
+   * Faz download do documento via streaming do backend
    */
-  getDownloadUrl: async (id: string): Promise<string> => {
+  download: async (id: string): Promise<void> => {
+    console.log('[DOWNLOAD] Iniciando download do documento:', id);
+
     try {
-      const response = await api.get(`/documents/${id}/download`);
-      return response.data.url;
+      console.log('[DOWNLOAD] Fazendo requisição para:', `/documents/${id}/download`);
+      const response = await api.get(`/documents/${id}/download`, {
+        responseType: 'blob',
+      });
+
+      console.log('[DOWNLOAD] Resposta recebida:', {
+        status: response.status,
+        headers: response.headers,
+        dataType: typeof response.data,
+        dataSize: response.data?.size || 'unknown'
+      });
+
+      // Extrai o nome do arquivo do header Content-Disposition
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'documento.pdf';
+
+      if (contentDisposition) {
+        console.log('[DOWNLOAD] Content-Disposition:', contentDisposition);
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+          console.log('[DOWNLOAD] Nome do arquivo extraído:', filename);
+        }
+      } else {
+        console.warn('[DOWNLOAD] Header Content-Disposition não encontrado');
+      }
+
+      // Cria um blob com o tipo correto
+      const contentType = response.headers['content-type'] || 'application/octet-stream';
+      console.log('[DOWNLOAD] Content-Type:', contentType);
+
+      const blob = new Blob([response.data], { type: contentType });
+      console.log('[DOWNLOAD] Blob criado:', {
+        size: blob.size,
+        type: blob.type
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      console.log('[DOWNLOAD] URL do blob criada:', url);
+
+      // Cria um link temporário e faz o download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      console.log('[DOWNLOAD] Link criado e adicionado ao DOM');
+
+      link.click();
+      console.log('[DOWNLOAD] Link clicado, download deve iniciar');
+
+      // Aguarda um pouco antes de limpar
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        console.log('[DOWNLOAD] Recursos limpos');
+      }, 100);
     } catch (error: any) {
+      console.error('[DOWNLOAD] Erro ao fazer download:', error);
+      console.error('[DOWNLOAD] Erro detalhado:', {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
       const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao buscar URL de download';
+      let message = 'Erro ao fazer download do documento';
 
       if (typeof backendMessage === 'string') {
         message = backendMessage;
@@ -223,6 +288,15 @@ export const documentService = {
 
       return Promise.reject(new Error(message));
     }
+  },
+
+  /**
+   * @deprecated Use o método download() para fazer download via streaming
+   * Busca URL de download do documento (mantido para compatibilidade)
+   */
+  getDownloadUrl: async (id: string): Promise<string> => {
+    // Agora retorna a URL do endpoint de download
+    return `/api/documents/${id}/download`;
   },
 };
 

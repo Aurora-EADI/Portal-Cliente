@@ -8,6 +8,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_SERVER_URL: http://172.20.210.84:9000
     env_file:
       - .env.prod
     volumes:
@@ -24,6 +25,25 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
+      retries: 3
+
+  sql-proxy:
+    image: alpine/socat:latest
+    container_name: sql-server-proxy
+    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:host.docker.internal:1433"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - aurora-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1433"]
+      interval: 30s
+      timeout: 5s
       retries: 3
 
   backend:
@@ -52,9 +72,14 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT}
+      MINIO_EXTERNAL_PORT: ${MINIO_EXTERNAL_PORT}
+      MINIO_EXTERNAL_USE_SSL: ${MINIO_EXTERNAL_USE_SSL}
       PROTHEUS_API_KEY: ${PROTHEUS_API_KEY}
     env_file:
       - .env.prod
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5000:5000"
     networks:
