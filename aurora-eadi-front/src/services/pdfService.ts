@@ -2,9 +2,32 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AirSimulation } from '@/types/air-simulation';
 import { Simulation } from '@/types/simulation';
-import { formatCurrency, formatNumberBR, formatDateBR } from '@/lib/utils';
+import { formatCurrency, formatNumberBR, formatDateBR, formatPercent } from '@/lib/utils';
+import { ServiceCalculationType } from '@/types';
 
 const AURORA_LOGO_URL = '/logo-aurora.png';
+
+const getServiceDetail = (service: any): string => {
+  if (service.customReason && service.customReason !== '-') {
+    return service.customReason;
+  }
+
+  const rate = service.originalCost || 0;
+  const calcType = service.service?.calculationType || service.calculationType;
+
+  switch (calcType) {
+    case ServiceCalculationType.PERCENTAGE_CIF:
+      return `${formatNumberBR(rate, 2)}% sobre CIF`;
+    case ServiceCalculationType.PER_KG:
+      return `${formatCurrency(rate)} por KG`;
+    case ServiceCalculationType.PER_TONNE:
+      return `${formatCurrency(rate)} por Ton/M³`;
+    case ServiceCalculationType.FIXED:
+      return `${formatCurrency(rate)}`;
+    default:
+      return '-';
+  }
+};
 
 export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const doc = new jsPDF();
@@ -71,8 +94,8 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const col2X = pageWidth / 2 + 10;
   doc.text(`Peso Bruto: ${formatNumberBR(simulation.weightKg)} kg`, col2X, cargaY);
   doc.text(`Volume: ${formatNumberBR(simulation.volumeM3)} m³`, col2X, cargaY + 5);
-  doc.text(`Períodos Aurora: ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
-  doc.text(`Períodos Vinci: ${simulation.vinciPeriods || 1}`, col2X, cargaY + 10);
+  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
+  doc.text(`Períodos Vinci (2 dias cada): ${simulation.vinciPeriods || 1}`, col2X, cargaY + 10);
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 
@@ -84,16 +107,21 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   );
 
   const tableData = [
+    ...(simulation.storageCost ? [[
+      'Armazenagem Aurora',
+      `${formatNumberBR(storageRate, 2)}% sobre CIF`,
+      formatCurrency(simulation.storageCost)
+    ]] : []),
     ...services.map(s => [
       s.service?.name || 'Serviço',
-      s.customReason || '-',
+      getServiceDetail(s),
       formatCurrency(s.appliedCost || 0)
     ])
   ];
 
   autoTable(doc, {
     startY: 115,
-    head: [['Descrição do Serviço', 'Observação / Base de Cálculo', 'Valor']],
+    head: [['Descrição do Serviço', 'Taxa/Valor', 'Valor']],
     body: tableData,
     headStyles: { 
       fillColor: auroraOrange as any,
@@ -123,7 +151,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   // Subtotal Serviços
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(Number(simulation.totalServices || 0)), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(Number(simulation.totalServices || 0) + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
 
   // Capatazia
   currentY += 7;
@@ -131,11 +159,8 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   doc.text(formatCurrency(simulation.capataziaCost || 0), valueX, currentY, { align: 'right' });
 
   // Armazenagem Aurora
-  if (simulation.storageCost && Number(simulation.storageCost) > 0) {
-    currentY += 7;
-    doc.text(`Armazenagem Aurora (${simulation.auroraPeriods || 1} per.):`, labelX, currentY);
-    doc.text(formatCurrency(simulation.storageCost), valueX, currentY, { align: 'right' });
-  }
+  // Armazenagem Aurora - Removido daqui e passado para a tabela
+  // if (simulation.storageCost && Number(simulation.storageCost) > 0) { ... }
 
   // Desconto
   if (simulation.discount && simulation.discount > 0) {
@@ -218,7 +243,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
     const comparisonTableData = [
       ['Armazenagem', `${formatNumberBR(vinciStorageRate, 2)}% - ${formatCurrency(vinciStorageCost)}`],
-      ['Capatazia', formatCurrency(vinciCapatazia)],
+      ['Capatazia (Tarifário VINCI - Base: Peso)', formatCurrency(vinciCapatazia)],
       ['TOTAL ESTIMADO (Vinci)', formatCurrency(vinciTotalEstimated)],
     ];
 
@@ -324,7 +349,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.text(`Tonelagem: ${formatNumberBR(simulation.tonnes || 0, 3)} t`, col2X, cargaY);
   doc.text(`Quantidade CNTR: ${simulation.cntrCount || 0}`, col2X, cargaY + 5);
   doc.text(`Tipo CNTR: ${simulation.cntrType || '-'}`, col2X, cargaY + 10);
-  doc.text(`Períodos Aurora: ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
+  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 
@@ -336,16 +361,21 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   );
 
   const tableData = [
+    ...(simulation.storageCost ? [[
+      'Armazenagem Aurora',
+      `${formatNumberBR(storageRate, 2)}% sobre CIF`,
+      formatCurrency(simulation.storageCost)
+    ]] : []),
     ...services.map(s => [
       s.serviceName || 'Serviço',
-      s.customReason || '-',
+      getServiceDetail(s),
       formatCurrency(s.appliedCost || 0)
     ])
   ];
 
   autoTable(doc, {
     startY: 115,
-    head: [['Descrição do Serviço', 'Observação / Base de Cálculo', 'Valor']],
+    head: [['Descrição do Serviço', 'Taxa/Valor', 'Valor']],
     body: tableData,
     headStyles: { 
       fillColor: auroraOrange as any,
@@ -375,7 +405,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
 
   // Subtotal Serviços
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(Number(simulation.totalServices || 0)), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(Number(simulation.totalServices || 0) + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
 
   // Desconto
   if (simulation.discount && simulation.discount > 0) {
@@ -428,14 +458,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.text(formatCurrency(simulation.totalGeneral || 0), pageWidth - 15, totalY, { align: 'right' });
 
   // Aurora Storage Item in Summary
-  if (simulation.storageCost && Number(simulation.storageCost) > 0) {
-    currentY += 7;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
-    doc.text(`Armazenagem Aurora (${simulation.auroraPeriods || 1} per.):`, labelX, currentY);
-    doc.text(formatCurrency(simulation.storageCost), valueX, currentY, { align: 'right' });
-  }
+  // Aurora Storage Item in Summary - Removido daqui e passado para a tabela
 
   // Salvar o arquivo
   doc.save(`Simulacao_Aurora_${simulation.displayNumber}.pdf`);
