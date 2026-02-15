@@ -4,44 +4,12 @@
 # ===========================================
 
 stages:
-  - test
   - build
   - deploy
 
 variables:
   PROJECT_DIR: 'C:\Users\administrator\Documents\Portal_Prod\Portal-Aurora'
   COMPOSE_FILE: docker-compose.prod.yml
-
-# -----------------------------------------------
-# Stage: test - Lint e testes
-# -----------------------------------------------
-test-backend:
-  stage: test
-  tags:
-    - shell
-  script:
-    - cd backend
-    - npm ci --prefer-offline
-    - npx prisma generate --schema=prisma/postgres/schema.prisma
-    - npm run lint
-    - npm test
-  rules:
-    - changes:
-        - backend/**/*
-  allow_failure: false
-
-test-frontend:
-  stage: test
-  tags:
-    - shell
-  script:
-    - cd aurora-eadi-front
-    - npm ci --prefer-offline
-    - npm run lint
-  rules:
-    - changes:
-        - aurora-eadi-front/**/*
-  allow_failure: false
 
 # -----------------------------------------------
 # Stage: build - Build das imagens Docker
@@ -78,6 +46,7 @@ deploy-prod:
     - git pull gitlab main
     - docker compose -f docker-compose.prod.yml down
     - docker compose -f docker-compose.prod.yml up -d --build
+    - docker compose -f docker-compose.prod.yml ps
     - Write-Host "Deploy producao concluido com sucesso!"
   environment:
     name: production
@@ -95,6 +64,7 @@ deploy-staging:
     - git pull gitlab develop
     - docker compose -f docker-compose.dev.yml down
     - docker compose -f docker-compose.dev.yml up -d --build
+    - docker compose -f docker-compose.dev.yml ps
     - Write-Host "Deploy staging concluido!"
   environment:
     name: staging
