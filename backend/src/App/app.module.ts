@@ -22,6 +22,7 @@ import { SimulationsModule } from '../simulations/simulations.module';
 import { IntegrationModule } from 'src/integration/integration.module';
 import { CustomerModule } from 'src/customer/customer.module';
 import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
+import { CcteModule } from 'src/ccte/ccte.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
     IntegrationModule,
     CustomerModule,
     AirSimulationModule,
+    CcteModule,
   ],
 })
 export class AppModule {}

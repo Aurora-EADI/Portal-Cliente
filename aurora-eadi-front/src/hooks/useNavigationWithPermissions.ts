@@ -36,9 +36,14 @@ export function useNavigationWithPermissions(): NavItem[] {
     // Obtém todas as permissões ativas do usuário neste módulo
     const userPermissions = new Set<string>();
     module.activities?.forEach((activity) => {
+      // Verifica se a atividade está ativa e tem permissões vinculadas
       if (activity.isActive && activity.permissions) {
-        activity.permissions.forEach((permission) => {
-          userPermissions.add(permission);
+        activity.permissions.forEach((permission: any) => {
+          // A permissão pode vir como string ou como objeto { key: string, ... }
+          const permissionKey = typeof permission === 'string' ? permission : permission.key;
+          if (permissionKey) {
+            userPermissions.add(permissionKey);
+          }
         });
       }
     });
