@@ -5,7 +5,9 @@
 
 stages:
   - build
+  - migrate
   - deploy
+  - cleanup
 
 variables:
   PROJECT_DIR: 'C:\Users\administrator\Documents\Portal_Prod\Portal-Aurora'
@@ -35,6 +37,24 @@ build-frontend:
     - if: $CI_COMMIT_BRANCH == "develop"
 
 # -----------------------------------------------
+# Stage: migrate - Sincronizar schema do banco
+# -----------------------------------------------
+migrate-db:
+  stage: migrate
+  tags:
+    - shell
+  script:
+    - Set-Location $env:PROJECT_DIR
+    - docker compose -f $env:COMPOSE_FILE run --rm --no-deps backend npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate
+    - Write-Host "Schema do banco sincronizado com sucesso!"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/prisma/**/*
+      when: manual
+  allow_failure: true
+
+# -----------------------------------------------
 # Stage: deploy - Deploy (manual)
 # -----------------------------------------------
 deploy-prod:
@@ -46,7 +66,7 @@ deploy-prod:
     - git config --global --add safe.directory ($env:PROJECT_DIR -replace '\\','/')
     - $env:GIT_TERMINAL_PROMPT='0'; git -c credential.helper= pull gitlab main
     - docker compose -f docker-compose.prod.yml down
-    - docker compose -f docker-compose.prod.yml up -d --build
+    - docker compose -f docker-compose.prod.yml up -d
     - docker compose -f docker-compose.prod.yml ps
     - Write-Host "Deploy producao concluido com sucesso!"
   environment:
@@ -65,7 +85,7 @@ deploy-staging:
     - git config --global --add safe.directory ($env:PROJECT_DIR -replace '\\','/')
     - $env:GIT_TERMINAL_PROMPT='0'; git -c credential.helper= pull gitlab develop
     - docker compose -f docker-compose.dev.yml down
-    - docker compose -f docker-compose.dev.yml up -d --build
+    - docker compose -f docker-compose.dev.yml up -d
     - docker compose -f docker-compose.dev.yml ps
     - Write-Host "Deploy staging concluido!"
   environment:
@@ -73,3 +93,20 @@ deploy-staging:
   rules:
     - if: $CI_COMMIT_BRANCH == "develop"
   when: manual
+
+# -----------------------------------------------
+# Stage: cleanup - Limpeza automatica de Docker
+# -----------------------------------------------
+cleanup-docker:
+  stage: cleanup
+  tags:
+    - shell
+  script:
+    - docker image prune -f --filter "until=72h"
+    - docker builder prune -f --filter "until=72h"
+    - Write-Host "Limpeza de imagens e cache antigos concluida"
+    - docker system df
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  allow_failure: true
