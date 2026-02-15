@@ -44,7 +44,7 @@ deploy-prod:
   script:
     - Set-Location $env:PROJECT_DIR
     - git config --global --add safe.directory ($env:PROJECT_DIR -replace '\\','/')
-    - GIT_TERMINAL_PROMPT=0 git -c credential.helper= pull gitlab main
+    - $env:GIT_TERMINAL_PROMPT='0'; git -c credential.helper= pull gitlab main
     - docker compose -f docker-compose.prod.yml down
     - docker compose -f docker-compose.prod.yml up -d --build
     - docker compose -f docker-compose.prod.yml ps
@@ -63,7 +63,7 @@ deploy-staging:
   script:
     - Set-Location $env:PROJECT_DIR
     - git config --global --add safe.directory ($env:PROJECT_DIR -replace '\\','/')
-    - GIT_TERMINAL_PROMPT=0 git -c credential.helper= pull gitlab develop
+    - $env:GIT_TERMINAL_PROMPT='0'; git -c credential.helper= pull gitlab develop
     - docker compose -f docker-compose.dev.yml down
     - docker compose -f docker-compose.dev.yml up -d --build
     - docker compose -f docker-compose.dev.yml ps
