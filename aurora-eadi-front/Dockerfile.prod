@@ -1,58 +1,74 @@
+# =========================
 # Build stage
-FROM node:18-alpine AS builder
+# =========================
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Copiar package files
-COPY package*.json ./
+# Certificados e ferramentas
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Configurar npm para ignorar SSL
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
+# Proxy args (opcional)
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
 
-# Instalar dependências
-RUN npm ci
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
+# Configuração npm (mais estável)
+RUN npm config set registry https://registry.npmjs.org \
+ && npm config set fetch-retries 10 \
+ && npm config set fetch-retry-mintimeout 30000 \
+ && npm config set fetch-retry-maxtimeout 180000 \
+ && npm config set fetch-timeout 900000 \
+ && npm config set maxsockets 5
+
+# Copiar manifests
+COPY package.json package-lock.json ./
+
+# Instalar dependências (cache mount acelera rebuilds)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
 
 # Copiar código
 COPY . .
 
-# Definir variáveis de ambiente para build
+# Build args
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_API_KEY
+
+# Environment variables
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
-
-# Desabilitar telemetria do Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build da aplicação
+# Build do Next
 RUN npm run build
 
+# =========================
 # Production stage
-FROM node:18-alpine AS production
+# =========================
+FROM node:18-bullseye-slim AS production
 
 WORKDIR /app
 
-# Configurar npm
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
-
-# Copiar package files
-COPY package*.json ./
-
-# Instalar apenas dependências de produção
-RUN npm ci --only=production
-
-# Copiar arquivos necessários do builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-
-# Configurações de produção
 ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Standalone: copia apenas o bundle otimizado (~30-50MB vs ~500MB)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
