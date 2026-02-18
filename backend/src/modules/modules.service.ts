@@ -6,12 +6,6 @@ import {
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
-import {
-  isValidModuleRoute,
-  isValidSubRoute,
-  AVAILABLE_MODULE_ROUTES,
-  getSubRoutesForModule,
-} from "./available-routes";
 
 const MODULE_INCLUDE = {
   activities: {
@@ -45,30 +39,6 @@ export class ModulesService {
   }
 
   async create(createModuleDto: CreateModuleDto) {
-    // Validar que a rota é uma rota de módulo válida
-    if (!isValidModuleRoute(createModuleDto.route)) {
-      const validRoutes = AVAILABLE_MODULE_ROUTES.map(
-        (r) => `${r.path} (${r.label})`,
-      ).join(", ");
-      throw new BadRequestException(
-        `Rota "${createModuleDto.route}" não é válida. Rotas disponíveis: ${validRoutes}`,
-      );
-    }
-
-    // Validar sub-páginas se informadas
-    if (createModuleDto.subPages?.length) {
-      for (const sp of createModuleDto.subPages) {
-        if (!isValidSubRoute(sp.targetRoute)) {
-          const validSubs = getSubRoutesForModule(createModuleDto.route)
-            .map((r) => `${r.path} (${r.label})`)
-            .join(", ");
-          throw new BadRequestException(
-            `Sub-rota "${sp.targetRoute}" não é válida. Sub-rotas disponíveis: ${validSubs}`,
-          );
-        }
-      }
-    }
-
     return this.prisma.module.create({
       data: {
         name: createModuleDto.name,
@@ -111,31 +81,6 @@ export class ModulesService {
 
     if (!module) {
       throw new NotFoundException(`Módulo com ID ${id} não encontrado`);
-    }
-
-    // Validar rota se estiver sendo atualizada
-    if (updateModuleDto.route && !isValidModuleRoute(updateModuleDto.route)) {
-      const validRoutes = AVAILABLE_MODULE_ROUTES.map(
-        (r) => `${r.path} (${r.label})`,
-      ).join(", ");
-      throw new BadRequestException(
-        `Rota "${updateModuleDto.route}" não é válida. Rotas disponíveis: ${validRoutes}`,
-      );
-    }
-
-    // Validar sub-páginas se informadas
-    const moduleRoute = updateModuleDto.route || module.route;
-    if (updateModuleDto.subPages?.length && moduleRoute) {
-      for (const sp of updateModuleDto.subPages) {
-        if (!isValidSubRoute(sp.targetRoute)) {
-          const validSubs = getSubRoutesForModule(moduleRoute)
-            .map((r) => `${r.path} (${r.label})`)
-            .join(", ");
-          throw new BadRequestException(
-            `Sub-rota "${sp.targetRoute}" não é válida. Sub-rotas disponíveis: ${validSubs}`,
-          );
-        }
-      }
     }
 
     // Separar subPages do resto dos dados

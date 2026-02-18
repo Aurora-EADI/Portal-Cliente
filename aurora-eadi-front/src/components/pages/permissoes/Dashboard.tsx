@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { EditModuleModal } from "./gestao/EditModuleModal";
+import { MODULE_ROUTES, SUB_ROUTES } from "@/config/routes/registry";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Module as ModuleType, UpdateModuleDto, ModuleSubPage } from "@/types/module";
 
@@ -85,25 +86,14 @@ export function PermissoesDashboard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
 
-  // Rotas disponíveis do backend
-  const [availableRoutes, setAvailableRoutes] = useState<AvailableRoute[]>([]);
-  const [availableSubRoutes, setAvailableSubRoutes] = useState<AvailableRoute[]>([]);
+  // Rotas disponíveis do registry local (fonte única de verdade)
+  const availableRoutes: AvailableRoute[] = MODULE_ROUTES;
+  const availableSubRoutes: AvailableRoute[] = SUB_ROUTES;
 
-  // Carrega módulos e rotas disponíveis do backend
+  // Carrega módulos
   useEffect(() => {
     fetchModules();
-    fetchAvailableRoutes();
   }, []);
-
-  const fetchAvailableRoutes = async () => {
-    try {
-      const response = await api.get('/modules/available-routes');
-      setAvailableRoutes(response.data.moduleRoutes);
-      setAvailableSubRoutes(response.data.subRoutes);
-    } catch (err: any) {
-      console.error('Erro ao carregar rotas disponíveis:', err);
-    }
-  };
 
   const fetchModules = async () => {
     try {

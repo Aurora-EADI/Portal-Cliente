@@ -8,10 +8,6 @@ import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service
 import { CreateActivityDto } from "./dto/create-activity.dto";
 import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { UpdateActivityPermissionsDto } from "./dto/update-activity-permissions.dto";
-import {
-  isValidSubRoute,
-  getSubRoutesForModule,
-} from "../modules/available-routes";
 
 @Injectable()
 export class ActivitiesService {
@@ -137,20 +133,6 @@ export class ActivitiesService {
       throw new NotFoundException(`Módulo com ID ${moduleId} não encontrado`);
     }
 
-    // Se a rota for informada, valida que é uma sub-rota válida do módulo pai
-    if (route) {
-      if (!isValidSubRoute(route)) {
-        const validSubRoutes = module.route
-          ? getSubRoutesForModule(module.route)
-              .map((r) => `${r.path} (${r.label})`)
-              .join(", ")
-          : "nenhuma";
-        throw new BadRequestException(
-          `Rota "${route}" não é uma sub-rota válida. Sub-rotas disponíveis para o módulo "${module.name}": ${validSubRoutes}`,
-        );
-      }
-    }
-
     // Verifica se já existe atividade com esse nome no módulo (unique constraint)
     const existingActivity = await this.prisma.activity.findUnique({
       where: {
@@ -236,25 +218,6 @@ export class ActivitiesService {
     await this.findOne(id);
 
     const { name, moduleId, isMandatory, route, label, icon, sortOrder } = updateActivityDto as any;
-
-    // Se a rota for informada, valida que é uma sub-rota válida
-    if (route) {
-      if (!isValidSubRoute(route)) {
-        const currentActivity = await this.prisma.activity.findUnique({
-          where: { id },
-          include: { module: true },
-        });
-        const moduleRoute = currentActivity?.module?.route;
-        const validSubRoutes = moduleRoute
-          ? getSubRoutesForModule(moduleRoute)
-              .map((r) => `${r.path} (${r.label})`)
-              .join(", ")
-          : "nenhuma";
-        throw new BadRequestException(
-          `Rota "${route}" não é uma sub-rota válida. Sub-rotas disponíveis: ${validSubRoutes}`,
-        );
-      }
-    }
 
     // Se está alterando nome ou módulo, verifica constraint unique
     if (name || moduleId) {

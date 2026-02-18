@@ -10,7 +10,7 @@ import { aereoNavigation } from './modules/aereo';
 import { servicosNavigation } from './modules/servicos';
 import { simulacoesNavigation } from './modules/simulacoes';
 import { clienteNavigation } from './modules/cliente';
-import { ccteNavigation } from './modules/ccte';
+import { dtaNavigation } from './modules/dta';
 import { dashboardNavigation } from './modules/dashboard';
 import { mainNavigation } from './modules/main';
 
@@ -25,7 +25,7 @@ export const allNavigationContexts: NavigationContext[] = [
     servicosNavigation,
     simulacoesNavigation,
     clienteNavigation,
-    ccteNavigation,
+    dtaNavigation,
     dashboardNavigation,
     mainNavigation,
 ];

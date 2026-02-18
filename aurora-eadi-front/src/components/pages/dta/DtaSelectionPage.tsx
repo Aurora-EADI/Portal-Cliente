@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export function CcteSelectionPage() {
+export function DtaSelectionPage() {
     return (
         <div className="bg-primary-50 border border-primary-100 rounded-xl p-8 shadow-sm">
             <h1 className="text-2xl font-bold text-primary-900 mb-6 flex items-center gap-3">
@@ -14,7 +14,7 @@ export function CcteSelectionPage() {
                     Aqui você encontrará as ferramentas necessárias para consulta, gestão e exportação de conhecimentos de transporte eletrônicos (CT-e).
                 </p>
                 <p>
-                    Este espaço foi desenvolvido para centralizar as operações de CT-e e facilitar o acompanhamento dos processos de transporte.
+                    Este espaço foi desenvolvido para centralizar as operações de transporte aéreo e maritimo para facilitar o acompanhamento dos processos.
                 </p>
             </div>
         </div>

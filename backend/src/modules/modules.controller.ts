@@ -16,23 +16,10 @@ import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client-postgres";
-import {
-  AVAILABLE_MODULE_ROUTES,
-  AVAILABLE_SUB_ROUTES,
-} from "./available-routes";
-
 @Controller("modules")
 @UseGuards(JwtAuthGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
-
-  @Get("available-routes")
-  async getAvailableRoutes() {
-    return {
-      moduleRoutes: AVAILABLE_MODULE_ROUTES,
-      subRoutes: AVAILABLE_SUB_ROUTES,
-    };
-  }
 
   @Get()
   async findAll() {

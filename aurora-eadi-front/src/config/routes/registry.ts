@@ -26,14 +26,14 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/servicos', label: 'Serviços', icon: 'Wrench', isModuleRoot: true },
   { path: '/simulacoes', label: 'Simulações', icon: 'BarChart3', isModuleRoot: true },
   { path: '/cliente', label: 'Cliente', icon: 'Users', isModuleRoot: true },
-  { path: '/ccte', label: 'CCTE', icon: 'Package', isModuleRoot: true },
+  { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
 export const SUB_ROUTES: RouteDefinition[] = [
   // CCTE
-  { path: '/ccte/painel', label: 'Painel CT-e', icon: 'LayoutDashboard', parentPath: '/ccte', isModuleRoot: false },
+  { path: '/dta/painel', label: 'Painel CT-e', icon: 'LayoutDashboard', parentPath: '/dta', isModuleRoot: false },
 
   // Comercial
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
