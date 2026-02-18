@@ -2,14 +2,14 @@
 
 import { Header } from '@/components/layout/Header';
 import { Layout } from '@/components/layout/Layout';
-import { AereoSelectionPage } from '@/components/pages/aereo/AereoSelectionPage';
+import { CcteDashboard } from '@/components/pages/ccte/CcteDashboard';
 
-export default function AereoPage() {
+export default function CctePainelPage() {
     return (
         <div className="h-screen flex flex-col overflow-hidden">
             <Header />
             <Layout>
-                <AereoSelectionPage />
+                <CcteDashboard />
             </Layout>
         </div>
     );

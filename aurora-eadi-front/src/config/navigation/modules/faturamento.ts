@@ -1,4 +1,4 @@
-import { DollarSign, FileBarChart } from 'lucide-react';
+import { DollarSign, FileBarChart, FileSpreadsheet } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
@@ -16,12 +16,12 @@ export const faturamentoNavigation: NavigationContext = {
                 {
                     label: 'Faturamento Detalhado',
                     icon: FileBarChart,
-                    path: '/faturamento',
+                    path: '/faturamento/detalhado',
                     requiredPermissions: ['FAT_VIEW_DET'],
                 },
                 {
                     label: 'Relatório CutOff',
-                    icon: FileBarChart,
+                    icon: FileSpreadsheet,
                     path: '/faturamento/cutoff',
                     requiredPermissions: ['FAT_VIEW_CUTOFF'],
                 },

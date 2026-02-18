@@ -8,9 +8,9 @@ export const servicosNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Serviços',
+            label: 'Lista de Serviços',
             icon: Wrench,
-            path: '/servicos',
+            path: '/servicos/lista',
         },
         {
             label: 'Cadastrar Serviço',

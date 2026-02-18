@@ -2,14 +2,14 @@
 
 import { Layout } from '@/components/layout/Layout'
 import { Header } from '@/components/layout/Header'
-import { ClienteSelectionPage } from '@/components/pages/clientes/ClienteSelectionPage'
+import { ServiceList } from '@/components/pages/servicos/listaServicos/ServiceList'
 
-export default function ClientePage() {
+export default function ServicosListaPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Header />
       <Layout>
-        <ClienteSelectionPage />
+        <ServiceList />
       </Layout>
     </div>
   )

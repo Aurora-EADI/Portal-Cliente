@@ -1,23 +1,16 @@
 "use client"
 
 import { Layout } from '@/components/layout/Layout'
-import { RouteGuard } from '@/components/guards/RouteGuard'
 import { Header } from '@/components/layout/Header'
-import { SupplierList } from '@/components/pages/fornecedor/listaFornecedores/SupplierList'
-import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard'
+import { FornecedorSelectionPage } from '@/components/pages/fornecedor/FornecedorSelectionPage'
 
-export default function PermissoesPage() {
+export default function FornecedorPage() {
     return (
         <div className="h-screen flex flex-col overflow-hidden">
-            <PermissionRouteGuard
-                  moduleRoute="/fornecedor"
-                  requiredPermissions={['FOR_VIEW_LIST']}
-                >
-                <Header />
-                <Layout>
-                    <SupplierList />
-                </Layout>
-            </PermissionRouteGuard>
+            <Header />
+            <Layout>
+                <FornecedorSelectionPage />
+            </Layout>
         </div>
     )
 }

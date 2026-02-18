@@ -16,12 +16,12 @@ export const simulacoesNavigation: NavigationContext = {
                 {
                     label: 'Simulação Marítima',
                     icon: Ship,
-                    path: '/comercial',
+                    path: '/comercial/simulador',
                 },
                 {
                     label: 'Simulação Aérea',
                     icon: Plane,
-                    path: '/aereo',
+                    path: '/aereo/simulador',
                 },
             ],
         },

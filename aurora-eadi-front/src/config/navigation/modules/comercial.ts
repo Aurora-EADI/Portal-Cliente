@@ -14,14 +14,14 @@ export const comercialNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
-                    label: 'Simulação Marítima',
+                    label: 'Simulador Marítimo',
                     icon: Ship,
-                    path: '/comercial',
+                    path: '/comercial/simulador',
                 },
                 {
                     label: 'Simulação Aérea',
                     icon: Plane,
-                    path: '/aereo',
+                    path: '/aereo/simulador',
                 },
             ],
         },

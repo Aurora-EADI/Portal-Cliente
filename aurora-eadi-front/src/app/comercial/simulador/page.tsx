@@ -2,14 +2,14 @@
 
 import { Header } from '@/components/layout/Header';
 import { Layout } from '@/components/layout/Layout';
-import { AereoSelectionPage } from '@/components/pages/aereo/AereoSelectionPage';
+import { MaritimeSimulator } from '@/components/pages/comercial/MaritimeSimulator';
 
-export default function AereoPage() {
+export default function ComercialSimuladorPage() {
     return (
         <div className="h-screen flex flex-col overflow-hidden">
             <Header />
             <Layout>
-                <AereoSelectionPage />
+                <MaritimeSimulator />
             </Layout>
         </div>
     );

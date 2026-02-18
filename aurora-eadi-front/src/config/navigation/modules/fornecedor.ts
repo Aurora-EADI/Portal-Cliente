@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react';
+import { Truck, List } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
@@ -8,9 +8,9 @@ export const fornecedorNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Fornecedores',
-            icon: Truck,
-            path: '/fornecedor',
+            label: 'Lista de Fornecedores',
+            icon: List,
+            path: '/fornecedor/lista',
             requiredPermissions: ['FOR_VIEW_LIST'],
         },
     ],

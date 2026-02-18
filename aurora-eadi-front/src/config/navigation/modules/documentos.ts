@@ -16,7 +16,7 @@ export const documentosNavigation: NavigationContext = {
                 {
                     label: 'Gestão Documentos',
                     icon: Shield,
-                    path: '/documentos',
+                    path: '/documentos/gestao',
                     requiredPermissions: ['DOC_VIEW'],
                     requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
                 },
