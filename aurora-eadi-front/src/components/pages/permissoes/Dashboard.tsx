@@ -9,7 +9,14 @@ import {
 import { api } from "@/lib/api";
 import { EditModuleModal } from "./gestao/EditModuleModal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import type { Module as ModuleType, UpdateModuleDto } from "@/types/module";
+import type { Module as ModuleType, UpdateModuleDto, ModuleSubPage } from "@/types/module";
+
+interface AvailableRoute {
+  path: string;
+  label: string;
+  icon: string;
+  parentPath?: string;
+}
 
 // Mapa de ícones disponíveis
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -67,6 +74,7 @@ export function PermissoesDashboard() {
     route: "",
     icon: "Package",
   });
+  const [createSubPages, setCreateSubPages] = useState<ModuleSubPage[]>([]);
 
   // Modal de edição
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -77,10 +85,25 @@ export function PermissoesDashboard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
 
-  // Carrega módulos do backend
+  // Rotas disponíveis do backend
+  const [availableRoutes, setAvailableRoutes] = useState<AvailableRoute[]>([]);
+  const [availableSubRoutes, setAvailableSubRoutes] = useState<AvailableRoute[]>([]);
+
+  // Carrega módulos e rotas disponíveis do backend
   useEffect(() => {
     fetchModules();
+    fetchAvailableRoutes();
   }, []);
+
+  const fetchAvailableRoutes = async () => {
+    try {
+      const response = await api.get('/modules/available-routes');
+      setAvailableRoutes(response.data.moduleRoutes);
+      setAvailableSubRoutes(response.data.subRoutes);
+    } catch (err: any) {
+      console.error('Erro ao carregar rotas disponíveis:', err);
+    }
+  };
 
   const fetchModules = async () => {
     try {
@@ -105,18 +128,8 @@ export function PermissoesDashboard() {
       return;
     }
 
-    if (!formData.route.trim()) {
-      setError('A rota do módulo é obrigatória');
-      return;
-    }
-
-    if (!formData.route.startsWith('/')) {
-      setError('A rota deve começar com "/" (ex: /faturamento)');
-      return;
-    }
-
-    if (!/^\/[a-z0-9-]+$/.test(formData.route)) {
-      setError('A rota deve conter apenas letras minúsculas, números e hífens após a "/" inicial');
+    if (!formData.route) {
+      setError('A rota do módulo é obrigatória. Selecione uma rota disponível.');
       return;
     }
 
@@ -129,10 +142,12 @@ export function PermissoesDashboard() {
         description: formData.description.trim(),
         route: formData.route.trim(),
         icon: formData.icon,
+        subPages: createSubPages.length > 0 ? createSubPages : undefined,
       });
 
       setModules((prev) => [...prev, response.data]);
       setFormData({ name: "", description: "", route: "", icon: "Package" });
+      setCreateSubPages([]);
       setIsAdding(false);
     } catch (err: any) {
       console.error('Erro ao criar módulo:', err);
@@ -332,51 +347,91 @@ export function PermissoesDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Rota do Módulo <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="/faturamento"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                        formData.route && !formData.route.startsWith('/')
-                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                          : formData.route && /^\/[a-z0-9-]+$/.test(formData.route)
-                          ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
-                          : 'border-gray-300 focus:ring-orange-500 focus:border-transparent'
-                      }`}
-                      value={formData.route}
-                      onChange={(e) =>
-                        setFormData({ ...formData, route: e.target.value.toLowerCase() })
-                      }
-                      disabled={isSaving}
-                      maxLength={50}
-                    />
-                    {formData.route && /^\/[a-z0-9-]+$/.test(formData.route) && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-                        ✓
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-2 bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-xs text-blue-800 font-medium mb-1 flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      Formato obrigatório da rota:
-                    </p>
-                    <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
-                      <li>
-                        Deve <strong>começar com "/"</strong> (ex: <code className="bg-blue-100 px-1 rounded">/faturamento</code>)
-                      </li>
-                      <li>
-                        Apenas <strong>letras minúsculas</strong>, <strong>números</strong> e <strong>hífens</strong>
-                      </li>
-                      <li>
-                        Sem espaços, acentos ou caracteres especiais
-                      </li>
-                      <li>
-                        Exemplos válidos: <code className="bg-blue-100 px-1 rounded">/permissoes</code>, <code className="bg-blue-100 px-1 rounded">/gestao-usuarios</code>
-                      </li>
-                    </ul>
-                  </div>
+                  <select
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                      formData.route
+                        ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
+                        : 'border-gray-300 focus:ring-orange-500 focus:border-transparent'
+                    }`}
+                    value={formData.route}
+                    onChange={(e) => {
+                      setFormData({ ...formData, route: e.target.value });
+                      setCreateSubPages([]);
+                    }}
+                    disabled={isSaving}
+                  >
+                    <option value="">Selecione uma rota...</option>
+                    {availableRoutes.map((route) => (
+                      <option key={route.path} value={route.path}>
+                        {route.label} ({route.path})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selecione a página do sistema que este módulo representa.
+                  </p>
                 </div>
+
+                {/* Sub-páginas do Sidebar */}
+                {formData.route && availableSubRoutes.filter((r) => r.parentPath === formData.route).length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sub-páginas no Sidebar
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Selecione quais páginas devem aparecer no menu lateral deste módulo.
+                    </p>
+                    <div className="space-y-2">
+                      {availableSubRoutes
+                        .filter((r) => r.parentPath === formData.route)
+                        .map((route) => {
+                          const isSelected = createSubPages.some(
+                            (sp) => sp.targetRoute === route.path
+                          );
+                          return (
+                            <label
+                              key={route.path}
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-300 bg-white'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    setCreateSubPages(createSubPages.filter((sp) => sp.targetRoute !== route.path));
+                                  } else {
+                                    setCreateSubPages([
+                                      ...createSubPages,
+                                      {
+                                        targetRoute: route.path,
+                                        label: route.label,
+                                        icon: route.icon,
+                                        sortOrder: createSubPages.length,
+                                      },
+                                    ]);
+                                  }
+                                }}
+                                disabled={isSaving}
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-800">
+                                  {route.label}
+                                </span>
+                                <span className="text-xs text-gray-400 ml-2">
+                                  {route.path}
+                                </span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -555,6 +610,8 @@ export function PermissoesDashboard() {
         onSave={handleSaveModule}
         error={moduleError}
         onClearError={() => setModuleError(null)}
+        availableRoutes={availableRoutes}
+        availableSubRoutes={availableSubRoutes}
       />
 
       {/* Dialog de Confirmação de Deleção */}

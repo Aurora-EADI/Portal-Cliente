@@ -223,6 +223,7 @@ model Module {
   active      Boolean            @default(true)
   activities  Activity[]
   userAccess  UserModuleAccess[]
+  sharedItems ModuleSharedItem[]
 
   @@map("modules")
 }
@@ -233,6 +234,10 @@ model Activity {
   description String?
   moduleId    Int
   isMandatory Boolean              @default(false)
+  route       String?
+  label       String?
+  icon        String?
+  sortOrder   Int                  @default(0)
   module      Module               @relation(fields: [moduleId], references: [id])
   permissions ActivityPermission[]
   userAccess  UserActivityAccess[]
@@ -249,6 +254,19 @@ model ActivityPermission {
 
   @@id([activityId, permissionId])
   @@map("activity_permissions")
+}
+
+model ModuleSharedItem {
+  id          Int     @id @default(autoincrement())
+  moduleId    Int
+  targetRoute String
+  label       String
+  icon        String?
+  sortOrder   Int     @default(0)
+  module      Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, targetRoute])
+  @@map("module_shared_items")
 }
 
 model UserModuleAccess {
@@ -637,7 +655,7 @@ model Flight {
   arrivalDate  DateTime        @db.Date
   arrivalTime  String
   flightCode   String
-  termoEntrada String
+  termoEntrada String          @default("")
   status       FlightStatus    @default(PENDING)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt

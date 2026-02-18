@@ -2,9 +2,31 @@ import {
   IsString,
   IsNotEmpty,
   IsOptional,
+  IsArray,
+  ValidateNested,
   MaxLength,
   Matches,
+  IsInt,
 } from "class-validator";
+import { Type } from "class-transformer";
+
+export class SubPageDto {
+  @IsString()
+  @IsNotEmpty()
+  targetRoute: string;
+
+  @IsString()
+  @IsNotEmpty()
+  label: string;
+
+  @IsString()
+  @IsOptional()
+  icon?: string;
+
+  @IsInt()
+  @IsOptional()
+  sortOrder?: number;
+}
 
 export class CreateModuleDto {
   @IsString()
@@ -32,4 +54,10 @@ export class CreateModuleDto {
     message: "O nome do ícone deve ter no máximo 50 caracteres",
   })
   icon: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => SubPageDto)
+  subPages?: SubPageDto[];
 }

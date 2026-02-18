@@ -1,10 +1,14 @@
 import {
   IsString,
   IsOptional,
+  IsArray,
+  ValidateNested,
   MaxLength,
   Matches,
   IsBoolean,
 } from "class-validator";
+import { Type } from "class-transformer";
+import { SubPageDto } from "./create-module.dto";
 
 export class UpdateModuleDto {
   @IsString()
@@ -36,4 +40,10 @@ export class UpdateModuleDto {
   @IsBoolean()
   @IsOptional()
   active?: boolean;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => SubPageDto)
+  subPages?: SubPageDto[];
 }

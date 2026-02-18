@@ -14,6 +14,7 @@ import { ccteNavigation } from './modules/ccte';
 import { dashboardNavigation } from './modules/dashboard';
 import { mainNavigation } from './modules/main';
 
+// Navegação estática (fallback)
 export const allNavigationContexts: NavigationContext[] = [
     documentosNavigation,
     faturamentoNavigation,
@@ -29,32 +30,66 @@ export const allNavigationContexts: NavigationContext[] = [
     mainNavigation,
 ];
 
-// OTIMIZAÇÃO: Map para lookup O(1)
+// Map para lookup O(1) da navegação estática
 export const navigationContextMap = new Map<string, NavigationContext>();
 
 allNavigationContexts.forEach((ctx: NavigationContext) => {
     navigationContextMap.set(ctx.basePath, ctx);
 });
 
+// Navegação dinâmica (gerada a partir do banco de dados)
+let dynamicNavigationContexts: NavigationContext[] = [];
+const dynamicNavigationMap = new Map<string, NavigationContext>();
+
 /**
- * Função para obter os itens de navegação baseado no path atual E no role do usuário
+ * Registra contextos de navegação dinâmicos (gerados a partir do banco).
+ * Chamado pelo hook useNavigationWithPermissions ao receber dados do backend.
+ */
+export function setDynamicNavigationContexts(contexts: NavigationContext[]): void {
+    dynamicNavigationContexts = contexts;
+    dynamicNavigationMap.clear();
+    contexts.forEach((ctx) => {
+        dynamicNavigationMap.set(ctx.basePath, ctx);
+    });
+}
+
+/**
+ * Busca contexto de navegação: primeiro dinâmico, fallback para estático.
+ */
+function findNavigationContext(currentPath: string): NavigationContext | undefined {
+    // 1. Tenta busca exata no mapa dinâmico
+    let context = dynamicNavigationMap.get(currentPath);
+    if (context) return context;
+
+    // 2. Tenta busca por prefixo no dinâmico
+    context = dynamicNavigationContexts.find((ctx) =>
+        currentPath.startsWith(ctx.basePath)
+    );
+    if (context) return context;
+
+    // 3. Fallback: busca exata no mapa estático
+    context = navigationContextMap.get(currentPath);
+    if (context) return context;
+
+    // 4. Fallback: busca por prefixo no estático
+    context = allNavigationContexts.find((ctx: NavigationContext) =>
+        currentPath.startsWith(ctx.basePath)
+    );
+
+    return context;
+}
+
+/**
+ * Obtem os itens de navegação baseado no path atual E no role do usuário.
+ * Consulta primeiro navegação dinâmica, com fallback para estática.
  */
 export const getNavigationByPathAndRole = (
     currentPath: string,
     userRole: UserRole
 ): NavItem[] => {
-    // Tenta buscar contexto exato primeiro (O(1))
-    let context = navigationContextMap.get(currentPath);
-
-    // Se não encontrou exato, busca por prefixo (fallback para compatibilidade)
-    if (!context) {
-        context = allNavigationContexts.find((ctx: NavigationContext) =>
-            currentPath.startsWith(ctx.basePath)
-        );
-    }
+    const context = findNavigationContext(currentPath);
 
     if (!context) {
-        // Fallback: retorna apenas Home
         return [{
             label: 'Home',
             icon: Home,
@@ -62,7 +97,6 @@ export const getNavigationByPathAndRole = (
         }];
     }
 
-    // ✅ Filtra itens que o usuário pode ver por role
     return context.items.filter((item: NavItem) => {
         if (!item.requiredRoles || item.requiredRoles.length === 0) {
             return true;
@@ -72,12 +106,10 @@ export const getNavigationByPathAndRole = (
 };
 
 /**
- * Função para obter os itens de navegação baseado no path atual
+ * Obtem os itens de navegação baseado no path atual.
  */
 export const getNavigationByPath = (currentPath: string): NavItem[] => {
-    const context = allNavigationContexts.find((ctx: NavigationContext) =>
-        currentPath.startsWith(ctx.basePath)
-    );
+    const context = findNavigationContext(currentPath);
 
     if (context) {
         return context.items;
@@ -93,12 +125,10 @@ export const getNavigationByPath = (currentPath: string): NavItem[] => {
 };
 
 /**
- * Função para verificar se usuário pode acessar o contexto
+ * Verifica se usuário pode acessar o contexto.
  */
 export const canAccessContext = (currentPath: string, userRole: UserRole): boolean => {
-    const context = allNavigationContexts.find((ctx: NavigationContext) =>
-        currentPath.startsWith(ctx.basePath)
-    );
+    const context = findNavigationContext(currentPath);
 
     if (!context || !context.allowedRoles) {
         return true;
@@ -107,5 +137,5 @@ export const canAccessContext = (currentPath: string, userRole: UserRole): boole
     return context.allowedRoles.includes(userRole);
 };
 
-// Re-export for compatibility with code that still uses navigationContexts directly
+// Re-export for compatibility
 export const navigationContexts = allNavigationContexts;

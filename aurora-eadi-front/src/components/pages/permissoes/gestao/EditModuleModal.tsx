@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Edit,
@@ -27,8 +27,16 @@ import {
   LayoutDashboard,
   Wrench,
   Database,
+  Navigation,
 } from "lucide-react";
-import type { Module, UpdateModuleDto } from "@/types/module";
+import type { Module, UpdateModuleDto, ModuleSubPage } from "@/types/module";
+
+interface AvailableRoute {
+  path: string;
+  label: string;
+  icon: string;
+  parentPath?: string;
+}
 
 // Mapa de ícones disponíveis
 const AVAILABLE_ICONS = [
@@ -59,6 +67,8 @@ interface EditModuleModalProps {
   onSave: (id: number, data: UpdateModuleDto) => Promise<void>;
   error: string | null;
   onClearError: () => void;
+  availableRoutes?: AvailableRoute[];
+  availableSubRoutes?: AvailableRoute[];
 }
 
 export function EditModuleModal({
@@ -68,6 +78,8 @@ export function EditModuleModal({
   onSave,
   error,
   onClearError,
+  availableRoutes = [],
+  availableSubRoutes = [],
 }: EditModuleModalProps) {
   const [formData, setFormData] = useState<UpdateModuleDto>({
     name: "",
@@ -76,8 +88,15 @@ export function EditModuleModal({
     icon: "",
     active: true,
   });
+  const [subPages, setSubPages] = useState<ModuleSubPage[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+
+  // Sub-rotas filtradas para a rota do módulo
+  const filteredSubRoutes = useMemo(() => {
+    if (!formData.route) return [];
+    return availableSubRoutes.filter((r) => r.parentPath === formData.route);
+  }, [formData.route, availableSubRoutes]);
 
   // Atualiza o formulário quando o módulo muda
   useEffect(() => {
@@ -89,6 +108,14 @@ export function EditModuleModal({
         icon: module.icon || "",
         active: module.active ?? true,
       });
+      setSubPages(
+        module.sharedItems?.map((item) => ({
+          targetRoute: item.targetRoute,
+          label: item.label,
+          icon: item.icon || undefined,
+          sortOrder: item.sortOrder ?? 0,
+        })) || []
+      );
     }
   }, [module]);
 
@@ -98,7 +125,7 @@ export function EditModuleModal({
 
     try {
       setIsSaving(true);
-      await onSave(module.id, formData);
+      await onSave(module.id, { ...formData, subPages });
     } catch (err) {
       // Erro será tratado pelo componente pai
     } finally {
@@ -111,6 +138,23 @@ export function EditModuleModal({
       onClose();
       onClearError();
       setShowIconPicker(false);
+    }
+  };
+
+  const handleToggleSubPage = (route: AvailableRoute) => {
+    const exists = subPages.find((sp) => sp.targetRoute === route.path);
+    if (exists) {
+      setSubPages(subPages.filter((sp) => sp.targetRoute !== route.path));
+    } else {
+      setSubPages([
+        ...subPages,
+        {
+          targetRoute: route.path,
+          label: route.label,
+          icon: route.icon,
+          sortOrder: subPages.length,
+        },
+      ]);
     }
   };
 
@@ -209,22 +253,28 @@ export function EditModuleModal({
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <div className="relative">
-                <input
-                  type="text"
+                <select
                   required
                   className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-                  placeholder="Ex: /faturamento"
                   value={formData.route}
-                  onChange={(e) =>
-                    setFormData({ ...formData, route: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, route: e.target.value });
+                    // Limpa sub-páginas ao trocar de rota
+                    setSubPages([]);
+                  }}
                   disabled={isSaving}
-                />
+                >
+                  <option value="">Selecione uma rota...</option>
+                  {availableRoutes.map((route) => (
+                    <option key={route.path} value={route.path}>
+                      {route.label} ({route.path})
+                    </option>
+                  ))}
+                </select>
                 <Route className="w-4 h-4 text-gray-400 absolute left-3 top-3 pointer-events-none" />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Deve comecar com "/" e conter apenas letras minusculas, numeros e
-                hifens
+                Selecione a pagina do sistema que este modulo representa.
               </p>
             </div>
 
@@ -344,6 +394,54 @@ export function EditModuleModal({
               </p>
             </div>
           </div>
+
+          {/* Sub-páginas do Sidebar */}
+          {filteredSubRoutes.length > 0 && (
+            <div className="border-t border-gray-200 pt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Navigation className="w-5 h-5 text-blue-600" />
+                <h4 className="text-sm font-semibold text-gray-800">
+                  Sub-paginas no Sidebar
+                </h4>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Selecione quais paginas devem aparecer no menu lateral deste modulo.
+              </p>
+              <div className="space-y-2">
+                {filteredSubRoutes.map((route) => {
+                  const isSelected = subPages.some(
+                    (sp) => sp.targetRoute === route.path
+                  );
+                  return (
+                    <label
+                      key={route.path}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-gray-200 bg-white hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSubPage(route)}
+                        disabled={isSaving}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-800">
+                          {route.label}
+                        </span>
+                        <span className="text-xs text-gray-400 ml-2">
+                          {route.path}
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Info sobre atividades */}
           {module.activities && module.activities.length > 0 && (

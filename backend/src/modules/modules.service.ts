@@ -6,6 +6,32 @@ import {
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
+import {
+  isValidModuleRoute,
+  isValidSubRoute,
+  AVAILABLE_MODULE_ROUTES,
+  getSubRoutesForModule,
+} from "./available-routes";
+
+const MODULE_INCLUDE = {
+  activities: {
+    include: {
+      permissions: {
+        include: {
+          permission: true,
+        },
+      },
+    },
+  },
+  sharedItems: {
+    orderBy: { sortOrder: "asc" as const },
+  },
+  _count: {
+    select: {
+      userAccess: true,
+    },
+  },
+};
 
 @Injectable()
 export class ModulesService {
@@ -14,50 +40,60 @@ export class ModulesService {
   async findAll() {
     return this.prisma.module.findMany({
       orderBy: { name: "asc" },
-      include: {
-        activities: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            userAccess: true,
-          },
-        },
-      },
+      include: MODULE_INCLUDE,
     });
   }
 
   async create(createModuleDto: CreateModuleDto) {
+    // Validar que a rota é uma rota de módulo válida
+    if (!isValidModuleRoute(createModuleDto.route)) {
+      const validRoutes = AVAILABLE_MODULE_ROUTES.map(
+        (r) => `${r.path} (${r.label})`,
+      ).join(", ");
+      throw new BadRequestException(
+        `Rota "${createModuleDto.route}" não é válida. Rotas disponíveis: ${validRoutes}`,
+      );
+    }
+
+    // Validar sub-páginas se informadas
+    if (createModuleDto.subPages?.length) {
+      for (const sp of createModuleDto.subPages) {
+        if (!isValidSubRoute(sp.targetRoute)) {
+          const validSubs = getSubRoutesForModule(createModuleDto.route)
+            .map((r) => `${r.path} (${r.label})`)
+            .join(", ");
+          throw new BadRequestException(
+            `Sub-rota "${sp.targetRoute}" não é válida. Sub-rotas disponíveis: ${validSubs}`,
+          );
+        }
+      }
+    }
+
     return this.prisma.module.create({
       data: {
         name: createModuleDto.name,
         description: createModuleDto.description,
         route: createModuleDto.route,
         icon: createModuleDto.icon,
+        sharedItems: createModuleDto.subPages?.length
+          ? {
+              create: createModuleDto.subPages.map((sp, index) => ({
+                targetRoute: sp.targetRoute,
+                label: sp.label,
+                icon: sp.icon || null,
+                sortOrder: sp.sortOrder ?? index,
+              })),
+            }
+          : undefined,
       },
+      include: MODULE_INCLUDE,
     });
   }
 
   async findOne(id: number) {
     const module = await this.prisma.module.findUnique({
       where: { id },
-      include: {
-        activities: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
+      include: MODULE_INCLUDE,
     });
 
     if (!module) {
@@ -77,25 +113,57 @@ export class ModulesService {
       throw new NotFoundException(`Módulo com ID ${id} não encontrado`);
     }
 
+    // Validar rota se estiver sendo atualizada
+    if (updateModuleDto.route && !isValidModuleRoute(updateModuleDto.route)) {
+      const validRoutes = AVAILABLE_MODULE_ROUTES.map(
+        (r) => `${r.path} (${r.label})`,
+      ).join(", ");
+      throw new BadRequestException(
+        `Rota "${updateModuleDto.route}" não é válida. Rotas disponíveis: ${validRoutes}`,
+      );
+    }
+
+    // Validar sub-páginas se informadas
+    const moduleRoute = updateModuleDto.route || module.route;
+    if (updateModuleDto.subPages?.length && moduleRoute) {
+      for (const sp of updateModuleDto.subPages) {
+        if (!isValidSubRoute(sp.targetRoute)) {
+          const validSubs = getSubRoutesForModule(moduleRoute)
+            .map((r) => `${r.path} (${r.label})`)
+            .join(", ");
+          throw new BadRequestException(
+            `Sub-rota "${sp.targetRoute}" não é válida. Sub-rotas disponíveis: ${validSubs}`,
+          );
+        }
+      }
+    }
+
+    // Separar subPages do resto dos dados
+    const { subPages, ...moduleData } = updateModuleDto;
+
+    // Se subPages foi enviado, substitui todas as sub-páginas
+    if (subPages !== undefined) {
+      await this.prisma.moduleSharedItem.deleteMany({
+        where: { moduleId: id },
+      });
+
+      if (subPages.length > 0) {
+        await this.prisma.moduleSharedItem.createMany({
+          data: subPages.map((sp, index) => ({
+            moduleId: id,
+            targetRoute: sp.targetRoute,
+            label: sp.label,
+            icon: sp.icon || null,
+            sortOrder: sp.sortOrder ?? index,
+          })),
+        });
+      }
+    }
+
     return this.prisma.module.update({
       where: { id },
-      data: updateModuleDto,
-      include: {
-        activities: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            userAccess: true,
-          },
-        },
-      },
+      data: moduleData,
+      include: MODULE_INCLUDE,
     });
   }
 

@@ -44,6 +44,7 @@ export function ActivityRegistry() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+
   // Carrega módulos, atividades e permissões
   useEffect(() => {
     fetchData();
@@ -71,6 +72,7 @@ export function ActivityRegistry() {
     }
   };
 
+
   // Auto-select first module
   useEffect(() => {
     if (modules.length > 0 && !selectedModuleId) {
@@ -79,6 +81,7 @@ export function ActivityRegistry() {
   }, [modules, selectedModuleId]);
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
+
 
   // Activities already linked to the CURRENT module
   const currentModuleActivities = activities.filter(

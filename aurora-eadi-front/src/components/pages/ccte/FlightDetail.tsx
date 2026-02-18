@@ -26,6 +26,7 @@ import {
   Plane,
   Clock,
   Calendar,
+  Download,
 } from 'lucide-react';
 import {
   useFlight,
@@ -43,6 +44,7 @@ import { NewItemModal } from './modals/NewItemModal';
 import { EditItemModal } from './modals/EditItemModal';
 import { EditFlightModal } from './modals/EditFlightModal';
 import { RevertFlightModal } from './modals/RevertFlightModal';
+import { RfbExportModal } from './modals/RfbExportModal';
 import { FlightHistoryPanel } from './FlightHistoryPanel';
 import {
   DataTable,
@@ -61,6 +63,7 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [isEditFlightModalOpen, setIsEditFlightModalOpen] = useState(false);
   const [isRevertModalOpen, setIsRevertModalOpen] = useState(false);
+  const [isRfbModalOpen, setIsRfbModalOpen] = useState(false);
   const [selectedEditItem, setSelectedEditItem] = useState<CargoItem | null>(
     null,
   );
@@ -80,6 +83,8 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
   const items = flight?.cargoItems || [];
   const history = flight?.history || [];
   const isSent = flight?.status === FlightStatus.SENT;
+
+  const sentItems = useMemo(() => items.filter((item) => item.sent === true), [items]);
 
   // Filter items
   const filteredItems = useMemo(() => {
@@ -358,10 +363,10 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
           <input
             type="checkbox"
             checked={!!item.sent}
-            disabled={isSent || sendCargoItemMutation.isPending || updateCargoItemMutation.isPending}
+            disabled={isSent || sendCargoItemMutation.isPending || updateCargoItemMutation.isPending || (!item.sent && (!item.dta || item.dta.trim() === ''))}
             onChange={(e) => handleToggleRemoval(e, item)}
             className="w-5 h-5 rounded border-slate-300 accent-primary-600 cursor-pointer disabled:cursor-not-allowed transition-all"
-            title={item.sent ? "Desfazer Remoção" : "Informar Remoção"}
+            title={!item.dta || item.dta.trim() === '' ? "Preencha a DTA primeiro" : item.sent ? "Desfazer Remoção" : "Informar Remoção"}
           />
         </div>
       )
@@ -517,13 +522,24 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-800">Cargas</h3>
-          <div className="w-72">
-            <SearchBar
-              placeholder="Buscar Carga..."
-              onSearch={(v) => { setSearchTerm(v); setPage(1); }}
-              onClear={() => { setSearchTerm(''); setPage(1); }}
-              showClearButton={!!searchTerm}
-            />
+          <div className="flex items-center gap-2">
+            {sentItems.length > 0 && (
+              <Button
+                onClick={() => setIsRfbModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm px-5 py-2 text-sm font-semibold"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                RFB ({sentItems.length})
+              </Button>
+            )}
+            <div className="w-72">
+              <SearchBar
+                placeholder="Buscar Carga..."
+                onSearch={(v) => { setSearchTerm(v); setPage(1); }}
+                onClear={() => { setSearchTerm(''); setPage(1); }}
+                showClearButton={!!searchTerm}
+              />
+            </div>
           </div>
         </div>
 
@@ -572,6 +588,12 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
         open={isRevertModalOpen}
         onOpenChange={setIsRevertModalOpen}
         flightId={flight.id}
+      />
+
+      <RfbExportModal
+        open={isRfbModalOpen}
+        onOpenChange={setIsRfbModalOpen}
+        sentItems={sentItems}
       />
     </div>
   );

@@ -1,17 +1,23 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { NavItem, getNavigationByPathAndRole } from '@/config/navigation';
+import { NavItem, getNavigationByPathAndRole, setDynamicNavigationContexts } from '@/config/navigation';
 import { useModuleAccess } from './useModuleAccess';
+import { useModuleAccessContext } from '@/context/ModuleAccessContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
+import { buildNavigationContexts } from '@/config/navigation/buildNavigation';
 
 /**
- * Hook que retorna os itens de navegação filtrados pelas permissões e role do usuário
+ * Hook que retorna os itens de navegação filtrados pelas permissões e role do usuário.
+ * Gera navegação dinâmica a partir dos dados do banco quando disponível,
+ * com fallback para a navegação estática.
  * @returns Array de NavItems que o usuário tem permissão para acessar
  */
 export function useNavigationWithPermissions(): NavItem[] {
   const pathname = usePathname();
   const { currentUser } = useAuthContext();
+  const { modules: allModules, isLoading: modulesLoading } = useModuleAccessContext();
+  const dynamicBuiltRef = useRef(false);
 
   // Extrai a rota base do módulo atual (ex: /faturamento/cutoff -> /faturamento)
   const moduleRoute = useMemo(() => {
@@ -21,6 +27,17 @@ export function useNavigationWithPermissions(): NavItem[] {
 
   // Busca dados do módulo e permissões
   const { module, isLoading } = useModuleAccess(moduleRoute);
+
+  // Constrói navegação dinâmica a partir dos módulos do banco
+  useEffect(() => {
+    if (!modulesLoading && allModules && allModules.length > 0) {
+      const dynamicContexts = buildNavigationContexts(allModules);
+      if (dynamicContexts.length > 0) {
+        setDynamicNavigationContexts(dynamicContexts);
+        dynamicBuiltRef.current = true;
+      }
+    }
+  }, [allModules, modulesLoading]);
 
   // Obtém itens de navegação filtrados pelo role do usuário
   const userRole = currentUser?.role ?? UserRole.SUPPLIER;
