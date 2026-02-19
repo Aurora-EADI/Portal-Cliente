@@ -11,8 +11,8 @@ export const useLogin = () => {
       return await authService.login(email, password, role);
     },
     onSuccess: async (data) => {
-      const { user, access_token, refresh_token } = data;
-      await loginUser(user, access_token, refresh_token);
+      const { user, expires_at } = data;
+      await loginUser(user, expires_at);
     },
     onError: (error: any) => {
       // Captura o erro para não quebrar a aplicação

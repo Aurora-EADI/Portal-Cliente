@@ -34,8 +34,8 @@ export class ServicesController {
   @ApiOperation({ summary: "Criar novo serviço" })
   @ApiResponse({ status: 201, description: "Serviço criado com sucesso" })
   @ApiResponse({ status: 400, description: "Dados inválidos" })
-  create(@Body() createServiceDto: CreateServiceDto, @Request() req) {
-    return this.servicesService.create(createServiceDto, req.user.userId);
+  create(@Body() createServiceDto: CreateServiceDto, @Request() req: { user: { id: string; role: string; companyId?: string } }) {
+    return this.servicesService.create(createServiceDto, req.user.id);
   }
 
   @Get()

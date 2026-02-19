@@ -2,9 +2,9 @@
 
 import { Header } from '@/components/layout/Header';
 import { Layout } from '@/components/layout/Layout';
-import {  } from '@/components/pages/dta/DtaSelectionPage';
+import { DtaSelectionPage } from '@/components/pages/dta/DtaSelectionPage';
 
-export default function DtaSelectionPage() {
+export default function DtaPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Header />

@@ -51,7 +51,6 @@ export class TokenService {
     companyId?: string,
     metadata?: TokenSecurityMetadata,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    // Gera access token (curta duração)
     const accessToken = await this.generateAccessToken(
       userId,
       email,
@@ -59,7 +58,6 @@ export class TokenService {
       companyId,
     );
 
-    // Gera refresh token (longa duração)
     const refreshToken = await this.generateRefreshToken(
       userId,
       email,
@@ -99,7 +97,6 @@ export class TokenService {
     email: string,
     metadata?: TokenSecurityMetadata,
   ): Promise<string> {
-    // Gera payload mínimo para o refresh token
     const payload: JwtPayload = {
       sub: userId,
       email,
@@ -107,18 +104,13 @@ export class TokenService {
       type: "refresh",
     };
 
-    // Gera o JWT
     const refreshToken = this.jwtService.sign(payload, {
       expiresIn: this.REFRESH_TOKEN_EXPIRY,
     });
 
-    // Cria hash do token para armazenar no banco
     const tokenHash = this.hashToken(refreshToken);
-
-    // Salva no banco de dados
     await this.saveRefreshToken(userId, tokenHash, metadata);
 
-    // Retorna o token original (não o hash)
     return refreshToken;
   }
 
@@ -132,12 +124,6 @@ export class TokenService {
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.REFRESH_TOKEN_EXPIRY_MS);
 
-    console.log("[TOKEN SERVICE] Salvando refresh token:", {
-      userId,
-      expiresAt,
-      ipAddress: metadata?.ipAddress,
-    });
-
     await this.prisma.userToken.create({
       data: {
         userId,
@@ -148,8 +134,6 @@ export class TokenService {
         userAgent: metadata?.userAgent,
       },
     });
-
-    console.log("[TOKEN SERVICE] Refresh token salvo com sucesso");
   }
 
   /**
@@ -157,25 +141,12 @@ export class TokenService {
    */
   async validateRefreshToken(refreshToken: string): Promise<JwtPayload> {
     try {
-      // Verifica assinatura e expiração do JWT
       const payload = this.jwtService.verify(refreshToken) as JwtPayload;
 
-      console.log("[TOKEN SERVICE] Refresh token decodificado:", {
-        sub: payload.sub,
-        type: payload.type,
-        exp: payload.exp ? new Date(payload.exp * 1000) : "N/A",
-      });
-
-      // Valida tipo do token
       if (payload.type !== "refresh") {
-        console.error(
-          "[TOKEN SERVICE] Token com tipo incorreto:",
-          payload.type,
-        );
         throw new Error("Token inválido: tipo incorreto");
       }
 
-      // Verifica se o token existe e está válido no banco
       const tokenHash = this.hashToken(refreshToken);
       const tokenRecord = await this.prisma.userToken.findFirst({
         where: {
@@ -184,30 +155,19 @@ export class TokenService {
           type: TokenType.REFRESH,
           revokedAt: null,
           expiresAt: {
-            gte: new Date(), // Não expirado
+            gte: new Date(),
           },
         },
       });
 
       if (!tokenRecord) {
-        console.error(
-          "[TOKEN SERVICE] Token não encontrado no banco para userId:",
-          payload.sub,
-        );
         throw new Error("Token inválido ou revogado");
       }
 
-      console.log("[TOKEN SERVICE] Token válido, encontrado no banco");
-
-      // Atualiza última utilização
       await this.updateTokenLastUsed(tokenRecord.id);
 
       return payload;
     } catch (error: any) {
-      console.error(
-        "[TOKEN SERVICE] Erro ao validar refresh token:",
-        error.message,
-      );
       throw error;
     }
   }
@@ -218,10 +178,8 @@ export class TokenService {
   async refreshAccessToken(
     refreshToken: string,
   ): Promise<{ access_token: string }> {
-    // Valida o refresh token
     const payload = await this.validateRefreshToken(refreshToken);
 
-    // Busca dados atualizados do usuário
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
@@ -230,12 +188,11 @@ export class TokenService {
       throw new Error("Usuário não encontrado");
     }
 
-    // Gera novo access token com dados atualizados
     const accessToken = await this.generateAccessToken(
       user.id,
       user.email,
       user.role,
-      user.companyId ?? undefined, // Converte null para undefined
+      user.companyId ?? undefined,
     );
 
     return { access_token: accessToken };
@@ -283,7 +240,7 @@ export class TokenService {
     const result = await this.prisma.userToken.deleteMany({
       where: {
         expiresAt: {
-          lt: new Date(), // Menor que data atual
+          lt: new Date(),
         },
       },
     });

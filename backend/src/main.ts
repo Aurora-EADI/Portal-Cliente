@@ -2,9 +2,13 @@ import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./App/app.module";
+import cookieParser from "cookie-parser";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Habilita leitura de cookies (necessário para auth com httpOnly cookies)
+  app.use(cookieParser());
 
   // CORS - suporte a múltiplos domínios
   const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";

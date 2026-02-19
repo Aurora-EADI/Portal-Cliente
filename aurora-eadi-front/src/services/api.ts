@@ -9,7 +9,7 @@ const validRoles = Object.values(UserRole);
 export const authService = {
   /**
    * Faz login do usuário
-   * Retorna o usuário e os tokens (access e refresh)
+   * Retorna o usuário e expires_at — tokens ficam em cookies httpOnly gerenciados pelo backend
    */
   login: async (email: string, password: string, role: UserRole) => {
     // Validação front-end da role antes de enviar
@@ -20,11 +20,10 @@ export const authService = {
     try {
       const response = await api.post('/auth/login', { email, password, role });
 
-      // Retorna user, access_token e refresh_token
+      // Retorna user e expires_at — tokens ficam em cookies httpOnly
       return {
         user: response.data.user,
-        access_token: response.data.access_token,
-        refresh_token: response.data.refresh_token,
+        expires_at: response.data.expires_at,
       };
     } catch (error: any) {
       const backendMessage = error.response?.data?.message;

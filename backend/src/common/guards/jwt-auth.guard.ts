@@ -14,7 +14,6 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    // Verificar se a rota é pública
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -27,11 +26,7 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
     return super.canActivate(context);
   }
 
-  handleRequest(err, user, info) {
-    console.log("[JWT AUTH GUARD] User retornado:", user);
-    console.log("[JWT AUTH GUARD] Error:", err);
-    console.log("[JWT AUTH GUARD] Info:", info);
-
+  handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
       throw err || new Error("Não autorizado");
     }
