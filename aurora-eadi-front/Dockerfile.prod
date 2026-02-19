@@ -37,21 +37,6 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
 
-# Configuração npm (mais estável)
-RUN npm config set registry https://registry.npmjs.org \
-    && npm config set fetch-retries 10 \
-    && npm config set fetch-retry-mintimeout 30000 \
-    && npm config set fetch-retry-maxtimeout 180000 \
-    && npm config set fetch-timeout 900000 \
-    && npm config set maxsockets 5
-
-# Copiar manifests
-COPY package.json package-lock.json ./
-
-# Instalar dependências (cache mount acelera rebuilds)
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
-
 # Copiar código fonte
 COPY . .
 
