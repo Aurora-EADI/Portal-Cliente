@@ -30,6 +30,7 @@ export function useNavigationWithPermissions(): NavItem[] {
 
   // Constrói navegação dinâmica a partir dos módulos do banco
   useEffect(() => {
+    if (dynamicBuiltRef.current) return;
     if (!modulesLoading && allModules && allModules.length > 0) {
       const dynamicContexts = buildNavigationContexts(allModules);
       if (dynamicContexts.length > 0) {

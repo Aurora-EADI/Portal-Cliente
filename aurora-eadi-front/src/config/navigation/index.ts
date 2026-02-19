@@ -1,6 +1,8 @@
 import { Home } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavItem, NavigationContext } from './types';
+
+export type { NavItem, NavigationContext } from './types';
 import { documentosNavigation } from './modules/documentos';
 import { faturamentoNavigation } from './modules/faturamento';
 import { fornecedorNavigation } from './modules/fornecedor';

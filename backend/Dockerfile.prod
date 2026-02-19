@@ -44,10 +44,11 @@ RUN npx prisma generate --schema=prisma/postgres/schema.prisma
 # Build
 RUN npm run build
 
-# Build seed (se necessário)
+# Build seed em CommonJS para execução direta com node
 RUN npx tsc prisma/postgres/seed.ts \
   --esModuleInterop \
-  --module nodenext \
+  --module commonjs \
+  --moduleResolution node \
   --outDir dist/seed
 
 # =========================
