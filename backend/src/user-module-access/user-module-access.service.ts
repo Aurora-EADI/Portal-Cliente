@@ -46,6 +46,9 @@ export class UserModuleAccessService {
             },
           },
         },
+        sharedItems: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 
@@ -104,6 +107,7 @@ export class UserModuleAccessService {
         activities,
         totalActivities: activities.length,
         activeActivities: activities.filter((a) => a.isActive).length,
+        sharedItems: module.sharedItems || [],
       };
     });
 

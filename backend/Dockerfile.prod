@@ -5,10 +5,6 @@ FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Configurar npm para ignorar erros de SSL (ambiente corporativo)
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
-
 # CA e ferramentas
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \

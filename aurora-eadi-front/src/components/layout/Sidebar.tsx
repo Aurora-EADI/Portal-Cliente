@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,6 +83,7 @@ const SidebarItem = React.memo(function SidebarItem({
 export const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { currentUser, logoutUser } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -92,7 +93,26 @@ export const Sidebar: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    const [baseUrl, query] = path.split('?');
+    if (pathname !== baseUrl) return false;
+
+    if (query) {
+      const params = new URLSearchParams(query);
+      for (const [key, value] of params.entries()) {
+        if (searchParams.get(key) !== value) return false;
+      }
+      return true;
+    }
+
+    // Default case for paths without query params
+    // Special case for CCTE: if status=SENT is present, the base /ccte item is not active
+    if (baseUrl === '/ccte' && searchParams.get('status') === 'SENT') {
+      return false;
+    }
+
+    return true;
+  };
 
   const isGroupActive = (item: NavItem): boolean => {
     if (item.children) {

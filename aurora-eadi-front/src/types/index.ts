@@ -11,3 +11,4 @@ export * from './simulation';
 export * from './air-simulation';
 export * from './customer';
 export * from './container-kanban';
+export * from './ccte';

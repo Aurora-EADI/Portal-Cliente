@@ -1,22 +1,41 @@
 # =========================
 # Build stage
 # =========================
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Instalar dependências de sistema necessárias (para alpine)
-# Trocar repositórios para HTTP para evitar erro de SSL corporativo
-RUN sed -i 's/https/http/' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat
+# Certificados e ferramentas
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Configurar npm para ignorar erros de SSL (se necessário na rede corp)
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
+# Proxy args (opcional)
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
 
 ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
+
+# Configuração npm (mais estável)
+RUN npm config set registry https://registry.npmjs.org \
+    && npm config set fetch-retries 10 \
+    && npm config set fetch-retry-mintimeout 30000 \
+    && npm config set fetch-retry-maxtimeout 180000 \
+    && npm config set fetch-timeout 900000 \
+    && npm config set maxsockets 5
+
+# Copiar manifests
+COPY package.json package-lock.json ./
+
+# Instalar dependências (cache mount acelera rebuilds)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
 
 # Configuração npm (mais estável)
 RUN npm config set registry https://registry.npmjs.org \
@@ -51,7 +70,7 @@ RUN npm run build
 # =========================
 # Production stage
 # =========================
-FROM node:18-alpine AS production
+FROM node:18-bullseye-slim AS production
 
 WORKDIR /app
 

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus, History as HistoryIcon, Plane, Calculator, Package, Kanban } from 'lucide-react';
 import { UserRole } from '@/types';
 
@@ -416,3 +417,7 @@ export const canAccessContext = (currentPath: string, userRole: UserRole): boole
 navigationContexts.forEach(ctx => {
   navigationContextMap.set(ctx.basePath, ctx);
 });
+=======
+export * from './navigation/index';
+export * from './navigation/types';
+>>>>>>> develop

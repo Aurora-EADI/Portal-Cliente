@@ -44,6 +44,7 @@ export function ActivityRegistry() {
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+
   // Carrega módulos, atividades e permissões
   useEffect(() => {
     fetchData();
@@ -71,6 +72,7 @@ export function ActivityRegistry() {
     }
   };
 
+
   // Auto-select first module
   useEffect(() => {
     if (modules.length > 0 && !selectedModuleId) {
@@ -79,6 +81,7 @@ export function ActivityRegistry() {
   }, [modules, selectedModuleId]);
 
   const selectedModule = modules.find((m) => m.id === selectedModuleId);
+
 
   // Activities already linked to the CURRENT module
   const currentModuleActivities = activities.filter(
@@ -103,14 +106,24 @@ export function ActivityRegistry() {
 
   // Filter Catalog
   const availablePermissions = useMemo(() => {
+    // Pegamos apenas as chaves já vinculadas ao módulo ATUAL
+    const currentModuleLinkedKeys = new Set(
+      currentModuleActivities.flatMap(
+        (a) => a.permissions?.map((p) => p.key) || []
+      )
+    );
+
     return systemCatalog.filter((item) => {
       const matchesSearch =
         item.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.key.toLowerCase().includes(searchTerm.toLowerCase());
-      const notLinked = !allLinkedKeys.has(item.key);
-      return matchesSearch && notLinked;
+
+      // Agora verificamos se a chave não está vinculada APENAS neste módulo
+      const notInCurrentModule = !currentModuleLinkedKeys.has(item.key);
+
+      return matchesSearch && notInCurrentModule;
     });
-  }, [searchTerm, allLinkedKeys, systemCatalog]);
+  }, [searchTerm, currentModuleActivities, systemCatalog]);
 
   const handleSelectCatalogItem = (item: CatalogItem) => {
     setSelectedCatalogItem(item);

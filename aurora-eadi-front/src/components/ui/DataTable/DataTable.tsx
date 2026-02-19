@@ -22,8 +22,11 @@ export interface DataTableProps<T> {
         total: number;
         limit: number;
         onPageChange: (page: number) => void;
+        onLimitChange?: (limit: number) => void;
+        limitOptions?: number[];
     };
     rowClassName?: (item: T) => string;
+    onRowClick?: (item: T) => void;
 }
 
 export function DataTable<T>({
@@ -36,6 +39,7 @@ export function DataTable<T>({
     emptyMessage = 'Nenhum registro encontrado.',
     pagination,
     rowClassName,
+    onRowClick,
 }: DataTableProps<T>) {
     if (isLoading) {
         return (
@@ -74,7 +78,8 @@ export function DataTable<T>({
                             data.map((item) => (
                                 <tr
                                     key={keyExtractor(item)}
-                                    className={`hover:bg-gray-50 transition-colors ${rowClassName ? rowClassName(item) : ''}`}
+                                    onClick={() => onRowClick?.(item)}
+                                    className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''} ${rowClassName ? rowClassName(item) : ''}`}
                                 >
                                     {columns.map((column) => (
                                         <td
@@ -104,6 +109,8 @@ export function DataTable<T>({
                         total={pagination.total}
                         limit={pagination.limit}
                         onPageChange={pagination.onPageChange}
+                        onLimitChange={pagination.onLimitChange}
+                        limitOptions={pagination.limitOptions}
                         className="rounded-b-xl border-t-0 rounded-t-none"
                     />
                 </div>
