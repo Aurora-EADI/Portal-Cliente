@@ -5,13 +5,17 @@ FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
+# Configurar npm para ignorar erros de SSL (ambiente corporativo)
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV NPM_CONFIG_STRICT_SSL=false
+
 # CA e ferramentas
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  wget && \
+  rm -rf /var/lib/apt/lists/*
 
 # Proxy args (opcional)
 ARG HTTP_PROXY
@@ -24,10 +28,10 @@ ENV NO_PROXY=${NO_PROXY}
 
 # Configuração npm
 RUN npm config set registry https://registry.npmjs.org \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000
+  && npm config set fetch-retries 10 \
+  && npm config set fetch-retry-mintimeout 30000 \
+  && npm config set fetch-retry-maxtimeout 180000 \
+  && npm config set fetch-timeout 900000
 
 # Copiar manifests
 COPY package.json package-lock.json ./
@@ -59,11 +63,11 @@ WORKDIR /app
 
 # Dependências runtime
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    openssl \
-    ca-certificates \
-    curl && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y --no-install-recommends \
+  openssl \
+  ca-certificates \
+  curl && \
+  rm -rf /var/lib/apt/lists/*
 
 # OpenSSL legacy (SQL Server 2008 R2)
 RUN cat > /etc/ssl/openssl_legacy.cnf << 'EOL'

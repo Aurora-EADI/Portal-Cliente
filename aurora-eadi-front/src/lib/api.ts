@@ -8,11 +8,17 @@ import {
 
 // Função para obter a base URL dinamicamente
 const getBaseURL = () => {
-  // No servidor (SSR), usa variável de ambiente ou fallback
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || '/api';
+  // Retorna URL definida na variável de ambiente (tanto server quanto client)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
-  // No cliente, usa window.location.origin + /api
+
+  // Fallback para servidor
+  if (typeof window === 'undefined') {
+    return '/api';
+  }
+
+  // Fallback para cliente
   return `${window.location.origin}/api`;
 };
 

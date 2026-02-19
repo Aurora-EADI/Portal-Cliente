@@ -1,41 +1,32 @@
 # =========================
 # Build stage
 # =========================
-FROM node:18-bullseye-slim AS builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Certificados e ferramentas
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
+# Instalar dependências de sistema necessárias (para alpine)
+# Trocar repositórios para HTTP para evitar erro de SSL corporativo
+RUN sed -i 's/https/http/' /etc/apk/repositories
+RUN apk add --no-cache libc6-compat
 
-# Proxy args (opcional)
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-ARG NO_PROXY
+# Configurar npm para ignorar erros de SSL (se necessário na rede corp)
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV NPM_CONFIG_STRICT_SSL=false
 
-ENV HTTP_PROXY=${HTTP_PROXY}
-ENV HTTPS_PROXY=${HTTPS_PROXY}
-ENV NO_PROXY=${NO_PROXY}
-
-# Configuração npm (mais estável)
-RUN npm config set registry https://registry.npmjs.org \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000
+# Configurações de Retry do NPM
+RUN npm config set fetch-retries 10 \
+    && npm config set fetch-retry-mintimeout 30000 \
+    && npm config set fetch-retry-maxtimeout 180000 \
+    && npm config set fetch-timeout 900000
 
 # Copiar manifests
 COPY package.json package-lock.json ./
 
-# Instalar dependências
-RUN npm ci
+# Instalar dependências (usando install em vez de ci para garantir)
+RUN npm install
 
-# Copiar código
+# Copiar código fonte
 COPY . .
 
 # Build args
@@ -53,7 +44,7 @@ RUN npm run build
 # =========================
 # Production stage
 # =========================
-FROM node:18-bullseye-slim AS production
+FROM node:18-alpine AS production
 
 WORKDIR /app
 
@@ -62,7 +53,7 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copiar apenas o necessário
+# Copiar apenas o necessário do builder
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
