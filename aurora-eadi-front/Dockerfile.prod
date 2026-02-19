@@ -14,17 +14,24 @@ RUN apk add --no-cache libc6-compat
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV NPM_CONFIG_STRICT_SSL=false
 
-# Configurações de Retry do NPM
-RUN npm config set fetch-retries 10 \
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
+# Configuração npm (mais estável)
+RUN npm config set registry https://registry.npmjs.org \
+    && npm config set fetch-retries 10 \
     && npm config set fetch-retry-mintimeout 30000 \
     && npm config set fetch-retry-maxtimeout 180000 \
-    && npm config set fetch-timeout 900000
+    && npm config set fetch-timeout 900000 \
+    && npm config set maxsockets 5
 
 # Copiar manifests
 COPY package.json package-lock.json ./
 
-# Instalar dependências (usando install em vez de ci para garantir)
-RUN npm install
+# Instalar dependências (cache mount acelera rebuilds)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
 
 # Copiar código fonte
 COPY . .
@@ -53,12 +60,11 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copiar apenas o necessário do builder
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Standalone: copia apenas o bundle otimizado (~30-50MB vs ~500MB)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

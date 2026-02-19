@@ -36,8 +36,8 @@ RUN npm config set registry https://registry.npmjs.org \
 # Copiar manifests
 COPY package.json package-lock.json ./
 
-# Instalar dependências
-RUN npm ci
+# Instalar dependências (cache mount acelera rebuilds)
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Copiar código
 COPY . .
@@ -118,5 +118,5 @@ ENV NODE_ENV=production
 
 EXPOSE 5000
 
-# Sincroniza o schema do banco e inicia a aplicação
-CMD npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate && node dist/src/main.js
+# Inicia a aplicação (prisma db push é executado no pipeline antes do deploy)
+CMD ["node", "dist/src/main.js"]
