@@ -33,9 +33,9 @@ RUN npm config set registry https://registry.npmjs.org \
 # Copiar manifests
 COPY package.json package-lock.json ./
 
-# Instalar dependências (cache mount acelera rebuilds)
+# Instalar dependências
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --maxsockets=5 || npm ci --maxsockets=3 || npm ci --maxsockets=1
+    npm ci
 
 # Copiar código fonte
 COPY . .
