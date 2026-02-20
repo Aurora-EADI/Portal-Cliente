@@ -1,5 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
+  output        = "../../node_modules/@prisma/client-postgres"
   binaryTargets = ["native", "debian-openssl-1.1.x"]
 }
 
@@ -710,6 +711,16 @@ enum FlightHistoryType {
   REVERT
 }
 
+enum WarehouseReason {
+  CV
+  MA
+  RF
+  DOC
+  DIV
+  MT
+  P
+}
+
 model Flight {
   id           String          @id @default(uuid())
   aircraftName String
@@ -734,8 +745,9 @@ model CargoItem {
   importer     String
   dta          String          @default("")
   quantity     Int             @default(1)
-  tc           TCOption        @default(P)
-  status       CargoItemStatus @default(EM_ANALISE)
+  tc              TCOption         @default(P)
+  warehouseReason WarehouseReason?
+  status          CargoItemStatus  @default(EM_ANALISE)
   responsible  String          @default("")
   observations String          @default("")
   sent         Boolean         @default(false)
