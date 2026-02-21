@@ -27,9 +27,7 @@ services:
   sql-proxy:
     image: alpine/socat:latest
     container_name: sql-server-proxy-homolog
-    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:host.docker.internal:1433"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:${SQL_SERVER_HOST}:${SQL_SERVER_PORT:-1433}"
     networks:
       - aurora-network
     restart: always
