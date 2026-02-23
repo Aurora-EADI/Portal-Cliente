@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
-import { TCOption, CargoItemStatus, WarehouseReason } from '@prisma/client-postgres';
+import { TCOption, CargoItemStatus, WarehouseReason } from '@prisma/client';
 
 export class UpdateCargoItemDto {
   @ApiProperty({ required: false })
