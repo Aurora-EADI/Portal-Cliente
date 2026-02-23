@@ -1,9 +1,4 @@
-// src/common/guards/jwt-auth.guard.ts
-import {
-  Injectable,
-  ExecutionContext,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Injectable, ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuthGuard } from "@nestjs/passport";
 import { Observable } from "rxjs";
@@ -42,7 +37,7 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
     console.log("[JWT AUTH GUARD] Info:", info);
 
     if (err || !user) {
-      throw err || new UnauthorizedException("Nao autorizado");
+      throw err || new UnauthorizedException("Não autorizado");
     }
     return user as TUser;
   }

@@ -1,4 +1,4 @@
-﻿import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaPostgresService as PrismaService } from "../../prisma/prisma.service";
 import { TokenType } from "@prisma/client";
@@ -39,7 +39,7 @@ export class TokenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) { }
 
   /**
    * Gera um par de tokens (access + refresh) para um usuÃ¡rio
@@ -168,11 +168,7 @@ export class TokenService {
 
       // Valida tipo do token
       if (payload.type !== "refresh") {
-        console.error(
-          "[TOKEN SERVICE] Token com tipo incorreto:",
-          payload.type,
-        );
-        throw new Error("Token invÃ¡lido: tipo incorreto");
+        throw new UnauthorizedException("Token inválido: tipo incorreto");
       }
 
       // Verifica se o token existe e estÃ¡ vÃ¡lido no banco
@@ -190,11 +186,7 @@ export class TokenService {
       });
 
       if (!tokenRecord) {
-        console.error(
-          "[TOKEN SERVICE] Token nÃ£o encontrado no banco para userId:",
-          payload.sub,
-        );
-        throw new Error("Token invÃ¡lido ou revogado");
+        throw new UnauthorizedException("Token inválido ou revogado");
       }
 
       console.log("[TOKEN SERVICE] Token vÃ¡lido, encontrado no banco");
@@ -227,7 +219,7 @@ export class TokenService {
     });
 
     if (!user) {
-      throw new Error("UsuÃ¡rio nÃ£o encontrado");
+      throw new UnauthorizedException("Usuário não encontrado");
     }
 
     // Gera novo access token com dados atualizados
