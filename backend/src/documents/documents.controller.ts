@@ -45,7 +45,7 @@ export class DocumentsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     return this.documentsService.uploadDocument(file, dto, req.user);
   }
@@ -74,7 +74,7 @@ export class DocumentsController {
   async findByCompany(
     @Param("companyId") companyId: string,
     @Query("latestOnly") latestOnly: string = "false",
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     // 1. Verifica permissÃ£o: Admin pode ver tudo, Supplier sÃ³ vÃª sua prÃ³pria empresa
     if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
@@ -97,7 +97,7 @@ export class DocumentsController {
   })
   async findOverdueDocuments(
     @Query() query: OverdueDocumentsQueryDto,
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     // Admin pode ver todos os documentos atrasados (geral)
     // UsuÃ¡rio comum sÃ³ pode ver documentos da sua prÃ³pria empresa

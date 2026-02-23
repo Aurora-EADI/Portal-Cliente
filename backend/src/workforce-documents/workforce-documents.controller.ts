@@ -48,7 +48,7 @@ export class WorkforceDocumentsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadWorkforceDocumentDto,
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     return this.workforceDocumentsService.uploadDocument(file, dto, req.user);
   }
@@ -59,7 +59,7 @@ export class WorkforceDocumentsController {
   async listByEmployee(
     @Param("employeeId") employeeId: string,
     @Query("latestOnly") latestOnly: string = "false",
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     return this.workforceDocumentsService.listByEmployee(
       employeeId,
@@ -75,7 +75,7 @@ export class WorkforceDocumentsController {
   })
   async getMissingRequirements(
     @Param("employeeId") employeeId: string,
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     return this.workforceDocumentsService.getMissingRequirements(
       employeeId,
@@ -89,7 +89,7 @@ export class WorkforceDocumentsController {
   async updateStatus(
     @Param("id") id: string,
     @Body() dto: UpdateWorkforceDocumentStatusDto,
-    @Request() req,
+    @Request() req: { user: any },
   ) {
     if (
       dto.status === "REJECTED" &&
@@ -105,7 +105,7 @@ export class WorkforceDocumentsController {
   @Get(":id/download")
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
   @ApiOperation({ summary: "Obter URL de download de documento de colaborador" })
-  async getDownloadUrl(@Param("id") id: string, @Request() req) {
+  async getDownloadUrl(@Param("id") id: string, @Request() req: { user: any }) {
     const url = await this.workforceDocumentsService.getFileUrl(id, req.user);
     return { url };
   }
