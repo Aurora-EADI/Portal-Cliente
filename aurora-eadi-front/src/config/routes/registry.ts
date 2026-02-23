@@ -62,6 +62,10 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/documentos/gestao', label: 'Gestão Documentos', icon: 'Shield', parentPath: '/documentos', isModuleRoot: false },
   { path: '/documentos/empresa', label: 'Anexar Documentos', icon: 'Upload', parentPath: '/documentos', isModuleRoot: false },
   { path: '/documentos/cadastrar', label: 'Documentos Exigidos', icon: 'FilePlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/colaboradores', label: 'Colaboradores', icon: 'Users', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/colaboradores-gestao', label: 'Gestão Colaboradores', icon: 'UserCheck', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar-colaboradores', label: 'Docs Exigidos Colaboradores', icon: 'UserPlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar-documento', label: 'Cadastrar Documento', icon: 'FileCheck', parentPath: '/documentos', isModuleRoot: false },
 
   // Permissões
   { path: '/permissoes/catalogo', label: 'Catálogo Técnico', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
