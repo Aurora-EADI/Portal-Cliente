@@ -1,4 +1,4 @@
-// src/users/dto/create-user.dto.ts
+﻿// src/users/dto/create-user.dto.ts
 import {
   IsEmail,
   IsEnum,
@@ -7,7 +7,7 @@ import {
   IsString,
   MinLength,
 } from "class-validator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 export class CreateUserDto {
   @IsString()
@@ -33,3 +33,4 @@ export class CreateUserDto {
   @IsOptional()
   position?: string;
 }
+

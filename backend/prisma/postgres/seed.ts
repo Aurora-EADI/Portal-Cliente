@@ -1,27 +1,27 @@
-import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client-postgres';
+﻿import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...');
+  console.log('ðŸŒ± Iniciando seed do banco de dados...');
 
   // ============================================
   // 0. GARANTIR EMPRESA AURORA EADI
   // ============================================
-  console.log('🏢 Verificando/Criando empresa Aurora EADI...');
+  console.log('ðŸ¢ Verificando/Criando empresa Aurora EADI...');
 
   const company = await prisma.company.upsert({
     where: {
       cnpj: '04694548000210'
     },
-    update: {}, // Mantém dados existentes se já houver
+    update: {}, // MantÃ©m dados existentes se jÃ¡ houver
     create: {
       cnpj: '04694548000210',
       fantasyName: 'Aurora EADI',
-      socialReason: 'Aurora da Amazônia Terminais e Serviços LTDA',
+      socialReason: 'Aurora da AmazÃ´nia Terminais e ServiÃ§os LTDA',
       zipCode: '69075840',
-      address: 'Rua Ministro João Gonçalves de Araújo',
+      address: 'Rua Ministro JoÃ£o GonÃ§alves de AraÃºjo',
       number: '472',
       complement: 'Parte E',
       neighborhood: 'Distrito Industrial',
@@ -32,9 +32,9 @@ async function main() {
     },
   });
 
-  console.log(`✔️ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
+  console.log(`âœ”ï¸ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
 
-  // Verificar se já existe um usuário admin
+  // Verificar se jÃ¡ existe um usuÃ¡rio admin
   const existingAdmin = await prisma.user.findFirst({
     where: {
       email: 'admin@aurora.com.br',
@@ -42,7 +42,7 @@ async function main() {
   });
 
   if (existingAdmin) {
-    console.log('⚠️  Usuario admin ja existe. Atualizando vínculo com a empresa...');
+    console.log('âš ï¸  Usuario admin ja existe. Atualizando vÃ­nculo com a empresa...');
 
     await prisma.user.update({
       where: { id: existingAdmin.id },
@@ -51,15 +51,15 @@ async function main() {
       }
     });
 
-    console.log('✔️ Vínculo atualizado com sucesso.');
-    console.log(`🆔 ID: ${existingAdmin.id}`);
-    console.log(`👤 Nome: ${existingAdmin.name}`);
-    console.log(`🎭 Role: ${existingAdmin.role}`);
-    console.log(`🏢 Empresa ID: ${company.id}`);
+    console.log('âœ”ï¸ VÃ­nculo atualizado com sucesso.');
+    console.log(`ðŸ†” ID: ${existingAdmin.id}`);
+    console.log(`ðŸ‘¤ Nome: ${existingAdmin.name}`);
+    console.log(`ðŸŽ­ Role: ${existingAdmin.role}`);
+    console.log(`ðŸ¢ Empresa ID: ${company.id}`);
     return;
   }
 
-  console.log('🧹 Limpando dados existentes...');
+  console.log('ðŸ§¹ Limpando dados existentes...');
 
   // Limpeza de dados
   await prisma.activityPermission.deleteMany();
@@ -81,19 +81,19 @@ async function main() {
       email: 'admin@aurora.com.br',
       password: adminPassword,
       role: UserRole.ADMIN,
-      companyId: company.id, // Vincula à empresa criada
+      companyId: company.id, // Vincula Ã  empresa criada
     },
   });
 
-  console.log('✔️ Admin Aurora criado com sucesso.');
+  console.log('âœ”ï¸ Admin Aurora criado com sucesso.');
 
   // ============================================
-  // 2. CRIAR PERMISSÕES TÉCNICAS
+  // 2. CRIAR PERMISSÃ•ES TÃ‰CNICAS
   // ============================================
   const pPermManageUsers = await prisma.permission.create({
     data: {
       key: 'PERM_MANAGE_USERS',
-      description: 'Gerenciar usuários e acessos',
+      description: 'Gerenciar usuÃ¡rios e acessos',
       category: 'PERMISSIONS',
     },
   });
@@ -101,35 +101,35 @@ async function main() {
   const pPermManageModules = await prisma.permission.create({
     data: {
       key: 'PERM_MANAGE_MODULES',
-      description: 'Gerenciar módulos do sistema',
+      description: 'Gerenciar mÃ³dulos do sistema',
       category: 'PERMISSIONS',
     },
   });
 
-  console.log('✔️ Permissões técnicas criadas.');
+  console.log('âœ”ï¸ PermissÃµes tÃ©cnicas criadas.');
 
   // ============================================
-  // 3. CRIAR MÓDULO DE PERMISSÕES
+  // 3. CRIAR MÃ“DULO DE PERMISSÃ•ES
   // ============================================
   const modPermissoes = await prisma.module.create({
     data: {
-      name: 'Permissões',
-      description: 'Gestão de acessos e permissões',
+      name: 'PermissÃµes',
+      description: 'GestÃ£o de acessos e permissÃµes',
       route: '/permissoes',
       icon: 'Shield',
       active: true,
     },
   });
 
-  console.log('✔️ Módulo de Permissões criado.');
+  console.log('âœ”ï¸ MÃ³dulo de PermissÃµes criado.');
 
   // ============================================
-  // 4. CRIAR ATIVIDADES OBRIGATÓRIAS
+  // 4. CRIAR ATIVIDADES OBRIGATÃ“RIAS
   // ============================================
   const actPermUsers = await prisma.activity.create({
     data: {
-      name: 'Gerenciar Usuários',
-      description: 'Gerenciar usuários e seus acessos aos módulos',
+      name: 'Gerenciar UsuÃ¡rios',
+      description: 'Gerenciar usuÃ¡rios e seus acessos aos mÃ³dulos',
       moduleId: modPermissoes.id,
       isMandatory: true,
       permissions: {
@@ -140,8 +140,8 @@ async function main() {
 
   const actPermModules = await prisma.activity.create({
     data: {
-      name: 'Gerenciar Módulos',
-      description: 'Criar e gerenciar módulos do sistema',
+      name: 'Gerenciar MÃ³dulos',
+      description: 'Criar e gerenciar mÃ³dulos do sistema',
       moduleId: modPermissoes.id,
       isMandatory: true,
       permissions: {
@@ -150,10 +150,10 @@ async function main() {
     },
   });
 
-  console.log('✔️ Atividades obrigatórias criadas.');
+  console.log('âœ”ï¸ Atividades obrigatÃ³rias criadas.');
 
   // ============================================
-  // 5. ATRIBUIR MÓDULO AO ADMIN
+  // 5. ATRIBUIR MÃ“DULO AO ADMIN
   // ============================================
   await prisma.userModuleAccess.create({
     data: {
@@ -163,42 +163,42 @@ async function main() {
     },
   });
 
-  console.log('✔️ Módulo de Permissões atribuído ao Admin Aurora.');
+  console.log('âœ”ï¸ MÃ³dulo de PermissÃµes atribuÃ­do ao Admin Aurora.');
 
   // ============================================
   // 6. LOG FINAL
   // ============================================
-  console.log('\n✅ Seed concluído com sucesso!');
-  console.log('🎉 Usuario admin criado com sucesso!');
+  console.log('\nâœ… Seed concluÃ­do com sucesso!');
+  console.log('ðŸŽ‰ Usuario admin criado com sucesso!');
   console.log(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-USUÁRIO ADMINISTRADOR CRIADO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+USUÃRIO ADMINISTRADOR CRIADO:
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
 
-📧 Email: admin@aurora.com.br
-🔑 Senha: aurora@2025
-👤 Nome: Admin Aurora
-🛡️  Role: ADMIN
-🏢 Empresa: Aurora EADI
+ðŸ“§ Email: admin@aurora.com.br
+ðŸ”‘ Senha: aurora@2025
+ðŸ‘¤ Nome: Admin Aurora
+ðŸ›¡ï¸  Role: ADMIN
+ðŸ¢ Empresa: Aurora EADI
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MÓDULO E PERMISSÕES ATRIBUÍDAS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+MÃ“DULO E PERMISSÃ•ES ATRIBUÃDAS:
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
 
-📦 Módulo: Permissões
-📝 Descrição: Gestão de acessos e permissões
+ðŸ“¦ MÃ³dulo: PermissÃµes
+ðŸ“ DescriÃ§Ã£o: GestÃ£o de acessos e permissÃµes
 
-Atividades Obrigatórias:
-  ✓ Gerenciar Usuários (PERM_MANAGE_USERS)
-  ✓ Gerenciar Módulos (PERM_MANAGE_MODULES)
+Atividades ObrigatÃ³rias:
+  âœ“ Gerenciar UsuÃ¡rios (PERM_MANAGE_USERS)
+  âœ“ Gerenciar MÃ³dulos (PERM_MANAGE_MODULES)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
 `);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Erro ao executar seed:', e);
+    console.error('âŒ Erro ao executar seed:', e);
     process.exit(1);
   })
   .finally(async () => {

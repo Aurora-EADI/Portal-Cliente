@@ -22,8 +22,8 @@ import { SimulationsModule } from '../simulations/simulations.module';
 import { IntegrationModule } from 'src/integration/integration.module';
 import { CustomerModule } from 'src/customer/customer.module';
 import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
-import { CcteModule } from 'src/ccte/ccte.module';
-import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
+import { RequirementRulesModule } from "src/requirement-rules/requirement-rules.module";
+import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-documents.module";
 
 @Module({
   imports: [
@@ -52,8 +52,8 @@ import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
     IntegrationModule,
     CustomerModule,
     AirSimulationModule,
-    CcteModule,
-    DtaMaritimeModule,
+    RequirementRulesModule,
+    WorkforceDocumentsModule,
   ],
 })
 export class AppModule {}

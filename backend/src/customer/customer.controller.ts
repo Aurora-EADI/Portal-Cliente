@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Body,
@@ -19,7 +19,7 @@ import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole, CustomerStatus } from "@prisma/client-postgres";
+import { UserRole, CustomerStatus } from "@prisma/client";
 
 @Controller("customers")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -87,3 +87,4 @@ export class CustomerController {
     return this.customerService.remove(id);
   }
 }
+

@@ -1,5 +1,5 @@
-import { IsEnum, IsString, IsOptional } from "class-validator";
-import { DocumentStatus } from "@prisma/client-postgres";
+﻿import { IsEnum, IsString, IsOptional } from "class-validator";
+import { DocumentStatus } from "@prisma/client";
 
 export class UpdateStatusDto {
   @IsEnum(DocumentStatus)
@@ -9,3 +9,4 @@ export class UpdateStatusDto {
   @IsOptional()
   rejectionReason?: string;
 }
+

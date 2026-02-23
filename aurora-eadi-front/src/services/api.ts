@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType, Customer, CustomerStatus, CreateCustomerDTO, UpdateCustomerDTO, Service, CreateServiceDto, UpdateServiceDto } from '@/types';
+import { User, UserRole, CreateCompanyDTO, CreateUserDTO, Document, DocumentStatus, Company, CompanyStatus, DocumentType, Customer, CustomerStatus, CreateCustomerDTO, UpdateCustomerDTO, Service, CreateServiceDto, UpdateServiceDto, EmployeeStatus } from '@/types';
 
 const validRoles = Object.values(UserRole);
 
@@ -483,6 +483,242 @@ export const supplierRequirementsService = {
     } catch (error: any) {
       return Promise.reject(new Error(error.response?.data?.message || 'Erro ao buscar requisitos'));
     }
+  },
+};
+
+export interface SupplierTypeDto {
+  id: string;
+  name: string;
+  description?: string;
+  active: boolean;
+}
+
+export interface RequirementRuleItemDto {
+  documentTypeId: number;
+  isRequired: boolean;
+}
+
+export interface RequirementRuleDto {
+  companyClassification: 'MEI' | 'ME' | 'EPP' | 'EIRELI';
+  allocationRegime: 'NO_WORKFORCE_AT_EADI' | 'FULL_WORKFORCE_AT_EADI';
+  supplierTypeId: string;
+  items: RequirementRuleItemDto[];
+  active: boolean;
+}
+
+export interface CompanyWorkforceEmployeeDto {
+  id?: string;
+  fullName: string;
+  cpf: string;
+  position: string;
+  hiredAt: string;
+  status?: EmployeeStatus;
+}
+
+export interface WorkforceListItemDto {
+  id: string;
+  fullName: string;
+  cpf: string;
+  position: string;
+  hiredAt: string;
+  status: EmployeeStatus;
+  company: {
+    id: string;
+    fantasyName: string;
+    socialReason?: string;
+  };
+}
+
+export interface WorkforceDetailsDto {
+  id: string;
+  fullName: string;
+  cpf: string;
+  position: string;
+  hiredAt: string;
+  status: EmployeeStatus;
+  company: {
+    id: string;
+    fantasyName: string;
+    socialReason?: string;
+    cnpj?: string;
+    phone?: string;
+  };
+}
+
+export interface WorkforceDocumentRequirementDto {
+  id: string;
+  companyId: string;
+  documentTypeId: number;
+  isRequired: boolean;
+  active: boolean;
+  documentType: DocumentType;
+}
+
+export interface WorkforceDocumentDto {
+  id: string;
+  companyEmployeeId: string;
+  companyId: string;
+  uploadedByUserId: string;
+  name: string;
+  fileType: string;
+  fileUrl: string;
+  status: DocumentStatus;
+  rejectionReason?: string;
+  dateIssue?: string;
+  dateExpiration?: string;
+  uploadedAt: string;
+  updatedAt: string;
+  documentTypeId?: number;
+  isLatest: boolean;
+  documentType?: DocumentType;
+}
+
+export const requirementRulesService = {
+  getSupplierTypes: async (): Promise<SupplierTypeDto[]> => {
+    const response = await api.get('/requirement-rules/supplier-types');
+    return response.data;
+  },
+
+  createSupplierType: async (payload: { name: string; description?: string; active?: boolean }): Promise<SupplierTypeDto> => {
+    const response = await api.post('/requirement-rules/supplier-types', payload);
+    return response.data;
+  },
+
+  updateSupplierType: async (id: string, payload: { name?: string; description?: string; active?: boolean }): Promise<SupplierTypeDto> => {
+    const response = await api.patch(`/requirement-rules/supplier-types/${id}`, payload);
+    return response.data;
+  },
+
+  getRules: async () => {
+    const response = await api.get('/requirement-rules');
+    return response.data;
+  },
+
+  upsertRule: async (payload: RequirementRuleDto) => {
+    const response = await api.post('/requirement-rules', payload);
+    return response.data;
+  },
+
+  updateCompanyProfile: async (
+    companyId: string,
+    payload: {
+      classification: 'MEI' | 'ME' | 'EPP' | 'EIRELI';
+      allocationRegime: 'NO_WORKFORCE_AT_EADI' | 'FULL_WORKFORCE_AT_EADI';
+      supplierTypeIds: string[];
+    },
+  ) => {
+    const response = await api.put(`/requirement-rules/companies/${companyId}/profile`, payload);
+    return response.data;
+  },
+
+  getCompanyWorkforce: async (companyId: string): Promise<CompanyWorkforceEmployeeDto[]> => {
+    const response = await api.get(`/requirement-rules/companies/${companyId}/workforce`);
+    return response.data;
+  },
+
+  updateCompanyWorkforce: async (
+    companyId: string,
+    employees: CompanyWorkforceEmployeeDto[],
+  ): Promise<CompanyWorkforceEmployeeDto[]> => {
+    const response = await api.put(`/requirement-rules/companies/${companyId}/workforce`, { employees });
+    return response.data;
+  },
+
+  listWorkforce: async (params?: PaginationParams & { companyId?: string }): Promise<PaginatedResponse<WorkforceListItemDto>> => {
+    const response = await api.get('/requirement-rules/workforce', { params });
+    return response.data;
+  },
+
+  getWorkforceById: async (id: string): Promise<WorkforceDetailsDto> => {
+    const response = await api.get(`/requirement-rules/workforce/${id}`);
+    return response.data;
+  },
+
+  updateWorkforceStatus: async (id: string, status: EmployeeStatus): Promise<WorkforceDetailsDto> => {
+    const response = await api.patch(`/requirement-rules/workforce/${id}/status`, { status });
+    return response.data;
+  },
+
+  getWorkforceRequirements: async (companyId: string): Promise<WorkforceDocumentRequirementDto[]> => {
+    const response = await api.get(`/requirement-rules/companies/${companyId}/workforce-requirements`);
+    return response.data;
+  },
+
+  updateWorkforceRequirements: async (
+    companyId: string,
+    requirements: { documentTypeId: number; isRequired: boolean }[],
+  ): Promise<WorkforceDocumentRequirementDto[]> => {
+    const response = await api.put(`/requirement-rules/companies/${companyId}/workforce-requirements`, {
+      requirements,
+    });
+    return response.data;
+  },
+
+  getGlobalWorkforceRequirements: async (): Promise<WorkforceDocumentRequirementDto[]> => {
+    const response = await api.get('/requirement-rules/workforce-requirements/global');
+    return response.data;
+  },
+
+  updateGlobalWorkforceRequirements: async (
+    requirements: { documentTypeId: number; isRequired: boolean }[],
+  ): Promise<WorkforceDocumentRequirementDto[]> => {
+    const response = await api.put('/requirement-rules/workforce-requirements/global', {
+      requirements,
+    });
+    return response.data;
+  },
+};
+
+export const workforceDocumentService = {
+  upload: async (payload: {
+    file: File;
+    companyEmployeeId: string;
+    name: string;
+    dateIssue?: string;
+    dateExpiration?: string;
+    documentTypeId?: string;
+  }): Promise<WorkforceDocumentDto> => {
+    const formData = new FormData();
+    formData.append('file', payload.file);
+    formData.append('companyEmployeeId', payload.companyEmployeeId);
+    formData.append('name', payload.name);
+    if (payload.dateIssue) formData.append('dateIssue', payload.dateIssue);
+    if (payload.dateExpiration) formData.append('dateExpiration', payload.dateExpiration);
+    if (payload.documentTypeId) formData.append('documentTypeId', payload.documentTypeId);
+
+    const response = await api.post('/workforce-documents/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  listByEmployee: async (employeeId: string, latestOnly = false): Promise<WorkforceDocumentDto[]> => {
+    const response = await api.get(`/workforce-documents/employee/${employeeId}`, {
+      params: { latestOnly: latestOnly ? 'true' : 'false' },
+    });
+    return response.data;
+  },
+
+  listMissingByEmployee: async (employeeId: string): Promise<WorkforceDocumentRequirementDto[]> => {
+    const response = await api.get(`/workforce-documents/employee/${employeeId}/missing`);
+    return response.data;
+  },
+
+  updateStatus: async (
+    id: string,
+    status: DocumentStatus,
+    rejectionReason?: string,
+  ): Promise<WorkforceDocumentDto> => {
+    const response = await api.patch(`/workforce-documents/${id}/status`, {
+      status,
+      rejectionReason,
+    });
+    return response.data;
+  },
+
+  getDownloadUrl: async (id: string): Promise<string> => {
+    const response = await api.get(`/workforce-documents/${id}/download`);
+    return response.data.url;
   },
 };
 

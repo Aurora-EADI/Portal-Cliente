@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -11,9 +11,7 @@ import {
   UploadedFile,
   Request,
   ForbiddenException,
-  Res,
 } from "@nestjs/common";
-import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiTags,
@@ -29,7 +27,7 @@ import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @ApiTags("Documentos")
 @ApiBearerAuth()
@@ -42,15 +40,14 @@ export class DocumentsController {
   @ApiOperation({ summary: "Fazer upload de um documento" })
   @ApiConsumes("multipart/form-data")
   @ApiResponse({ status: 201, description: "Documento enviado com sucesso" })
-  @ApiResponse({ status: 401, description: "Não autorizado" })
+  @ApiResponse({ status: 401, description: "NÃ£o autorizado" })
   @UseInterceptors(FileInterceptor("file"))
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
-    @Request() req: { user: { id: string; role: string; companyId?: string } },
+    @Request() req,
   ) {
-    // Tente req.user.id ao invés de req.user.userId
-    return this.documentsService.uploadDocument(file, dto, req.user.id);
+    return this.documentsService.uploadDocument(file, dto, req.user);
   }
 
   @Get()
@@ -72,17 +69,17 @@ export class DocumentsController {
   })
   @ApiResponse({
     status: 403,
-    description: "Sem permissão para acessar documentos desta empresa",
+    description: "Sem permissÃ£o para acessar documentos desta empresa",
   })
   async findByCompany(
     @Param("companyId") companyId: string,
     @Query("latestOnly") latestOnly: string = "false",
-    @Request() req: { user: { id: string; role: string; companyId?: string } },
+    @Request() req,
   ) {
-    // 1. Verifica permissão: Admin pode ver tudo, Supplier só vê sua própria empresa
+    // 1. Verifica permissÃ£o: Admin pode ver tudo, Supplier sÃ³ vÃª sua prÃ³pria empresa
     if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
       throw new ForbiddenException(
-        "Você não tem permissão para acessar documentos desta empresa",
+        "VocÃª nÃ£o tem permissÃ£o para acessar documentos desta empresa",
       );
     }
 
@@ -100,12 +97,12 @@ export class DocumentsController {
   })
   async findOverdueDocuments(
     @Query() query: OverdueDocumentsQueryDto,
-    @Request() req: { user: { id: string; role: string; companyId?: string } },
+    @Request() req,
   ) {
     // Admin pode ver todos os documentos atrasados (geral)
-    // Usuário comum só pode ver documentos da sua própria empresa
+    // UsuÃ¡rio comum sÃ³ pode ver documentos da sua prÃ³pria empresa
     if (req.user.role !== UserRole.ADMIN) {
-      // Se não for admin, força o filtro pela empresa do usuário
+      // Se nÃ£o for admin, forÃ§a o filtro pela empresa do usuÃ¡rio
       query.companyId = req.user.companyId;
     }
 
@@ -118,30 +115,22 @@ export class DocumentsController {
     status: 200,
     description: "Status do documento atualizado com sucesso",
   })
-  @ApiResponse({ status: 404, description: "Documento não encontrado" })
+  @ApiResponse({ status: 404, description: "Documento nÃ£o encontrado" })
   @Roles(UserRole.ADMIN)
   async updateStatus(@Param("id") id: string, @Body() dto: UpdateStatusDto) {
     return this.documentsService.updateStatus(id, dto);
   }
 
   @Get(":id/download")
-  @ApiOperation({ summary: "Fazer download do documento" })
+  @ApiOperation({ summary: "Obter URL de download do documento" })
   @ApiResponse({
     status: 200,
-    description: "Download do documento via streaming",
+    description: "URL de download gerada com sucesso",
   })
-  @ApiResponse({ status: 404, description: "Documento não encontrado" })
-  async downloadFile(@Param("id") id: string, @Res() res: Response) {
-    // Obtém stream do arquivo via MinIO (acesso interno)
-    const { stream, filename, contentType, size } =
-      await this.documentsService.getFileStream(id);
-
-    // Define headers para download
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Length", size);
-
-    // Faz streaming do arquivo para o cliente
-    stream.pipe(res);
+  @ApiResponse({ status: 404, description: "Documento nÃ£o encontrado" })
+  async getDownloadUrl(@Param("id") id: string) {
+    const url = await this.documentsService.getFileUrl(id);
+    return { url };
   }
 }
+

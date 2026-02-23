@@ -1,7 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  output        = "../../node_modules/@prisma/client-postgres"
-  binaryTargets = ["native", "debian-openssl-1.1.x"]
+  binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -290,22 +289,8 @@ model Module {
   active      Boolean            @default(true)
   activities  Activity[]
   userAccess  UserModuleAccess[]
-  sharedItems ModuleSharedItem[]
 
   @@map("modules")
-}
-
-model ModuleSharedItem {
-  id          Int     @id @default(autoincrement())
-  moduleId    Int
-  targetRoute String
-  label       String
-  icon        String?
-  sortOrder   Int     @default(0)
-  module      Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-  @@unique([moduleId, targetRoute])
-  @@map("module_shared_items")
 }
 
 model Activity {
@@ -314,10 +299,6 @@ model Activity {
   description String?
   moduleId    Int
   isMandatory Boolean              @default(false)
-  route       String?
-  label       String?
-  icon        String?
-  sortOrder   Int                  @default(0)
   module      Module               @relation(fields: [moduleId], references: [id])
   permissions ActivityPermission[]
   userAccess  UserActivityAccess[]
@@ -711,23 +692,12 @@ enum FlightHistoryType {
   REVERT
 }
 
-enum WarehouseReason {
-  CV
-  MA
-  RF
-  DOC
-  DIV
-  MT
-  P
-}
-
 model Flight {
   id           String          @id @default(uuid())
   aircraftName String
   arrivalDate  DateTime        @db.Date
   arrivalTime  String
   flightCode   String
-  termoEntrada String?
   status       FlightStatus    @default(PENDING)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -745,9 +715,8 @@ model CargoItem {
   importer     String
   dta          String          @default("")
   quantity     Int             @default(1)
-  tc              TCOption         @default(P)
-  warehouseReason WarehouseReason?
-  status          CargoItemStatus  @default(EM_ANALISE)
+  tc           TCOption        @default(P)
+  status       CargoItemStatus @default(EM_ANALISE)
   responsible  String          @default("")
   observations String          @default("")
   sent         Boolean         @default(false)
@@ -769,54 +738,4 @@ model FlightHistory {
 
   @@index([flightId])
   @@map("flight_history")
-}
-
-// ============ DTA MARITIME MODULE ============
-
-model ProcessoImportacao {
-  id            String      @id @default(uuid())
-  dta           String      @unique
-  empresa       String
-  porto         String
-  navio         String
-  ataDta        DateTime?   @db.Date
-  ataMao        DateTime?   @db.Date
-  ataEadi       DateTime?   @db.Date
-  conclusao     DateTime?   @db.Date
-  transportador String?
-  comissaria    String?
-  fobTotal      Decimal?    @db.Decimal(15, 2)
-  freteTotal    Decimal?    @db.Decimal(15, 2)
-  cifTotal      Decimal?    @db.Decimal(15, 2)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  containers    Container[]
-
-  @@map("processos_importacao")
-}
-
-model Container {
-  id         String             @id @default(uuid())
-  processoId String
-  number     String
-  tipo       String
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-  processo   ProcessoImportacao @relation(fields: [processoId], references: [id], onDelete: Cascade)
-  bls        BillOfLading[]
-
-  @@unique([processoId, number])
-  @@map("containers")
-}
-
-model BillOfLading {
-  id          String    @id @default(uuid())
-  containerId String
-  numero      String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  container   Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
-
-  @@unique([containerId, numero])
-  @@map("bill_of_ladings")
 }

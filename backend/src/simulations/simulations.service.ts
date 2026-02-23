@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -9,7 +9,7 @@ import { CreateSimulationDto } from "./dto/create-simulation.dto";
 import { UpdateSimulationDto } from "./dto/update-simulation.dto";
 import { CreateNewVersionDto } from "./dto/create-new-version.dto";
 import { AddSimulationServiceDto } from "./dto/add-simulation-service.dto";
-import { ServiceCostType, Prisma } from "@prisma/client-postgres";
+import { ServiceCostType, Prisma } from "@prisma/client";
 
 @Injectable()
 export class SimulationsService {
@@ -35,7 +35,7 @@ export class SimulationsService {
     return `SIM-${sequential}-V${version}`;
   }
 
-  // ========== CRIAÇÃO ==========
+  // ========== CRIAÃ‡ÃƒO ==========
 
   async create(createSimulationDto: CreateSimulationDto, userId: string) {
     try {
@@ -47,7 +47,7 @@ export class SimulationsService {
 
       if (!customer) {
         throw new NotFoundException(
-          `Cliente com ID ${createSimulationDto.customerId} não encontrado`,
+          `Cliente com ID ${createSimulationDto.customerId} nÃ£o encontrado`,
         );
       }
 
@@ -112,7 +112,7 @@ export class SimulationsService {
               return {
                 versionId: version.id,
                 serviceId: s.serviceId,
-                serviceName: def?.name || "Serviço Removido",
+                serviceName: def?.name || "ServiÃ§o Removido",
                 serviceCode: def?.code || "N/A",
                 calculationType: def?.calculationType || "FIXED",
                 hasStripping: def?.hasStripping || false,
@@ -140,13 +140,13 @@ export class SimulationsService {
     }
   }
 
-  // ========== NOVA VERSÃO ==========
+  // ========== NOVA VERSÃƒO ==========
 
   async createNewVersion(
     createNewVersionDto: CreateNewVersionDto,
     userId: string,
   ) {
-    // Busca a versão base
+    // Busca a versÃ£o base
     const baseVersion = await this.prisma.simulationVersion.findUnique({
       where: { id: createNewVersionDto.baseSimulationId },
       include: { simulation: true, services: true },
@@ -154,11 +154,11 @@ export class SimulationsService {
 
     if (!baseVersion) {
       throw new NotFoundException(
-        `Versão base com ID ${createNewVersionDto.baseSimulationId} não encontrada`,
+        `VersÃ£o base com ID ${createNewVersionDto.baseSimulationId} nÃ£o encontrada`,
       );
     }
 
-    // Busca a maior versão existente
+    // Busca a maior versÃ£o existente
     const maxVersion = await this.prisma.simulationVersion.findFirst({
       where: { simulationId: baseVersion.simulationId },
       orderBy: { version: "desc" },
@@ -172,13 +172,13 @@ export class SimulationsService {
     const cifBrl = createNewVersionDto.cifUsd * createNewVersionDto.dollarRate;
 
     const newVersionId = await this.prisma.$transaction(async (tx) => {
-      // Marca todas as versões anteriores como não-correntes
+      // Marca todas as versÃµes anteriores como nÃ£o-correntes
       await tx.simulationVersion.updateMany({
         where: { simulationId: baseVersion.simulationId },
         data: { isCurrentVersion: false },
       });
 
-      // Cria a nova versão
+      // Cria a nova versÃ£o
       const newVersion = await tx.simulationVersion.create({
         data: {
           simulation: { connect: { id: baseVersion.simulationId } },
@@ -207,7 +207,7 @@ export class SimulationsService {
         },
       });
 
-      // Clona os serviços da versão base
+      // Clona os serviÃ§os da versÃ£o base
       if (baseVersion.services.length > 0) {
         const clonedServices = baseVersion.services.map((s) => ({
           versionId: newVersion.id,
@@ -231,14 +231,14 @@ export class SimulationsService {
       return newVersion.id;
     });
 
-    // Busca a versão completa APÓS a transação ser commitada
+    // Busca a versÃ£o completa APÃ“S a transaÃ§Ã£o ser commitada
     return this.findOneVersion(newVersionId);
   }
 
   // ========== BUSCA ==========
 
   async findAll(customerId?: string) {
-    // Agora buscamos Simulations (Capa) e a versão corrente
+    // Agora buscamos Simulations (Capa) e a versÃ£o corrente
     return this.prisma.simulation.findMany({
       where: customerId ? { customerId } : {},
       include: {
@@ -274,12 +274,12 @@ export class SimulationsService {
     });
 
     if (simulation) {
-      // Retorna a versão corrente em formato compatível
+      // Retorna a versÃ£o corrente em formato compatÃ­vel
       const currentVersion = simulation.versions[0];
       return this.formatVersionResponse(simulation, currentVersion);
     }
 
-    // Se não encontrou como Simulation, tenta como SimulationVersion
+    // Se nÃ£o encontrou como Simulation, tenta como SimulationVersion
     return this.findOneVersion(id);
   }
 
@@ -307,7 +307,7 @@ export class SimulationsService {
     });
 
     if (!version) {
-      throw new NotFoundException(`Versão com ID ${versionId} não encontrada`);
+      throw new NotFoundException(`VersÃ£o com ID ${versionId} nÃ£o encontrada`);
     }
 
     return this.formatVersionResponse(version.simulation, version);
@@ -376,15 +376,15 @@ export class SimulationsService {
     });
   }
 
-  // ========== ATUALIZAÇÃO ==========
+  // ========== ATUALIZAÃ‡ÃƒO ==========
 
   async update(id: string, updateSimulationDto: UpdateSimulationDto) {
-    // Busca a versão
+    // Busca a versÃ£o
     const version = await this.prisma.simulationVersion.findUnique({
       where: { id },
     });
     if (!version) {
-      throw new NotFoundException(`Versão com ID ${id} não encontrada`);
+      throw new NotFoundException(`VersÃ£o com ID ${id} nÃ£o encontrada`);
     }
 
     const updateData: any = {};
@@ -452,7 +452,7 @@ export class SimulationsService {
       data: updateData,
     });
 
-    // Se desativou desova, remove os serviços de desova
+    // Se desativou desova, remove os serviÃ§os de desova
     if (updateSimulationDto.hasStripping === false) {
       await this.prisma.simulationService.deleteMany({
         where: { versionId: id, hasStripping: true },
@@ -470,20 +470,20 @@ export class SimulationsService {
       where: { id },
     });
     if (!version) {
-      throw new NotFoundException(`Versão com ID ${id} não encontrada`);
+      throw new NotFoundException(`VersÃ£o com ID ${id} nÃ£o encontrada`);
     }
 
     if (version.status !== "DRAFT") {
       throw new BadRequestException(
-        `Não é possível deletar simulação com status ${version.status}. Apenas DRAFT pode ser deletada.`,
+        `NÃ£o Ã© possÃ­vel deletar simulaÃ§Ã£o com status ${version.status}. Apenas DRAFT pode ser deletada.`,
       );
     }
 
-    // Deleta a versão (e os serviços via onDelete: Cascade)
+    // Deleta a versÃ£o (e os serviÃ§os via onDelete: Cascade)
     return this.prisma.simulationVersion.delete({ where: { id } });
   }
 
-  // ========== GERENCIAMENTO DE SERVIÇOS ==========
+  // ========== GERENCIAMENTO DE SERVIÃ‡OS ==========
 
   async addService(
     versionId: string,
@@ -494,7 +494,7 @@ export class SimulationsService {
       where: { id: versionId },
     });
     if (!version) {
-      throw new NotFoundException(`Versão com ID ${versionId} não encontrada`);
+      throw new NotFoundException(`VersÃ£o com ID ${versionId} nÃ£o encontrada`);
     }
 
     const service = await this.prisma.service.findUnique({
@@ -502,7 +502,7 @@ export class SimulationsService {
     });
     if (!service) {
       throw new NotFoundException(
-        `Serviço com ID ${dto.serviceId} não encontrado`,
+        `ServiÃ§o com ID ${dto.serviceId} nÃ£o encontrado`,
       );
     }
 
@@ -517,7 +517,7 @@ export class SimulationsService {
 
     if (!currentCost && dto.costType === ServiceCostType.DEFAULT) {
       throw new BadRequestException(
-        `Serviço ${service.name} não possui custo vigente`,
+        `ServiÃ§o ${service.name} nÃ£o possui custo vigente`,
       );
     }
 
@@ -551,7 +551,7 @@ export class SimulationsService {
       appliedCost = dto.appliedCost || 0;
     }
 
-    // Verifica se já existe
+    // Verifica se jÃ¡ existe
     const existing = await this.prisma.simulationService.findFirst({
       where: { versionId, serviceId: dto.serviceId },
     });
@@ -592,7 +592,7 @@ export class SimulationsService {
       where: { versionId, serviceId },
     });
     await this.recalculateTotals(versionId);
-    return { message: "Serviço removido com sucesso" };
+    return { message: "ServiÃ§o removido com sucesso" };
   }
 
   async getServices(versionId: string) {
@@ -611,7 +611,7 @@ export class SimulationsService {
     }));
   }
 
-  // ========== RECÁLCULOS ==========
+  // ========== RECÃLCULOS ==========
 
   private async recalculateTotals(
     versionId: string,
@@ -705,3 +705,4 @@ export class SimulationsService {
     await this.recalculateTotals(versionId);
   }
 }
+

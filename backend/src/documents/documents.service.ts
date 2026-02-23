@@ -1,5 +1,6 @@
-import {
+﻿import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   InternalServerErrorException,
@@ -10,7 +11,7 @@ import { MinioService } from "../minio/minio.service";
 import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
-import { Prisma } from "@prisma/client-postgres";
+import { Prisma, UserRole } from "@prisma/client";
 
 @Injectable()
 export class DocumentsService {
@@ -24,22 +25,34 @@ export class DocumentsService {
   async uploadDocument(
     file: Express.Multer.File,
     dto: UploadDocumentDto,
-    userId: string,
+    user: { id: string; role: UserRole; companyId?: string | null },
   ) {
-    // Gerar nome único
+    // Gerar nome Ãºnico
     const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.originalname}`;
+    const baseFileName = `${timestamp}-${file.originalname}`;
 
     if (!dto.companyId) {
-      throw new BadRequestException("companyId é obrigatório");
+      throw new BadRequestException("companyId Ã© obrigatÃ³rio");
+    }
+
+    let fileName = baseFileName;
+
+    if (user.role === UserRole.EMPLOYEE) {
+      if (!user.companyId || user.companyId !== dto.companyId) {
+        throw new ForbiddenException(
+          "VocÃª nÃ£o tem permissÃ£o para anexar documentos para esta empresa",
+        );
+      }
+
+      fileName = `supplier/${dto.companyId}/${baseFileName}`;
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      // 1. Primeiro tenta subir o arquivo (externo ao DB, não rollback automático)
+      // 1. Primeiro tenta subir o arquivo (externo ao DB, nÃ£o rollback automÃ¡tico)
       try {
         this.logger.log(`Iniciando upload para o MinIO: ${fileName}`);
         await this.minio.uploadFile(file, fileName);
-        this.logger.log(`Upload para o MinIO concluído: ${fileName}`);
+        this.logger.log(`Upload para o MinIO concluÃ­do: ${fileName}`);
       } catch (error) {
         this.logger.error(
           `Erro no upload para o MinIO (${fileName}): ${error.message}`,
@@ -78,7 +91,7 @@ export class DocumentsService {
           name: dto.name,
           fileType: file.mimetype.split("/")[1],
           fileUrl: fileName,
-          userId,
+          userId: user.id,
           companyId: dto.companyId,
           status: "PENDING",
           dateIssue: dto.dateIssue ? new Date(dto.dateIssue) : undefined,
@@ -127,7 +140,7 @@ export class DocumentsService {
   async getFileUrl(id: string) {
     const document = await this.prisma.document.findUnique({ where: { id } });
     if (!document)
-      throw new NotFoundException("Documento não encontrado no banco de dados");
+      throw new NotFoundException("Documento nÃ£o encontrado no banco de dados");
 
     try {
       return await this.minio.getFileUrl(document.fileUrl);
@@ -182,15 +195,15 @@ export class DocumentsService {
     } = query;
     const skip = (page - 1) * limit;
 
-    // Construir cláusula WHERE
+    // Construir clÃ¡usula WHERE
     const where: Prisma.DocumentWhereInput = {
       dateExpiration: {
         lt: new Date(), // Menor que a data atual (atrasados)
       },
       status: {
-        not: "REJECTED", // Não mostrar documentos rejeitados
+        not: "REJECTED", // NÃ£o mostrar documentos rejeitados
       },
-      isLatest: true, // Apenas versões mais recentes
+      isLatest: true, // Apenas versÃµes mais recentes
     };
 
     // Filtro por empresa (opcional)
@@ -207,7 +220,7 @@ export class DocumentsService {
       ];
     }
 
-    // Construir cláusula ORDER BY
+    // Construir clÃ¡usula ORDER BY
     const orderBy: Prisma.DocumentOrderByWithRelationInput = {};
     if (sortBy === "dateExpiration") {
       orderBy.dateExpiration = sortOrder;
@@ -217,7 +230,7 @@ export class DocumentsService {
       orderBy.name = sortOrder;
     }
 
-    // Executar queries em paralelo para otimização
+    // Executar queries em paralelo para otimizaÃ§Ã£o
     const [documents, total] = await Promise.all([
       this.prisma.document.findMany({
         where,
@@ -252,7 +265,7 @@ export class DocumentsService {
       this.prisma.document.count({ where }),
     ]);
 
-    // Calcular informações de paginação
+    // Calcular informaÃ§Ãµes de paginaÃ§Ã£o
     const totalPages = Math.ceil(total / limit);
 
     // Calcular quantos dias de atraso
@@ -282,3 +295,4 @@ export class DocumentsService {
     };
   }
 }
+

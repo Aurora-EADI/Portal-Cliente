@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ConflictException,
@@ -7,7 +7,7 @@ import {
 import { PrismaPostgresService } from "../prisma/prisma.service";
 import { CreateServiceDto } from "./dto/create-service.dto";
 import { UpdateServiceDto } from "./dto/update-service.dto";
-import { ServiceModal } from "@prisma/client-postgres";
+import { ServiceModal } from "@prisma/client";
 
 @Injectable()
 export class ServicesService {
@@ -20,7 +20,7 @@ export class ServicesService {
 
     if (existingService) {
       throw new ConflictException(
-        `Serviço com código ${createServiceDto.code} já existe`,
+        `ServiÃ§o com cÃ³digo ${createServiceDto.code} jÃ¡ existe`,
       );
     }
 
@@ -35,7 +35,7 @@ export class ServicesService {
     // Filtro por modal
     if (modal) {
       where.modal = {
-        in: [modal, ServiceModal.BOTH], // Inclui serviços específicos + BOTH
+        in: [modal, ServiceModal.BOTH], // Inclui serviÃ§os especÃ­ficos + BOTH
       };
     }
 
@@ -45,12 +45,12 @@ export class ServicesService {
     });
   }
 
-  // 👇 NOVO MÉTODO: Buscar serviços aéreos
+  // ðŸ‘‡ NOVO MÃ‰TODO: Buscar serviÃ§os aÃ©reos
   async findAirServices(includeInactive = false) {
     return this.findAll(includeInactive, ServiceModal.AIR);
   }
 
-  // 👇 NOVO MÉTODO: Buscar serviços marítimos
+  // ðŸ‘‡ NOVO MÃ‰TODO: Buscar serviÃ§os marÃ­timos
   async findMaritimeServices(includeInactive = false) {
     return this.findAll(includeInactive, ServiceModal.MARITIME);
   }
@@ -67,7 +67,7 @@ export class ServicesService {
     });
 
     if (!service) {
-      throw new NotFoundException(`Serviço com ID ${id} não encontrado`);
+      throw new NotFoundException(`ServiÃ§o com ID ${id} nÃ£o encontrado`);
     }
 
     return service;
@@ -105,7 +105,7 @@ export class ServicesService {
 
       if (existingService && existingService.id !== id) {
         throw new ConflictException(
-          `Serviço com código ${updateServiceDto.code} já existe`,
+          `ServiÃ§o com cÃ³digo ${updateServiceDto.code} jÃ¡ existe`,
         );
       }
     }
@@ -133,13 +133,13 @@ export class ServicesService {
     });
 
     if (!service) {
-      throw new NotFoundException(`Serviço com ID ${id} não encontrado`);
+      throw new NotFoundException(`ServiÃ§o com ID ${id} nÃ£o encontrado`);
     }
 
     if (service.serviceCosts.length > 0) {
       throw new BadRequestException(
-        `Não é possível deletar serviço com ${service.serviceCosts.length} registro(s) de custo no histórico. ` +
-          `Este histórico é importante para auditoria. Use o método remove() para desativar o serviço.`,
+        `NÃ£o Ã© possÃ­vel deletar serviÃ§o com ${service.serviceCosts.length} registro(s) de custo no histÃ³rico. ` +
+          `Este histÃ³rico Ã© importante para auditoria. Use o mÃ©todo remove() para desativar o serviÃ§o.`,
       );
     }
 

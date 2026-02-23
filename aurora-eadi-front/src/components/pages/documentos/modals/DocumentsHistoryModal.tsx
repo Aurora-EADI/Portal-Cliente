@@ -44,6 +44,11 @@ export function DocumentsHistoryModal({
   isLoadingRequirements = false,
 }: DocumentsHistoryModalProps) {
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const documentTypeNameById = React.useMemo(() => {
+    const map = new Map<number, string>();
+    documentTypes.forEach((item) => map.set(item.id, item.name));
+    return map;
+  }, [documentTypes]);
 
   // Função para gerar chave única do grupo
   const getGroupKey = (typeId: number, typeName: string, isNameGroup: boolean) => {
@@ -79,7 +84,10 @@ export function DocumentsHistoryModal({
     // 3. Converter grupos COM tipo
     const typedGroupsList = Array.from(typeGroups.entries()).map(([typeId, docs]) => {
       const sortedDocs = [...docs].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-      const typeName = documentTypes.find(t => t.id === typeId)?.name || 'Documento';
+      const fallbackName = sortedDocs[0]?.name;
+      const typeName =
+        documentTypeNameById.get(typeId) ||
+        (fallbackName && fallbackName.toLowerCase() !== 'documento' ? fallbackName : `Tipo ${typeId}`);
       const isNameGroup = false;
 
       return {
@@ -109,7 +117,7 @@ export function DocumentsHistoryModal({
 
     // 5. Combinar tudo: COM tipo primeiro, depois SEM tipo
     return [...typedGroupsList, ...nameGroupsList];
-  }, [documents, documentTypes, getGroupKey]);
+  }, [documents, documentTypeNameById, getGroupKey]);
 
   // Auto-select first group when modal opens
   useEffect(() => {
