@@ -770,3 +770,53 @@ model FlightHistory {
   @@index([flightId])
   @@map("flight_history")
 }
+
+// ============ DTA MARITIME MODULE ============
+
+model ProcessoImportacao {
+  id            String      @id @default(uuid())
+  dta           String      @unique
+  empresa       String
+  porto         String
+  navio         String
+  ataDta        DateTime?   @db.Date
+  ataMao        DateTime?   @db.Date
+  ataEadi       DateTime?   @db.Date
+  conclusao     DateTime?   @db.Date
+  transportador String?
+  comissaria    String?
+  fobTotal      Decimal?    @db.Decimal(15, 2)
+  freteTotal    Decimal?    @db.Decimal(15, 2)
+  cifTotal      Decimal?    @db.Decimal(15, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  containers    Container[]
+
+  @@map("processos_importacao")
+}
+
+model Container {
+  id         String             @id @default(uuid())
+  processoId String
+  number     String
+  tipo       String
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  processo   ProcessoImportacao @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  bls        BillOfLading[]
+
+  @@unique([processoId, number])
+  @@map("containers")
+}
+
+model BillOfLading {
+  id          String    @id @default(uuid())
+  containerId String
+  numero      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  container   Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
+
+  @@unique([containerId, numero])
+  @@map("bill_of_ladings")
+}

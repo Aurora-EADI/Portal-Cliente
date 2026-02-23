@@ -1,4 +1,4 @@
-import { Plane, LayoutDashboard } from 'lucide-react';
+import { Ship, Package } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
@@ -8,11 +8,19 @@ export const dtaNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Painel CT-e',
-            icon: LayoutDashboard,
-            path: '/dta/painel',
+            label: 'DTA',
+            icon: Package,
+            path: '/dta',
+            isGroup: true,
+            children: [
+                {
+                    label: 'Processos Marítimos',
+                    icon: Ship,
+                    path: '/dta/maritimo',
+                },
+            ],
         },
-        CLIENTE_ITEM
+        CLIENTE_ITEM,
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

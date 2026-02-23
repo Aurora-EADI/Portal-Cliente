@@ -23,6 +23,7 @@ import { IntegrationModule } from 'src/integration/integration.module';
 import { CustomerModule } from 'src/customer/customer.module';
 import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
 import { CcteModule } from 'src/ccte/ccte.module';
+import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CcteModule } from 'src/ccte/ccte.module';
     CustomerModule,
     AirSimulationModule,
     CcteModule,
+    DtaMaritimeModule,
   ],
 })
 export class AppModule {}
