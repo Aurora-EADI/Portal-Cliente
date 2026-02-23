@@ -219,6 +219,23 @@ export function formatCPF(value: string): string {
 }
 
 /**
+ * Formata telefone brasileiro para (00) 0000-0000 ou (00) 00000-0000.
+ */
+export function formatPhoneBR(value: string): string {
+  const digits = unmask(value).slice(0, 11);
+
+  if (digits.length <= 10) {
+    return digits
+      .replace(/^(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+/**
  * Formata um documento (CPF ou CNPJ) com base no tamanho
  */
 export function formatDocument(value: string): string {

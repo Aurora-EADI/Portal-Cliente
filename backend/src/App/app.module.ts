@@ -22,6 +22,8 @@ import { SimulationsModule } from '../simulations/simulations.module';
 import { IntegrationModule } from 'src/integration/integration.module';
 import { CustomerModule } from 'src/customer/customer.module';
 import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
+import { RequirementRulesModule } from "src/requirement-rules/requirement-rules.module";
+import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-documents.module";
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
     IntegrationModule,
     CustomerModule,
     AirSimulationModule,
+    RequirementRulesModule,
+    WorkforceDocumentsModule,
   ],
 })
 export class AppModule {}

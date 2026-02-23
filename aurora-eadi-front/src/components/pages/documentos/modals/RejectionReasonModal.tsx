@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Document } from '@/types/document';
 import { Loader2 } from 'lucide-react';
+
+type RejectableDocument = {
+  name: string;
+};
 
 interface RejectionReasonModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  document: Document | null;
+  document: RejectableDocument | null;
   onConfirm: (reason: string) => void;
   isLoading?: boolean;
 }

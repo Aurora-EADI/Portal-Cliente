@@ -1,23 +1,90 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ConflictException,
 } from "@nestjs/common";
 import { PrismaPostgresService } from "../prisma/prisma.service";
-import { CompanyStatus, Prisma } from "@prisma/client-postgres";
+import { CompanyStatus, Prisma } from "@prisma/client";
 import { CreateCompanyDto } from "./dto/create-companies.dto";
 import { PaginationQueryDto } from "./dto/pagination-query.dto";
 import { UpdateRequirementsDto } from "./dto/update-requirements.dto";
 import { RequestAccessDto } from "./dto/request-access.dto";
 import * as bcrypt from "bcrypt";
+import { RequirementRulesService } from "../requirement-rules/requirement-rules.service";
 
 @Injectable()
 export class CompaniesService {
-  constructor(private prisma: PrismaPostgresService) {}
+  constructor(
+    private prisma: PrismaPostgresService,
+    private readonly requirementRulesService: RequirementRulesService,
+  ) {}
 
   async create(createCompaniesDTO: CreateCompanyDto) {
-    return this.prisma.company.create({
-      data: createCompaniesDTO,
+    const {
+      supplierTypeIds = [],
+      workforceEmployees = [],
+      allocationRegime,
+      ...companyData
+    } = createCompaniesDTO;
+
+    if (supplierTypeIds.length === 0) {
+      return this.prisma.$transaction(async (tx) => {
+        const company = await tx.company.create({
+          data: {
+            ...companyData,
+            allocationRegime,
+          },
+        });
+
+        await this.syncCompanyWorkforce(
+          tx,
+          company.id,
+          allocationRegime,
+          workforceEmployees,
+        );
+
+        return company;
+      });
+    }
+
+    const uniqueSupplierTypeIds = [...new Set(supplierTypeIds)];
+    const existingSupplierTypes = await this.prisma.supplierType.findMany({
+      where: {
+        id: { in: uniqueSupplierTypeIds },
+        active: true,
+      },
+      select: { id: true },
+    });
+
+    if (existingSupplierTypes.length !== uniqueSupplierTypeIds.length) {
+      throw new NotFoundException(
+        "Um ou mais tipos de fornecedor nao foram encontrados",
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: {
+          ...companyData,
+          allocationRegime,
+        },
+      });
+
+      await tx.companySupplierType.createMany({
+        data: uniqueSupplierTypeIds.map((supplierTypeId) => ({
+          companyId: company.id,
+          supplierTypeId,
+        })),
+      });
+
+      await this.syncCompanyWorkforce(
+        tx,
+        company.id,
+        allocationRegime,
+        workforceEmployees,
+      );
+
+      return company;
     });
   }
 
@@ -40,14 +107,14 @@ export class CompaniesService {
     // Construir filtros base
     const where = this.buildWhereClause(search, status);
 
-    // Combinar filtro de status com exclusão de PENDING
+    // Combinar filtro de status com exclusÃ£o de PENDING
     let whereWithoutPending: Prisma.CompanyWhereInput;
 
     if (status) {
-      // Se já tem filtro de status, use-o diretamente (e garante que não é PENDING)
+      // Se jÃ¡ tem filtro de status, use-o diretamente (e garante que nÃ£o Ã© PENDING)
       whereWithoutPending = where;
     } else {
-      // Se não tem filtro de status, apenas exclua PENDING
+      // Se nÃ£o tem filtro de status, apenas exclua PENDING
       whereWithoutPending = {
         ...where,
         status: {
@@ -56,7 +123,7 @@ export class CompaniesService {
       };
     }
 
-    // Construir ordenação
+    // Construir ordenaÃ§Ã£o
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
 
     // Buscar dados, contagem total e contagem por status em paralelo
@@ -110,7 +177,7 @@ export class CompaniesService {
 
     const skip = (page - 1) * limit;
 
-    // Força status ACTIVE
+    // ForÃ§a status ACTIVE
     const where = this.buildWhereClause(search, CompanyStatus.ACTIVE);
 
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
@@ -179,33 +246,16 @@ export class CompaniesService {
       });
     } catch (error) {
       if (error.code === "P2025") {
-        throw new NotFoundException(`Empresa com ID ${id} não encontrada`);
+        throw new NotFoundException(`Empresa com ID ${id} nÃ£o encontrada`);
       }
       throw error;
     }
   }
 
   async getRequirements(companyId: string) {
-    const requirements = await this.prisma.companyDocumentRequirement.findMany({
-      where: { companyId },
-      include: {
-        documentType: true,
-      },
-    });
-
-    if (!requirements.length) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: companyId },
-      });
-
-      if (!company) {
-        throw new NotFoundException(
-          `Empresa com ID ${companyId} não encontrada`,
-        );
-      }
-    }
-
-    return requirements;
+    return this.requirementRulesService.getEffectiveRequirementsByCompany(
+      companyId,
+    );
   }
 
   async updateRequirements(
@@ -217,7 +267,7 @@ export class CompaniesService {
     });
 
     if (!company) {
-      throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
+      throw new NotFoundException(`Empresa com ID ${companyId} nÃ£o encontrada`);
     }
 
     return this.prisma.$transaction(
@@ -243,8 +293,8 @@ export class CompaniesService {
   }
 
   /**
-   * Solicitar acesso: Atualiza empresa existente e usuário SUPPLIER
-   * Usado quando o fornecedor já foi cadastrado pelo Protheus e quer solicitar acesso
+   * Solicitar acesso: Atualiza empresa existente e usuÃ¡rio SUPPLIER
+   * Usado quando o fornecedor jÃ¡ foi cadastrado pelo Protheus e quer solicitar acesso
    */
   async requestAccess(companyId: string, requestAccessDto: RequestAccessDto) {
     const { company, user } = requestAccessDto;
@@ -260,10 +310,10 @@ export class CompaniesService {
     });
 
     if (!existingCompany) {
-      throw new NotFoundException("Empresa não encontrada");
+      throw new NotFoundException("Empresa nÃ£o encontrada");
     }
 
-    // Verifica se já existe outro usuário com este email em outra empresa
+    // Verifica se jÃ¡ existe outro usuÃ¡rio com este email em outra empresa
     const existingUserWithEmail = await this.prisma.user.findUnique({
       where: { email: user.email },
     });
@@ -272,13 +322,13 @@ export class CompaniesService {
       existingUserWithEmail &&
       existingUserWithEmail.companyId !== companyId
     ) {
-      throw new ConflictException("Email já cadastrado para outra empresa");
+      throw new ConflictException("Email jÃ¡ cadastrado para outra empresa");
     }
 
     // Hash da senha
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
-    // Atualiza empresa e usuário em transação
+    // Atualiza empresa e usuÃ¡rio em transaÃ§Ã£o
     await this.prisma.$transaction(async (prisma) => {
       // 1. Atualiza dados da empresa
       await prisma.company.update({
@@ -294,15 +344,51 @@ export class CompaniesService {
           city: company.city,
           state: company.state,
           phone: company.phone,
-          status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovação
+          classification: company.classification,
+          allocationRegime: company.allocationRegime,
+          status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovaÃ§Ã£o
         },
       });
 
-      // 2. Verifica se já existe um usuário SUPPLIER para esta empresa
+      if (company.supplierTypeIds && company.supplierTypeIds.length > 0) {
+        const uniqueSupplierTypeIds = [...new Set(company.supplierTypeIds)];
+        const existingSupplierTypes = await prisma.supplierType.findMany({
+          where: {
+            id: { in: uniqueSupplierTypeIds },
+            active: true,
+          },
+          select: { id: true },
+        });
+
+        if (existingSupplierTypes.length !== uniqueSupplierTypeIds.length) {
+          throw new NotFoundException(
+            "Um ou mais tipos de fornecedor nao foram encontrados",
+          );
+        }
+
+        await prisma.companySupplierType.deleteMany({
+          where: { companyId },
+        });
+
+        await prisma.companySupplierType.createMany({
+          data: uniqueSupplierTypeIds.map((supplierTypeId) => ({
+            companyId,
+            supplierTypeId,
+          })),
+        });
+      }
+      // 2. Verifica se jÃ¡ existe um usuÃ¡rio SUPPLIER para esta empresa
+      await this.syncCompanyWorkforce(
+        prisma,
+        companyId,
+        company.allocationRegime,
+        company.workforceEmployees || [],
+      );
+
       const supplierUser = existingCompany.users[0]; // Pega o primeiro SUPPLIER
 
       if (supplierUser) {
-        // UPDATE: Atualiza o usuário SUPPLIER existente
+        // UPDATE: Atualiza o usuÃ¡rio SUPPLIER existente
         await prisma.user.update({
           where: { id: supplierUser.id },
           data: {
@@ -312,7 +398,7 @@ export class CompaniesService {
           },
         });
 
-        // Verifica se o usuário já tem permissões de Documentos
+        // Verifica se o usuÃ¡rio jÃ¡ tem permissÃµes de Documentos
         const hasDocPermissions = await prisma.userModuleAccess.findFirst({
           where: {
             userId: supplierUser.id,
@@ -320,12 +406,12 @@ export class CompaniesService {
           },
         });
 
-        // Se não tem permissões, concede
+        // Se nÃ£o tem permissÃµes, concede
         if (!hasDocPermissions) {
           await this.grantSupplierPermissions(prisma, supplierUser.id);
         }
       } else {
-        // CREATE: Não deveria acontecer, mas cria se não existir
+        // CREATE: NÃ£o deveria acontecer, mas cria se nÃ£o existir
         const newUser = await prisma.user.create({
           data: {
             name: user.name,
@@ -336,7 +422,7 @@ export class CompaniesService {
           },
         });
 
-        // Concede permissões de Documentos para novo usuário
+        // Concede permissÃµes de Documentos para novo usuÃ¡rio
         await this.grantSupplierPermissions(prisma, newUser.id);
       }
     });
@@ -344,24 +430,24 @@ export class CompaniesService {
     return {
       success: true,
       message:
-        "Solicitação de acesso enviada com sucesso. Aguardando aprovação do administrador.",
+        "SolicitaÃ§Ã£o de acesso enviada com sucesso. Aguardando aprovaÃ§Ã£o do administrador.",
     };
   }
 
-  // ==================== MÉTODOS PRIVADOS ====================
+  // ==================== MÃ‰TODOS PRIVADOS ====================
 
   /**
-   * Concede permissões padrão de SUPPLIER (Módulo Documentos + Atividade Anexar)
+   * Concede permissÃµes padrÃ£o de SUPPLIER (MÃ³dulo Documentos + Atividade Anexar)
    */
   private async grantSupplierPermissions(tx: any, userId: string) {
-    // 1. Busca o módulo "/documentos"
+    // 1. Busca o mÃ³dulo "/documentos"
     const docModule = await tx.module.findFirst({
       where: { route: "/documentos" },
     });
 
     if (!docModule) {
       console.warn(
-        "[COMPANIES] Módulo /documentos não encontrado. Permissões não concedidas.",
+        "[COMPANIES] MÃ³dulo /documentos nÃ£o encontrado. PermissÃµes nÃ£o concedidas.",
       );
       return;
     }
@@ -375,10 +461,10 @@ export class CompaniesService {
     });
 
     if (!attachActivity) {
-      console.warn('[COMPANIES] Atividade "Anexar documento" não encontrada.');
+      console.warn('[COMPANIES] Atividade "Anexar documento" nÃ£o encontrada.');
     }
 
-    // 3. Cria acesso ao Módulo
+    // 3. Cria acesso ao MÃ³dulo
     const userModuleAccess = await tx.userModuleAccess.create({
       data: {
         userId,
@@ -397,6 +483,53 @@ export class CompaniesService {
         },
       });
     }
+  }
+
+  private async syncCompanyWorkforce(
+    tx: any,
+    companyId: string,
+    allocationRegime: string | undefined,
+    workforceEmployees: Array<{
+      fullName: string;
+      cpf: string;
+      position: string;
+      hiredAt: string;
+    }>,
+  ) {
+    await tx.companyEmployee.deleteMany({ where: { companyId } });
+
+    if (allocationRegime !== "FULL_WORKFORCE_AT_EADI") {
+      return;
+    }
+
+    const validEmployees = workforceEmployees
+      .map((employee) => ({
+        fullName: employee.fullName?.trim(),
+        cpf: employee.cpf?.replace(/\D/g, ""),
+        position: employee.position?.trim(),
+        hiredAt: employee.hiredAt,
+      }))
+      .filter(
+        (employee) =>
+          employee.fullName &&
+          employee.cpf &&
+          employee.position &&
+          employee.hiredAt,
+      );
+
+    if (validEmployees.length === 0) {
+      return;
+    }
+
+    await tx.companyEmployee.createMany({
+      data: validEmployees.map((employee) => ({
+        companyId,
+        fullName: employee.fullName,
+        cpf: employee.cpf,
+        position: employee.position,
+        hiredAt: new Date(employee.hiredAt),
+      })),
+    });
   }
 
   private async getStatusCounts(search?: string) {
@@ -457,7 +590,7 @@ export class CompaniesService {
         { city: { contains: search, mode: "insensitive" } },
       ];
 
-      // Só adiciona filtro de CNPJ se houver números no termo de busca
+      // SÃ³ adiciona filtro de CNPJ se houver nÃºmeros no termo de busca
       const cleanedSearch = search.replace(/\D/g, "");
       if (cleanedSearch.length > 0) {
         orConditions.push({ cnpj: { contains: cleanedSearch } });
@@ -505,6 +638,8 @@ export class CompaniesService {
         state: company.state,
         phone: company.phone,
         status: company.status,
+        classification: company.classification,
+        allocationRegime: company.allocationRegime,
         createdAt: company.createdAt.toISOString(),
       },
       responsible: company.users[0]
@@ -519,3 +654,6 @@ export class CompaniesService {
     };
   }
 }
+
+
+

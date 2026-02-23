@@ -1,4 +1,4 @@
-// src/users/users.service.ts
+﻿// src/users/users.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -10,7 +10,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UserQueryDto } from "./dto/user-query.dto";
 import * as bcrypt from "bcrypt";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 import {
   UserActivityResponse,
   UserPermissionResponse,
@@ -24,23 +24,23 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     const { name, email, password, role, companyId, position } = createUserDto;
 
-    // Validação: SUPPLIER e EMPLOYEE precisam de companyId
+    // ValidaÃ§Ã£o: SUPPLIER e EMPLOYEE precisam de companyId
     if (
       (role === UserRole.SUPPLIER || role === UserRole.EMPLOYEE) &&
       !companyId
     ) {
       throw new BadRequestException(
-        "companyId é obrigatório para SUPPLIER e EMPLOYEE",
+        "companyId Ã© obrigatÃ³rio para SUPPLIER e EMPLOYEE",
       );
     }
 
-    // Verifica se email já existe
+    // Verifica se email jÃ¡ existe
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      throw new ConflictException("Email já cadastrado");
+      throw new ConflictException("Email jÃ¡ cadastrado");
     }
 
     // Verifica se a empresa existe (se companyId foi fornecido)
@@ -50,14 +50,14 @@ export class UsersService {
       });
 
       if (!company) {
-        throw new NotFoundException("Empresa não encontrada");
+        throw new NotFoundException("Empresa nÃ£o encontrada");
       }
     }
 
     // Criptografa a senha
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Cria o usuário
+    // Cria o usuÃ¡rio
     const user = await this.prisma.user.create({
       data: {
         name: name.toUpperCase(),
@@ -195,7 +195,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
     // Remove a senha da resposta
@@ -204,29 +204,29 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    // Verifica se o usuário existe
+    // Verifica se o usuÃ¡rio existe
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
     });
 
     if (!existingUser) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
     const { email, password, role, ...restDto } = updateUserDto;
 
-    // Se estiver alterando o email, verifica se já não está em uso
+    // Se estiver alterando o email, verifica se jÃ¡ nÃ£o estÃ¡ em uso
     if (email && email !== existingUser.email) {
       const emailInUse = await this.prisma.user.findUnique({
         where: { email },
       });
 
       if (emailInUse) {
-        throw new ConflictException("Email já está em uso");
+        throw new ConflictException("Email jÃ¡ estÃ¡ em uso");
       }
     }
 
-    // Prepara os dados para atualização
+    // Prepara os dados para atualizaÃ§Ã£o
     const dataToUpdate: any = { ...restDto };
 
     if (email) dataToUpdate.email = email;
@@ -237,7 +237,7 @@ export class UsersService {
       dataToUpdate.password = await bcrypt.hash(password, 10);
     }
 
-    // Atualiza o usuário
+    // Atualiza o usuÃ¡rio
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: dataToUpdate,
@@ -258,7 +258,7 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    // Verifica se o usuário existe e carrega dependências
+    // Verifica se o usuÃ¡rio existe e carrega dependÃªncias
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: {
@@ -269,54 +269,54 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
-    // CRÍTICO: Verificar se há documentos vinculados
-    // Documentos pertencem à empresa, não ao usuário
+    // CRÃTICO: Verificar se hÃ¡ documentos vinculados
+    // Documentos pertencem Ã  empresa, nÃ£o ao usuÃ¡rio
     if (user.documents.length > 0) {
       throw new BadRequestException(
-        `Não é possível deletar usuário com ${user.documents.length} documento(s) vinculado(s). ` +
-          `Os documentos pertencem à empresa e devem ser reatribuídos antes da deleção do usuário.`,
+        `NÃ£o Ã© possÃ­vel deletar usuÃ¡rio com ${user.documents.length} documento(s) vinculado(s). ` +
+          `Os documentos pertencem Ã  empresa e devem ser reatribuÃ­dos antes da deleÃ§Ã£o do usuÃ¡rio.`,
       );
     }
 
-    // Verificar se há simulações criadas pelo usuário
+    // Verificar se hÃ¡ simulaÃ§Ãµes criadas pelo usuÃ¡rio
     if (user.simulationVersions.length > 0) {
       throw new BadRequestException(
-        `Não é possível deletar usuário com ${user.simulationVersions.length} simulação(ões) vinculada(s). ` +
-          `Reatribua as simulações para outro usuário antes de deletar.`,
+        `NÃ£o Ã© possÃ­vel deletar usuÃ¡rio com ${user.simulationVersions.length} simulaÃ§Ã£o(Ãµes) vinculada(s). ` +
+          `Reatribua as simulaÃ§Ãµes para outro usuÃ¡rio antes de deletar.`,
       );
     }
 
-    // Verificar se há custos de serviço criados pelo usuário
+    // Verificar se hÃ¡ custos de serviÃ§o criados pelo usuÃ¡rio
     if (user.serviceCosts.length > 0) {
       throw new BadRequestException(
-        `Não é possível deletar usuário com ${user.serviceCosts.length} alteração(ões) de custo no histórico. ` +
-          `Este histórico é importante para auditoria e não pode ser perdido.`,
+        `NÃ£o Ã© possÃ­vel deletar usuÃ¡rio com ${user.serviceCosts.length} alteraÃ§Ã£o(Ãµes) de custo no histÃ³rico. ` +
+          `Este histÃ³rico Ã© importante para auditoria e nÃ£o pode ser perdido.`,
       );
     }
 
-    // Se passou por todas as verificações, pode deletar
-    // Cascade vai remover apenas UserModuleAccess e UserActivityAccess (dados de configuração)
+    // Se passou por todas as verificaÃ§Ãµes, pode deletar
+    // Cascade vai remover apenas UserModuleAccess e UserActivityAccess (dados de configuraÃ§Ã£o)
     await this.prisma.user.delete({
       where: { id },
     });
 
-    return { message: "Usuário deletado com sucesso" };
+    return { message: "UsuÃ¡rio deletado com sucesso" };
   }
 
   async getUserModules(id: string) {
-    // Verifica se o usuário existe
+    // Verifica se o usuÃ¡rio existe
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
 
     if (!user) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
-    // Busca os módulos do usuário
+    // Busca os mÃ³dulos do usuÃ¡rio
     const moduleAccess = await this.prisma.userModuleAccess.findMany({
       where: { userId: id },
       include: {
@@ -337,7 +337,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
     const moduleAccess = await this.prisma.userModuleAccess.findMany({
@@ -362,7 +362,7 @@ export class UsersService {
     const activities: UserActivityResponse[] = [];
 
     moduleAccess.forEach((access) => {
-      // Atividades obrigatórias
+      // Atividades obrigatÃ³rias
       const mandatoryActivities = access.module.activities
         .filter((act) => act.isMandatory)
         .map((act) => ({
@@ -398,7 +398,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException("Usuário não encontrado");
+      throw new NotFoundException("UsuÃ¡rio nÃ£o encontrado");
     }
 
     const moduleAccess = await this.prisma.userModuleAccess.findMany({
@@ -441,7 +441,7 @@ export class UsersService {
     const permissionsList: UserPermissionResponse[] = [];
 
     moduleAccess.forEach((access) => {
-      // Permissões de atividades obrigatórias
+      // PermissÃµes de atividades obrigatÃ³rias
       access.module.activities
         .filter((act) => act.isMandatory)
         .forEach((act) => {
@@ -461,7 +461,7 @@ export class UsersService {
           });
         });
 
-      // Permissões de atividades opcionais
+      // PermissÃµes de atividades opcionais
       access.activityAccess.forEach((actAccess) => {
         actAccess.activity.permissions.forEach((ap) => {
           if (!permissionsSet.has(ap.permission.key)) {
@@ -488,3 +488,4 @@ export class UsersService {
     };
   }
 }
+

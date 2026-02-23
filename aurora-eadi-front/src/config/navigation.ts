@@ -1,4 +1,4 @@
-import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Building2, List, Wrench, Plus, History as HistoryIcon, Plane, Calculator, Package, Kanban } from 'lucide-react';
+import { Home, Shield, FileText, DollarSign, FileBarChart, ListChecks, UserPlus, ShieldCheck, Building, Truck, FilePlus, Upload, Ship, Factory, User, Users, Building2, List, Wrench, Plus, History as HistoryIcon, Plane, Calculator, Package, Kanban } from 'lucide-react';
 import { UserRole } from '@/types';
 
 export interface NavItem {
@@ -18,7 +18,7 @@ export interface NavigationContext {
   allowedRoles?: UserRole[]; // (Opcional) Quais roles podem acessar
 }
 
-// 🚀 OTIMIZAÇÃO: Map para lookup O(1) em vez de busca linear O(n)
+// 🚀 OTIMIZACAO: Map para lookup O(1) em vez de busca linear O(n)
 // Criado uma única vez no carregamento do módulo
 const navigationContextMap = new Map<string, NavigationContext>();
 
@@ -30,7 +30,7 @@ export const getNavigationByPathAndRole = (
   // Tenta buscar contexto exato primeiro (O(1))
   let context = navigationContextMap.get(currentPath);
 
-  // Se não encontrou exato, busca por prefixo (fallback para compatibilidade)
+  // Se nao encontrou exato, busca por prefixo (fallback para compatibilidade)
   if (!context) {
     context = navigationContexts.find(ctx =>
       currentPath.startsWith(ctx.basePath)
@@ -41,15 +41,40 @@ export const getNavigationByPathAndRole = (
     // Fallback: retorna apenas Home
     return [{ label: 'Home', icon: Home, path: '/modules' }];
   }
-  // ✅ Filtra itens que o usuário pode ver
-  return context.items.filter(item => {
-    // Se não tem requiredRoles, todos podem ver
+
+  const hasRoleAccess = (item: NavItem): boolean => {
     if (!item.requiredRoles || item.requiredRoles.length === 0) {
       return true;
     }
-    // Caso contrário, verifica se o role do usuário está na lista permitida
     return item.requiredRoles.includes(userRole);
-  });
+  };
+
+  const filterByRole = (item: NavItem): NavItem | null => {
+    if (!hasRoleAccess(item)) {
+      return null;
+    }
+
+    if (!item.children || item.children.length === 0) {
+      return item;
+    }
+
+    const filteredChildren = item.children
+      .map((child) => filterByRole(child))
+      .filter((child): child is NavItem => child !== null);
+
+    if (item.isGroup && filteredChildren.length === 0) {
+      return null;
+    }
+
+    return {
+      ...item,
+      children: filteredChildren.length > 0 ? filteredChildren : undefined,
+    };
+  };
+
+  return context.items
+    .map((item) => filterByRole(item))
+    .filter((item): item is NavItem => item !== null);
 };
 
 export const navigationContexts: NavigationContext[] = [
@@ -76,15 +101,35 @@ export const navigationContexts: NavigationContext[] = [
             requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
           },
           {
-            label: 'Anexar Documentos',
+            label: 'Gestão de Documentos',
             icon: Upload,
             path: '/documentos/empresa',
-            requiredPermissions: ['DOC_ATTACH'],
+            requiredRoles: [UserRole.SUPPLIER],
+          },
+          {
+            label: 'Colaboradores',
+            icon: Users,
+            path: '/documentos/colaboradores',
+            requiredRoles: [UserRole.SUPPLIER],
           },
           {
             label: 'Documentos Exigidos',
             icon: FilePlus,
             path: '/documentos/cadastrar',
+            requiredPermissions: ['DOC_REGISTER'],
+            requiredRoles: [UserRole.ADMIN],
+          },
+          {
+            label: 'Gestão Colaboradores',
+            icon: Users,
+            path: '/documentos/colaboradores-gestao',
+            requiredPermissions: ['DOC_VIEW'],
+            requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
+          },
+          {
+            label: 'Documentos Terceiros',
+            icon: Users,
+            path: '/documentos/cadastrar-colaboradores',
             requiredPermissions: ['DOC_REGISTER'],
             requiredRoles: [UserRole.ADMIN],
           },
@@ -138,6 +183,12 @@ export const navigationContexts: NavigationContext[] = [
         label: 'Fornecedores',
         icon: Truck,
         path: '/fornecedor',
+        requiredPermissions: ['FOR_VIEW_LIST'],
+      },
+      {
+        label: 'Terceirizados',
+        icon: Users,
+        path: '/fornecedor/terceiros',
         requiredPermissions: ['FOR_VIEW_LIST'],
       },
     ],
@@ -412,7 +463,8 @@ export const canAccessContext = (currentPath: string, userRole: UserRole): boole
   return context.allowedRoles.includes(userRole);
 };
 
-// 🚀 OTIMIZAÇÃO: Popula o Map uma única vez no carregamento do módulo
+// 🚀 OTIMIZACAO: Popula o Map uma única vez no carregamento do módulo
 navigationContexts.forEach(ctx => {
   navigationContextMap.set(ctx.basePath, ctx);
 });
+

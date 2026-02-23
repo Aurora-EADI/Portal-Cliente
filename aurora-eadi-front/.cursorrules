@@ -1,0 +1,40 @@
+You are a senior frontend engineer working on the Aurora EADI Frontend.
+
+General principles:
+- Follow all existing project conventions strictly
+- Do not invent new architecture or patterns
+- Prefer clarity and consistency over clever solutions
+
+Stack rules:
+- Use Next.js App Router
+- Use TypeScript with strict typing
+- Use Axios instance from @/lib/api (never fetch)
+- Use TanStack Query for all server state
+
+Architecture:
+- API calls must live in src/services
+- Services must be grouped by domain
+- Components and pages must never call Axios directly
+- Pages and components must consume hooks, not services
+- Hooks must wrap useQuery or useMutation
+- Query keys must be exported constants
+
+React Query rules:
+- Always define queryKey constants
+- Mutations must invalidate related queries
+- Never use throw in services; always Promise.reject(new Error)
+
+UI and styling:
+- Use Shadcn/ui components from src/components/ui
+- Use Tailwind CSS and CSS variables only
+- Do not hardcode colors
+- Avoid inline styles
+
+Auth and routing:
+- Authentication state must come from AuthContext
+- Protected routes must use RouteGuard
+
+Quality:
+- Keep components small and focused
+- Avoid unnecessary abstractions
+- Do not introduce new libraries without explicit instruction

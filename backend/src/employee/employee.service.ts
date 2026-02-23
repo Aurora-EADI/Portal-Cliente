@@ -1,9 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+﻿import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { UsersService } from "../user/user.service";
 import { CreateEmployeeDto } from "./dto/create-employee.dto";
 import { UpdateEmployeeDto } from "./dto/update-employee.dto";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class EmployeesService {
@@ -15,7 +15,7 @@ export class EmployeesService {
   ) {}
 
   async create(dto: CreateEmployeeDto) {
-    this.logger.log(`Criando funcionário: ${JSON.stringify(dto)}`);
+    this.logger.log(`Criando funcionÃ¡rio: ${JSON.stringify(dto)}`);
     return this.prisma.user.create({
       data: {
         ...dto,
@@ -25,22 +25,22 @@ export class EmployeesService {
   }
 
   async findAll() {
-    this.logger.log("Listando todos os funcionários");
+    this.logger.log("Listando todos os funcionÃ¡rios");
     return this.prisma.user.findMany({
       where: { role: UserRole.EMPLOYEE },
     });
   }
 
   async findOne(id: string) {
-    this.logger.log(`Buscando funcionário com ID: ${id}`);
+    this.logger.log(`Buscando funcionÃ¡rio com ID: ${id}`);
     const employee = await this.prisma.user.findFirst({
       where: { id, role: UserRole.EMPLOYEE },
     });
 
     if (!employee) {
-      this.logger.warn(`Funcionário não encontrado: ${id}`);
+      this.logger.warn(`FuncionÃ¡rio nÃ£o encontrado: ${id}`);
       throw new HttpException(
-        "Esse funcionário não existe.",
+        "Esse funcionÃ¡rio nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -50,16 +50,16 @@ export class EmployeesService {
 
   async update(id: string, dto: UpdateEmployeeDto) {
     this.logger.log(
-      `Atualizando funcionário ${id} com dados: ${JSON.stringify(dto)}`,
+      `Atualizando funcionÃ¡rio ${id} com dados: ${JSON.stringify(dto)}`,
     );
     const exists = await this.prisma.user.findFirst({
       where: { id, role: UserRole.EMPLOYEE },
     });
 
     if (!exists) {
-      this.logger.warn(`Tentativa de atualizar funcionário inexistente: ${id}`);
+      this.logger.warn(`Tentativa de atualizar funcionÃ¡rio inexistente: ${id}`);
       throw new HttpException(
-        "Esse funcionário não existe.",
+        "Esse funcionÃ¡rio nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -71,20 +71,21 @@ export class EmployeesService {
   }
 
   async remove(id: string) {
-    this.logger.log(`Removendo funcionário com ID: ${id}`);
+    this.logger.log(`Removendo funcionÃ¡rio com ID: ${id}`);
     const exists = await this.prisma.user.findFirst({
       where: { id, role: UserRole.EMPLOYEE },
     });
 
     if (!exists) {
-      this.logger.warn(`Tentativa de remover funcionário inexistente: ${id}`);
+      this.logger.warn(`Tentativa de remover funcionÃ¡rio inexistente: ${id}`);
       throw new HttpException(
-        "Esse funcionário não existe.",
+        "Esse funcionÃ¡rio nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    // Usa o método centralizado do UsersService que tem todas as verificações de segurança
+    // Usa o mÃ©todo centralizado do UsersService que tem todas as verificaÃ§Ãµes de seguranÃ§a
     return this.usersService.remove(id);
   }
 }
+

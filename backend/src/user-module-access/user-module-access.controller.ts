@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Put,
@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 import { UserModuleAccessService } from "./user-module-access.service";
 import { ToggleModuleDto } from "./dto/toggle-module.dto";
 import { BulkAssignModulesDto } from "./dto/bulk-assign-modules.dto";
@@ -27,8 +27,8 @@ export class UserModuleAccessController {
 
   /**
    * GET /user-module-access/:userId
-   * Lista todos os módulos com status de acesso do usuário
-   * DIFERENTE de GET /users/:id/modules (que só lista os que têm acesso)
+   * Lista todos os mÃ³dulos com status de acesso do usuÃ¡rio
+   * DIFERENTE de GET /users/:id/modules (que sÃ³ lista os que tÃªm acesso)
    */
   @Get(":userId")
   async getUserModulesWithAccessStatus(@Param("userId") userId: string) {
@@ -37,7 +37,7 @@ export class UserModuleAccessController {
 
   /**
    * GET /user-module-access/stats/modules
-   * Estatísticas de uso dos módulos
+   * EstatÃ­sticas de uso dos mÃ³dulos
    */
   @Get("stats/modules")
   @Roles(UserRole.ADMIN)
@@ -47,7 +47,7 @@ export class UserModuleAccessController {
 
   /**
    * PUT /user-module-access/:userId/toggle/:moduleId
-   * Ativa/Desativa um módulo para o usuário
+   * Ativa/Desativa um mÃ³dulo para o usuÃ¡rio
    */
   @Put(":userId/toggle/:moduleId")
   @Roles(UserRole.ADMIN)
@@ -65,7 +65,7 @@ export class UserModuleAccessController {
 
   /**
    * POST /user-module-access/:userId/bulk
-   * Atribui múltiplos módulos de uma vez
+   * Atribui mÃºltiplos mÃ³dulos de uma vez
    */
   @Post(":userId/bulk")
   @HttpCode(HttpStatus.OK)
@@ -79,7 +79,7 @@ export class UserModuleAccessController {
 
   /**
    * POST /user-module-access/sync/:moduleId
-   * Sincroniza atividades obrigatórias
+   * Sincroniza atividades obrigatÃ³rias
    */
   @Post("sync/:moduleId")
   @HttpCode(HttpStatus.OK)
@@ -92,7 +92,7 @@ export class UserModuleAccessController {
 
   /**
    * DELETE /user-module-access/:userId/remove/:moduleId
-   * Remove completamente o acesso a um módulo
+   * Remove completamente o acesso a um mÃ³dulo
    */
   @Delete(":userId/remove/:moduleId")
   @HttpCode(HttpStatus.OK)
@@ -104,3 +104,4 @@ export class UserModuleAccessController {
     return this.userModuleAccessService.removeModuleAccess(userId, moduleId);
   }
 }
+

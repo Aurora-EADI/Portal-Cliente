@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ConflictException,
@@ -6,7 +6,7 @@ import {
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
-import { CustomerStatus } from "@prisma/client-postgres";
+import { CustomerStatus } from "@prisma/client";
 
 interface FindAllParams {
   page?: number;
@@ -20,22 +20,22 @@ export class CustomerService {
   constructor(private readonly prisma: PrismaService) { }
 
   async create(dto: CreateCustomerDto) {
-    // Verificar se já existe cliente com o mesmo código
+    // Verificar se jÃ¡ existe cliente com o mesmo cÃ³digo
     const existingByCode = await this.prisma.customer.findUnique({
       where: { code: dto.code },
     });
 
     if (existingByCode) {
-      throw new ConflictException("Já existe um cliente com este código.");
+      throw new ConflictException("JÃ¡ existe um cliente com este cÃ³digo.");
     }
 
-    // Verificar se já existe cliente com o mesmo documento
+    // Verificar se jÃ¡ existe cliente com o mesmo documento
     const existingByDocument = await this.prisma.customer.findUnique({
       where: { document: dto.document },
     });
 
     if (existingByDocument) {
-      throw new ConflictException("Já existe um cliente com este documento.");
+      throw new ConflictException("JÃ¡ existe um cliente com este documento.");
     }
 
     return this.prisma.customer.create({
@@ -122,7 +122,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente não encontrado.");
+      throw new NotFoundException("Cliente nÃ£o encontrado.");
     }
 
     return customer;
@@ -134,17 +134,17 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente não encontrado.");
+      throw new NotFoundException("Cliente nÃ£o encontrado.");
     }
 
-    // Verificar unicidade do código se estiver sendo alterado
+    // Verificar unicidade do cÃ³digo se estiver sendo alterado
     if (dto.code && dto.code !== customer.code) {
       const existingByCode = await this.prisma.customer.findUnique({
         where: { code: dto.code },
       });
 
       if (existingByCode) {
-        throw new ConflictException("Já existe um cliente com este código.");
+        throw new ConflictException("JÃ¡ existe um cliente com este cÃ³digo.");
       }
     }
 
@@ -155,7 +155,7 @@ export class CustomerService {
       });
 
       if (existingByDocument) {
-        throw new ConflictException("Já existe um cliente com este documento.");
+        throw new ConflictException("JÃ¡ existe um cliente com este documento.");
       }
     }
 
@@ -171,7 +171,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente não encontrado.");
+      throw new NotFoundException("Cliente nÃ£o encontrado.");
     }
 
     return this.prisma.customer.update({
@@ -186,7 +186,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente não encontrado.");
+      throw new NotFoundException("Cliente nÃ£o encontrado.");
     }
 
     return this.prisma.customer.delete({
@@ -194,3 +194,4 @@ export class CustomerService {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -9,11 +9,11 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { DocumentTypesService } from "./document-types.service";
-import { Prisma } from "@prisma/client-postgres";
+import { Prisma } from "@prisma/client";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Controller("document-types")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -51,3 +51,4 @@ export class DocumentTypesController {
     return this.documentTypesService.remove(+id);
   }
 }
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Put,
@@ -14,7 +14,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 import { UserActivityAccessService } from "./user-activity-access.service";
 import { ToggleActivityDto } from "./dto/toggle-activity.dto";
 import { BulkConfigureActivitiesDto } from "./dto/bulk-configure-activities.dto";
@@ -28,7 +28,7 @@ export class UserActivityAccessController {
 
   /**
    * GET /user-activity-access/:userId/module/:moduleId
-   * Lista atividades do módulo com status de acesso
+   * Lista atividades do mÃ³dulo com status de acesso
    */
   @Get(":userId/module/:moduleId")
   @Roles(UserRole.ADMIN)
@@ -41,7 +41,7 @@ export class UserActivityAccessController {
 
   /**
    * GET /user-activity-access/stats
-   * Estatísticas de uso de atividades
+   * EstatÃ­sticas de uso de atividades
    * Query params: moduleId (opcional)
    */
   @Get("stats")
@@ -54,7 +54,7 @@ export class UserActivityAccessController {
 
   /**
    * PUT /user-activity-access/:userId/module/:moduleId/activity/:activityId
-   * Ativa/Desativa uma atividade específica
+   * Ativa/Desativa uma atividade especÃ­fica
    */
   @Put(":userId/module/:moduleId/activity/:activityId")
   @Roles(UserRole.ADMIN)
@@ -74,7 +74,7 @@ export class UserActivityAccessController {
 
   /**
    * POST /user-activity-access/:userId/module/:moduleId/bulk
-   * Configura múltiplas atividades de uma vez
+   * Configura mÃºltiplas atividades de uma vez
    */
   @Post(":userId/module/:moduleId/bulk")
   @HttpCode(HttpStatus.OK)
@@ -93,7 +93,7 @@ export class UserActivityAccessController {
 
   /**
    * DELETE /user-activity-access/:userId/module/:moduleId/activity/:activityId
-   * Remove exceção (volta ao padrão)
+   * Remove exceÃ§Ã£o (volta ao padrÃ£o)
    */
   @Delete(":userId/module/:moduleId/activity/:activityId")
   @HttpCode(HttpStatus.OK)
@@ -112,7 +112,7 @@ export class UserActivityAccessController {
 
   /**
    * POST /user-activity-access/:userId/module/:moduleId/reset
-   * Reseta todas as exceções do módulo
+   * Reseta todas as exceÃ§Ãµes do mÃ³dulo
    */
   @Post(":userId/module/:moduleId/reset")
   @HttpCode(HttpStatus.OK)
@@ -127,3 +127,4 @@ export class UserActivityAccessController {
     );
   }
 }
+

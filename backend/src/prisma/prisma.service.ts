@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   OnModuleInit,
   OnModuleDestroy,
@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 // import { PrismaClient as PrismaClientSqlServer } from '@prisma/client-sqlserver'; // DEPRECATED: Usar SqlServerService
-import { PrismaClient as PrismaClientPostgres } from "@prisma/client-postgres";
+import { PrismaClient as PrismaClientPostgres } from "@prisma/client";
 
 @Injectable()
 export class PrismaPostgresService
@@ -18,8 +18,8 @@ export class PrismaPostgresService
   }
 }
 
-// DEPRECATED: Substituído por SqlServerService (mssql/tedious)
-// Mantido comentado para fallback caso necessário
+// DEPRECATED: SubstituÃ­do por SqlServerService (mssql/tedious)
+// Mantido comentado para fallback caso necessÃ¡rio
 // @Injectable()
 // export class PrismaSqlServerService extends PrismaClientSqlServer implements OnModuleInit {
 //   private readonly logger = new Logger(PrismaSqlServerService.name);
@@ -61,3 +61,4 @@ export class PrismaPostgresService
 //     return this.connected;
 //   }
 // }
+

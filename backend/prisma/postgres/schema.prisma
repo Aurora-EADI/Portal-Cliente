@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  output        = "../../node_modules/@prisma/client-postgres"
   binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
 }
 
@@ -10,26 +9,32 @@ datasource db {
 }
 
 model Company {
-  id                   String                       @id @default(uuid())
-  cnpj                 String                       @unique
-  fantasyName          String
-  socialReason         String
-  zipCode              String
-  address              String
-  number               String
-  complement           String?
-  neighborhood         String
-  city                 String
-  state                String
-  phone                String
-  status               CompanyStatus                @default(PENDING)
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  statusChangedAt      DateTime?
-  statusReason         String?
-  documents            Document[]
-  users                User[]
-  documentRequirements CompanyDocumentRequirement[]
+  id                       String                       @id @default(uuid())
+  cnpj                     String                       @unique
+  fantasyName              String
+  socialReason             String
+  zipCode                  String
+  address                  String
+  number                   String
+  complement               String?
+  neighborhood             String
+  city                     String
+  state                    String
+  phone                    String
+  status                   CompanyStatus                @default(PENDING)
+  classification           CompanyClassification        @default(ME)
+  allocationRegime         AllocationRegime             @default(NO_WORKFORCE_AT_EADI)
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  statusChangedAt          DateTime?
+  statusReason             String?
+  documents                Document[]
+  users                    User[]
+  documentRequirements     CompanyDocumentRequirement[]
+  workforceDocumentRequirements WorkforceDocumentRequirement[]
+  supplierTypes            CompanySupplierType[]
+  workforce                CompanyEmployee[]
+  workforceDocuments       WorkforceDocument[]
 
   @@map("companies")
 }
@@ -45,6 +50,7 @@ model User {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   documents            Document[]
+  workforceDocuments   WorkforceDocument[]     @relation("WorkforceDocumentUploadedBy")
   serviceCosts         ServiceCost[]
   simulationVersions   SimulationVersion[]      @relation("UserSimulationVersions")
   AirSimulationVersion AirSimulationVersion[]   @relation("UserAirSimulationVersions")
@@ -108,20 +114,157 @@ model DocumentType {
   frequency                  DocumentFrequency            @default(UNICO)
   hasExpirationControl       Boolean                      @default(false)
   documents                  Document[]
+  workforceDocuments          WorkforceDocument[]
+  workforceRequirements       WorkforceDocumentRequirement[]
+  globalWorkforceRequirements GlobalWorkforceDocumentRequirement[]
   companyRequirements        CompanyDocumentRequirement[]
+  requirementRuleItems       DocumentRequirementRuleItem[]
 
   @@map("document_types")
 }
 
-model CompanyDocumentRequirement {
+model SupplierType {
+  id               String                    @id @default(uuid())
+  name             String                    @unique
+  description      String?
+  active           Boolean                   @default(true)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  companies        CompanySupplierType[]
+  requirementRules DocumentRequirementRule[]
+
+  @@map("supplier_types")
+}
+
+model CompanySupplierType {
+  companyId      String
+  supplierTypeId String
+  createdAt      DateTime     @default(now())
+  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplierType   SupplierType @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, supplierTypeId])
+  @@map("company_supplier_types")
+}
+
+model CompanyEmployee {
+  id        String   @id @default(uuid())
+  companyId String
+  fullName  String
+  cpf       String
+  position  String
+  hiredAt   DateTime
+  status    EmployeeStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents WorkforceDocument[]
+
+  @@unique([companyId, cpf])
+  @@index([companyId])
+  @@map("company_employees")
+}
+
+model WorkforceDocumentRequirement {
   id             String       @id @default(uuid())
   companyId      String
   documentTypeId Int
   isRequired     Boolean      @default(true)
+  active         Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, documentTypeId])
+  @@index([companyId])
+  @@index([documentTypeId])
+  @@map("workforce_document_requirements")
+}
+
+model GlobalWorkforceDocumentRequirement {
+  id             String       @id @default(uuid())
+  documentTypeId Int          @unique
+  isRequired     Boolean      @default(true)
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+
+  @@index([active])
+  @@map("global_workforce_document_requirements")
+}
+
+model WorkforceDocument {
+  id               String         @id @default(uuid())
+  companyEmployeeId String
+  companyId        String
+  uploadedByUserId String
+  name             String
+  fileType         String
+  fileUrl          String
+  status           DocumentStatus @default(PENDING)
+  rejectionReason  String?
+  dateIssue        DateTime?
+  dateExpiration   DateTime?
+  uploadedAt       DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  documentTypeId   Int?
+  isLatest         Boolean        @default(true)
+  companyEmployee  CompanyEmployee @relation(fields: [companyEmployeeId], references: [id], onDelete: Cascade)
+  company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedByUser   User            @relation("WorkforceDocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Cascade)
+  documentType     DocumentType?   @relation(fields: [documentTypeId], references: [id])
+
+  @@index([companyEmployeeId])
+  @@index([companyId])
+  @@index([uploadedByUserId])
+  @@index([documentTypeId])
+  @@index([companyEmployeeId, isLatest])
+  @@map("workforce_documents")
+}
+
+model DocumentRequirementRule {
+  id                    String                  @id @default(uuid())
+  companyClassification CompanyClassification
+  allocationRegime      AllocationRegime
+  supplierTypeId        String
+  active                Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  supplierType          SupplierType            @relation(fields: [supplierTypeId], references: [id], onDelete: Cascade)
+  items                 DocumentRequirementRuleItem[]
+
+  @@unique([companyClassification, allocationRegime, supplierTypeId], name: "requirement_rule_unique_combo")
+  @@map("document_requirement_rules")
+}
+
+model DocumentRequirementRuleItem {
+  id             String                  @id @default(uuid())
+  ruleId         String
+  documentTypeId Int
+  isRequired     Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  rule           DocumentRequirementRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  documentType   DocumentType            @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, documentTypeId])
+  @@index([documentTypeId])
+  @@map("document_requirement_rule_items")
+}
+
+model CompanyDocumentRequirement {
+  id              String       @id @default(uuid())
+  companyId       String
+  documentTypeId  Int
+  isRequired      Boolean      @default(true)
+  isAutomatic     Boolean?     @default(false)
+  requirementType String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documentType    DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, documentTypeId])
   @@map("company_document_requirements")
@@ -503,8 +646,96 @@ enum DocumentFrequency {
   ANUAL
 }
 
+enum CompanyClassification {
+  MEI
+  ME
+  EPP
+  EIRELI
+}
+
+enum AllocationRegime {
+  NO_WORKFORCE_AT_EADI
+  FULL_WORKFORCE_AT_EADI
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
 enum ServiceModal {
   MARITIME
   AIR
   BOTH
+}
+
+// ============ CCTE MODULE ============
+
+enum FlightStatus {
+  PENDING
+  SENT
+}
+
+enum CargoItemStatus {
+  EM_ANALISE
+  DTA_REGISTRADA
+  ENVIADO
+}
+
+enum TCOption {
+  P
+  A
+}
+
+enum FlightHistoryType {
+  EDIT
+  REVERT
+}
+
+model Flight {
+  id           String          @id @default(uuid())
+  aircraftName String
+  arrivalDate  DateTime        @db.Date
+  arrivalTime  String
+  flightCode   String
+  status       FlightStatus    @default(PENDING)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  cargoItems   CargoItem[]
+  history      FlightHistory[]
+
+  @@map("flights")
+}
+
+model CargoItem {
+  id           String          @id @default(uuid())
+  flightId     String
+  number       String?
+  house        String
+  importer     String
+  dta          String          @default("")
+  quantity     Int             @default(1)
+  tc           TCOption        @default(P)
+  status       CargoItemStatus @default(EM_ANALISE)
+  responsible  String          @default("")
+  observations String          @default("")
+  sent         Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  flight       Flight          @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@map("cargo_items")
+}
+
+model FlightHistory {
+  id        String            @id @default(uuid())
+  flightId  String
+  type      FlightHistoryType
+  changes   String
+  reason    String
+  createdAt DateTime          @default(now())
+  flight    Flight            @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@index([flightId])
+  @@map("flight_history")
 }

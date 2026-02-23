@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -18,7 +18,7 @@ import { UpdateAdminDto } from "./dto/update.admin.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Controller("admins")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -65,3 +65,4 @@ export class AdminController {
     return this.adminService.remove(id);
   }
 }
+

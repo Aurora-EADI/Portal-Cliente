@@ -1,23 +1,23 @@
-import { PrismaClient } from "@prisma/client-postgres";
+﻿import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function fixDocPermissions(userEmail: string) {
-  console.log(`\n🔧 Corrigindo permissões de Documentos para: ${userEmail}\n`);
+  console.log(`\nðŸ”§ Corrigindo permissÃµes de Documentos para: ${userEmail}\n`);
 
-  // 1. Buscar usuário
+  // 1. Buscar usuÃ¡rio
   const user = await prisma.user.findUnique({
     where: { email: userEmail },
   });
 
   if (!user) {
-    console.error(`❌ Usuário não encontrado: ${userEmail}`);
+    console.error(`âŒ UsuÃ¡rio nÃ£o encontrado: ${userEmail}`);
     return;
   }
 
-  console.log(`✅ Usuário: ${user.name}`);
+  console.log(`âœ… UsuÃ¡rio: ${user.name}`);
 
-  // 2. Buscar módulo Documentos
+  // 2. Buscar mÃ³dulo Documentos
   const docModule = await prisma.module.findFirst({
     where: { route: "/documentos" },
     include: {
@@ -26,13 +26,13 @@ async function fixDocPermissions(userEmail: string) {
   });
 
   if (!docModule) {
-    console.error("❌ Módulo /documentos não encontrado");
+    console.error("âŒ MÃ³dulo /documentos nÃ£o encontrado");
     return;
   }
 
-  console.log(`✅ Módulo: ${docModule.name} (ID: ${docModule.id})\n`);
+  console.log(`âœ… MÃ³dulo: ${docModule.name} (ID: ${docModule.id})\n`);
 
-  // 3. Buscar ou criar acesso ao módulo
+  // 3. Buscar ou criar acesso ao mÃ³dulo
   let userModuleAccess = await prisma.userModuleAccess.findUnique({
     where: {
       userId_moduleId: {
@@ -43,7 +43,7 @@ async function fixDocPermissions(userEmail: string) {
   });
 
   if (!userModuleAccess) {
-    console.log("📝 Criando acesso ao módulo...");
+    console.log("ðŸ“ Criando acesso ao mÃ³dulo...");
     userModuleAccess = await prisma.userModuleAccess.create({
       data: {
         userId: user.id,
@@ -51,22 +51,22 @@ async function fixDocPermissions(userEmail: string) {
         isEnabled: true,
       },
     });
-    console.log(`✅ Acesso ao módulo criado (ID: ${userModuleAccess.id})\n`);
+    console.log(`âœ… Acesso ao mÃ³dulo criado (ID: ${userModuleAccess.id})\n`);
   } else {
-    console.log(`✅ Acesso ao módulo já existe (ID: ${userModuleAccess.id})`);
+    console.log(`âœ… Acesso ao mÃ³dulo jÃ¡ existe (ID: ${userModuleAccess.id})`);
     if (!userModuleAccess.isEnabled) {
       await prisma.userModuleAccess.update({
         where: { id: userModuleAccess.id },
         data: { isEnabled: true },
       });
-      console.log("✅ Módulo habilitado\n");
+      console.log("âœ… MÃ³dulo habilitado\n");
     } else {
       console.log("");
     }
   }
 
-  // 4. Sincronizar atividades obrigatórias
-  console.log("📋 Sincronizando atividades obrigatórias...");
+  // 4. Sincronizar atividades obrigatÃ³rias
+  console.log("ðŸ“‹ Sincronizando atividades obrigatÃ³rias...");
   const mandatoryActivities = docModule.activities.filter((a) => a.isMandatory);
 
   for (const activity of mandatoryActivities) {
@@ -85,14 +85,14 @@ async function fixDocPermissions(userEmail: string) {
           isEnabled: true,
         },
       });
-      console.log(`   ✅ Atividade obrigatória criada: ${activity.name}`);
+      console.log(`   âœ… Atividade obrigatÃ³ria criada: ${activity.name}`);
     } else {
-      console.log(`   ⏭️  Atividade obrigatória já existe: ${activity.name}`);
+      console.log(`   â­ï¸  Atividade obrigatÃ³ria jÃ¡ existe: ${activity.name}`);
     }
   }
 
   // 5. Habilitar atividade "Visualizar Dashboard Documentos" (DOC_VIEW)
-  console.log("\n🎯 Habilitando atividade DOC_VIEW...");
+  console.log("\nðŸŽ¯ Habilitando atividade DOC_VIEW...");
   const docViewActivity = docModule.activities.find(
     (a) => a.name === "Visualizar Dashboard Documentos",
   );
@@ -111,9 +111,9 @@ async function fixDocPermissions(userEmail: string) {
           where: { id: existing.id },
           data: { isEnabled: true },
         });
-        console.log(`   ✅ Atividade DOC_VIEW atualizada para habilitada`);
+        console.log(`   âœ… Atividade DOC_VIEW atualizada para habilitada`);
       } else {
-        console.log(`   ⏭️  Atividade DOC_VIEW já está habilitada`);
+        console.log(`   â­ï¸  Atividade DOC_VIEW jÃ¡ estÃ¡ habilitada`);
       }
     } else {
       await prisma.userActivityAccess.create({
@@ -123,23 +123,24 @@ async function fixDocPermissions(userEmail: string) {
           isEnabled: true,
         },
       });
-      console.log(`   ✅ Atividade DOC_VIEW criada e habilitada`);
+      console.log(`   âœ… Atividade DOC_VIEW criada e habilitada`);
     }
   } else {
     console.log(
-      '   ⚠️  Atividade "Visualizar Dashboard Documentos" não encontrada',
+      '   âš ï¸  Atividade "Visualizar Dashboard Documentos" nÃ£o encontrada',
     );
   }
 
-  console.log("\n✅ Correção concluída!\n");
+  console.log("\nâœ… CorreÃ§Ã£o concluÃ­da!\n");
   console.log(
-    "🔄 Limpe o cache do navegador (sessionStorage) e faça login novamente.\n",
+    "ðŸ”„ Limpe o cache do navegador (sessionStorage) e faÃ§a login novamente.\n",
   );
 }
 
-// Executar correção
+// Executar correÃ§Ã£o
 const userEmail = process.argv[2] || "admin@aurora.com.br";
 
 fixDocPermissions(userEmail)
   .catch(console.error)
   .finally(() => prisma.$disconnect());
+

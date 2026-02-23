@@ -178,9 +178,24 @@ export class AuthService {
             city: company.city,
             state: company.state,
             phone: company.phone,
+            classification: company.classification,
+            allocationRegime: company.allocationRegime,
             status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovação
           },
         });
+
+        await this._syncSupplierTypes(
+          prisma,
+          companyId,
+          company.supplierTypeIds || [],
+        );
+
+        await this._syncCompanyWorkforce(
+          prisma,
+          companyId,
+          company.allocationRegime,
+          company.workforceEmployees || [],
+        );
 
         // Se o usuário já existe para esta empresa, atualiza os dados
         // Caso contrário, cria um novo usuário
@@ -272,9 +287,24 @@ export class AuthService {
           city: company.city,
           state: company.state,
           phone: company.phone,
+            classification: company.classification,
+            allocationRegime: company.allocationRegime,
           status: "PENDING_ACTIVE", // Aguardando aprovação do admin
         },
       });
+
+      await this._syncSupplierTypes(
+        prisma,
+        newCompany.id,
+        company.supplierTypeIds || [],
+      );
+
+      await this._syncCompanyWorkforce(
+        prisma,
+        newCompany.id,
+        company.allocationRegime,
+        company.workforceEmployees || [],
+      );
 
       // Cria o usuário vinculado à empresa com role SUPPLIER
       const newUser = await prisma.user.create({
@@ -348,6 +378,76 @@ export class AuthService {
         },
       });
     }
+  }
+
+  private async _syncSupplierTypes(
+    tx: any,
+    companyId: string,
+    supplierTypeIds: string[],
+  ) {
+    if (!supplierTypeIds || supplierTypeIds.length === 0) {
+      return;
+    }
+
+    const uniqueSupplierTypeIds = [...new Set(supplierTypeIds)];
+
+    await tx.companySupplierType.deleteMany({
+      where: { companyId },
+    });
+
+    await tx.companySupplierType.createMany({
+      data: uniqueSupplierTypeIds.map((supplierTypeId) => ({
+        companyId,
+        supplierTypeId,
+      })),
+    });
+  }
+
+  private async _syncCompanyWorkforce(
+    tx: any,
+    companyId: string,
+    allocationRegime: string | undefined,
+    workforceEmployees: Array<{
+      fullName: string;
+      cpf: string;
+      position: string;
+      hiredAt: string;
+    }>,
+  ) {
+    await tx.companyEmployee.deleteMany({ where: { companyId } });
+
+    if (allocationRegime !== "FULL_WORKFORCE_AT_EADI") {
+      return;
+    }
+
+    const validEmployees = workforceEmployees
+      .map((employee) => ({
+        fullName: employee.fullName?.trim(),
+        cpf: employee.cpf?.replace(/\D/g, ""),
+        position: employee.position?.trim(),
+        hiredAt: employee.hiredAt,
+      }))
+      .filter(
+        (employee) =>
+          employee.fullName &&
+          employee.cpf &&
+          employee.position &&
+          employee.hiredAt,
+      );
+
+    if (validEmployees.length === 0) {
+      return;
+    }
+
+    await tx.companyEmployee.createMany({
+      data: validEmployees.map((employee) => ({
+        companyId,
+        fullName: employee.fullName,
+        cpf: employee.cpf,
+        position: employee.position,
+        hiredAt: new Date(employee.hiredAt),
+      })),
+    });
   }
 
   async getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
