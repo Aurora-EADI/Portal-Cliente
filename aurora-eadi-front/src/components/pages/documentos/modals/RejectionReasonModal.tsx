@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Document } from '@/types/document';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface RejectionReasonModalProps {
   open: boolean;
@@ -74,21 +75,21 @@ export function RejectionReasonModal({
           autoFocus
         />
         <div className="flex justify-end gap-3 mt-6">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
-            className="px-4 py-2 text-muted-foreground hover:bg-accent rounded-lg font-medium transition-colors disabled:opacity-50"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="destructive"
             onClick={handleConfirm}
             disabled={!reason.trim() || isLoading}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
           >
             {isLoading && <Loader2 className="animate-spin" size={16} />}
             Confirmar Reprovação
-          </button>
+          </Button>
         </div>
       </div>
     </div>
