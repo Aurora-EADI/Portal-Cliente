@@ -289,8 +289,21 @@ model Module {
   active      Boolean            @default(true)
   activities  Activity[]
   userAccess  UserModuleAccess[]
+  sharedItems ModuleSharedItem[]
 
   @@map("modules")
+}
+
+model ModuleSharedItem {
+  id          Int     @id @default(autoincrement())
+  moduleId    Int
+  targetRoute String
+  label       String
+  icon        String?
+  sortOrder   Int     @default(0)
+  module      Module  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@map("module_shared_items")
 }
 
 model Activity {
@@ -299,6 +312,10 @@ model Activity {
   description String?
   moduleId    Int
   isMandatory Boolean              @default(false)
+  route       String?
+  label       String?
+  icon        String?
+  sortOrder   Int                  @default(0)
   module      Module               @relation(fields: [moduleId], references: [id])
   permissions ActivityPermission[]
   userAccess  UserActivityAccess[]
@@ -699,6 +716,7 @@ model Flight {
   arrivalTime  String
   flightCode   String
   status       FlightStatus    @default(PENDING)
+  termoEntrada String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   cargoItems   CargoItem[]
