@@ -74,11 +74,11 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/permissoes/gestao', label: 'Gestão de Permissões', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
 
   // Simulações
+  { path: '/simulacoes/dashboard', label: 'Dashboard de Simulações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/maritimo', label: 'Simulação Marítima', icon: 'Ship', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/historico-maritimo', label: 'Histórico Marítimo', icon: 'ClipboardList', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/aereo', label: 'Simulação Aérea', icon: 'Plane', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/historico-aereo', label: 'Histórico Aéreo', icon: 'FileSearch', parentPath: '/simulacoes', isModuleRoot: false },
-  { path: '/simulacoes/dashboard', label: 'Dashboard de Simulações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
