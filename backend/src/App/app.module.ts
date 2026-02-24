@@ -24,6 +24,7 @@ import { CustomerModule } from 'src/customer/customer.module';
 import { AirSimulationModule } from 'src/air-simulation/air-simulation.module';
 import { RequirementRulesModule } from "src/requirement-rules/requirement-rules.module";
 import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-documents.module";
+import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-docu
     AirSimulationModule,
     RequirementRulesModule,
     WorkforceDocumentsModule,
+    DtaMaritimeModule,
   ],
 })
 export class AppModule {}
