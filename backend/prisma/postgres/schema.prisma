@@ -463,7 +463,7 @@ model SimulationVersion {
   displayNumber    String
   isCurrentVersion Boolean             @default(true)
   versionReason    String?
-  status           SimulationStatus    @default(DRAFT)
+  status           SimulationStatus    @default(PENDING)
   cifUsd           Decimal             @db.Decimal(15, 2)
   dollarRate       Decimal             @db.Decimal(10, 4)
   cifBrl           Decimal             @db.Decimal(15, 2)
@@ -550,7 +550,7 @@ model AirSimulationVersion {
   displayNumber    String
   isCurrentVersion Boolean                @default(true)
   versionReason    String?
-  status           SimulationStatus       @default(DRAFT)
+  status           SimulationStatus       @default(PENDING)
   cifUsd           Decimal                @db.Decimal(15, 2)
   dollarRate       Decimal                @db.Decimal(10, 4)
   cifBrl           Decimal                @db.Decimal(15, 2)
@@ -630,6 +630,8 @@ enum ServiceCalculationType {
 }
 
 enum SimulationStatus {
+  PENDING
+  IN_VALIDATION
   DRAFT
   APPROVED
   SENT

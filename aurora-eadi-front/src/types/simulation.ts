@@ -5,6 +5,8 @@
 import { Service } from './service';
 
 export enum SimulationStatus {
+  PENDING = 'PENDING',
+  IN_VALIDATION = 'IN_VALIDATION',
   DRAFT = 'DRAFT',
   APPROVED = 'APPROVED',
   SENT = 'SENT',

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Printer, Plus, Building2, History, Lock, Save, ArrowLeft } from 'lucide-react';
+import { Printer, Plus, Building2, History, Lock, Save, ArrowLeft, CheckCircle, Send, XCircle, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +32,17 @@ import {
   useSimulation,
   useCreateSimulationVersion,
   useAddSimulationService,
+  useStartSimulationValidation,
+  useChangeSimulationStatus,
 } from '@/hooks/useSimulations';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useMaritimeServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
@@ -62,6 +72,8 @@ export function MaritimeSimulator() {
   const updateSimulationMutation = useUpdateSimulation();
   const createVersionMutation = useCreateSimulationVersion();
   const addServiceMutation = useAddSimulationService();
+  const startValidationMutation = useStartSimulationValidation();
+  const changeStatusMutation = useChangeSimulationStatus();
 
   // State Management
   const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(urlId);
@@ -224,6 +236,16 @@ export function MaritimeSimulator() {
       setCurrentSimulationId(urlId);
     }
   }, [urlId]);
+
+  // Auto-transition PENDING → IN_VALIDATION when simulation is opened
+  useEffect(() => {
+    if (
+      currentSimulation &&
+      currentSimulation.status === SimulationStatus.PENDING
+    ) {
+      startValidationMutation.mutate(currentSimulation.id);
+    }
+  }, [currentSimulation?.id, currentSimulation?.status]);
 
   // Load current simulation data
   useEffect(() => {
@@ -413,7 +435,7 @@ export function MaritimeSimulator() {
                       value={currentSimulation.id}
                       onValueChange={(value) => {
                         setIsEditingVersion(false);
-                        router.push(`/comercial?id=${value}`);
+                        router.push(`/comercial/simulador?id=${value}`);
                       }}
                     >
                       <SelectTrigger className="w-[110px] h-8 text-xs font-bold bg-white border-primary-100">
@@ -430,9 +452,21 @@ export function MaritimeSimulator() {
                   </div>
                 )}
 
-                <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
-                  {currentSimulation.status}
-                </Badge>
+                {(() => {
+                  const statusLabels: Record<string, { label: string; color: string }> = {
+                    PENDING:       { label: 'Pendente',      color: 'bg-gray-100 text-gray-600 border-gray-200' },
+                    IN_VALIDATION: { label: 'Em Validação',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                    APPROVED:      { label: 'Aprovada',      color: 'bg-green-50 text-green-700 border-green-200' },
+                    DRAFT:         { label: 'Rascunho',      color: 'bg-gray-100 text-gray-500 border-gray-200' },
+                    SENT:          { label: 'Enviada',       color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                  };
+                  const cfg = statusLabels[currentSimulation.status] ?? { label: currentSimulation.status, color: 'bg-gray-100 text-gray-500 border-gray-200' };
+                  return (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
+                      {cfg.label}
+                    </span>
+                  );
+                })()}
                 {!currentSimulation.isCurrentVersion && (
                   <Badge variant="outline" className="text-gray-500">
                     <Lock className="w-3 h-3 mr-1" />
@@ -444,6 +478,46 @@ export function MaritimeSimulator() {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Dropdown unificado de status */}
+          {currentSimulationId && currentSimulation?.isCurrentVersion && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  Definir Status
+                  <ChevronDown size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Definir Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.APPROVED || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.APPROVED })}
+                  className="gap-2"
+                >
+                  <CheckCircle size={16} className="text-green-600" />
+                  Aprovada
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.SENT || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.SENT })}
+                  className="gap-2"
+                >
+                  <Send size={16} className="text-blue-500" />
+                  Enviada
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.REJECTED || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.REJECTED })}
+                  className="gap-2 text-red-600 focus:text-red-600"
+                >
+                  <XCircle size={16} className="text-red-500" />
+                  Rejeitada
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* Novo Simulado */}
           {!currentSimulationId && (
             <Button

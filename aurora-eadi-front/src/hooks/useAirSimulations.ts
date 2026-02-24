@@ -6,6 +6,7 @@ import {
   CreateAirNewVersionDto,
   AddAirSimulationServiceDto,
 } from '@/types/air-simulation';
+import { SimulationStatus } from '@/types/simulation';
 import { toast } from 'sonner';
 
 // Query Keys
@@ -114,6 +115,65 @@ export const useDeleteAirSimulation = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+};
+
+// ========== APROVAÇÃO E VALIDAÇÃO ==========
+
+/**
+ * Hook para aprovar uma simulação aérea
+ */
+export const useApproveAirSimulation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      airSimulationService.update(id, { status: SimulationStatus.APPROVED }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AIR_SIMULATIONS_KEY });
+      toast.success('Simulação aérea aprovada com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erro ao aprovar simulação aérea.');
+    },
+  });
+};
+
+/**
+ * Hook para alterar o status de uma simulação aérea para qualquer valor manual
+ */
+export const useChangeAirSimulationStatus = () => {
+  const queryClient = useQueryClient();
+  const statusLabels: Partial<Record<SimulationStatus, string>> = {
+    [SimulationStatus.APPROVED]:     'Simulação aérea aprovada com sucesso!',
+    [SimulationStatus.SENT]:     'Simulação aérea marcada como Enviada!',
+    [SimulationStatus.ACCEPTED]: 'Simulação aérea marcada como Aceita!',
+    [SimulationStatus.REJECTED]: 'Simulação aérea marcada como Rejeitada!',
+    [SimulationStatus.DRAFT]:    'Simulação aérea revertida para Rascunho!',
+  };
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: SimulationStatus }) =>
+      airSimulationService.update(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: AIR_SIMULATIONS_KEY });
+      toast.success(statusLabels[variables.status] || 'Status atualizado!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erro ao atualizar status.');
+    },
+  });
+};
+
+/**
+ * Hook para iniciar a validação de uma simulação aérea (Pendente → Em Validação)
+ */
+export const useStartAirSimulationValidation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      airSimulationService.update(id, { status: SimulationStatus.IN_VALIDATION }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AIR_SIMULATIONS_KEY });
     },
   });
 };

@@ -11,21 +11,44 @@ import {
     Package,
     Plus,
     ArrowRight,
-    History
+    History,
+    CheckCircle,
+    Send,
+    XCircle,
+    ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/Badge';
-import { useSimulations } from '@/hooks/useSimulations';
+import { useSimulations, useChangeSimulationStatus } from '@/hooks/useSimulations';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { formatCurrency, formatDateBR, formatDocument } from '@/lib/utils';
 import { SimulationStatus } from '@/types';
 import { VersionHistoryModal } from './modals/VersionHistoryModal';
 import { Pagination } from '@/components/ui/Pagination';
 
+const statusConfig: Record<string, { label: string; color: string }> = {
+    PENDING:       { label: 'Pendente',      color: 'bg-gray-100 text-gray-600 border-gray-200' },
+    IN_VALIDATION: { label: 'Em Validação',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    APPROVED:      { label: 'Aprovada',      color: 'bg-green-50 text-green-700 border-green-200' },
+    DRAFT:         { label: 'Rascunho',      color: 'bg-gray-100 text-gray-500 border-gray-200' },
+    SENT:          { label: 'Enviada',       color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    ACCEPTED:      { label: 'Aceita',        color: 'bg-green-100 text-green-800 border-green-300' },
+    REJECTED:      { label: 'Rejeitada',     color: 'bg-red-50 text-red-700 border-red-200' },
+};
+
 export function SimulationHistory() {
     const router = useRouter();
     const { data: simulations, isLoading } = useSimulations();
+    const changeStatusMutation = useChangeSimulationStatus();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSimNumber, setSelectedSimNumber] = useState<string | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -108,19 +131,20 @@ export function SimulationHistory() {
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Geral</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Data</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Status</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Ação</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                                        <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                                             Carregando simulações...
                                         </td>
                                     </tr>
                                 ) : filteredSimulations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                                        <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                                             Nenhuma simulação encontrada.
                                         </td>
                                     </tr>
@@ -131,7 +155,7 @@ export function SimulationHistory() {
                                             <tr
                                                 key={sim.id}
                                                 className="hover:bg-blue-50/30 transition-colors group cursor-pointer"
-                                                onClick={() => router.push(`/comercial?id=${currentVersion?.id || sim.id}`)}
+                                                onClick={() => router.push(`/comercial/simulador?id=${currentVersion?.id || sim.id}`)}
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col">
@@ -181,13 +205,69 @@ export function SimulationHistory() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 group-hover:translate-x-1 transition-all"
-                                                    >
-                                                        <ArrowRight className="w-5 h-5" />
-                                                    </Button>
+                                                    {(() => {
+                                                        const status = currentVersion?.status as string | undefined;
+                                                        const cfg = status ? (statusConfig[status] ?? { label: status, color: 'bg-gray-100 text-gray-500 border-gray-200' }) : null;
+                                                        return cfg ? (
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
+                                                                {cfg.label}
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {currentVersion?.isCurrentVersion && (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="gap-1.5 text-gray-700"
+                                                                    >
+                                                                        Definir Status
+                                                                        <ChevronDown className="w-3.5 h-3.5" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                                    <DropdownMenuLabel>Definir Status</DropdownMenuLabel>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        disabled={currentVersion?.status === SimulationStatus.APPROVED || changeStatusMutation.isPending}
+                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.APPROVED })}
+                                                                        className="gap-2"
+                                                                    >
+                                                                        <CheckCircle className="w-4 h-4 text-green-600" />
+                                                                        Aprovada
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        disabled={currentVersion?.status === SimulationStatus.SENT || changeStatusMutation.isPending}
+                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.SENT })}
+                                                                        className="gap-2"
+                                                                    >
+                                                                        <Send className="w-4 h-4 text-blue-500" />
+                                                                        Enviada
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        disabled={currentVersion?.status === SimulationStatus.REJECTED || changeStatusMutation.isPending}
+                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.REJECTED })}
+                                                                        className="gap-2 text-red-600 focus:text-red-600"
+                                                                    >
+                                                                        <XCircle className="w-4 h-4 text-red-500" />
+                                                                        Rejeitada
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 group-hover:translate-x-1 transition-all"
+                                                        >
+                                                            <ArrowRight className="w-5 h-5" />
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

@@ -11,6 +11,7 @@ import { CreateAirNewVersionDto } from "./dto/create-air-new-version.dto";
 import { AddAirSimulationServiceDto } from "./dto/add-air-simulation-service.dto";
 import {
   ServiceCostType,
+  SimulationStatus,
   Prisma,
   AirServiceCalculationType,
 } from "@prisma/client";
@@ -387,6 +388,14 @@ export class AirSimulationsService {
   async update(id: string, dto: UpdateAirSimulationDto) {
     const version = await this.prisma.airSimulationVersion.findUnique({ where: { id } });
     if (!version) throw new NotFoundException("VersÃ£o nÃ£o encontrada");
+
+    if ((dto as any).status === SimulationStatus.APPROVED) {
+      if (!version.isCurrentVersion) {
+        throw new BadRequestException(
+          'Apenas a versão mais atual pode ser aprovada.',
+        );
+      }
+    }
 
     // Filtra apenas campos existentes na tabela AirSimulationVersion
     const { initialServices, customerId, ...updateData }: any = dto;

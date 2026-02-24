@@ -9,7 +9,7 @@ import { CreateSimulationDto } from "./dto/create-simulation.dto";
 import { UpdateSimulationDto } from "./dto/update-simulation.dto";
 import { CreateNewVersionDto } from "./dto/create-new-version.dto";
 import { AddSimulationServiceDto } from "./dto/add-simulation-service.dto";
-import { ServiceCostType, Prisma } from "@prisma/client";
+import { ServiceCostType, SimulationStatus, Prisma } from "@prisma/client";
 
 @Injectable()
 export class SimulationsService {
@@ -422,6 +422,13 @@ export class SimulationsService {
       updateData.discount = new Prisma.Decimal(updateSimulationDto.discount);
     }
     if (updateSimulationDto.status) {
+      if (updateSimulationDto.status === SimulationStatus.APPROVED) {
+        if (!version.isCurrentVersion) {
+          throw new BadRequestException(
+            'Apenas a versão mais atual pode ser aprovada.',
+          );
+        }
+      }
       updateData.status = updateSimulationDto.status;
     }
     if (updateSimulationDto.hasStripping !== undefined) {

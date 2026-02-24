@@ -97,6 +97,19 @@ docker compose -f docker-compose.prod.yml logs -f frontend
 docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
+Confirmado. O sql-proxy está unhealthy e o warning aparece toda vez — SQL_SERVER_HOST não está sendo carregado porque o --env-file .env.homolog não foi passado nos
+  comandos.
+                                                                                                                                                                           O ${SQL_SERVER_HOST} na linha command do sql-proxy é substituído pelo Docker Compose na hora do parse do arquivo, não dentro do container. Sem --env-file, a variável
+  fica vazia e o socat inicia como tcp-connect::1433 (host em branco) — por isso fica unhealthy.                                                                         
+  
+  Fix — recriar o proxy com a variável correta:
+
+  docker compose -f docker-compose.homolog.yml --env-file .env.homolog up -d sql-proxy
+
+  Após o proxy ficar healthy, reinicie o backend para reconectar ao SQL Server:
+
+  docker compose -f docker-compose.homolog.yml --env-file .env.homolog restart backend
+
 ## Architecture Patterns
 
 ## UI Styling Patterns

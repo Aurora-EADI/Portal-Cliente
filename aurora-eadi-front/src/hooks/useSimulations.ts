@@ -5,6 +5,7 @@ import {
   UpdateSimulationDto,
   CreateNewVersionDto,
   AddSimulationServiceDto,
+  SimulationStatus,
 } from '@/types';
 import { toast } from 'sonner';
 
@@ -114,6 +115,65 @@ export const useDeleteSimulation = () => {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+};
+
+// ========== APROVAÇÃO E VALIDAÇÃO ==========
+
+/**
+ * Hook para aprovar uma simulação (marítima)
+ */
+export const useApproveSimulation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      simulationService.update(id, { status: SimulationStatus.APPROVED }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SIMULATIONS_KEY });
+      toast.success('Simulação aprovada com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erro ao aprovar simulação.');
+    },
+  });
+};
+
+/**
+ * Hook para alterar o status de uma simulação para qualquer valor manual
+ */
+export const useChangeSimulationStatus = () => {
+  const queryClient = useQueryClient();
+  const statusLabels: Partial<Record<SimulationStatus, string>> = {
+    [SimulationStatus.APPROVED]:     'Simulação aprovada com sucesso!',
+    [SimulationStatus.SENT]:     'Simulação marcada como Enviada!',
+    [SimulationStatus.ACCEPTED]: 'Simulação marcada como Aceita!',
+    [SimulationStatus.REJECTED]: 'Simulação marcada como Rejeitada!',
+    [SimulationStatus.DRAFT]:    'Simulação revertida para Rascunho!',
+  };
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: SimulationStatus }) =>
+      simulationService.update(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: SIMULATIONS_KEY });
+      toast.success(statusLabels[variables.status] || 'Status atualizado!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erro ao atualizar status.');
+    },
+  });
+};
+
+/**
+ * Hook para iniciar a validação de uma simulação (Pendente → Em Validação)
+ */
+export const useStartSimulationValidation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      simulationService.update(id, { status: SimulationStatus.IN_VALIDATION }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SIMULATIONS_KEY });
     },
   });
 };

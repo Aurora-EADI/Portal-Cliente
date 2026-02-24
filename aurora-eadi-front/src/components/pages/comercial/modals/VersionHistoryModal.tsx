@@ -39,7 +39,7 @@ export function VersionHistoryModal({
     const { data: versions, isLoading } = useSimulationVersionHistory(simulationNumber);
 
     const handleOpenVersion = (id: string) => {
-        router.push(`/comercial?id=${id}`);
+        router.push(`/comercial/simulador?id=${id}`);
         onClose();
     };
 
