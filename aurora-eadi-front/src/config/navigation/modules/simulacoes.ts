@@ -14,6 +14,11 @@ export const simulacoesNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
+                    label: 'Dashboard',
+                    icon: BarChart2,
+                    path: '/simulacoes/dashboard',
+                },
+                {
                     label: 'Simulação Marítima',
                     icon: Ship,
                     path: '/simulacoes/maritimo',
@@ -32,11 +37,6 @@ export const simulacoesNavigation: NavigationContext = {
                     label: 'Histórico Aéreo',
                     icon: FileSearch,
                     path: '/simulacoes/historico-aereo',
-                },
-                {
-                    label: 'Dashboard',
-                    icon: BarChart2,
-                    path: '/simulacoes/dashboard',
                 },
             ],
         },
