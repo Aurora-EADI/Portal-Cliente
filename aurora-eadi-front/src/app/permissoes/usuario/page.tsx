@@ -8,10 +8,12 @@ import Header from '@/components/layout/Header'
 export default function PermissoesUsuarioPage() {
   return (
     <RouteGuard route="/permissoes">
-      <Header />
-      <Layout>
-        <UserRegistryPage />
-      </Layout>
+      <div className="h-screen flex flex-col overflow-hidden">
+        <Header />
+        <Layout>
+          <UserRegistryPage />
+        </Layout>
+      </div>
     </RouteGuard>
   )
 }

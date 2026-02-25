@@ -24,6 +24,7 @@ import type { Company } from "@/types/company";
 import { UserRole } from "@/types/auth";
 import { EditUserModal } from './EditUserModal';
 import { Pagination } from '@/components/ui/Pagination';
+import { SearchBar } from '@/components/ui/DataTable';
 
 export function UserRegistryPage() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -42,6 +43,9 @@ export function UserRegistryPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const limit = 10;
 
+  // Search state
+  const [search, setSearch] = useState('');
+
   const [formData, setFormData] = useState<CreateUserDto>({
     name: "",
     email: "",
@@ -58,10 +62,10 @@ export function UserRegistryPage() {
     }
   }, [formData.role]);
 
-  // Carrega usuários (excluindo SUPPLIERS) quando a página muda
+  // Carrega usuários quando a página ou busca muda
   useEffect(() => {
     fetchData();
-  }, [page]);
+  }, [page, search]);
 
   const fetchData = async () => {
     try {
@@ -74,6 +78,7 @@ export function UserRegistryPage() {
           roles: `${UserRole.ADMIN},${UserRole.EMPLOYEE}`,
           page,
           limit,
+          search: search || undefined,
         }),
         companiesService.findActive({ limit: 100 }), // Busca todas as empresas ativas
       ]);
@@ -102,6 +107,11 @@ export function UserRegistryPage() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -280,6 +290,14 @@ export function UserRegistryPage() {
           )}
         </button>
       </div>
+
+      {/* Search */}
+      <SearchBar
+        placeholder="Buscar por nome, e-mail ou cargo..."
+        onSearch={handleSearch}
+        onClear={() => handleSearch('')}
+        showClearButton={!!search}
+      />
 
       {/* Add User Form */}
       {isAdding && (
