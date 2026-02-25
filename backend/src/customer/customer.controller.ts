@@ -29,7 +29,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateCustomerDto) {
     this.logger.log(`Criando cliente: ${dto.name}`);
@@ -37,7 +37,7 @@ export class CustomerController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findAll(
     @Query("page") page?: string,
     @Query("limit") limit?: string,
@@ -54,14 +54,14 @@ export class CustomerController {
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findOne(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Buscando cliente ID: ${id}`);
     return this.customerService.findOne(id);
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateCustomerDto,
