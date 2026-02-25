@@ -96,6 +96,7 @@ export function MaritimeSimulator() {
   const [hasLCL, setHasLCL] = useState<boolean>(false);
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
   const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
+  const [cifInputMode, setCifInputMode] = useState<'USD' | 'BRL'>('USD');
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -108,10 +109,14 @@ export function MaritimeSimulator() {
 
   // Calculate CIF BRL numeric value
   const cifBrlNum = useMemo(() => {
-    const usd = parseNumberBR(cifUsd) || 0;
-    const rate = parseNumberBR(dollarRate) || 0;
-    return usd * rate;
-  }, [cifUsd, dollarRate]);
+    if (cifInputMode === 'USD') {
+      const usd = parseNumberBR(cifUsd) || 0;
+      const rate = parseNumberBR(dollarRate) || 0;
+      return usd * rate;
+    } else {
+      return parseNumberBR(cifBrl) || 0;
+    }
+  }, [cifInputMode, cifUsd, dollarRate, cifBrl]);
 
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useSimulation(currentSimulationId);
@@ -220,15 +225,25 @@ export function MaritimeSimulator() {
 
   const calculatedTotalGeneral = totalGeneral;
 
-  // Auto-calculate CIF BRL
+  // Auto-calculate CIF BRL (apenas no modo USD)
   useEffect(() => {
-    // Only format if we have valid numbers
-    if (cifBrlNum > 0) {
-      setCifBrl(formatCurrency(cifBrlNum, false));
-    } else {
-      setCifBrl('0,00');
+    if (cifInputMode === 'USD') {
+      if (cifBrlNum > 0) {
+        setCifBrl(formatCurrency(cifBrlNum, false));
+      } else {
+        setCifBrl('0,00');
+      }
     }
-  }, [cifBrlNum]);
+  }, [cifBrlNum, cifInputMode]);
+
+  // Auto-calculate CIF USD (apenas no modo BRL)
+  useEffect(() => {
+    if (cifInputMode === 'BRL') {
+      const rate = parseNumberBR(dollarRate) || 0;
+      const brl = parseNumberBR(cifBrl) || 0;
+      setCifUsd(formatNumberBR(rate > 0 ? brl / rate : 0));
+    }
+  }, [cifBrl, dollarRate, cifInputMode]);
 
   // Sync currentSimulationId with URL
   useEffect(() => {
@@ -648,6 +663,42 @@ export function MaritimeSimulator() {
                 </div>
 
                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* CIF Currency Mode Toggle */}
+                  <div className="md:col-span-2 flex items-center gap-3 flex-wrap">
+                    <Label className="text-sm font-medium text-gray-700">Moeda de entrada do CIF</Label>
+                    <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setCifInputMode('USD')}
+                        disabled={!isEditable}
+                        className={`px-4 py-1.5 text-sm font-semibold transition-colors ${
+                          cifInputMode === 'USD'
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        USD
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCifInputMode('BRL')}
+                        disabled={!isEditable}
+                        className={`px-4 py-1.5 text-sm font-semibold transition-colors border-l border-gray-200 ${
+                          cifInputMode === 'BRL'
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        BRL
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {cifInputMode === 'USD'
+                        ? 'Informe o valor em dólares; o R$ será calculado automaticamente.'
+                        : 'Informe o valor em reais; o USD será calculado automaticamente.'}
+                    </p>
+                  </div>
+
                   {/* Row 1 */}
                   <div className="space-y-2">
                     <Label htmlFor="cifUsd">Valor CIF da carga USD</Label>
@@ -659,8 +710,8 @@ export function MaritimeSimulator() {
                         value={cifUsd}
                         onChange={(e) => setCifUsd(e.target.value)}
                         onBlur={(e) => setCifUsd(formatNumberBR(parseNumberBR(e.target.value)))}
-                        className="pl-7"
-                        disabled={!isEditable}
+                        className={`pl-7 ${cifInputMode === 'BRL' ? 'bg-gray-50 text-gray-500' : ''}`}
+                        disabled={!isEditable || cifInputMode === 'BRL'}
                       />
                     </div>
                   </div>
@@ -684,8 +735,11 @@ export function MaritimeSimulator() {
                       <Input
                         id="cifBrl"
                         value={cifBrl}
-                        readOnly
-                        className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        readOnly={cifInputMode === 'USD'}
+                        disabled={cifInputMode === 'BRL' ? !isEditable : false}
+                        onChange={cifInputMode === 'BRL' ? (e) => setCifBrl(e.target.value) : undefined}
+                        onBlur={cifInputMode === 'BRL' ? (e) => setCifBrl(formatCurrency(parseNumberBR(e.target.value), false)) : undefined}
+                        className={`pl-9 ${cifInputMode === 'USD' ? 'bg-gray-50 text-gray-600 font-medium' : ''}`}
                       />
                     </div>
                   </div>

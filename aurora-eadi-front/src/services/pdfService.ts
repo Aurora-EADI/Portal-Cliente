@@ -356,9 +356,9 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
     ? ((simulation.storageCost || 0) / simulation.cifBrl) * 100 
     : 0;
 
-  const services = [...(simulation.services || [])].sort((a, b) => 
-    (a.serviceName || '').localeCompare(b.serviceName || '')
-  );
+  const services = [...(simulation.services || [])]
+    .filter(s => Number(s.appliedCost ?? 0) > 0)
+    .sort((a, b) => (a.serviceName || '').localeCompare(b.serviceName || ''));
 
   const tableData = [
     ...(simulation.storageCost ? [[

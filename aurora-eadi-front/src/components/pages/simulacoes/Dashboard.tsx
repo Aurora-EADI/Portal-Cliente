@@ -127,25 +127,29 @@ export function Dashboard() {
     rejected: areasCurrent.filter((s) => s.status === SimulationStatus.REJECTED).length,
   }), [areasCurrent]);
 
-  // ── Gráfico de linha (últimos 12 meses) ──────
+  // ── Gráfico de linha — Total Geral (Aprovadas) por mês ──────
   const monthKeys = getLast12MonthKeys();
   const monthLabels = getLast12Months();
 
   const marPerMonth = useMemo(() => {
     const map: Record<string, number> = {};
-    maritimasCurrent.forEach((s) => {
-      const k = getMonthKey(s.createdAt);
-      map[k] = (map[k] ?? 0) + 1;
-    });
+    maritimasCurrent
+      .filter((s) => s.status === SimulationStatus.APPROVED)
+      .forEach((s) => {
+        const k = getMonthKey(s.createdAt);
+        map[k] = (map[k] ?? 0) + Number(s.totalGeneral ?? 0);
+      });
     return monthKeys.map((k) => map[k] ?? 0);
   }, [maritimasCurrent, monthKeys]);
 
   const aerPerMonth = useMemo(() => {
     const map: Record<string, number> = {};
-    areasCurrent.forEach((s) => {
-      const k = getMonthKey(s.createdAt);
-      map[k] = (map[k] ?? 0) + 1;
-    });
+    areasCurrent
+      .filter((s) => s.status === SimulationStatus.APPROVED)
+      .forEach((s) => {
+        const k = getMonthKey(s.createdAt);
+        map[k] = (map[k] ?? 0) + Number(s.totalGeneral ?? 0);
+      });
     return monthKeys.map((k) => map[k] ?? 0);
   }, [areasCurrent, monthKeys]);
 
@@ -176,31 +180,42 @@ export function Dashboard() {
     plugins: {
       legend: { position: 'top' as const },
       title: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: any) => `${ctx.dataset.label}: ${formatBRL(ctx.parsed.y)}`,
+        },
+      },
     },
     scales: {
       y: {
         beginAtZero: true,
-        ticks: { stepSize: 1, precision: 0 },
+        ticks: {
+          callback: (value: any) => formatBRL(Number(value)),
+        },
       },
     },
   };
 
-  // ── Ranking top 10 clientes (separado por tipo) ──
+  // ── Ranking top 10 clientes — apenas Aprovadas ──
   const rankingMar = useMemo(() => {
     const map: Record<string, number> = {};
-    maritimasCurrent.forEach((s) => {
-      if (!s.customerName) return;
-      map[s.customerName] = (map[s.customerName] ?? 0) + Number(s.totalGeneral ?? 0);
-    });
+    maritimasCurrent
+      .filter((s) => s.status === SimulationStatus.APPROVED)
+      .forEach((s) => {
+        if (!s.customerName) return;
+        map[s.customerName] = (map[s.customerName] ?? 0) + Number(s.totalGeneral ?? 0);
+      });
     return Object.entries(map).sort(([, a], [, b]) => b - a).slice(0, 10);
   }, [maritimasCurrent]);
 
   const rankingAer = useMemo(() => {
     const map: Record<string, number> = {};
-    areasCurrent.forEach((s) => {
-      if (!s.customerName) return;
-      map[s.customerName] = (map[s.customerName] ?? 0) + Number(s.totalGeneral ?? 0);
-    });
+    areasCurrent
+      .filter((s) => s.status === SimulationStatus.APPROVED)
+      .forEach((s) => {
+        if (!s.customerName) return;
+        map[s.customerName] = (map[s.customerName] ?? 0) + Number(s.totalGeneral ?? 0);
+      });
     return Object.entries(map).sort(([, a], [, b]) => b - a).slice(0, 10);
   }, [areasCurrent]);
 
@@ -290,7 +305,7 @@ export function Dashboard() {
       <section>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Simulações por Mês (últimos 12 meses)</CardTitle>
+            <CardTitle className="text-base">Total Geral por Modal — Aprovadas (últimos 12 meses)</CardTitle>
           </CardHeader>
           <CardContent>
             <Line data={lineData} options={lineOptions} />
@@ -304,7 +319,7 @@ export function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Ship className="h-4 w-4 text-orange-500" />
-              Top 10 Clientes — Marítimas
+              Top 10 Clientes — Marítimas (Aprovadas)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -337,7 +352,7 @@ export function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Plane className="h-4 w-4 text-blue-500" />
-              Top 10 Clientes — Aéreas
+              Top 10 Clientes — Aéreas (Aprovadas)
             </CardTitle>
           </CardHeader>
           <CardContent>

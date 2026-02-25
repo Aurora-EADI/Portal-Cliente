@@ -9,6 +9,5 @@ export const HOME_ITEM = {
 export const CLIENTE_ITEM = {
     label: 'Cliente',
     icon: List,
-    path: '/cliente',
-    requiredPermissions: ['CAD_CLIENTE'],
+    path: '/cliente/lista',
 };
