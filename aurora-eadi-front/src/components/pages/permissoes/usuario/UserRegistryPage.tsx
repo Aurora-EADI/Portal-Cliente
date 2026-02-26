@@ -41,7 +41,7 @@ export function UserRegistryPage() {
   // Pagination states
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   // Search state
   const [search, setSearch] = useState('');
@@ -62,10 +62,10 @@ export function UserRegistryPage() {
     }
   }, [formData.role]);
 
-  // Carrega usuários quando a página ou busca muda
+  // Carrega usuários quando a página, busca ou limit muda
   useEffect(() => {
     fetchData();
-  }, [page, search]);
+  }, [page, search, limit]);
 
   const fetchData = async () => {
     try {
@@ -111,6 +111,11 @@ export function UserRegistryPage() {
 
   const handleSearch = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
     setPage(1);
   };
 
@@ -545,13 +550,14 @@ export function UserRegistryPage() {
       )}
 
       {/* Pagination */}
-      {totalUsers > limit && (
+      {totalUsers > 0 && (
         <div className="mt-4">
           <Pagination
             page={page}
             total={totalUsers}
             limit={limit}
             onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
           />
         </div>
       )}

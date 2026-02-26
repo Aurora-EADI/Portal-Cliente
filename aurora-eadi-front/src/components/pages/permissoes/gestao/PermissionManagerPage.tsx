@@ -120,7 +120,7 @@ export function PermissionManagerPage() {
 
   // Paginação de usuários
   const [userPage, setUserPage] = useState(1);
-  const userLimit = 5;
+  const [userLimit, setUserLimit] = useState(10);
 
   // Busca/filtro de módulos
   const [searchTerm, setSearchTerm] = useState("");
@@ -380,6 +380,11 @@ export function PermissionManagerPage() {
     setUserPage(newPage);
   };
 
+  const handleUserLimitChange = (newLimit: number) => {
+    setUserLimit(newLimit);
+    setUserPage(1);
+  };
+
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
     setUserPage(1);
@@ -608,12 +613,13 @@ export function PermissionManagerPage() {
         </table>
 
         {/* Pagination */}
-        {filteredUsers.length > userLimit && (
+        {filteredUsers.length > 0 && (
           <Pagination
             page={userPage}
             total={filteredUsers.length}
             limit={userLimit}
             onPageChange={handleUserPageChange}
+            onLimitChange={handleUserLimitChange}
             className="rounded-b-xl border-t rounded-t-none"
           />
         )}
