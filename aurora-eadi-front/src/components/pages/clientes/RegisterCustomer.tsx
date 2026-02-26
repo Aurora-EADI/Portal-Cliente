@@ -27,6 +27,8 @@ export function RegisterCustomer() {
         let finalValue = value;
         if (name === 'document') {
             finalValue = formatDocument(value);
+        } else if (name === 'name') {
+            finalValue = value.toUpperCase();
         }
 
         setFormData(prev => ({ ...prev, [name]: finalValue }));

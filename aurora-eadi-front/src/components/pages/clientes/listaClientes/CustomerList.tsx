@@ -73,9 +73,10 @@ export function CustomerList() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => {
-            const newData = { ...prev, [name]: value };
-            if (name === 'name' && value) {
-                const names = value.split(' ');
+            const finalValue = name === 'name' ? value.toUpperCase() : value;
+            const newData = { ...prev, [name]: finalValue };
+            if (name === 'name' && finalValue) {
+                const names = finalValue.split(' ');
                 if (names.length > 0) {
                     const firstName = names[0].toUpperCase();
                     newData.code = `${firstName}-001`;
@@ -182,7 +183,7 @@ export function CustomerList() {
             render: (customer) => (
                 <div className="flex items-center gap-2 text-gray-600">
                     <UserIcon size={14} className="text-gray-400" />
-                    {customer.name}
+                    {customer.name.toUpperCase()}
                 </div>
             ),
         },

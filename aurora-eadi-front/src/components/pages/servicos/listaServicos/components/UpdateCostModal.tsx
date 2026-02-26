@@ -6,6 +6,7 @@ import {
     History, ArrowRight, User, Calendar, MessageSquare 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatNumberBR, parseNumberBR } from '@/lib/utils';
 
 interface UpdateCostModalProps {
     service: Service;
@@ -26,13 +27,33 @@ export function UpdateCostModal({ service, currentCost, onClose }: UpdateCostMod
     const { data: history = [], isLoading: isLoadingHistory } = useServiceCostsHistory(service.id);
     const { mutateAsync: createServiceCost, isPending: isSaving } = useCreateServiceCost();
 
-    const [newCost, setNewCost] = useState(currentCost?.toString() || '');
+    const [newCost, setNewCost] = useState(currentCost !== undefined ? formatNumberBR(currentCost) : '');
     const [reason, setReason] = useState('');
+
+    const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        // Remove pontos digitados pelo usuário
+        value = value.replace(/\./g, '');
+        // Permite apenas números e vírgula
+        value = value.replace(/[^0-9,]/g, '');
+        // Garante apenas uma vírgula
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+        setNewCost(value);
+    };
+
+    const handleCostBlur = () => {
+        if (newCost) {
+            setNewCost(formatNumberBR(parseNumberBR(newCost)));
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const costValue = parseFloat(newCost.replace(',', '.'));
+        const costValue = parseNumberBR(newCost);
         if (isNaN(costValue)) {
             toast.error('Informe um valor válido');
             return;
@@ -113,7 +134,8 @@ export function UpdateCostModal({ service, currentCost, onClose }: UpdateCostMod
                                     <input
                                         type="text"
                                         value={newCost}
-                                        onChange={(e) => setNewCost(e.target.value)}
+                                        onChange={handleCostChange}
+                                        onBlur={handleCostBlur}
                                         className="w-full bg-white border border-primary-200 rounded-lg py-2 px-3 text-xl font-bold text-primary-900 focus:ring-2 focus:ring-primary-500 outline-none"
                                         placeholder="0,00"
                                         autoFocus

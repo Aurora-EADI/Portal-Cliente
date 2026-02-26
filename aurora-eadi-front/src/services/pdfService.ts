@@ -312,7 +312,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text('Simulação de Custo EADI', pageWidth - 15, 15, { align: 'right' });
+  doc.text('Simulação de Custo Marítimo', pageWidth - 15, 15, { align: 'right' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -344,12 +344,12 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.text(`Valor CIF (USD): $ ${formatNumberBR(simulation.cifUsd)}`, 15, cargaY);
   doc.text(`Taxa do Dólar: R$ ${formatNumberBR(simulation.dollarRate)}`, 15, cargaY + 5);
   doc.text(`Valor CIF (R$): ${formatCurrency(simulation.cifBrl)}`, 15, cargaY + 10);
+  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
   
   const col2X = pageWidth / 2 + 10;
   doc.text(`Tonelagem: ${formatNumberBR(simulation.tonnes || 0, 3)} t`, col2X, cargaY);
   doc.text(`Quantidade CNTR: ${simulation.cntrCount || 0}`, col2X, cargaY + 5);
   doc.text(`Tipo CNTR: ${simulation.cntrType || '-'}`, col2X, cargaY + 10);
-  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 

@@ -6,6 +6,7 @@ import { CreateServiceDto, ServiceCalculationType, ServiceModal } from '@/types'
 import { Loader2, ArrowLeft, Save, Plane, Ship, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { formatNumberBR, parseNumberBR } from '@/lib/utils';
 
 const calculationTypeLabels: Record<ServiceCalculationType, string> = {
     [ServiceCalculationType.FIXED]: 'Valor Fixo (R$)',
@@ -66,6 +67,10 @@ export function RegisterService() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
 
+        if (name === 'initialCost') {
+            return; // Tratado separadamente
+        }
+
         if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
             setFormData(prev => ({ ...prev, [name]: checked }));
@@ -75,6 +80,31 @@ export function RegisterService() {
 
         if (errors[name as keyof FormData]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    const handleInitialCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        // Remove pontos digitados pelo usuário
+        value = value.replace(/\./g, '');
+        // Permite apenas números e vírgula
+        value = value.replace(/[^0-9,]/g, '');
+        // Garante apenas uma vírgula
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+
+        setFormData(prev => ({ ...prev, initialCost: value }));
+        if (errors.initialCost) {
+            setErrors(prev => ({ ...prev, initialCost: undefined }));
+        }
+    };
+
+    const handleInitialCostBlur = () => {
+        if (formData.initialCost) {
+            const parsed = parseNumberBR(formData.initialCost);
+            setFormData(prev => ({ ...prev, initialCost: formatNumberBR(parsed) }));
         }
     };
 
@@ -98,7 +128,7 @@ export function RegisterService() {
         if (!formData.initialCost.trim()) {
             newErrors.initialCost = 'O valor TX/VALOR é obrigatório';
         } else {
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             if (isNaN(costValue) || costValue < 0) {
                 newErrors.initialCost = 'Informe um valor válido';
             }
@@ -136,7 +166,7 @@ export function RegisterService() {
 
             const newService = await createService(serviceData);
 
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             await createServiceCost({
                 serviceId: newService.id,
                 cost: costValue,
@@ -282,7 +312,8 @@ export function RegisterService() {
                                 id="initialCost"
                                 name="initialCost"
                                 value={formData.initialCost}
-                                onChange={handleChange}
+                                onChange={handleInitialCostChange}
+                                onBlur={handleInitialCostBlur}
                                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.initialCost ? 'border-red-500' : 'border-gray-300'}`}
                                 placeholder={getCostPlaceholder()}
                             />

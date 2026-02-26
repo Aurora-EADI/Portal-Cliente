@@ -51,7 +51,6 @@ import { formatCurrency, formatUSD, formatPercent, formatNumberBR, parseNumberBR
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCostType } from '@/types';
 import { exportMaritimeSimulationToPDF } from '@/services/pdfService';
-import { SimulationPresentation } from './SimulationPresentation';
 
 const DEFAULT_MIN_BILLING = 5500;
 
@@ -81,7 +80,6 @@ export function MaritimeSimulator() {
   const [isNewVersionDialogOpen, setIsNewVersionDialogOpen] = useState(false);
   const [versionReason, setVersionReason] = useState('');
   const [isEditingVersion, setIsEditingVersion] = useState(false);
-  const [showPresentation, setShowPresentation] = useState(false);
 
   // Form Fields
   const [cifUsd, setCifUsd] = useState<string>('');
@@ -918,8 +916,9 @@ export function MaritimeSimulator() {
                 variant="ghost"
                 size="icon"
                 className="text-gray-400 hover:text-primary-600 h-8 w-8 hover:bg-white"
-                onClick={() => setShowPresentation(true)}
+                onClick={handleExportPDF}
                 title="Exportar PDF"
+                disabled={!currentSimulation}
               >
                 <Printer size={18} />
               </Button>
@@ -1015,33 +1014,6 @@ export function MaritimeSimulator() {
           </div>
         </DialogContent>
       </Dialog>
-      {/* PRESENTATION VIEW OVERLAY */}
-      {showPresentation && (
-        <SimulationPresentation
-          simulation={currentSimulation || {
-            // Fallback for draft/new simulation data
-            customer: customersData?.data?.find((c: any) => c.id === selectedCustomerId),
-            cifUsd: parseFloat(cifUsd) || 0,
-            dollarRate: parseFloat(dollarRate) || 0,
-            tonnes: parseFloat(tonnes) || 0,
-            cntrCount: parseInt(cntrCount) || 0,
-            cntrType: cntrType,
-            services: effectiveServicesList,
-            displayNumber: 'RASCUNHO'
-          }}
-          calculatedValues={{
-            totalServices: calculatedTotalServices,
-            storageCost: calculatedStorageCost,
-            transportCost: 0,
-            minDiff: minDiff,
-            minProfitMarginPct: 0,
-            totalGeneral: calculatedTotalGeneral,
-            discount: parseFloat(discount) || 0,
-            servicesCount: servicesCount
-          }}
-          onClose={() => setShowPresentation(false)}
-        />
-      )}
     </div>
   );
 }
