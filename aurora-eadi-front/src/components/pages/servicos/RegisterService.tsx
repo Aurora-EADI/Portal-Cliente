@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useCreateService, useCreateServiceCost } from '@/hooks/useServices';
 import { CreateServiceDto, ServiceCalculationType, ServiceModal } from '@/types';
 import { Loader2, ArrowLeft, Save, Plane, Ship, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 
 const calculationTypeLabels: Record<ServiceCalculationType, string> = {
@@ -46,7 +46,6 @@ interface FormData {
 }
 
 export function RegisterService() {
-    const router = useRouter();
     const { mutateAsync: createService, isPending: isCreatingService } = useCreateService();
     const { mutateAsync: createServiceCost, isPending: isCreatingCost } = useCreateServiceCost();
 
@@ -144,9 +143,20 @@ export function RegisterService() {
                 reason: 'Valor inicial do serviço',
             });
 
-            router.push('/servicos');
+            toast.success('Serviço cadastrado com sucesso!');
+            setFormData({
+                name: '',
+                description: '',
+                calculationType: ServiceCalculationType.FIXED,
+                modal: ServiceModal.AIR,
+                isActive: true,
+                initialCost: '',
+                hasStripping: false,
+            });
+            setErrors({});
         } catch (error) {
             console.error('Erro ao criar serviço:', error);
+            toast.error('Erro ao cadastrar serviço. Tente novamente.');
         }
     };
 
