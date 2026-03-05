@@ -1,16 +1,18 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
-  NotFoundException,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { PrismaPostgresService } from "../prisma/prisma.service";
 import { MinioService } from "../minio/minio.service";
 import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
-import { Prisma } from "@prisma/client-postgres";
+import { Prisma, UserRole } from "@prisma/client-postgres";
+import * as path from "path";
 
 @Injectable()
 export class DocumentsService {
@@ -19,27 +21,42 @@ export class DocumentsService {
   constructor(
     private prisma: PrismaPostgresService,
     private minio: MinioService,
-  ) {}
+  ) { }
 
   async uploadDocument(
     file: Express.Multer.File,
     dto: UploadDocumentDto,
-    userId: string,
+    user: { id: string; role: UserRole; companyId?: string | null },
   ) {
-    // Gerar nome único
-    const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.originalname}`;
-
     if (!dto.companyId) {
       throw new BadRequestException("companyId é obrigatório");
     }
 
+    // EMPLOYEE só pode anexar documentos para a sua própria empresa
+    if (
+      user.role === UserRole.EMPLOYEE &&
+      (!user.companyId || user.companyId !== dto.companyId)
+    ) {
+      throw new ForbiddenException(
+        "Você não tem permissão para anexar documentos para esta empresa",
+      );
+    }
+
+    const timestamp = Date.now();
+    const baseFileName = `${timestamp}-${file.originalname}`;
+
+    // EMPLOYEE: isola arquivos no caminho supplier/{companyId}/
+    const fileName =
+      user.role === UserRole.EMPLOYEE
+        ? `supplier/${dto.companyId}/${baseFileName}`
+        : baseFileName;
+
     return await this.prisma.$transaction(async (tx) => {
       // 1. Primeiro tenta subir o arquivo (externo ao DB, não rollback automático)
       try {
-        this.logger.log(`Iniciando upload para o MinIO: ${fileName}`);
+        this.logger.log(`Iniciando upload para MinIO: ${fileName}`);
         await this.minio.uploadFile(file, fileName);
-        this.logger.log(`Upload para o MinIO concluído: ${fileName}`);
+        this.logger.log(`Upload para MinIO concluído: ${fileName}`);
       } catch (error) {
         this.logger.error(
           `Erro no upload para o MinIO (${fileName}): ${error.message}`,
@@ -78,7 +95,7 @@ export class DocumentsService {
           name: dto.name,
           fileType: file.mimetype.split("/")[1],
           fileUrl: fileName,
-          userId,
+          userId: user.id,
           companyId: dto.companyId,
           status: "PENDING",
           dateIssue: dto.dateIssue ? new Date(dto.dateIssue) : undefined,
@@ -142,17 +159,41 @@ export class DocumentsService {
     }
   }
 
-  async getFileStream(id: string) {
-    const document = await this.prisma.document.findUnique({ where: { id } });
+  async getFileStream(
+    id: string,
+    user: { id: string; role: UserRole; companyId?: string | null },
+  ) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      select: { fileUrl: true, companyId: true },
+    });
     if (!document)
       throw new NotFoundException("Documento não encontrado no banco de dados");
+
+    // SUPPLIER (fornecedor externo) só pode baixar documentos da própria empresa.
+    // EMPLOYEE (analista interno Aurora) pode baixar documentos de qualquer empresa.
+    if (
+      user.role === UserRole.SUPPLIER &&
+      user.companyId &&
+      user.companyId !== document.companyId
+    ) {
+      throw new ForbiddenException(
+        "Você não tem permissão para acessar documentos desta empresa",
+      );
+    }
 
     try {
       const stream = await this.minio.getFileStream(document.fileUrl);
       const stat = await this.minio.getFileStat(document.fileUrl);
 
-      // Extrai o nome original do arquivo da URL
-      const filename = document.fileUrl.split("-").slice(1).join("-");
+      // Extrai o nome original do arquivo:
+      // 1. Remove o prefixo de diretório (ex: "supplier/uuid/") com path.basename
+      // 2. Separa apenas no PRIMEIRO hífen para remover o timestamp numérico
+      //    Isso evita cortar UUIDs ou hífens do nome original do arquivo.
+      const baseName = path.basename(document.fileUrl);
+      const dashIndex = baseName.indexOf("-");
+      const filename =
+        dashIndex !== -1 ? baseName.slice(dashIndex + 1) : baseName;
 
       return {
         stream,
@@ -259,9 +300,9 @@ export class DocumentsService {
     const documentsWithDelay = documents.map((doc) => {
       const daysOverdue = doc.dateExpiration
         ? Math.floor(
-            (new Date().getTime() - doc.dateExpiration.getTime()) /
-              (1000 * 60 * 60 * 24),
-          )
+          (new Date().getTime() - doc.dateExpiration.getTime()) /
+          (1000 * 60 * 60 * 24),
+        )
         : 0;
       return {
         ...doc,
