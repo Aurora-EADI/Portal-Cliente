@@ -37,7 +37,7 @@ export const documentosNavigation: NavigationContext = {
                     label: 'Colaboradores',
                     icon: Users,
                     path: '/documentos/colaboradores',
-                    requiredRoles: [UserRole.SUPPLIER],
+                    requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER],
                 },
                 {
                     label: 'Gestão Colaboradores',

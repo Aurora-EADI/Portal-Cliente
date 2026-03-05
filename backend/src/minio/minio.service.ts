@@ -5,20 +5,20 @@ import * as Minio from "minio";
 export class MinioService implements OnModuleInit {
   private readonly logger = new Logger(MinioService.name);
 
-  // Cliente interno: usado para upload, delete, stream (resolve "minio" via DNS Docker)
+  // Internal client for upload/delete/stream against Docker DNS host.
   private minioClient: Minio.Client;
 
-  // Cliente externo: usado APENAS para gerar URLs presignadas com o host correto
-  // A assinatura HMAC é calculada com MINIO_EXTERNAL_ENDPOINT, que é o IP/domínio
-  // acessível pelo navegador — sem necessidade de substituição de string posterior.
+  // Public client used only to generate presigned URLs with browser-reachable host.
   private publicMinioClient: Minio.Client;
 
   private readonly bucketName: string;
 
-  async onModuleInit() {
+  constructor() {
     this.bucketName = process.env.MINIO_BUCKET_NAME || "documents";
+  }
 
-    // Cliente interno — resolve o hostname de serviço Docker (ex: "minio")
+  async onModuleInit() {
+    // Internal client resolves Docker service hostname (e.g. "minio").
     this.minioClient = new Minio.Client({
       endPoint: process.env.MINIO_ENDPOINT || "minio",
       port: parseInt(process.env.MINIO_PORT || "9000", 10),
@@ -28,8 +28,7 @@ export class MinioService implements OnModuleInit {
       pathStyle: true,
     });
 
-    // Cliente público — usa o endpoint externo (IP/domínio acessível pelo navegador)
-    // A URL presignada já é gerada com o host correto; nenhum "replace" é necessário.
+    // Public client uses external endpoint reachable by browser.
     const externalEndpoint =
       process.env.MINIO_EXTERNAL_ENDPOINT || "172.20.210.84";
     const externalPort = parseInt(
@@ -48,7 +47,7 @@ export class MinioService implements OnModuleInit {
     });
 
     this.logger.log(
-      `MinIO público configurado: ${externalUseSSL ? "https" : "http"}://${externalEndpoint}:${externalPort}`,
+      `MinIO public configured: ${externalUseSSL ? "https" : "http"}://${externalEndpoint}:${externalPort}`,
     );
 
     await this.ensureBucketExists();
@@ -58,7 +57,7 @@ export class MinioService implements OnModuleInit {
     const exists = await this.minioClient.bucketExists(this.bucketName);
     if (!exists) {
       await this.minioClient.makeBucket(this.bucketName, "us-east-1");
-      this.logger.log(`Bucket "${this.bucketName}" criado.`);
+      this.logger.log(`Bucket "${this.bucketName}" created.`);
     }
   }
 
@@ -77,11 +76,10 @@ export class MinioService implements OnModuleInit {
   }
 
   async getFileUrl(fileName: string): Promise<string> {
-    // URL gerada já com o endpoint externo correto — assinatura HMAC válida.
     return this.publicMinioClient.presignedGetObject(
       this.bucketName,
       fileName,
-      24 * 60 * 60, // 24 horas
+      24 * 60 * 60,
     );
   }
 

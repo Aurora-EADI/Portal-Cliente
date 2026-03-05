@@ -180,7 +180,7 @@ export function AirSimulator() {
   const calculatedCapataziaCost = useMemo(() => {
     const weight = parseNumberBR(weightKg);
     if (!weight || weight <= 0) return 0;
-    return Math.max(weight * 1.4104, 94.11);
+    return Math.max(weight * 1.4737, 94.11);
   }, [weightKg]);
 
   // Calculate total general in real-time

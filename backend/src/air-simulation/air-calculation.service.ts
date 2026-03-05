@@ -148,11 +148,11 @@ export class AirCalculationService {
 
   /**
    * Calcula o valor da Capatazia
-   * Regra: 1,4104 por kg, cobranÃ§a mÃ­nima de 94,11
+   * Regra: 1,4737 por kg, cobranÃ§a mÃ­nima de 94,11
    */
   calculateCapatazia(weightKg: number): number {
     if (!weightKg || weightKg <= 0) return 0;
-    const calculated = weightKg * 1.4104;
+    const calculated = weightKg * 1.4737;
     return Math.max(calculated, 94.11);
   }
 
