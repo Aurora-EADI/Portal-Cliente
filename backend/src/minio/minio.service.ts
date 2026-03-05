@@ -1,37 +1,56 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import * as Minio from "minio";
-import * as https from "https";
 
 @Injectable()
 export class MinioService implements OnModuleInit {
+  private readonly logger = new Logger(MinioService.name);
+
+  // Cliente interno: usado para upload, delete, stream (resolve "minio" via DNS Docker)
   private minioClient: Minio.Client;
+
+  // Cliente externo: usado APENAS para gerar URLs presignadas com o host correto
+  // A assinatura HMAC é calculada com MINIO_EXTERNAL_ENDPOINT, que é o IP/domínio
+  // acessível pelo navegador — sem necessidade de substituição de string posterior.
   private publicMinioClient: Minio.Client;
-  private readonly bucketName = "documents";
+
+  private readonly bucketName: string;
 
   async onModuleInit() {
-    // Cliente para operações internas (upload, delete, check bucket)
+    this.bucketName = process.env.MINIO_BUCKET_NAME || "documents";
+
+    // Cliente interno — resolve o hostname de serviço Docker (ex: "minio")
     this.minioClient = new Minio.Client({
       endPoint: process.env.MINIO_ENDPOINT || "minio",
       port: parseInt(process.env.MINIO_PORT || "9000", 10),
       useSSL: process.env.MINIO_USE_SSL === "true",
       accessKey: process.env.MINIO_ACCESS_KEY || "minioadmin",
       secretKey: process.env.MINIO_SECRET_KEY || "minioadmin123",
-      pathStyle: true, // Usa path-style em vez de virtual-host-style
+      pathStyle: true,
     });
 
-    // Cliente para geração de URLs públicas
-    // Usa host.docker.internal para conectar (acessa MinIO via porta exposta do host)
-    // As URLs serão geradas com esse host e depois substituídas pelo IP externo
+    // Cliente público — usa o endpoint externo (IP/domínio acessível pelo navegador)
+    // A URL presignada já é gerada com o host correto; nenhum "replace" é necessário.
+    const externalEndpoint =
+      process.env.MINIO_EXTERNAL_ENDPOINT || "172.20.210.84";
+    const externalPort = parseInt(
+      process.env.MINIO_EXTERNAL_PORT || "9000",
+      10,
+    );
+    const externalUseSSL = process.env.MINIO_EXTERNAL_USE_SSL === "true";
+
     this.publicMinioClient = new Minio.Client({
-      endPoint: "host.docker.internal",
-      port: 9000,
-      useSSL: false,
+      endPoint: externalEndpoint,
+      port: externalPort,
+      useSSL: externalUseSSL,
       accessKey: process.env.MINIO_ACCESS_KEY || "minioadmin",
       secretKey: process.env.MINIO_SECRET_KEY || "minioadmin123",
-      pathStyle: true, // Usa path-style em vez de virtual-host-style
+      pathStyle: true,
     });
 
-    // Criar bucket se não existir
+    this.logger.log(
+      `MinIO público configurado: ${externalUseSSL ? "https" : "http"}://${externalEndpoint}:${externalPort}`,
+    );
+
     await this.ensureBucketExists();
   }
 
@@ -39,6 +58,7 @@ export class MinioService implements OnModuleInit {
     const exists = await this.minioClient.bucketExists(this.bucketName);
     if (!exists) {
       await this.minioClient.makeBucket(this.bucketName, "us-east-1");
+      this.logger.log(`Bucket "${this.bucketName}" criado.`);
     }
   }
 
@@ -57,22 +77,12 @@ export class MinioService implements OnModuleInit {
   }
 
   async getFileUrl(fileName: string): Promise<string> {
-    // Gera URL usando publicMinioClient (conecta via host.docker.internal)
-    const url = await this.publicMinioClient.presignedGetObject(
+    // URL gerada já com o endpoint externo correto — assinatura HMAC válida.
+    return this.publicMinioClient.presignedGetObject(
       this.bucketName,
       fileName,
       24 * 60 * 60, // 24 horas
     );
-
-    // Substitui host.docker.internal pelo IP externo para acesso do navegador
-    const externalEndpoint = process.env.MINIO_EXTERNAL_ENDPOINT || "172.20.210.84";
-    const externalPort = process.env.MINIO_EXTERNAL_PORT || "9000";
-
-    const externalUrl = url
-      .replace("host.docker.internal:9000", `${externalEndpoint}:${externalPort}`)
-      .replace("host.docker.internal", externalEndpoint);
-
-    return externalUrl;
   }
 
   async deleteFile(fileName: string): Promise<void> {
@@ -80,12 +90,10 @@ export class MinioService implements OnModuleInit {
   }
 
   async getFileStream(fileName: string): Promise<any> {
-    // Retorna um stream do arquivo do MinIO
-    return await this.minioClient.getObject(this.bucketName, fileName);
+    return this.minioClient.getObject(this.bucketName, fileName);
   }
 
   async getFileStat(fileName: string): Promise<any> {
-    // Retorna metadados do arquivo
-    return await this.minioClient.statObject(this.bucketName, fileName);
+    return this.minioClient.statObject(this.bucketName, fileName);
   }
 }

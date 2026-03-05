@@ -1,17 +1,18 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { PrismaPostgresService } from "../prisma/prisma.service";
 import { MinioService } from "../minio/minio.service";
 import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client-postgres";
+import * as path from "path";
 
 @Injectable()
 export class DocumentsService {
@@ -20,39 +21,42 @@ export class DocumentsService {
   constructor(
     private prisma: PrismaPostgresService,
     private minio: MinioService,
-  ) {}
+  ) { }
 
   async uploadDocument(
     file: Express.Multer.File,
     dto: UploadDocumentDto,
     user: { id: string; role: UserRole; companyId?: string | null },
   ) {
-    // Gerar nome Ãºnico
+    if (!dto.companyId) {
+      throw new BadRequestException("companyId é obrigatório");
+    }
+
+    // EMPLOYEE só pode anexar documentos para a sua própria empresa
+    if (
+      user.role === UserRole.EMPLOYEE &&
+      (!user.companyId || user.companyId !== dto.companyId)
+    ) {
+      throw new ForbiddenException(
+        "Você não tem permissão para anexar documentos para esta empresa",
+      );
+    }
+
     const timestamp = Date.now();
     const baseFileName = `${timestamp}-${file.originalname}`;
 
-    if (!dto.companyId) {
-      throw new BadRequestException("companyId Ã© obrigatÃ³rio");
-    }
-
-    let fileName = baseFileName;
-
-    if (user.role === UserRole.EMPLOYEE) {
-      if (!user.companyId || user.companyId !== dto.companyId) {
-        throw new ForbiddenException(
-          "VocÃª nÃ£o tem permissÃ£o para anexar documentos para esta empresa",
-        );
-      }
-
-      fileName = `supplier/${dto.companyId}/${baseFileName}`;
-    }
+    // EMPLOYEE: isola arquivos no caminho supplier/{companyId}/
+    const fileName =
+      user.role === UserRole.EMPLOYEE
+        ? `supplier/${dto.companyId}/${baseFileName}`
+        : baseFileName;
 
     return await this.prisma.$transaction(async (tx) => {
-      // 1. Primeiro tenta subir o arquivo (externo ao DB, nÃ£o rollback automÃ¡tico)
+      // 1. Primeiro tenta subir o arquivo (externo ao DB, não rollback automático)
       try {
-        this.logger.log(`Iniciando upload para o MinIO: ${fileName}`);
+        this.logger.log(`Iniciando upload para MinIO: ${fileName}`);
         await this.minio.uploadFile(file, fileName);
-        this.logger.log(`Upload para o MinIO concluÃ­do: ${fileName}`);
+        this.logger.log(`Upload para MinIO concluído: ${fileName}`);
       } catch (error) {
         this.logger.error(
           `Erro no upload para o MinIO (${fileName}): ${error.message}`,
@@ -140,7 +144,7 @@ export class DocumentsService {
   async getFileUrl(id: string) {
     const document = await this.prisma.document.findUnique({ where: { id } });
     if (!document)
-      throw new NotFoundException("Documento nÃ£o encontrado no banco de dados");
+      throw new NotFoundException("Documento não encontrado no banco de dados");
 
     try {
       return await this.minio.getFileUrl(document.fileUrl);
@@ -155,17 +159,41 @@ export class DocumentsService {
     }
   }
 
-  async getFileStream(id: string) {
-    const document = await this.prisma.document.findUnique({ where: { id } });
+  async getFileStream(
+    id: string,
+    user: { id: string; role: UserRole; companyId?: string | null },
+  ) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      select: { fileUrl: true, companyId: true },
+    });
     if (!document)
       throw new NotFoundException("Documento não encontrado no banco de dados");
+
+    // SUPPLIER (fornecedor externo) só pode baixar documentos da própria empresa.
+    // EMPLOYEE (analista interno Aurora) pode baixar documentos de qualquer empresa.
+    if (
+      user.role === UserRole.SUPPLIER &&
+      user.companyId &&
+      user.companyId !== document.companyId
+    ) {
+      throw new ForbiddenException(
+        "Você não tem permissão para acessar documentos desta empresa",
+      );
+    }
 
     try {
       const stream = await this.minio.getFileStream(document.fileUrl);
       const stat = await this.minio.getFileStat(document.fileUrl);
 
-      // Extrai o nome original do arquivo da URL
-      const filename = document.fileUrl.split("-").slice(1).join("-");
+      // Extrai o nome original do arquivo:
+      // 1. Remove o prefixo de diretório (ex: "supplier/uuid/") com path.basename
+      // 2. Separa apenas no PRIMEIRO hífen para remover o timestamp numérico
+      //    Isso evita cortar UUIDs ou hífens do nome original do arquivo.
+      const baseName = path.basename(document.fileUrl);
+      const dashIndex = baseName.indexOf("-");
+      const filename =
+        dashIndex !== -1 ? baseName.slice(dashIndex + 1) : baseName;
 
       return {
         stream,
@@ -195,15 +223,15 @@ export class DocumentsService {
     } = query;
     const skip = (page - 1) * limit;
 
-    // Construir clÃ¡usula WHERE
+    // Construir cláusula WHERE
     const where: Prisma.DocumentWhereInput = {
       dateExpiration: {
         lt: new Date(), // Menor que a data atual (atrasados)
       },
       status: {
-        not: "REJECTED", // NÃ£o mostrar documentos rejeitados
+        not: "REJECTED", // Não mostrar documentos rejeitados
       },
-      isLatest: true, // Apenas versÃµes mais recentes
+      isLatest: true, // Apenas versões mais recentes
     };
 
     // Filtro por empresa (opcional)
@@ -220,7 +248,7 @@ export class DocumentsService {
       ];
     }
 
-    // Construir clÃ¡usula ORDER BY
+    // Construir cláusula ORDER BY
     const orderBy: Prisma.DocumentOrderByWithRelationInput = {};
     if (sortBy === "dateExpiration") {
       orderBy.dateExpiration = sortOrder;
@@ -230,7 +258,7 @@ export class DocumentsService {
       orderBy.name = sortOrder;
     }
 
-    // Executar queries em paralelo para otimizaÃ§Ã£o
+    // Executar queries em paralelo para otimização
     const [documents, total] = await Promise.all([
       this.prisma.document.findMany({
         where,
@@ -265,16 +293,16 @@ export class DocumentsService {
       this.prisma.document.count({ where }),
     ]);
 
-    // Calcular informaÃ§Ãµes de paginaÃ§Ã£o
+    // Calcular informações de paginação
     const totalPages = Math.ceil(total / limit);
 
     // Calcular quantos dias de atraso
     const documentsWithDelay = documents.map((doc) => {
       const daysOverdue = doc.dateExpiration
         ? Math.floor(
-            (new Date().getTime() - doc.dateExpiration.getTime()) /
-              (1000 * 60 * 60 * 24),
-          )
+          (new Date().getTime() - doc.dateExpiration.getTime()) /
+          (1000 * 60 * 60 * 24),
+        )
         : 0;
       return {
         ...doc,
@@ -295,4 +323,3 @@ export class DocumentsService {
     };
   }
 }
-
