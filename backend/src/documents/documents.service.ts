@@ -11,7 +11,7 @@ import { MinioService } from "../minio/minio.service";
 import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
-import { Prisma, UserRole } from "@prisma/client-postgres";
+import { Prisma, UserRole } from "@prisma/client";
 import * as path from "path";
 
 @Injectable()
@@ -21,7 +21,7 @@ export class DocumentsService {
   constructor(
     private prisma: PrismaPostgresService,
     private minio: MinioService,
-  ) { }
+  ) {}
 
   async uploadDocument(
     file: Express.Multer.File,
@@ -198,7 +198,8 @@ export class DocumentsService {
       return {
         stream,
         filename,
-        contentType: stat.metaData["content-type"] || "application/octet-stream",
+        contentType:
+          stat.metaData["content-type"] || "application/octet-stream",
         size: stat.size,
       };
     } catch (error) {
@@ -300,9 +301,9 @@ export class DocumentsService {
     const documentsWithDelay = documents.map((doc) => {
       const daysOverdue = doc.dateExpiration
         ? Math.floor(
-          (new Date().getTime() - doc.dateExpiration.getTime()) /
-          (1000 * 60 * 60 * 24),
-        )
+            (new Date().getTime() - doc.dateExpiration.getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
         : 0;
       return {
         ...doc,
