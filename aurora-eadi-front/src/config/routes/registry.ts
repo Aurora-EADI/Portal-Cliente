@@ -39,6 +39,7 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Comercial
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/history', label: 'Lista de Simulação Marítima', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/simulacoes/propostas', label: 'Propostas', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Faturamento
   { path: '/faturamento/detalhado', label: 'Faturamento Detalhado', icon: 'FileBarChart', parentPath: '/faturamento', isModuleRoot: false },
