@@ -1,4 +1,4 @@
-import { Calculator, Ship, Plane, Wrench, BarChart2, ClipboardList, FileSearch } from 'lucide-react';
+import { Calculator, Ship, Plane, Wrench, BarChart2, ClipboardList, FileSearch, KanbanSquare } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
@@ -7,6 +7,11 @@ export const simulacoesNavigation: NavigationContext = {
     basePath: '/simulacoes',
     items: [
         HOME_ITEM,
+        {
+            label: 'Propostas',
+            icon: KanbanSquare,
+            path: '/simulacoes/propostas',
+        },
         {
             label: 'Simulações',
             icon: Calculator,
