@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  FileEdit,
+  Clock,
   Send,
   ShieldCheck,
-  CheckCircle2,
   XCircle,
-  ClipboardList,
   Eye,
   MoreHorizontal,
   User,
@@ -28,6 +26,7 @@ import {
 import { SearchBar } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/DataTable';
 import { Kanban, KanbanColumnConfig } from '@/components/ui/Kanban';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { useSimulations, useChangeSimulationStatus } from '@/hooks/useSimulations';
 import { SimulationListItem, SimulationStatus, SimulationVersionSummary } from '@/types';
 
@@ -68,23 +67,21 @@ interface PipelineColumn {
 
 const PIPELINE: PipelineColumn[] = [
   {
-    id: SimulationStatus.DRAFT,
-    statuses: [SimulationStatus.DRAFT, SimulationStatus.PENDING],
-    title: 'Em Elaboração',
-    colorClass: 'bg-slate-500',
-    icon: FileEdit,
-  },
-  {
-    id: SimulationStatus.IN_VALIDATION,
-    statuses: [SimulationStatus.IN_VALIDATION],
-    title: 'Em Validação',
-    colorClass: 'bg-amber-500',
-    icon: ClipboardList,
+    id: SimulationStatus.PENDING,
+    statuses: [
+      SimulationStatus.PENDING,
+      SimulationStatus.DRAFT,
+      SimulationStatus.IN_VALIDATION,
+      SimulationStatus.ACCEPTED,
+    ],
+    title: 'Aguardando Definição',
+    colorClass: 'bg-slate-400',
+    icon: Clock,
   },
   {
     id: SimulationStatus.SENT,
     statuses: [SimulationStatus.SENT],
-    title: 'Enviada ao Cliente',
+    title: 'Enviada',
     colorClass: 'bg-blue-500',
     icon: Send,
   },
@@ -96,16 +93,9 @@ const PIPELINE: PipelineColumn[] = [
     icon: ShieldCheck,
   },
   {
-    id: SimulationStatus.ACCEPTED,
-    statuses: [SimulationStatus.ACCEPTED],
-    title: 'Aceita',
-    colorClass: 'bg-emerald-500',
-    icon: CheckCircle2,
-  },
-  {
     id: SimulationStatus.REJECTED,
     statuses: [SimulationStatus.REJECTED],
-    title: 'Recusada',
+    title: 'Rejeitada',
     colorClass: 'bg-red-500',
     icon: XCircle,
   },
@@ -196,20 +186,46 @@ function PropostaCard({ item, onView, onMoveStatus }: PropostaCardProps) {
 export function PropostasKanban() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   const { data: simulations = [], isLoading } = useSimulations();
   const changeStatus = useChangeSimulationStatus();
 
+  const userOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { value: string; label: string }[] = [];
+    for (const s of simulations) {
+      const user = getCurrentVersion(s)?.user;
+      if (user && !seen.has(user.id)) {
+        seen.add(user.id);
+        options.push({ value: user.id, label: user.name });
+      }
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [simulations]);
+
   const filtered = useMemo(() => {
-    if (!searchTerm.trim()) return simulations;
-    const term = searchTerm.toLowerCase();
-    return simulations.filter(
-      (s) =>
-        s.simulationNumber.toLowerCase().includes(term) ||
-        s.customer?.name.toLowerCase().includes(term) ||
-        s.customer?.document?.toLowerCase().includes(term),
-    );
-  }, [simulations, searchTerm]);
+    let result = simulations;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.simulationNumber.toLowerCase().includes(term) ||
+          s.customer?.name.toLowerCase().includes(term) ||
+          s.customer?.document?.toLowerCase().includes(term),
+      );
+    }
+
+    if (selectedUsers.length > 0) {
+      result = result.filter((s) => {
+        const userId = getCurrentVersion(s)?.user?.id;
+        return userId ? selectedUsers.includes(userId) : false;
+      });
+    }
+
+    return result;
+  }, [simulations, searchTerm, selectedUsers]);
 
   const columns: KanbanColumnConfig<SimulationListItem>[] = useMemo(
     () =>
@@ -245,13 +261,25 @@ export function PropostasKanban() {
         description="Acompanhe o funil de propostas comerciais por estágio."
       />
 
-      <div className="max-w-sm">
-        <SearchBar
-          placeholder="Buscar por número, cliente ou CNPJ..."
-          onSearch={(v) => { setSearchTerm(v); }}
-          onClear={() => setSearchTerm('')}
-          showClearButton={!!searchTerm}
-        />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="w-80">
+          <SearchBar
+            placeholder="Buscar por número, cliente ou CNPJ..."
+            onSearch={(v) => { setSearchTerm(v); }}
+            onClear={() => setSearchTerm('')}
+            showClearButton={!!searchTerm}
+          />
+        </div>
+        <div className="w-64">
+          <MultiSelect
+            options={userOptions}
+            selected={selectedUsers}
+            onChange={setSelectedUsers}
+            placeholder="Filtrar por responsável..."
+            searchPlaceholder="Buscar usuário..."
+            emptyMessage="Nenhum usuário encontrado."
+          />
+        </div>
       </div>
 
       <Kanban

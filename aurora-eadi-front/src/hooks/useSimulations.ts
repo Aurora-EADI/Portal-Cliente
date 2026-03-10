@@ -145,11 +145,12 @@ export const useApproveSimulation = () => {
 export const useChangeSimulationStatus = () => {
   const queryClient = useQueryClient();
   const statusLabels: Partial<Record<SimulationStatus, string>> = {
+    [SimulationStatus.PENDING]:      'Simulação movida para Aguardando Definição!',
     [SimulationStatus.APPROVED]:     'Simulação aprovada com sucesso!',
-    [SimulationStatus.SENT]:     'Simulação marcada como Enviada!',
-    [SimulationStatus.ACCEPTED]: 'Simulação marcada como Aceita!',
-    [SimulationStatus.REJECTED]: 'Simulação marcada como Rejeitada!',
-    [SimulationStatus.DRAFT]:    'Simulação revertida para Rascunho!',
+    [SimulationStatus.SENT]:         'Simulação marcada como Enviada!',
+    [SimulationStatus.ACCEPTED]:     'Simulação marcada como Aceita!',
+    [SimulationStatus.REJECTED]:     'Simulação marcada como Rejeitada!',
+    [SimulationStatus.DRAFT]:        'Simulação revertida para Rascunho!',
   };
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: SimulationStatus }) =>

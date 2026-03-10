@@ -40,7 +40,7 @@ export function Kanban<T>({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex gap-5 overflow-x-auto pb-4">
+      <div className="flex justify-center gap-5 overflow-x-auto pb-4">
         {columns.map((column) => (
           <KanbanColumn
             key={column.id}
