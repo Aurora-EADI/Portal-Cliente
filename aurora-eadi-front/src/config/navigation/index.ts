@@ -5,6 +5,7 @@ import { NavItem, NavigationContext } from './types';
 export type { NavItem, NavigationContext } from './types';
 import { documentosNavigation } from './modules/documentos';
 import { faturamentoNavigation } from './modules/faturamento';
+import { estoqueNavigation } from './modules/estoque';
 import { fornecedorNavigation } from './modules/fornecedor';
 import { permissoesNavigation } from './modules/permissoes';
 import { comercialNavigation } from './modules/comercial';
@@ -20,6 +21,7 @@ import { mainNavigation } from './modules/main';
 export const allNavigationContexts: NavigationContext[] = [
     documentosNavigation,
     faturamentoNavigation,
+    estoqueNavigation,
     fornecedorNavigation,
     permissoesNavigation,
     comercialNavigation,

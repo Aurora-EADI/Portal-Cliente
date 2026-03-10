@@ -27,6 +27,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/simulacoes', label: 'Simulações', icon: 'BarChart3', isModuleRoot: true },
   { path: '/cliente', label: 'Cliente', icon: 'Users', isModuleRoot: true },
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
+  { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
 ];
 
@@ -43,6 +44,9 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Faturamento
   { path: '/faturamento/detalhado', label: 'Faturamento Detalhado', icon: 'FileBarChart', parentPath: '/faturamento', isModuleRoot: false },
   { path: '/faturamento/cutoff', label: 'Relatório CutOff', icon: 'FileSpreadsheet', parentPath: '/faturamento', isModuleRoot: false },
+
+  // Estoque
+  { path: '/estoque/detalhado', label: 'Estoque em Processo', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
 
   // Fornecedor
   { path: '/fornecedor/lista', label: 'Lista de Fornecedores', icon: 'List', parentPath: '/fornecedor', isModuleRoot: false },

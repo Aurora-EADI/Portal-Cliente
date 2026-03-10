@@ -246,6 +246,52 @@ export const Sidebar: React.FC = () => {
                     <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
                       {item.children?.map((child) => {
                         const ChildIcon = child.icon;
+                        const childHasChildren = child.children && child.children.length > 0;
+                        const childIsExpanded = expandedGroups[child.label] ?? isGroupActive(child);
+
+                        if (childHasChildren) {
+                          // Sub-grupo de segundo nível (ex: "Relatórios")
+                          return (
+                            <div key={child.label}>
+                              <SidebarItem
+                                label={child.label}
+                                icon={<ChildIcon size={16} />}
+                                active={isGroupActive(child)}
+                                collapsed={collapsed}
+                                hasChildren={true}
+                                isExpanded={childIsExpanded}
+                                isChild={true}
+                                onClick={() => toggleGroup(child.label)}
+                              />
+                              {childIsExpanded && (
+                                <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                                  {child.children?.map((grandChild) => {
+                                    const GrandChildIcon = grandChild.icon;
+                                    return (
+                                      <button
+                                        key={grandChild.path}
+                                        onClick={() => router.push(grandChild.path)}
+                                        className={`
+                                          w-full flex items-center gap-3 pl-16 pr-3 py-2 rounded-lg
+                                          transition-all duration-200 text-xs font-medium
+                                          ${isActive(grandChild.path)
+                                            ? 'bg-primary-500/10 text-white border border-primary-500/20'
+                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
+                                          }
+                                        `}
+                                      >
+                                        <GrandChildIcon size={14} />
+                                        <span className="truncate">{grandChild.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Item simples filho
                         return (
                           <SidebarItem
                             key={child.path}

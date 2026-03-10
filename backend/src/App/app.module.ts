@@ -6,6 +6,7 @@ import { EmployeesModule } from '../employee/employee.module';
 import { AdminModule } from '../admin/admin.module';
 import { SupplierModule } from 'src/supplier/supplier.module';
 import { FaturamentoModule } from 'src/faturamento/faturamento.module';
+import { EstoqueModule } from 'src/estoque/estoque.module';
 import { KanbanModule } from 'src/kanban/kanban.module';
 import { ModulesModule } from 'src/modules/modules.module';
 import { UserModule } from 'src/user/user.module';
@@ -38,6 +39,7 @@ import { CcteModule } from 'src/ccte/ccte.module';
     AdminModule,
     SupplierModule,
     FaturamentoModule,
+    EstoqueModule,
     KanbanModule,
     ModulesModule,
     UserModule,
