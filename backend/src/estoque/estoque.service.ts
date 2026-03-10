@@ -47,7 +47,7 @@ export class EstoqueService {
           saldo = sum(c.saldo),
           a.n_da,
           numero = (
-            SELECT TOP 1 l.numero
+            SELECT TOP 1 l.loc_nokia
             FROM localizacao l
             INNER JOIN controle_etq e ON e.localizacao_id = l.cod_localizacao
             WHERE e.n_lote = b.n_lote
@@ -81,3 +81,5 @@ export class EstoqueService {
     ]);
   }
 }
+
+

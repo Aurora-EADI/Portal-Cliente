@@ -12,3 +12,4 @@ export class EstoqueController {
     return this.estoqueService.findAll(dt_inicio, dt_fim, n_lote, cliente);
   }
 }
+
