@@ -44,6 +44,7 @@ interface FormData {
     isActive: boolean;
     initialCost: string;
     hasStripping: boolean;
+    hasLcl: boolean;
 }
 
 export function RegisterService() {
@@ -60,6 +61,7 @@ export function RegisterService() {
         isActive: true,
         initialCost: '',
         hasStripping: false,
+        hasLcl: false,
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -162,6 +164,7 @@ export function RegisterService() {
                 modal: formData.modal, // ⚠️ INCLUIR MODAL
                 isActive: formData.isActive,
                 hasStripping: formData.hasStripping,
+                ...(formData.hasLcl ? { hasLcl: true } : {}),
             };
 
             const newService = await createService(serviceData);
@@ -182,6 +185,7 @@ export function RegisterService() {
                 isActive: true,
                 initialCost: '',
                 hasStripping: false,
+                hasLcl: false,
             });
             setErrors({});
         } catch (error) {
@@ -375,6 +379,24 @@ export function RegisterService() {
                                     </span>
                                     <span className="text-xs text-gray-500">
                                         Se marcado, este serviço só aparecerá em simulações que tenham desova
+                                    </span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasLcl"
+                                    checked={formData.hasLcl}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Carga Solta (LCL)?
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Se marcado, este serviço só aparecerá em simulações que tenham carga solta (LCL)
                                     </span>
                                 </div>
                             </label>

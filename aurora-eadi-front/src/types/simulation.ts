@@ -55,6 +55,7 @@ export interface Simulation {
   // Status e controle
   status: SimulationStatus;
   hasStripping: boolean;
+  hasLcl?: boolean;
   minBillingValue: number;
   createdBy: string;
   createdAt: string;
@@ -89,6 +90,7 @@ export interface SimulationService {
   serviceCode: string;
   calculationType: string;
   hasStripping: boolean;
+  hasLcl?: boolean;
   costType: ServiceCostType;
   originalCost: number;
   appliedCost: number;
@@ -100,6 +102,7 @@ export interface SimulationService {
     name: string;
     calculationType: string;
     hasStripping: boolean;
+    hasLcl?: boolean;
   };
 }
 
@@ -148,6 +151,7 @@ export interface CreateSimulationDto {
   transportCost?: number;
   discount?: number;
   hasStripping?: boolean;
+  hasLcl?: boolean;
   auroraPeriods?: number;
   minBillingValue?: number;
   initialServices?: AddSimulationServiceDto[];

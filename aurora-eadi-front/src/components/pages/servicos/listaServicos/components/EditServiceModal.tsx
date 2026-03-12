@@ -39,6 +39,7 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
         calculationType: service.calculationType,
         modal: service.modal,
         hasStripping: service.hasStripping,
+        hasLcl: service.hasLcl || false,
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -62,6 +63,7 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
             if (formData.calculationType !== service.calculationType) serviceChanges.calculationType = formData.calculationType;
             if (formData.modal !== service.modal) serviceChanges.modal = formData.modal;
             if (formData.hasStripping !== service.hasStripping) serviceChanges.hasStripping = formData.hasStripping;
+            if ((formData.hasLcl || false) !== (service.hasLcl || false)) serviceChanges.hasLcl = formData.hasLcl;
 
             if (Object.keys(serviceChanges).length > 0) {
                 await updateService({ id: service.id, data: serviceChanges });
@@ -91,6 +93,22 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Editar Serviço</h3>
                             <p className="text-sm text-gray-500">{service.code}</p>
+                        </div>
+
+                        <div className="hidden">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasLcl"
+                                    checked={formData.hasLcl}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">Somente para Carga Solta (LCL)</span>
+                                    <span className="text-xs text-gray-500">Este serviço só aparecerá se a simulação tiver carga solta (LCL) marcada</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -168,6 +186,23 @@ export function EditServiceModal({ service, onClose }: EditServiceModalProps) {
                                 <div className="flex flex-col">
                                     <span className="text-sm font-medium text-gray-700">Somente para Desova</span>
                                     <span className="text-xs text-gray-500">Este serviço só aparecerá se a simulação tiver desova marcada</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        {/* Checkbox LCL */}
+                        <div className="md:col-span-2">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasLcl"
+                                    checked={formData.hasLcl}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">Somente para Carga Solta (LCL)</span>
+                                    <span className="text-xs text-gray-500">Este serviço só aparecerá se a simulação tiver carga solta (LCL) marcada</span>
                                 </div>
                             </label>
                         </div>

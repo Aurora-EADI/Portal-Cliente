@@ -84,6 +84,7 @@ export class SimulationsService {
             transportCost: new Prisma.Decimal(0),
             discount: new Prisma.Decimal(createSimulationDto.discount || 0),
             hasStripping: createSimulationDto.hasStripping || false,
+            hasLcl: createSimulationDto.hasLcl || false,
             auroraPeriods: createSimulationDto.auroraPeriods ?? 1,
             minBillingValue: new Prisma.Decimal(
               createSimulationDto.minBillingValue || 5500,
@@ -116,6 +117,7 @@ export class SimulationsService {
                 serviceCode: def?.code || "N/A",
                 calculationType: def?.calculationType || "FIXED",
                 hasStripping: def?.hasStripping || false,
+                hasLcl: def?.hasLcl || false,
                 costType: s.costType,
                 originalCost: new Prisma.Decimal(s.originalCost ?? 0),
                 appliedCost: new Prisma.Decimal(s.appliedCost ?? 0),
@@ -199,6 +201,7 @@ export class SimulationsService {
           transportCost: new Prisma.Decimal(0),
           discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
           hasStripping: createNewVersionDto.hasStripping || false,
+          hasLcl: createNewVersionDto.hasLcl || false,
           auroraPeriods: createNewVersionDto.auroraPeriods ?? baseVersion.auroraPeriods,
           minBillingValue: new Prisma.Decimal(
             createNewVersionDto.minBillingValue || 5500,
@@ -216,6 +219,7 @@ export class SimulationsService {
           serviceCode: s.serviceCode,
           calculationType: s.calculationType,
           hasStripping: s.hasStripping,
+          hasLcl: (s as any).hasLcl || false,
           costType: s.costType,
           originalCost: s.originalCost,
           appliedCost: s.appliedCost,
@@ -434,6 +438,9 @@ export class SimulationsService {
     if (updateSimulationDto.hasStripping !== undefined) {
       updateData.hasStripping = updateSimulationDto.hasStripping;
     }
+    if (updateSimulationDto.hasLcl !== undefined) {
+      updateData.hasLcl = updateSimulationDto.hasLcl;
+    }
     if (updateSimulationDto.minBillingValue !== undefined) {
       updateData.minBillingValue = new Prisma.Decimal(
         updateSimulationDto.minBillingValue,
@@ -463,6 +470,13 @@ export class SimulationsService {
     if (updateSimulationDto.hasStripping === false) {
       await this.prisma.simulationService.deleteMany({
         where: { versionId: id, hasStripping: true },
+      });
+    }
+
+    // Se desativou LCL, remove os serviÃ§os LCL
+    if (updateSimulationDto.hasLcl === false) {
+      await this.prisma.simulationService.deleteMany({
+        where: { versionId: id, hasLcl: true },
       });
     }
 
@@ -582,6 +596,7 @@ export class SimulationsService {
           serviceCode: service.code,
           calculationType: service.calculationType,
           hasStripping: service.hasStripping,
+          hasLcl: (service as any).hasLcl || false,
           costType: dto.costType,
           originalCost: new Prisma.Decimal(rate),
           appliedCost: new Prisma.Decimal(appliedCost),
@@ -614,6 +629,7 @@ export class SimulationsService {
         code: s.serviceCode,
         calculationType: s.calculationType,
         hasStripping: s.hasStripping,
+        hasLcl: (s as any).hasLcl || false,
       },
     }));
   }
@@ -634,6 +650,7 @@ export class SimulationsService {
 
     const effectiveServices = version.services.filter((s) => {
       if (!version.hasStripping && s.hasStripping) return false;
+      if (!(version as any).hasLcl && (s as any).hasLcl) return false;
       return true;
     });
 

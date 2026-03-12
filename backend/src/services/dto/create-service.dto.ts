@@ -35,5 +35,9 @@ export class CreateServiceDto {
   @IsOptional()
   @IsBoolean()
   hasStripping?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hasLcl?: boolean;
 }
 

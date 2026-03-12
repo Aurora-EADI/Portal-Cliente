@@ -44,15 +44,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useMaritimeServices } from '@/hooks/useServices';
+import { useMaritimeServices, useServiceCostCurrent } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
 import { ServicesTab } from './ServicesTab';
 import { formatCurrency, formatUSD, formatPercent, formatNumberBR, parseNumberBR } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
-import { ServiceCostType } from '@/types';
+import { ServiceCalculationType, ServiceCostType } from '@/types';
 import { exportMaritimeSimulationToPDF } from '@/services/pdfService';
 
 const DEFAULT_MIN_BILLING = 5500;
+const STORAGE_SERVICE_CODE = 'ARMAZENAGEM-R-1-PERI';
 
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
@@ -65,6 +66,11 @@ export function MaritimeSimulator() {
 
   // Services Data
   const { data: servicesData, isLoading: isLoadingServices } = useMaritimeServices(false);
+  const storageService = useMemo(
+    () => (servicesData || []).find(s => s.code === STORAGE_SERVICE_CODE),
+    [servicesData]
+  );
+  const { data: storageCostData } = useServiceCostCurrent(storageService?.id || '');
 
   // Mutations
   const createSimulationMutation = useCreateSimulation();
@@ -127,7 +133,8 @@ export function MaritimeSimulator() {
     return list.filter(s => {
       const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
       const serviceName = serviceDef?.name || (s as any).serviceName || '';
-      const isLCLService = serviceName.toUpperCase().includes('LCL');
+      // Prefer the explicit flag `hasLcl`, but keep backward compatibility with legacy naming ("... LCL ...").
+      const isLCLService = Boolean((serviceDef?.hasLcl ?? (s as any).hasLcl) === true) || serviceName.toUpperCase().includes('LCL');
 
       // Filter by stripping
       if (!hasStripping) {
@@ -155,11 +162,21 @@ export function MaritimeSimulator() {
     return normalized.includes('transporte') && normalized.includes('dta');
   };
 
-  // Calculate storage cost based on periods
-  const calculatedStorageCost = useMemo(() => {
-    const rate = 0.35 * (parseInt(auroraPeriods) || 1);
-    return (rate / 100) * (cifBrlNum || 0);
-  }, [auroraPeriods, cifBrlNum]);
+  const storageServiceRate = useMemo(() => {
+    if (!storageService) return 0;
+    const base = Number((storageCostData as any)?.cost || 0);
+    const periods = parseInt(auroraPeriods) || 1;
+    return base * periods;
+  }, [storageService?.id, storageCostData, auroraPeriods]);
+
+  const storageServiceAppliedCost = useMemo(() => {
+    if (!storageService) return 0;
+    return calculateServiceCost(storageServiceRate, ServiceCalculationType.PERCENTAGE_CIF, {
+      cifBrl: cifBrlNum,
+      tonnes: parseNumberBR(tonnes || '0'),
+      cntrCount: parseInt(cntrCount || '0'),
+    });
+  }, [storageService?.id, storageServiceRate, cifBrlNum, tonnes, cntrCount]);
 
   // Calculate total services in real-time
   const { totalServices: calculatedTotalServices, eligibleServicesTotal, excludedServicesTotal } = useMemo(() => {
@@ -169,7 +186,19 @@ export function MaritimeSimulator() {
       cntrCount: parseInt(cntrCount || '0'),
     };
 
-    return effectiveServicesList.reduce((acc, s) => {
+    const list = storageService
+      ? [
+          ...effectiveServicesList.filter(s => s.serviceId !== storageService.id),
+          {
+            serviceId: storageService.id,
+            costType: ServiceCostType.DEFAULT,
+            originalCost: storageServiceRate,
+            appliedCost: storageServiceAppliedCost,
+          } as any,
+        ]
+      : effectiveServicesList;
+
+    return list.reduce((acc, s) => {
       let cost = 0;
       const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
       
@@ -194,10 +223,10 @@ export function MaritimeSimulator() {
 
       return acc;
     }, { totalServices: 0, eligibleServicesTotal: 0, excludedServicesTotal: 0 });
-  }, [effectiveServicesList, cifBrlNum, tonnes, cntrCount, servicesData]);
+  }, [effectiveServicesList, cifBrlNum, tonnes, cntrCount, servicesData, storageService, storageServiceRate, storageServiceAppliedCost]);
 
   // Count of selected services
-  const servicesCount = effectiveServicesList.length;
+  const servicesCount = effectiveServicesList.filter(s => s.serviceId !== storageService?.id).length + (storageService ? 1 : 0);
 
   // Calculate total general in real-time
   // Business Rule: Adjustment = Max(0, Threshold - EligibleTotal)
@@ -217,7 +246,7 @@ export function MaritimeSimulator() {
     
     return {
       minDiff: difference,
-      totalGeneral: eligible + difference + excluded + calculatedStorageCost - discountValue
+      totalGeneral: eligible + difference + excluded - discountValue
     };
   }, [eligibleServicesTotal, excludedServicesTotal, discount, cntrCount, minBillingValue]);
 
@@ -266,13 +295,14 @@ export function MaritimeSimulator() {
       setSelectedCustomerId(currentSimulation.customerId);
       setCifUsd(formatNumberBR(currentSimulation.cifUsd));
       setDollarRate(formatNumberBR(currentSimulation.dollarRate));
-      setTonnes(formatNumberBR(currentSimulation.tonnes));
+      setTonnes(currentSimulation.tonnes && Number(currentSimulation.tonnes) > 0 ? formatNumberBR(currentSimulation.tonnes, 3) : '');
       setCntrCount(currentSimulation.cntrCount?.toString() || '');
       setCntrType(currentSimulation.cntrType || '');
 
 
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
       setHasStripping(currentSimulation.hasStripping || false);
+      setHasLCL(currentSimulation.hasLcl || false);
       setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
       setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
     }
@@ -328,10 +358,20 @@ export function MaritimeSimulator() {
           cntrType: cntrType || undefined,
           discount: discount ? parseNumberBR(discount) : 0,
           hasStripping,
+          hasLcl: hasLCL,
           minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
           auroraPeriods: parseInt(auroraPeriods) || 1,
-          storageCost: calculatedStorageCost,
-          initialServices: localServices,
+          initialServices: storageService
+            ? [
+                {
+                  serviceId: storageService.id,
+                  costType: ServiceCostType.DEFAULT,
+                  originalCost: storageServiceRate,
+                  appliedCost: storageServiceAppliedCost,
+                },
+                ...localServices.filter(s => s.serviceId !== storageService.id),
+              ]
+            : localServices,
         });
 
         // Clear local services after saving
@@ -352,11 +392,22 @@ export function MaritimeSimulator() {
             cntrType: cntrType || undefined,
             discount: discount ? parseNumberBR(discount) : 0,
             hasStripping,
+            hasLcl: hasLCL,
             minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
             auroraPeriods: parseInt(auroraPeriods) || 1,
-            storageCost: calculatedStorageCost,
           },
         });
+        if (storageService) {
+          await addServiceMutation.mutateAsync({
+            simulationId: currentSimulationId,
+            data: {
+              serviceId: storageService.id,
+              costType: ServiceCostType.DEFAULT,
+              originalCost: storageServiceRate,
+              appliedCost: storageServiceAppliedCost,
+            },
+          });
+        }
         toast.success('Simulação atualizada com sucesso!');
         setIsEditingVersion(false);
         router.push('/comercial/history');
@@ -374,7 +425,44 @@ export function MaritimeSimulator() {
       return;
     }
 
-    exportMaritimeSimulationToPDF(currentSimulation as any);
+    const baseServices = (currentSimulation.services || []).filter((s: any) => s.serviceId !== storageService?.id);
+
+    const storageServiceForPdf = storageService
+      ? ({
+          serviceId: storageService.id,
+          serviceName: storageService.name,
+          serviceCode: storageService.code,
+          calculationType: storageService.calculationType,
+          hasStripping: storageService.hasStripping,
+          costType: ServiceCostType.DEFAULT,
+          originalCost: storageServiceRate,
+          appliedCost: storageServiceAppliedCost,
+          service: {
+            id: storageService.id,
+            code: storageService.code,
+            name: storageService.name,
+            calculationType: storageService.calculationType,
+            hasStripping: storageService.hasStripping,
+          },
+        } as any)
+      : null;
+
+    exportMaritimeSimulationToPDF({
+      ...(currentSimulation as any),
+      storageCost: 0,
+      cifUsd: parseNumberBR(cifUsd) || 0,
+      dollarRate: parseNumberBR(dollarRate) || 0,
+      cifBrl: cifBrlNum,
+      tonnes: tonnes ? parseNumberBR(tonnes) : undefined,
+      cntrCount: cntrCount ? parseInt(cntrCount) : undefined,
+      cntrType: cntrType || undefined,
+      discount: discount ? parseNumberBR(discount) : 0,
+      hasStripping,
+      hasLcl: hasLCL,
+      minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+      auroraPeriods: parseInt(auroraPeriods) || 1,
+      services: storageServiceForPdf ? [...baseServices, storageServiceForPdf] : baseServices,
+    } as any);
   };
 
   // Handler: Create new version
@@ -393,10 +481,22 @@ export function MaritimeSimulator() {
         cntrType: cntrType || undefined,
         discount: discount ? parseNumberBR(discount) : 0,
         hasStripping,
+        hasLcl: hasLCL,
         minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
         auroraPeriods: parseInt(auroraPeriods) || 1,
-        storageCost: calculatedStorageCost,
       });
+
+      if (storageService) {
+        await addServiceMutation.mutateAsync({
+          simulationId: newVersion.id,
+          data: {
+            serviceId: storageService.id,
+            costType: ServiceCostType.DEFAULT,
+            originalCost: storageServiceRate,
+            appliedCost: storageServiceAppliedCost,
+          },
+        });
+      }
 
       setCurrentSimulationId(newVersion.id);
       setIsEditingVersion(true);
@@ -749,7 +849,14 @@ export function MaritimeSimulator() {
                       placeholder="0,000"
                       value={tonnes}
                       onChange={(e) => setTonnes(e.target.value)}
-                      onBlur={(e) => setTonnes(formatNumberBR(parseNumberBR(e.target.value), 3))}
+                      onBlur={(e) => {
+                        const v = (e.target.value || '').trim();
+                        if (!v) {
+                          setTonnes('');
+                          return;
+                        }
+                        setTonnes(formatNumberBR(parseNumberBR(v), 3));
+                      }}
                       disabled={!isEditable}
                     />
                   </div>
@@ -836,7 +943,7 @@ export function MaritimeSimulator() {
                       </div>
                       <div className="relative flex-[1.5]">
                         <Input
-                          value={formatCurrency(calculatedStorageCost)}
+                          value={formatCurrency(storageServiceAppliedCost)}
                           readOnly
                           className="bg-gray-50 text-gray-600 font-medium pl-9"
                         />
@@ -888,7 +995,7 @@ export function MaritimeSimulator() {
               <TabsContent value="servico" className="mt-0 p-0">
                 <ServicesTab
                   simulationId={currentSimulationId}
-                  services={servicesData || []}
+                  services={(servicesData || []).filter(s => s.code !== STORAGE_SERVICE_CODE)}
                   isLoadingServices={isLoadingServices}
                   isEditable={isEditable}
                   simulationData={{
