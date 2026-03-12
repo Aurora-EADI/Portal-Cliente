@@ -15,6 +15,7 @@ import {
     CheckCircle,
     Send,
     XCircle,
+    Clock,
     ChevronDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,13 +37,13 @@ import { VersionHistoryModal } from './modals/VersionHistoryModal';
 import { Pagination } from '@/components/ui/Pagination';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-    PENDING:       { label: 'Pendente',      color: 'bg-gray-100 text-gray-600 border-gray-200' },
-    IN_VALIDATION: { label: 'Em Validação',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-    APPROVED:      { label: 'Aprovada',      color: 'bg-green-50 text-green-700 border-green-200' },
-    DRAFT:         { label: 'Rascunho',      color: 'bg-gray-100 text-gray-500 border-gray-200' },
-    SENT:          { label: 'Enviada',       color: 'bg-blue-50 text-blue-700 border-blue-200' },
-    ACCEPTED:      { label: 'Aceita',        color: 'bg-green-100 text-green-800 border-green-300' },
-    REJECTED:      { label: 'Rejeitada',     color: 'bg-red-50 text-red-700 border-red-200' },
+    PENDING:       { label: 'Aguardando Definição', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    DRAFT:         { label: 'Aguardando Definição', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    IN_VALIDATION: { label: 'Aguardando Definição', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    ACCEPTED:      { label: 'Aguardando Definição', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    SENT:          { label: 'Enviada',              color: 'bg-blue-50 text-blue-700 border-blue-200' },
+    APPROVED:      { label: 'Aprovada',             color: 'bg-green-50 text-green-700 border-green-200' },
+    REJECTED:      { label: 'Rejeitada',            color: 'bg-red-50 text-red-700 border-red-200' },
 };
 
 export function SimulationHistory() {
@@ -234,12 +235,12 @@ export function SimulationHistory() {
                                                                     <DropdownMenuLabel>Definir Status</DropdownMenuLabel>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem
-                                                                        disabled={currentVersion?.status === SimulationStatus.APPROVED || changeStatusMutation.isPending}
-                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.APPROVED })}
+                                                                        disabled={currentVersion?.status === SimulationStatus.PENDING || changeStatusMutation.isPending}
+                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.PENDING })}
                                                                         className="gap-2"
                                                                     >
-                                                                        <CheckCircle className="w-4 h-4 text-green-600" />
-                                                                        Aprovada
+                                                                        <Clock className="w-4 h-4 text-slate-500" />
+                                                                        Aguardando Definição
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         disabled={currentVersion?.status === SimulationStatus.SENT || changeStatusMutation.isPending}
@@ -248,6 +249,14 @@ export function SimulationHistory() {
                                                                     >
                                                                         <Send className="w-4 h-4 text-blue-500" />
                                                                         Enviada
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        disabled={currentVersion?.status === SimulationStatus.APPROVED || changeStatusMutation.isPending}
+                                                                        onClick={() => changeStatusMutation.mutate({ id: currentVersion.id, status: SimulationStatus.APPROVED })}
+                                                                        className="gap-2"
+                                                                    >
+                                                                        <CheckCircle className="w-4 h-4 text-green-600" />
+                                                                        Aprovada
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         disabled={currentVersion?.status === SimulationStatus.REJECTED || changeStatusMutation.isPending}
