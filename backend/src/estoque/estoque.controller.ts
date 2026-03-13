@@ -8,8 +8,8 @@ export class EstoqueController {
 
   @Get()
   async findAll(@Query() query: EstoqueQueryDto) {
-    const { dt_inicio, dt_fim, n_lote, cliente } = query;
-    return this.estoqueService.findAll(dt_inicio, dt_fim, n_lote, cliente);
+    const { dt_inicio, dt_fim, n_lote, cliente, report_type } = query;
+    return this.estoqueService.findAll(dt_inicio, dt_fim, n_lote, cliente, report_type);
   }
 }
 

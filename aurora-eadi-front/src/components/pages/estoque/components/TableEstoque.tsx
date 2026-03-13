@@ -10,7 +10,7 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Settings, Loader2 } from "lucide-react";
+import { Settings, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -39,19 +39,34 @@ type ColumnConfig = {
 };
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: "dt_entrada",     label: "Data Entrada",  visible: true,  width: 130, minWidth: 100 },
-  { id: "n_lote",         label: "Nº Lote",        visible: true,  width: 130, minWidth: 100 },
-  { id: "n_documento",    label: "Nº Documento",   visible: true,  width: 150, minWidth: 100 },
+  { id: "ano",            label: "Ano",           visible: false, width: 80,  minWidth: 60  },
+  { id: "dt_entrada",     label: "Data Entrada",  visible: true,  width: 120, minWidth: 100 },
+  { id: "n_lote",         label: "Nº Lote",        visible: true,  width: 120, minWidth: 100 },
   { id: "n_conhecimento", label: "Conhecimento",   visible: true,  width: 160, minWidth: 100 },
-  { id: "master",         label: "Master",          visible: false, width: 160, minWidth: 100 },
-  { id: "cliente",        label: "Cliente",         visible: true,  width: 220, minWidth: 120 },
-  { id: "saldo",          label: "Saldo",           visible: true,  width: 100, minWidth: 80  },
-  { id: "n_da",           label: "Nº DA",           visible: false, width: 130, minWidth: 100 },
-  { id: "numero",         label: "Localização",     visible: true,  width: 130, minWidth: 100 },
-  { id: "filtro",         label: "Filtro",          visible: false, width: 200, minWidth: 100 },
+  { id: "cliente",        label: "Cliente",         visible: true,  width: 200, minWidth: 120 },
+  { id: "status_estoque", label: "Status",          visible: false, width: 120, minWidth: 100 },
+  { id: "n_da",           label: "Nº DA",           visible: true,  width: 130, minWidth: 100 },
+  { id: "dta",            label: "DTA",             visible: true,  width: 130, minWidth: 100 },
+  { id: "container",      label: "Container",       visible: false, width: 200, minWidth: 120 },
+  { id: "Saldo_(Vol)",    label: "Saldo (Vol)",     visible: true,  width: 100, minWidth: 80  },
+  { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", visible: true, width: 130, minWidth: 100 },
+  { id: "valor_cif_total", label: "CIF Total",      visible: true,  width: 130, minWidth: 100 },
+  { id: "m3_total",        label: "M3 Total",       visible: true,  width: 100, minWidth: 80  },
+  { id: "qtd_container",   label: "Qtd Container",  visible: false, width: 100, minWidth: 80  },
 ];
 
 const SKELETON_ROWS = 10;
+
+const parseNumericValue = (value: any): number => {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/\./g, "").replace(",", ".");
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+};
 
 const formatDate = (date?: string | null): string => {
   if (!date) return "";
@@ -64,8 +79,26 @@ const formatDate = (date?: string | null): string => {
   return `${day}/${month}/${year}`;
 };
 
-const getCellValue = (item: TypeEstoque, colId: keyof TypeEstoque): string | number => {
+const getCellValue = (item: TypeEstoque, colId: keyof TypeEstoque) => {
   if (colId === "dt_entrada") return formatDate(item.dt_entrada);
+  if (colId === "status_estoque") {
+    const status = item.status_estoque;
+    if (status === "Em Estoque") {
+      return (
+        <span className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+          Em Estoque
+        </span>
+      );
+    }
+    if (status === "Finalizado") {
+      return (
+        <span className="px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
+          Finalizado
+        </span>
+      );
+    }
+    return status;
+  }
   const v = item[colId];
   return v === null || v === undefined ? "" : v;
 };
@@ -100,9 +133,9 @@ const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalIte
   currentPage: number; totalPages: number; itemsPerPage: number; totalItems: number;
   onPrev: () => void; onNext: () => void;
 }) => (
-  <div className="flex justify-between items-center mt-4">
+  <div className="flex justify-between items-center mt-4 px-4">
     <div className="text-sm text-gray-600">
-      Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
+       Exibindo {totalItems === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} clientes
     </div>
     <div className="flex items-center gap-2">
       <Button onClick={onPrev} disabled={currentPage === 1} variant="outline" size="sm">Anterior</Button>
@@ -112,21 +145,24 @@ const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalIte
   </div>
 ));
 
-const ResizableHeader = React.memo(({ column, isResizing, onMouseDown }: {
-  column: ColumnConfig; isResizing: boolean;
-  onMouseDown: (e: React.MouseEvent, id: string) => void;
+const ResizableHeader = React.memo(({ column, isResizing, onMouseDown, className }: {
+  column: ColumnConfig; isResizing?: boolean;
+  onMouseDown?: (e: React.MouseEvent, id: string) => void;
+  className?: string;
 }) => (
   <TableHead
-    className="p-2 whitespace-nowrap font-semibold relative group select-none bg-gray-100"
-    style={{ width: `${column.width}px`, minWidth: `${column.minWidth}px` }}
+    className={`p-2 whitespace-nowrap font-semibold relative group select-none ${className || "bg-gray-100"}`}
+    style={{ width: column.width ? `${column.width}px` : "auto", minWidth: column.minWidth ? `${column.minWidth}px` : "auto" }}
   >
     <div className="flex items-center justify-between pr-2">
       <span>{column.label}</span>
-      <div
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 transition-all z-20"
-        onMouseDown={(e) => onMouseDown(e, column.id)}
-        style={{ backgroundColor: isResizing ? "#3b82f6" : "transparent" }}
-      />
+      {onMouseDown && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-500 transition-all z-20"
+          onMouseDown={(e) => onMouseDown(e, String(column.id))}
+          style={{ backgroundColor: isResizing ? "#3b82f6" : "transparent" }}
+        />
+      )}
     </div>
   </TableHead>
 ));
@@ -136,14 +172,45 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
   const [lastSearchTime, setLastSearchTime] = useState<string | null>(null);
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const resizeRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   const visibleColumns = useMemo(() => columns.filter(c => c.visible), [columns]);
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(data.length / itemsPerPage)), [data.length, itemsPerPage]);
-  const paginatedData = useMemo(() => {
+
+  // Group data by client
+  const groupedData = useMemo(() => {
+    const groups = new Map<string, {
+      cliente: string;
+      saldoVolTotal: number;
+      saldoValorTotal: number;
+      items: TypeEstoque[];
+    }>();
+
+    data.forEach(item => {
+      const cliente = item.cliente || "SEM CLIENTE";
+      if (!groups.has(cliente)) {
+        groups.set(cliente, {
+          cliente,
+          saldoVolTotal: 0,
+          saldoValorTotal: 0,
+          items: []
+        });
+      }
+      const group = groups.get(cliente)!;
+      group.items.push(item);
+      group.saldoVolTotal += parseNumericValue(item["Saldo_(Vol)"]);
+      group.saldoValorTotal += parseNumericValue(item["Saldo_Valor_(US$)"]);
+    });
+
+    return Array.from(groups.values()).sort((a, b) => a.cliente.localeCompare(b.cliente));
+  }, [data]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(groupedData.length / itemsPerPage)), [groupedData.length, itemsPerPage]);
+  
+  const paginatedGroups = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return data.slice(start, start + itemsPerPage);
-  }, [currentPage, data, itemsPerPage]);
+    return groupedData.slice(start, start + itemsPerPage);
+  }, [currentPage, groupedData, itemsPerPage]);
 
   const toggleColumn = useCallback((id: string) => {
     setColumns(prev => prev.map(c => c.id === id ? { ...c, visible: !c.visible } : c));
@@ -152,6 +219,15 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
   const toggleAll = useCallback((checked: boolean) => {
     setColumns(prev => prev.map(c => ({ ...c, visible: checked })));
   }, []);
+
+  const toggleClient = (cliente: string) => {
+    setExpandedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(cliente)) next.delete(cliente);
+      else next.add(cliente);
+      return next;
+    });
+  };
 
   const allVisible = useMemo(() => columns.every(c => c.visible), [columns]);
 
@@ -197,10 +273,10 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
   }, [isLoading, data]);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="overflow-hidden shadow-md">
+      <CardHeader className="flex flex-row items-center justify-between bg-white border-b py-4">
         <div className="flex items-center gap-3">
-          <CardTitle>Estoque em Processo</CardTitle>
+          <CardTitle>Estoque</CardTitle>
           {lastSearchTime && !isLoading && (
             <span className="text-xs text-gray-500">Última consulta: {lastSearchTime}</span>
           )}
@@ -216,11 +292,11 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2">
               <Settings className="w-4 h-4" />
-              Colunas
+              Configurar Colunas
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Exibir Colunas</DropdownMenuLabel>
+            <DropdownMenuLabel>Colunas do Detalhamento</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
               checked={allVisible}
@@ -228,14 +304,14 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
               onSelect={(e) => e.preventDefault()}
               className="font-semibold"
             >
-              Selecionar Todas
+              Exibir Todas
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             {columns.map(col => (
               <DropdownMenuCheckboxItem
                 key={col.id}
                 checked={col.visible}
-                onCheckedChange={() => toggleColumn(col.id)}
+                onCheckedChange={() => toggleColumn(String(col.id))}
                 onSelect={(e) => e.preventDefault()}
               >
                 {col.label}
@@ -245,67 +321,106 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
         </DropdownMenu>
       </CardHeader>
 
-      <CardContent>
-        {!isLoading && data.length === 0 && <EmptyState />}
-        {isLoading && data.length === 0 && <LoadingState />}
+      <CardContent className="p-0">
+        {!isLoading && data.length === 0 && <div className="p-8"><EmptyState /></div>}
+        {isLoading && data.length === 0 && <div className="p-8"><LoadingState /></div>}
 
         {data.length > 0 && (
           <>
-            <div className="overflow-auto rounded border max-h-[90vh]">
-              <Table className="text-xs w-full">
-                <TableHeader className="sticky top-0 z-20">
-                  <TableRow className="bg-gray-100">
-                    {visibleColumns.map(col => (
-                      <ResizableHeader
-                        key={col.id}
-                        column={col}
-                        isResizing={resizingColumn === col.id}
-                        onMouseDown={handleMouseDown}
-                      />
-                    ))}
+            <div className="overflow-auto max-h-[75vh]">
+              <Table className="text-sm w-full border-collapse">
+                <TableHeader className="sticky top-0 z-30 shadow-sm">
+                  <TableRow className="bg-gray-100 border-b">
+                    <TableHead className="w-10 p-2 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]"></TableHead>
+                    <TableHead className="p-3 font-bold text-gray-700 bg-gray-100">Cliente</TableHead>
+                    <TableHead className="p-3 font-bold text-gray-700 text-right bg-gray-100">Saldo (Vol)</TableHead>
+                    <TableHead className="p-3 font-bold text-gray-700 text-right bg-gray-100">Saldo Valor (US$)</TableHead>
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: SKELETON_ROWS }).map((_, idx) => (
-                      <TableRow key={`sk-${idx}`} className="animate-pulse border-t">
-                        {visibleColumns.map(col => (
-                          <TableCell key={col.id} className="p-2">
-                            <Skeleton className="h-4 rounded" style={{ width: `${Math.floor(Math.random() * 40 + 50)}%` }} />
-                          </TableCell>
-                        ))}
+                  {paginatedGroups.map((group, gIdx) => (
+                    <React.Fragment key={group.cliente}>
+                      {/* Summary Row */}
+                      <TableRow 
+                        className={`cursor-pointer transition-colors border-b bg-blue-50`}
+                        onClick={() => toggleClient(group.cliente)}
+                      >
+                        <TableCell className="p-3 sticky left-0 z-10 bg-inherit shadow-[1px_0_0_0_rgba(0,0,0,0.1)]">
+                          {expandedClients.has(group.cliente) ? <ChevronDown className="w-4 h-4 text-blue-600" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                        </TableCell>
+                        <TableCell className="p-3 font-medium text-gray-900">{group.cliente}</TableCell>
+                        <TableCell className="p-3 text-right font-semibold text-gray-700">
+                          {group.saldoVolTotal.toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="p-3 text-right font-semibold text-blue-700">
+                          US$ {group.saldoValorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    paginatedData.map((item, idx) => (
-                      <TableRow key={idx} className="border-t hover:bg-gray-50 transition-colors">
-                        {visibleColumns.map(col => (
-                          <TableCell
-                            key={col.id}
-                            className="p-2 whitespace-nowrap"
-                            style={{ width: `${col.width}px`, maxWidth: `${col.width}px`, overflow: "hidden", textOverflow: "ellipsis" }}
-                            title={String(getCellValue(item, col.id))}
-                          >
-                            {getCellValue(item, col.id)}
+
+                      {/* Detailed Lots Section */}
+                      {expandedClients.has(group.cliente) && (
+                        <TableRow className="bg-gray-50/30">
+                          <TableCell colSpan={4} className="p-4 bg-gray-50/30">
+                            <div className="rounded-lg border bg-white shadow-sm overflow-hidden border-l-4 border-l-blue-500">
+                              <div className="px-4 py-2 border-b bg-blue-50/50 flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-blue-700">
+                                <span>Detalhamento de Lotes - {group.cliente}</span>
+                                <span>{group.items.length} registros</span>
+                              </div>
+                              <div className="overflow-x-auto max-h-[400px]">
+                                <Table className="text-xs w-full">
+                                  <TableHeader className="sticky top-0 z-10">
+                                    <TableRow className="bg-gray-100/80">
+                                      {visibleColumns.map(col => (
+                                        <ResizableHeader
+                                          key={col.id}
+                                          column={col}
+                                          isResizing={resizingColumn === col.id}
+                                          onMouseDown={handleMouseDown}
+                                          className="bg-gray-100"
+                                        />
+                                      ))}
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.items.map((item, idx) => (
+                                      <TableRow key={`${gIdx}-${idx}`} className="border-t hover:bg-gray-50 transition-colors">
+                                        {visibleColumns.map(col => (
+                                          <TableCell
+                                            key={col.id}
+                                            className="p-2 whitespace-nowrap border-r last:border-r-0"
+                                            style={{ width: `${col.width}px`, maxWidth: `${col.width}px`, overflow: "hidden", textOverflow: "ellipsis" }}
+                                            title={String(getCellValue(item, col.id))}
+                                          >
+                                            {getCellValue(item, col.id)}
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
                           </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  )}
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </TableBody>
               </Table>
             </div>
 
             {!isLoading && totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                itemsPerPage={itemsPerPage}
-                totalItems={data.length}
-                onPrev={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                onNext={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-              />
+              <div className="border-t bg-gray-50/50 py-3">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={groupedData.length}
+                  onPrev={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                  onNext={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                />
+              </div>
             )}
           </>
         )}

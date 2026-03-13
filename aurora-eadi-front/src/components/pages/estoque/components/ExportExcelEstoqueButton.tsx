@@ -14,16 +14,20 @@ interface Props {
 }
 
 const COLUMN_LABELS: Record<keyof TypeEstoque, string> = {
+  ano:            "Ano",
   dt_entrada:     "Data Entrada",
   n_lote:         "Nº Lote",
-  n_documento:    "Nº Documento",
   n_conhecimento: "Conhecimento",
-  master:         "Master",
   cliente:        "Cliente",
-  saldo:          "Saldo",
+  status_estoque: "Status",
   n_da:           "Nº DA",
-  numero:         "Localização",
-  filtro:         "Filtro",
+  dta:            "DTA",
+  container:      "Container",
+  "Saldo_(Vol)":  "Saldo (Vol)",
+  "Saldo_Valor_(US$)": "Saldo Valor (US$)",
+  valor_cif_total: "CIF Total",
+  m3_total:        "M3 Total",
+  qtd_container:   "Qtd Container",
 };
 
 export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: Props) {
@@ -62,7 +66,6 @@ export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: 
         const row: Record<string, string | number> = {};
 
         (Object.keys(COLUMN_LABELS) as (keyof TypeEstoque)[]).forEach((key) => {
-          if (key === "filtro") return; // Omite coluna interna "filtro"
           const val = item[key];
           if (key === "dt_entrada") {
             row[COLUMN_LABELS[key]] = parseLocalDate(val as string | null);

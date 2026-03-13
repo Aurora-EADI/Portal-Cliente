@@ -16,4 +16,8 @@ export class EstoqueQueryDto {
   @IsOptional()
   @IsString()
   cliente?: string;
+
+  @IsOptional()
+  @IsString()
+  report_type?: string;
 }

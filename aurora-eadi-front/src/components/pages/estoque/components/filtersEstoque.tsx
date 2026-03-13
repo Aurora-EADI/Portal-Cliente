@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Search, X, Calendar } from "lucide-react";
 import { TypeEstoque } from "@/services/estoque/types/TypeEstoque";
 import { ExportExcelEstoqueButton } from "./ExportExcelEstoqueButton";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 
 export interface EstoqueFiltersProps {
-  cliente: string;
+  cliente: string[];
   n_lote: string;
   dt_inicio: string;
   dt_fim: string;
@@ -27,55 +28,33 @@ interface Props {
   onFetch: () => void;
   clientes?: ClienteOption[];
   filteredData: TypeEstoque[];
+  reportType: "historico" | "simplificado";
+  setReportType: (val: "historico" | "simplificado") => void;
 }
 
-export function EstoqueFilters({ filters, setFilters, onFetch, clientes = [], filteredData }: Props) {
-  const [searchTerm, setSearchTerm] = useState(filters.cliente);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredClientes, setFilteredClientes] = useState<ClienteOption[]>([]);
+export function EstoqueFilters({ 
+  filters, 
+  setFilters, 
+  onFetch, 
+  clientes = [], 
+  filteredData,
+  reportType,
+  setReportType
+}: Props) {
   const [showFilters, setShowFilters] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setSearchTerm(filters.cliente);
-  }, [filters.cliente]);
+  const clienteOptions: MultiSelectOption[] = useMemo(() => 
+    clientes.map(c => ({ value: c.cliente, label: c.cliente })),
+  [clientes]);
 
-  useEffect(() => {
-    if (searchTerm.length > 0) {
-      const filtered = clientes.filter((c) =>
-        c.cliente.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredClientes(filtered);
-    } else {
-      setFilteredClientes([]);
-    }
-  }, [searchTerm, clientes]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  function selectCliente(cliente: ClienteOption) {
-    setSearchTerm(cliente.cliente);
-    setFilters((prev) => ({ ...prev, cliente: cliente.cliente }));
-    setShowSuggestions(false);
-  }
 
   function clearSearch() {
-    setSearchTerm("");
-    setFilters((prev) => ({ ...prev, cliente: "" }));
-    setShowSuggestions(false);
+    setFilters((prev) => ({ ...prev, cliente: [] }));
   }
 
   function clearFilters() {
-    setSearchTerm("");
-    setFilters({ cliente: "", n_lote: "", dt_inicio: "", dt_fim: "" });
+    setFilters({ cliente: [], n_lote: "", dt_inicio: "", dt_fim: "" });
   }
 
   function clearDateRange() {
@@ -109,7 +88,7 @@ export function EstoqueFilters({ filters, setFilters, onFetch, clientes = [], fi
   };
 
   const hasActiveFilters = () =>
-    filters.cliente || filters.n_lote || filters.dt_inicio || filters.dt_fim;
+    filters.cliente.length > 0 || filters.n_lote || filters.dt_inicio || filters.dt_fim;
 
   return (
     <Card>
@@ -141,13 +120,63 @@ export function EstoqueFilters({ filters, setFilters, onFetch, clientes = [], fi
 
       {showFilters && (
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Escolha do Tipo de Relatório */}
+            <div>
+              <Label className="text-sm font-medium mb-3 block text-gray-700">Tipo de Relatório</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div
+                  onClick={() => setReportType("historico")}
+                  className={`cursor-pointer p-4 rounded-xl border flex items-center gap-4 transition-all duration-200 group ${
+                    reportType === "historico"
+                      ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50"
+                      : "bg-white border-gray-100 hover:border-blue-200"
+                  }`}
+                >
+                  <div className={`p-3 rounded-lg transition-colors ${
+                    reportType === "historico" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500"
+                  }`}>
+                    📋
+                  </div>
+                  <div>
+                    <p className={`font-bold transition-colors ${reportType === "historico" ? "text-blue-900" : "text-gray-600 group-hover:text-blue-700"}`}>
+                      Histórico de Lote
+                    </p>
+                    <p className="text-xs text-gray-400">Finalizado e Em Estoque</p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setReportType("simplificado")}
+                  className={`cursor-pointer p-4 rounded-xl border flex items-center gap-4 transition-all duration-200 group ${
+                    reportType === "simplificado"
+                      ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50"
+                      : "bg-white border-gray-100 hover:border-blue-200"
+                  }`}
+                >
+                  <div className={`p-3 rounded-lg transition-colors ${
+                    reportType === "simplificado" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500"
+                  }`}>
+                    ⚡
+                  </div>
+                  <div>
+                    <p className={`font-bold transition-colors ${reportType === "simplificado" ? "text-blue-900" : "text-gray-600 group-hover:text-blue-700"}`}>
+                      Inventário Simplificado
+                    </p>
+                    <p className="text-xs text-gray-400">Apenas Em Estoque</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
             {/* Período */}
             <div>
               <Label className="text-sm font-medium mb-3 block">Período de Entrada</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                  <Label className="text-xs text-gray-600 mb-1.5 block">Data Início *</Label>
+                  <Label className="text-xs text-gray-600 mb-1.5 block">Data Início</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     <Input
@@ -195,64 +224,32 @@ export function EstoqueFilters({ filters, setFilters, onFetch, clientes = [], fi
               )}
             </div>
 
-            {/* Cliente e Nº Lote */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cliente com autocomplete */}
-              <div className="relative" ref={searchRef}>
-                <Label className="text-sm font-medium mb-2 block">Cliente</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar Cliente..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setShowSuggestions(true);
-                    }}
-                    onFocus={() => setShowSuggestions(true)}
-                    className="pl-10 pr-10"
+            {/* Cliente e Nº Lote - Ocultar se não houver dados */}
+            {clientes.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                {/* Cliente MultiSelect */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Clientes</Label>
+                  <MultiSelect
+                    options={clienteOptions}
+                    selected={filters.cliente}
+                    onChange={(selected) => setFilters(prev => ({ ...prev, cliente: selected }))}
+                    placeholder="Selecione os clientes..."
+                    searchPlaceholder="Buscar cliente..."
                   />
-                  {searchTerm && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={clearSearch}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-transparent"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  )}
                 </div>
-                {showSuggestions && filteredClientes.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-                    {filteredClientes.map((cliente, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => selectCliente(cliente)}
-                        className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
-                      >
-                        <div className="font-medium text-sm">{cliente.cliente}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showSuggestions && searchTerm && filteredClientes.length === 0 && clientes.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg p-3">
-                    <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
-                  </div>
-                )}
-              </div>
 
-              {/* Nº Lote */}
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Nº Lote</Label>
-                <Input
-                  placeholder="Nº Lote"
-                  value={filters.n_lote}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, n_lote: e.target.value }))}
-                />
+                {/* Nº Lote */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Nº Lote</Label>
+                  <Input
+                    placeholder="Filtrar por Nº Lote"
+                    value={filters.n_lote}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, n_lote: e.target.value }))}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="flex justify-between mt-6 pt-4 border-t">
@@ -274,7 +271,7 @@ export function EstoqueFilters({ filters, setFilters, onFetch, clientes = [], fi
             </div>
 
             <Button
-              disabled={!filters.dt_inicio || !filters.dt_fim}
+              disabled={!filters.dt_fim}
               onClick={onFetch}
             >
               <Search className="w-4 h-4 mr-2" />

@@ -6,13 +6,15 @@ export async function getEstoque(
   dtFim: string,
   nLote?: string,
   cliente?: string,
+  reportType?: string,
 ): Promise<TypeEstoque[]> {
   const { data } = await api.get<TypeEstoque[]>("/estoque", {
     params: {
-      dt_inicio: dtInicio,
       dt_fim: dtFim,
+      ...(dtInicio ? { dt_inicio: dtInicio } : {}),
       ...(nLote ? { n_lote: nLote } : {}),
       ...(cliente ? { cliente } : {}),
+      ...(reportType ? { report_type: reportType } : {}),
     },
   });
   return data;
