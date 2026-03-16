@@ -47,7 +47,8 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/faturamento/cutoff', label: 'Relatório CutOff', icon: 'FileSpreadsheet', parentPath: '/faturamento', isModuleRoot: false },
 
   // Estoque
-  { path: '/estoque/detalhado', label: 'Estoque em Processo', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
+  { path: '/estoque/historico-lote', label: 'Histórico Lote', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
+  { path: '/estoque/inventario-simplificado', label: 'Inventário Simplificado', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
 
   // Fornecedor
   { path: '/fornecedor/lista', label: 'Lista de Fornecedores', icon: 'List', parentPath: '/fornecedor', isModuleRoot: false },

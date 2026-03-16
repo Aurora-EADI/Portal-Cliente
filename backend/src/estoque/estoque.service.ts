@@ -1,9 +1,11 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { SqlServerService } from "src/prisma/sqlserver.service";
 import { TypeEstoque } from "./type/Estoque.type";
 
 @Injectable()
 export class EstoqueService {
+  private readonly logger = new Logger(EstoqueService.name);
+
   constructor(private sqlServer: SqlServerService) {}
 
   private checkSqlServerConnection() {
@@ -25,8 +27,19 @@ export class EstoqueService {
     this.checkSqlServerConnection();
 
     const query = `
+      -- ============================================================
+      -- INVENTÁRIO COMPLETO — REFATORADO PARA PERFORMANCE
+      -- v2 — 2026-03-12
+      -- BLOCO 1 → CTEs base: cada tabela varrida UMA única vez
+      -- BLOCO 2 → CTEs de negócio: apenas JOINs leves nas bases
+      -- BLOCO 3 → SELECT final sem nenhuma subquery correlacionada
+      -- ============================================================
       ;WITH
-      
+
+      -- ============================================================
+      -- BLOCO 1: CTEs BASE
+      -- ============================================================
+
       base_itens AS (
           SELECT
               n_lote,
@@ -38,7 +51,7 @@ export class EstoqueService {
           FROM doc_conhecimento_itens
           GROUP BY n_lote
       ),
-      
+
       base_da_itens AS (
           SELECT
               y.n_lote,
@@ -52,7 +65,7 @@ export class EstoqueService {
           INNER JOIN registro_da_itens y ON y.n_da = x.n_da AND y.n_lote = x.n_lote
           GROUP BY y.n_lote, x.n_da, x.data_libera
       ),
-      
+
       base_da_saldo AS (
           SELECT
               n_lote,
@@ -64,7 +77,7 @@ export class EstoqueService {
           FROM base_da_itens
           GROUP BY n_lote
       ),
-      
+
       base_di AS (
           SELECT
               x.n_lote,
@@ -75,24 +88,22 @@ export class EstoqueService {
           WHERE z.status = 'E' AND x.sd_qtde > 0
           GROUP BY x.n_lote
       ),
-      
+
       base_dt_entrada AS (
           SELECT
               y.n_lote,
               MIN(x.dataentra) AS dt_entrada
           FROM entrada x
           INNER JOIN doc_recebimento y ON y.entrada = x.entrada
-          WHERE (@param3 IS NULL OR @param3 = '' OR x.dataentra >= CAST(@param3 AS DATE))
-            AND (@param4 IS NULL OR @param4 = '' OR x.dataentra < DATEADD(day, 1, CAST(@param4 AS DATE)))
           GROUP BY y.n_lote
       ),
-      
+
       base_descarga AS (
           SELECT n_lote, SUM(m3_total_verificado) AS m3_total
           FROM descarga
           GROUP BY n_lote
       ),
-      
+
       base_cif AS (
           SELECT n_lote, SUM(cif_max) AS cif_total
           FROM (
@@ -102,11 +113,11 @@ export class EstoqueService {
                   MAX(cif_valor_dolar) AS cif_max
               FROM fat_dap
               GROUP BY n_lote,
-                      ISNULL(NULLIF(LTRIM(RTRIM(n_di)), ''), '__sem_di__' + CAST(fat_id AS VARCHAR))
+                       ISNULL(NULLIF(LTRIM(RTRIM(n_di)), ''), '__sem_di__' + CAST(fat_id AS VARCHAR))
           ) x
           GROUP BY n_lote
       ),
-      
+
       base_faturamento AS (
           SELECT
               bb.n_lote,
@@ -120,13 +131,13 @@ export class EstoqueService {
           FROM fat_dap bb
           INNER JOIN fat_dap_itens     bi ON bi.fat_id   = bb.fat_id
           INNER JOIN fat_servfaturados fa ON fa.n_fatura  = bi.n_fatura
-                                        AND fa.serie     = bi.serie
-                                        AND fa.status    = 'E'
+                                         AND fa.serie     = bi.serie
+                                         AND fa.status    = 'E'
           LEFT  JOIN fat_itensnota      i ON i.n_fatura   = fa.n_fatura
-                                        AND i.cnpj       = fa.cnpj
+                                         AND i.cnpj       = fa.cnpj
           GROUP BY bb.n_lote, bb.n_di
       ),
-      
+
       base_localizacao AS (
           SELECT
               e.n_lote,
@@ -136,7 +147,7 @@ export class EstoqueService {
           INNER JOIN localizacao l ON l.cod_localizacao = e.localizacao_id
           GROUP BY e.n_lote
       ),
-      
+
       base_container AS (
           SELECT
               dr.n_lote,
@@ -155,7 +166,7 @@ export class EstoqueService {
           LEFT  JOIN tipo_ctnr   tc ON tc.cod_tipo = e.tipo_ctnr
           GROUP BY dr.n_lote
       ),
-      
+
       base_da_numero AS (
           SELECT
               n_lote,
@@ -171,7 +182,7 @@ export class EstoqueService {
           FROM registro_da x
           GROUP BY n_lote
       ),
-      
+
       base_dta AS (
           SELECT
               n_lote,
@@ -180,7 +191,7 @@ export class EstoqueService {
           WHERE n_documento IS NOT NULL
           GROUP BY n_lote
       ),
-      
+
       base_dta_info AS (
           SELECT
               dc.n_documento,
@@ -192,23 +203,27 @@ export class EstoqueService {
           WHERE dc.n_documento IS NOT NULL
           GROUP BY dc.n_documento
       ),
-      
+
       base_saldo_valor AS (
           SELECT
               dai.n_lote,
               SUM(
                   CASE WHEN ISNULL(dai.qtde_v_da, 0) > 0
-                      THEN ROUND(a.vmld_cif / dai.qtde_v_da * dai.saldo_da, 3)
-                      ELSE 0
+                       THEN ROUND(a.vmld_cif / dai.qtde_v_da * dai.saldo_da, 3)
+                       ELSE 0
                   END
-              )                                       AS saldo_valor_total,
-              SUM(CASE WHEN dai.saldo_da > 0 THEN a.vmld_cif        ELSE 0 END) AS vmld_cif_total,
-              SUM(CASE WHEN dai.saldo_da > 0 THEN dai.qtde_v_da     ELSE 0 END) AS qtde_v_da_total
+              )                               AS saldo_valor_total,
+              SUM(a.vmld_cif)                 AS vmld_cif_total,
+              SUM(ISNULL(dai.qtde_v_da, 0))   AS qtde_v_da_total
           FROM base_da_itens dai
           INNER JOIN registro_da a ON a.n_da = dai.n_da AND a.n_lote = dai.n_lote
           GROUP BY dai.n_lote
       ),
-      
+
+      -- ============================================================
+      -- BLOCO 2: CTEs DE NEGÓCIO
+      -- ============================================================
+
       em_estoque AS (
           SELECT
               b.n_documento,
@@ -230,7 +245,7 @@ export class EstoqueService {
               fat.qt_periodos                                                            AS qt_periodo,
               ISNULL(ds.saldo_total_da, bi.qtde_total) + ISNULL(di_ativo.saldo_di, 0)   AS qt_total,
               CASE WHEN da_num.n_da_concat IS NOT NULL THEN sv.vmld_cif_total
-                  ELSE b.valor_declarado END                                            AS vl_documento,
+                   ELSE b.valor_declarado END                                            AS vl_documento,
               ROUND(
                   sv.vmld_cif_total
                   / NULLIF(sv.qtde_v_da_total, 0)
@@ -250,8 +265,8 @@ export class EstoqueService {
           FROM doc_conhecimento b
           INNER JOIN base_da_saldo     ds      ON ds.n_lote      = b.n_lote AND ds.tem_saldo = 1
           INNER JOIN base_itens        bi      ON bi.n_lote      = b.n_lote
-          INNER JOIN base_dt_entrada   de      ON de.n_lote      = b.n_lote
           LEFT  JOIN clientes          cl      ON cl.cod_cli     = b.consignatario
+          LEFT  JOIN base_dt_entrada   de      ON de.n_lote      = b.n_lote
           LEFT  JOIN base_localizacao  loc     ON loc.n_lote     = b.n_lote
           LEFT  JOIN base_descarga     desc_   ON desc_.n_lote   = b.n_lote
           LEFT  JOIN base_cif          cif     ON cif.n_lote     = b.n_lote
@@ -266,7 +281,7 @@ export class EstoqueService {
           WHERE b.fl_saida_efetiva = 0
             AND (bi.saldo_total > 0 OR bi.qtde_total > 0)
       ),
-      
+
       finalizado AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
@@ -296,14 +311,14 @@ export class EstoqueService {
               CAST(NULL AS NUMERIC(18,0))         AS nfse
           FROM doc_conhecimento b
           INNER JOIN base_itens       bi    ON bi.n_lote    = b.n_lote AND bi.qtde_total > 0 AND bi.saldo_total = 0
-          INNER JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_da_saldo    ds    ON ds.n_lote    = b.n_lote
           LEFT  JOIN clientes         cl    ON cl.cod_cli   = b.consignatario
+          LEFT  JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_localizacao loc   ON loc.n_lote   = b.n_lote
           LEFT  JOIN base_descarga    desc_ ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif   ON cif.n_lote   = b.n_lote
           WHERE b.fl_saida_efetiva = 0
-            AND ISNULL(ds.tem_saldo, 0) = 0   -- sem DA com saldo ativo
+            AND ISNULL(ds.tem_saldo, 0) = 0
             AND NOT EXISTS (
                 SELECT 1 FROM registro_da_itens x WHERE x.n_lote = b.n_lote AND x.saldo > 0
             )
@@ -314,13 +329,13 @@ export class EstoqueService {
                 WHERE x.n_lote = b.n_lote AND z.status = 'E' AND x.sd_qtde > 0
             )
       ),
-      
+
       sem_registro_da AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
               cl.nomefantasia                      AS cliente,
               ISNULL(bi.saldo_ou_qtde, 0)          AS saldo,
-              b.n_documento                        AS n_da,   -- DTA como referência
+              b.n_documento                        AS n_da,
               CAST('Em Estoque' AS VARCHAR(20))    AS status_estoque,
               di.n_di,
               CAST(NULL AS VARCHAR(500))           AS container,
@@ -333,15 +348,7 @@ export class EstoqueService {
               CAST(NULL AS NUMERIC(18,0))          AS qt_periodo,
               ISNULL(bi.saldo_total, 0)            AS qt_total,
               b.valor_declarado                    AS vl_documento,
-              CASE
-                  WHEN ISNULL(di.saldo_di, 0) > 0 AND ISNULL(bi.qtde_total, 0) > 0
-                  THEN ROUND(
-                          b.valor_declarado
-                          / bi.qtde_total
-                          * (bi.saldo_total + di.saldo_di)
-                      , 3)
-                  ELSE ROUND(b.valor_declarado, 3)
-              END                                  AS saldo_valor,
+              ROUND(b.valor_declarado, 3)          AS saldo_valor,
               de.dt_entrada,
               loc.localizacao,
               ISNULL(loc.numero, 0)                AS numero,
@@ -355,17 +362,17 @@ export class EstoqueService {
               CAST(NULL AS NUMERIC(18,0))          AS nfse
           FROM doc_conhecimento b
           INNER JOIN base_itens       bi    ON bi.n_lote    = b.n_lote AND bi.saldo_total > 0
-          INNER JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_da_saldo    ds    ON ds.n_lote    = b.n_lote
           LEFT  JOIN base_di          di    ON di.n_lote    = b.n_lote
           LEFT  JOIN clientes         cl    ON cl.cod_cli   = b.consignatario
+          LEFT  JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_localizacao loc   ON loc.n_lote   = b.n_lote
           LEFT  JOIN base_descarga    desc_ ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif   ON cif.n_lote   = b.n_lote
           WHERE b.fl_saida_efetiva = 0
-            AND ds.n_lote IS NULL  
+            AND ds.n_lote IS NULL
       ),
-      
+
       sem_saldo_real AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
@@ -391,23 +398,23 @@ export class EstoqueService {
               CAST(NULL AS VARCHAR(20))           AS valor_cif,
               CAST(NULL AS VARCHAR(20))           AS vl_fatura,
               CAST(NULL AS VARCHAR(20))           AS valor,
-              CAST(NULL AS NUMERIC(18,0))          AS rps,
-              CAST(NULL AS NUMERIC(18,0))          AS nfse
+              CAST(NULL AS NUMERIC(18,0))         AS rps,
+              CAST(NULL AS NUMERIC(18,0))         AS nfse
           FROM doc_conhecimento b
           INNER JOIN base_itens       bi    ON bi.n_lote    = b.n_lote AND bi.tem_qtde = 1 AND bi.tem_saldo = 0
-          INNER JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_da_saldo    ds    ON ds.n_lote    = b.n_lote
           LEFT  JOIN base_di          di    ON di.n_lote    = b.n_lote
           LEFT  JOIN clientes         cl    ON cl.cod_cli   = b.consignatario
+          LEFT  JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_localizacao loc   ON loc.n_lote   = b.n_lote
           LEFT  JOIN base_descarga    desc_ ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif   ON cif.n_lote   = b.n_lote
           WHERE b.fl_saida_efetiva = 0
             AND ISNULL(ds.tem_saldo, 0)       = 0
-            AND ISNULL(ds.tem_da_pendente, 0) = 0  
-            AND di.n_lote IS NULL                   
+            AND ISNULL(ds.tem_da_pendente, 0) = 0
+            AND di.n_lote IS NULL
       ),
-      
+
       da_zerada_com_saldo_dci AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
@@ -441,14 +448,14 @@ export class EstoqueService {
           FROM doc_conhecimento b
           INNER JOIN base_itens       bi    ON bi.n_lote  = b.n_lote AND bi.saldo_total > 0
           INNER JOIN base_da_saldo    ds    ON ds.n_lote  = b.n_lote AND ds.tem_saldo = 0
-          INNER JOIN base_dt_entrada  de    ON de.n_lote  = b.n_lote
           LEFT  JOIN clientes         cl    ON cl.cod_cli = b.consignatario
+          LEFT  JOIN base_dt_entrada  de    ON de.n_lote  = b.n_lote
           LEFT  JOIN base_localizacao loc   ON loc.n_lote = b.n_lote
           LEFT  JOIN base_descarga    desc_ ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif   ON cif.n_lote = b.n_lote
           WHERE b.fl_saida_efetiva = 0
       ),
-      
+
       da_nao_desembarcada AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
@@ -486,17 +493,17 @@ export class EstoqueService {
               WHERE data_libera IS NULL AND qtde_da > 0
               GROUP BY n_lote
           ) dai_pend                             ON dai_pend.n_lote = b.n_lote
-          INNER JOIN base_dt_entrada  de         ON de.n_lote   = b.n_lote
           LEFT  JOIN base_da_saldo    ds         ON ds.n_lote   = b.n_lote
           LEFT  JOIN base_saldo_valor sv         ON sv.n_lote   = b.n_lote
           LEFT  JOIN clientes         cl         ON cl.cod_cli  = b.consignatario
+          LEFT  JOIN base_dt_entrada  de         ON de.n_lote   = b.n_lote
           LEFT  JOIN base_localizacao loc        ON loc.n_lote  = b.n_lote
           LEFT  JOIN base_descarga    desc_      ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif        ON cif.n_lote  = b.n_lote
           WHERE b.fl_saida_efetiva = 0
-            AND ISNULL(ds.tem_saldo, 0) = 0   
+            AND ISNULL(ds.tem_saldo, 0) = 0
       ),
-      
+
       di_com_saldo AS (
           SELECT
               b.n_documento, b.n_lote, b.n_conhecimento, b.n_master AS master,
@@ -516,17 +523,18 @@ export class EstoqueService {
               ISNULL(di.saldo_di, 0)               AS qt_total,
               b.valor_declarado                    AS vl_documento,
               CASE
-                  WHEN sv.qtde_v_da_total > 0 AND sv.vmld_cif_total > 0
-                  THEN ROUND(
-                          (sv.vmld_cif_total / sv.qtde_v_da_total)
-                          * ISNULL(di.saldo_di, 0)
-                      , 3)
                   WHEN sv.qtde_v_da_total > 0
                   THEN ROUND(
-                          (b.valor_declarado / sv.qtde_v_da_total)
+                          (sv.vmld_cif_total / NULLIF(sv.qtde_v_da_total, 0))
                           * ISNULL(di.saldo_di, 0)
-                      , 3)
-                  ELSE 0  
+                       , 3)
+                  WHEN ISNULL(bi.qtde_total, 0) > 0
+                  THEN ROUND(
+                          b.valor_declarado
+                          / bi.qtde_total
+                          * ISNULL(di.saldo_di, 0)
+                       , 3)
+                  ELSE 0
               END                                  AS saldo_valor,
               de.dt_entrada,
               loc.localizacao,
@@ -542,95 +550,117 @@ export class EstoqueService {
           FROM doc_conhecimento b
           INNER JOIN base_di          di    ON di.n_lote    = b.n_lote
           INNER JOIN base_itens       bi    ON bi.n_lote    = b.n_lote
-          INNER JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_da_saldo    ds    ON ds.n_lote    = b.n_lote
           LEFT  JOIN base_saldo_valor sv    ON sv.n_lote    = b.n_lote
           LEFT  JOIN clientes         cl    ON cl.cod_cli   = b.consignatario
+          LEFT  JOIN base_dt_entrada  de    ON de.n_lote    = b.n_lote
           LEFT  JOIN base_localizacao loc   ON loc.n_lote   = b.n_lote
           LEFT  JOIN base_descarga    desc_ ON desc_.n_lote = b.n_lote
           LEFT  JOIN base_cif         cif   ON cif.n_lote   = b.n_lote
           WHERE b.fl_saida_efetiva = 0
-            AND ISNULL(ds.tem_saldo, 0) = 0   
-            AND NOT EXISTS (                   
+            AND ISNULL(ds.tem_saldo, 0) = 0
+            AND NOT EXISTS (
                 SELECT 1 FROM registro_da_itens x
                 WHERE x.n_lote = b.n_lote AND x.saldo > 0
             )
-            AND NOT EXISTS (                   
+            AND NOT EXISTS (
                 SELECT 1 FROM doc_conhecimento_itens x
                 WHERE x.n_lote = b.n_lote AND x.saldo > 0
             )
       ),
-      
+
+      -- ============================================================
+      -- BLOCO 3: UNIÃO DE TODOS OS LOTES
+      -- @param5 (report_type) removido — filtro de simplificado
+      -- agora é responsabilidade do frontend.
+      -- ============================================================
       todos AS (
           SELECT * FROM em_estoque
           UNION ALL
-          SELECT * FROM finalizado WHERE ISNULL(CAST(@param5 AS VARCHAR), '') <> 'simplificado'
+          SELECT * FROM finalizado
           UNION ALL
           SELECT * FROM sem_registro_da
           UNION ALL
-          SELECT * FROM sem_saldo_real WHERE ISNULL(CAST(@param5 AS VARCHAR), '') <> 'simplificado'
+          SELECT * FROM sem_saldo_real
           UNION ALL
           SELECT * FROM da_zerada_com_saldo_dci
           UNION ALL
           SELECT * FROM da_nao_desembarcada
           UNION ALL
           SELECT * FROM di_com_saldo
-      ),
-
-      resultado AS (
-          SELECT
-              ano             = YEAR(t.dt_entrada),
-              t.dt_entrada,
-              t.n_lote,
-              t.n_conhecimento,
-              t.cliente,
-              t.status_estoque,
-              n_da            = COALESCE(t.n_da, b.n_documento),
-              dta             = b.n_documento,
-              container       = ctnr.containers,
-              [Saldo_(Vol)]       = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t.qt_total)    AS decimal(18,2)),1),',','#'),'.',',' ),
-              [Saldo_Valor_(US$)] = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t.saldo_valor) AS decimal(18,2)),1),',','#'),'.',',' ),
-              valor_cif_total = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t._cif_valor)  AS decimal(18,2)),1),',','#'),'.',',' ),
-              m3_total        = REPLACE(CONVERT(varchar(30), CAST(MAX(t._m3_valor) AS float)),'.',',' ),
-              qtd_container   = CASE
-                                    WHEN t.n_lote = di.primeiro_lote THEN di.qtd_ctnr
-                                    ELSE 0
-                                END
-          FROM todos t
-          LEFT JOIN base_dta         b    ON b.n_lote       = t.n_lote
-          LEFT JOIN base_dta_info    di   ON di.n_documento  = b.n_documento
-          LEFT JOIN base_container   ctnr ON ctnr.n_lote    = t.n_lote
-          GROUP BY
-              t.dt_entrada, t.n_lote, t.n_conhecimento, t.cliente, t.status_estoque,
-              t.n_da, b.n_documento,
-              ctnr.containers,
-              di.primeiro_lote, di.qtd_ctnr
       )
-      SELECT * FROM resultado
-      WHERE (@param1 IS NULL OR @param1 = '' OR n_lote = @param1)
-        AND (@param2 IS NULL OR @param2 = '' OR cliente LIKE '%' + @param2 + '%')
-        AND (@param3 IS NULL OR @param3 = '' OR dt_entrada >= CAST(@param3 AS DATE))
-        AND (@param4 IS NULL OR @param4 = '' OR dt_entrada < DATEADD(day, 1, CAST(@param4 AS DATE)))
+
+      -- ============================================================
+      -- SELECT FINAL — zero subqueries correlacionadas
+      -- ============================================================
+      SELECT
+          ano             = YEAR(t.dt_entrada),
+          t.dt_entrada,
+          t.n_lote,
+          t.n_conhecimento,
+          t.cliente,
+          t.status_estoque,
+          n_da            = COALESCE(t.n_da, b.n_documento),
+          dta             = b.n_documento,
+          container       = ctnr.containers,
+          [Saldo_(Vol)]       = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t.qt_total)    AS decimal(18,2)),1),',','#'),'.',',' ),
+          [Saldo_Valor_(US$)] = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t.saldo_valor) AS decimal(18,2)),1),',','#'),'.',',' ),
+          valor_cif_total = REPLACE(REPLACE(CONVERT(varchar(20), CAST(MAX(t._cif_valor)  AS decimal(18,2)),1),',','#'),'.',',' ),
+          m3_total        = REPLACE(CONVERT(varchar(30), CAST(MAX(t._m3_valor) AS float)),'.',',' ),
+          qtd_container   = CASE
+                                WHEN t.n_lote = di.primeiro_lote THEN di.qtd_ctnr
+                                ELSE 0
+                            END
+      FROM todos t
+      LEFT JOIN base_dta         b    ON b.n_lote      = t.n_lote
+      LEFT JOIN base_dta_info    di   ON di.n_documento = b.n_documento
+      LEFT JOIN base_container   ctnr ON ctnr.n_lote   = t.n_lote
+      WHERE (@param1 IS NULL OR @param1 = '' OR t.n_lote = @param1)
+        AND (@param2 IS NULL OR @param2 = '' OR t.cliente LIKE '%' + @param2 + '%')
+        AND (@param3 IS NULL OR @param3 = '' OR t.dt_entrada >= CAST(@param3 AS DATE))
+        AND (@param4 IS NULL OR @param4 = '' OR t.dt_entrada < DATEADD(day, 1, CAST(@param4 AS DATE)))
+      GROUP BY
+          t.dt_entrada, t.n_lote, t.n_conhecimento, t.cliente, t.status_estoque,
+          t.n_da, b.n_documento,
+          ctnr.containers,
+          di.primeiro_lote, di.qtd_ctnr
       ORDER BY
-          status_estoque DESC,
-          CASE WHEN CHARINDEX('/', n_lote) > 0 
-               THEN LEFT(n_lote, CHARINDEX('/', n_lote) - 1) 
-               ELSE n_lote END,
-          CASE WHEN CHARINDEX('/', n_lote) > 0 
-               AND ISNUMERIC(SUBSTRING(n_lote, CHARINDEX('/', n_lote) + 1, 10)) = 1
-               THEN CAST(SUBSTRING(n_lote, CHARINDEX('/', n_lote) + 1, 10) AS int)
+          t.status_estoque DESC,
+          CASE WHEN CHARINDEX('/', t.n_lote) > 0
+               THEN LEFT(t.n_lote, CHARINDEX('/', t.n_lote) - 1)
+               ELSE t.n_lote END,
+          CASE WHEN CHARINDEX('/', t.n_lote) > 0
+               AND ISNUMERIC(SUBSTRING(t.n_lote, CHARINDEX('/', t.n_lote) + 1, 10)) = 1
+               THEN CAST(SUBSTRING(t.n_lote, CHARINDEX('/', t.n_lote) + 1, 10) AS int)
                ELSE 0 END;
     `;
 
-    // console.log("Estoque Query Params:", { nLote, cliente, dtInicio, dtFim });
+    try {
+      return await this.sqlServer.query<TypeEstoque>(query, [
+        nLote || null,
+        cliente || null,
+        dtInicio || null,
+        dtFim || null,
+      ]);
+    } catch (error: any) {
+      const isTimeout = error?.message?.includes('Timeout');
 
-    return this.sqlServer.query<TypeEstoque>(query, [
-      nLote || null,
-      cliente || null,
-      dtInicio || null,
-      dtFim || null,
-      report_type || null,
-    ]);
+      this.logger.error(
+        `Estoque query failed${isTimeout ? ' (timeout)' : ''}: ${error?.message}`,
+      );
+
+      if (isTimeout) {
+        throw new HttpException(
+          'A consulta demorou muito para responder. Tente reduzir o período ou adicionar filtros.',
+          HttpStatus.GATEWAY_TIMEOUT,
+        );
+      }
+
+      throw new HttpException(
+        'Erro ao consultar dados de estoque. Tente novamente.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
 

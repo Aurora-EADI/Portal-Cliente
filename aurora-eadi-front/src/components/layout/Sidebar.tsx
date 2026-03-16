@@ -115,10 +115,10 @@ export const Sidebar: React.FC = () => {
   };
 
   const isGroupActive = (item: NavItem): boolean => {
-    if (item.children) {
-      return item.children.some(child => isActive(child.path));
-    }
-    return false;
+    if (!item.children) return false;
+    return item.children.some(child =>
+      isActive(child.path) || isGroupActive(child)
+    );
   };
 
   const toggleGroup = (label: string) => {
@@ -217,7 +217,7 @@ export const Sidebar: React.FC = () => {
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = item.children && item.children.length > 0;
-            const isExpanded = expandedGroups[item.label] ?? isGroupActive(item);
+            const isExpanded = isGroupActive(item) || (expandedGroups[item.label] ?? false);
 
             if (hasChildren) {
               return (
@@ -247,7 +247,7 @@ export const Sidebar: React.FC = () => {
                       {item.children?.map((child) => {
                         const ChildIcon = child.icon;
                         const childHasChildren = child.children && child.children.length > 0;
-                        const childIsExpanded = expandedGroups[child.label] ?? isGroupActive(child);
+                        const childIsExpanded = isGroupActive(child) || (expandedGroups[child.label] ?? false);
 
                         if (childHasChildren) {
                           // Sub-grupo de segundo nível (ex: "Relatórios")

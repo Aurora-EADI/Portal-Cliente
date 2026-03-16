@@ -23,11 +23,13 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { TypeEstoque } from "@/services/estoque/types/TypeEstoque";
+import { Pagination } from "@/components/ui/Pagination";
+import { formatNumberBR } from "@/lib/utils";
 
 interface Props {
   data: TypeEstoque[];
   isLoading: boolean;
-  itemsPerPage?: number;
+  loadingMessage?: string;
 }
 
 type ColumnConfig = {
@@ -45,13 +47,13 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "n_conhecimento", label: "Conhecimento",   visible: true,  width: 160, minWidth: 100 },
   { id: "cliente",        label: "Cliente",         visible: true,  width: 200, minWidth: 120 },
   { id: "status_estoque", label: "Status",          visible: false, width: 120, minWidth: 100 },
-  { id: "n_da",           label: "Nº DA",           visible: true,  width: 130, minWidth: 100 },
-  { id: "dta",            label: "DTA",             visible: true,  width: 130, minWidth: 100 },
+  { id: "n_da",           label: "Nº DA",           visible: false,  width: 130, minWidth: 100 },
+  { id: "dta",            label: "DTA",             visible: false,  width: 130, minWidth: 100 },
   { id: "container",      label: "Container",       visible: false, width: 200, minWidth: 120 },
   { id: "Saldo_(Vol)",    label: "Saldo (Vol)",     visible: true,  width: 100, minWidth: 80  },
   { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", visible: true, width: 130, minWidth: 100 },
-  { id: "valor_cif_total", label: "CIF Total",      visible: true,  width: 130, minWidth: 100 },
-  { id: "m3_total",        label: "M3 Total",       visible: true,  width: 100, minWidth: 80  },
+  { id: "valor_cif_total", label: "CIF Total",      visible: false,  width: 130, minWidth: 100 },
+  { id: "m3_total",        label: "M3 Total",       visible: false,  width: 100, minWidth: 80  },
   { id: "qtd_container",   label: "Qtd Container",  visible: false, width: 100, minWidth: 80  },
 ];
 
@@ -79,8 +81,18 @@ const formatDate = (date?: string | null): string => {
   return `${day}/${month}/${year}`;
 };
 
+const NUMERIC_COLUMNS: (keyof TypeEstoque)[] = [
+  "Saldo_(Vol)",
+  "Saldo_Valor_(US$)",
+  "valor_cif_total",
+  "m3_total",
+];
+
 const getCellValue = (item: TypeEstoque, colId: keyof TypeEstoque) => {
   if (colId === "dt_entrada") return formatDate(item.dt_entrada);
+  if (NUMERIC_COLUMNS.includes(colId)) {
+    return formatNumberBR(parseNumericValue(item[colId]), 2);
+  }
   if (colId === "status_estoque") {
     const status = item.status_estoque;
     if (status === "Em Estoque") {
@@ -116,34 +128,19 @@ const EmptyState = () => (
   </div>
 );
 
-const LoadingState = () => (
+const LoadingState = ({ message }: { message: string }) => (
   <div className="flex flex-col items-center justify-center py-20 gap-4 border rounded-lg bg-gradient-to-b from-blue-50 to-white">
     <div className="relative">
       <Loader2 className="h-16 w-16 animate-spin text-blue-500" />
       <div className="absolute inset-0 h-16 w-16 animate-ping rounded-full bg-blue-400 opacity-20" />
     </div>
-    <div className="text-center">
-      <p className="text-base font-semibold text-gray-800">Carregando dados...</p>
-      <p className="text-sm text-gray-500 mt-1">Por favor, aguarde um momento</p>
+    <div className="text-center max-w-xs">
+      <p className="text-base font-semibold text-gray-800">Buscando dados</p>
+      <p className="text-sm text-gray-500 mt-1 transition-all duration-500">{message}</p>
     </div>
   </div>
 );
 
-const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalItems, onPrev, onNext }: {
-  currentPage: number; totalPages: number; itemsPerPage: number; totalItems: number;
-  onPrev: () => void; onNext: () => void;
-}) => (
-  <div className="flex justify-between items-center mt-4 px-4">
-    <div className="text-sm text-gray-600">
-       Exibindo {totalItems === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} clientes
-    </div>
-    <div className="flex items-center gap-2">
-      <Button onClick={onPrev} disabled={currentPage === 1} variant="outline" size="sm">Anterior</Button>
-      <span className="text-sm text-gray-600 px-2">Página {currentPage} de {totalPages}</span>
-      <Button onClick={onNext} disabled={currentPage === totalPages} variant="outline" size="sm">Próxima</Button>
-    </div>
-  </div>
-));
 
 const ResizableHeader = React.memo(({ column, isResizing, onMouseDown, className }: {
   column: ColumnConfig; isResizing?: boolean;
@@ -167,8 +164,9 @@ const ResizableHeader = React.memo(({ column, isResizing, onMouseDown, className
   </TableHead>
 ));
 
-export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
+export function TableEstoque({ data, isLoading, loadingMessage = 'Consultando dados do estoque...' }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
   const [lastSearchTime, setLastSearchTime] = useState<string | null>(null);
@@ -183,6 +181,8 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
       cliente: string;
       saldoVolTotal: number;
       saldoValorTotal: number;
+      cifTotal: number;
+      m3Total: number;
       items: TypeEstoque[];
     }>();
 
@@ -193,6 +193,8 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
           cliente,
           saldoVolTotal: 0,
           saldoValorTotal: 0,
+          cifTotal: 0,
+          m3Total: 0,
           items: []
         });
       }
@@ -200,17 +202,19 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
       group.items.push(item);
       group.saldoVolTotal += parseNumericValue(item["Saldo_(Vol)"]);
       group.saldoValorTotal += parseNumericValue(item["Saldo_Valor_(US$)"]);
+      group.cifTotal += parseNumericValue(item["valor_cif_total"]);
+      group.m3Total += parseNumericValue(item["m3_total"]);
     });
 
     return Array.from(groups.values()).sort((a, b) => a.cliente.localeCompare(b.cliente));
   }, [data]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(groupedData.length / itemsPerPage)), [groupedData.length, itemsPerPage]);
-  
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(groupedData.length / limit)), [groupedData.length, limit]);
+
   const paginatedGroups = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return groupedData.slice(start, start + itemsPerPage);
-  }, [currentPage, groupedData, itemsPerPage]);
+    const start = (currentPage - 1) * limit;
+    return groupedData.slice(start, start + limit);
+  }, [currentPage, groupedData, limit]);
 
   const toggleColumn = useCallback((id: string) => {
     setColumns(prev => prev.map(c => c.id === id ? { ...c, visible: !c.visible } : c));
@@ -323,7 +327,7 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
 
       <CardContent className="p-0">
         {!isLoading && data.length === 0 && <div className="p-8"><EmptyState /></div>}
-        {isLoading && data.length === 0 && <div className="p-8"><LoadingState /></div>}
+        {isLoading && data.length === 0 && <div className="p-8"><LoadingState message={loadingMessage} /></div>}
 
         {data.length > 0 && (
           <>
@@ -398,6 +402,29 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
                                       </TableRow>
                                     ))}
                                   </TableBody>
+                                  <tfoot>
+                                    <TableRow className="border-t-2 border-blue-200 bg-blue-50/70 font-semibold text-xs sticky bottom-0">
+                                      {visibleColumns.map(col => {
+                                        const subtotalMap: Partial<Record<keyof TypeEstoque, string>> = {
+                                          "Saldo_(Vol)": formatNumberBR(group.saldoVolTotal, 2),
+                                          "Saldo_Valor_(US$)": `US$ ${formatNumberBR(group.saldoValorTotal, 2)}`,
+                                          "valor_cif_total": `US$ ${formatNumberBR(group.cifTotal, 2)}`,
+                                          "m3_total": formatNumberBR(group.m3Total, 2),
+                                        };
+                                        const isFirst = col.id === visibleColumns[0].id;
+                                        const subtotal = subtotalMap[col.id];
+                                        return (
+                                          <TableCell
+                                            key={col.id}
+                                            className="p-2 whitespace-nowrap border-r last:border-r-0 text-blue-800"
+                                            style={{ width: `${col.width}px`, maxWidth: `${col.width}px` }}
+                                          >
+                                            {isFirst ? "Subtotal" : subtotal ?? ""}
+                                          </TableCell>
+                                        );
+                                      })}
+                                    </TableRow>
+                                  </tfoot>
                                 </Table>
                               </div>
                             </div>
@@ -410,15 +437,14 @@ export function TableEstoque({ data, isLoading, itemsPerPage = 20 }: Props) {
               </Table>
             </div>
 
-            {!isLoading && totalPages > 1 && (
-              <div className="border-t bg-gray-50/50 py-3">
+            {!isLoading && groupedData.length > 0 && (
+              <div className="border-t bg-gray-50/50 py-3 px-4">
                 <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  itemsPerPage={itemsPerPage}
-                  totalItems={groupedData.length}
-                  onPrev={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                  onNext={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                  page={currentPage}
+                  total={groupedData.length}
+                  limit={limit}
+                  onPageChange={setCurrentPage}
+                  onLimitChange={(newLimit) => { setLimit(newLimit); setCurrentPage(1); }}
                 />
               </div>
             )}

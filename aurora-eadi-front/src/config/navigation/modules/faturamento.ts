@@ -1,7 +1,7 @@
 import { DollarSign, FileBarChart, FileSpreadsheet } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
-import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
+import { HOME_ITEM } from '../shared';
 
 export const faturamentoNavigation: NavigationContext = {
     basePath: '/faturamento',
@@ -27,7 +27,6 @@ export const faturamentoNavigation: NavigationContext = {
                 },
             ],
         },
-        CLIENTE_ITEM,
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

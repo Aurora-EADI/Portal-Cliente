@@ -1,13 +1,48 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { EstoqueFilters, EstoqueFiltersProps } from "./components/filtersEstoque";
 import { TableEstoque } from "./components/TableEstoque";
 import { getEstoque } from "@/services/estoque/estoque";
 import { TypeEstoque } from "@/services/estoque/types/TypeEstoque";
 
-export function EstoquePage() {
+const LOADING_STAGES = [
+  { after: 0,  message: 'Consultando dados do estoque...' },
+  { after: 15, message: 'A consulta está demorando um pouco. Aguarde...' },
+  { after: 35, message: 'Ainda processando. Consultas com períodos longos podem levar até 1 minuto.' },
+  { after: 60, message: 'Quase lá! Finalizando a consulta...' },
+];
+
+function useLoadingMessage(isLoading: boolean) {
+  const [message, setMessage] = useState(LOADING_STAGES[0].message);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+
+    if (!isLoading) {
+      setMessage(LOADING_STAGES[0].message);
+      return;
+    }
+
+    LOADING_STAGES.forEach(({ after, message: msg }) => {
+      const t = setTimeout(() => setMessage(msg), after * 1000);
+      timers.current.push(t);
+    });
+
+    return () => timers.current.forEach(clearTimeout);
+  }, [isLoading]);
+
+  return message;
+}
+
+interface EstoquePageProps {
+  reportType: "historico" | "simplificado";
+}
+
+export function EstoquePage({ reportType }: EstoquePageProps) {
   const [filters, setFilters] = useState<EstoqueFiltersProps>({
     cliente: [],
     n_lote: "",
@@ -16,7 +51,6 @@ export function EstoquePage() {
   });
 
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<"historico" | "simplificado">("historico");
 
   const [searchParams, setSearchParams] = useState<{
     dt_inicio: string;
@@ -26,7 +60,7 @@ export function EstoquePage() {
     report_type?: "historico" | "simplificado";
   } | null>(null);
 
-  const { data, isLoading } = useQuery<TypeEstoque[]>({
+  const { data, isLoading, isError, error } = useQuery<TypeEstoque[], Error>({
     queryKey: ["estoque", searchParams?.dt_inicio, searchParams?.dt_fim, searchParams?.n_lote, searchParams?.cliente, searchParams?.report_type],
     queryFn: () => {
       if (!searchParams) return Promise.resolve([]);
@@ -42,7 +76,10 @@ export function EstoquePage() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
+    retry: false,
   });
+
+  const loadingMessage = useLoadingMessage(isLoading);
 
   // Unique clients for autocomplete
   const clientesUnicos = useMemo(() => {
@@ -85,7 +122,8 @@ export function EstoquePage() {
 
       return matchCliente && matchLote && matchStatus;
     });
-  }, [data, filters, statusFilter, reportType]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, filters.cliente, filters.n_lote, statusFilter, reportType]);
 
   // Metrics (Always based on the filteredData)
   const metricas = useMemo(() => {
@@ -112,8 +150,6 @@ export function EstoquePage() {
         dt_inicio: filters.dt_inicio,
         dt_fim: filters.dt_fim,
         n_lote: filters.n_lote || undefined,
-        // If multiple clients are selected, the backend currently only supports one via LIKE. 
-        // For now, we fetch all for the date range and filter on the frontend for multi-select.
         cliente: undefined, 
         report_type: reportType,
       });
@@ -124,8 +160,14 @@ export function EstoquePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <header className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Estoque</h1>
-          <p className="text-gray-500">Histórico de Lote e Estoque em processo por período de entrada.</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {reportType === "historico" ? "Histórico Lote" : "Inventário Simplificado"}
+          </h1>
+          <p className="text-gray-500">
+            {reportType === "historico"
+              ? "Histórico de movimentação de lotes por período."
+              : "Estoque em processo — apenas itens com status Em Estoque."}
+          </p>
         </div>
       </header>
 
@@ -136,8 +178,6 @@ export function EstoquePage() {
           onFetch={handleFetch}
           clientes={clientesUnicos}
           filteredData={filteredData}
-          reportType={reportType}
-          setReportType={setReportType}
         />
 
         {/* Metric cards */}
@@ -191,7 +231,26 @@ export function EstoquePage() {
           </div>
         </div>
 
-        <TableEstoque data={filteredData} isLoading={isLoading} />
+        {isError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-5 py-4 flex items-start gap-3">
+            <span className="text-red-500 text-xl leading-none mt-0.5">⚠️</span>
+            <div>
+              <p className="font-semibold text-red-700">Não foi possível carregar os dados</p>
+              <p className="text-sm text-red-600 mt-0.5">
+                {(error as any)?.response?.data?.message ??
+                  'Tente reduzir o período de busca ou adicionar filtros para diminuir o volume de dados.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!isError && (
+          <TableEstoque
+            data={filteredData}
+            isLoading={isLoading}
+            loadingMessage={loadingMessage}
+          />
+        )}
       </div>
     </div>
   );

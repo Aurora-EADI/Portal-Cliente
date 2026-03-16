@@ -28,18 +28,14 @@ interface Props {
   onFetch: () => void;
   clientes?: ClienteOption[];
   filteredData: TypeEstoque[];
-  reportType: "historico" | "simplificado";
-  setReportType: (val: "historico" | "simplificado") => void;
 }
 
-export function EstoqueFilters({ 
-  filters, 
-  setFilters, 
-  onFetch, 
-  clientes = [], 
+export function EstoqueFilters({
+  filters,
+  setFilters,
+  onFetch,
+  clientes = [],
   filteredData,
-  reportType,
-  setReportType
 }: Props) {
   const [showFilters, setShowFilters] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -121,56 +117,6 @@ export function EstoqueFilters({
       {showFilters && (
         <CardContent>
           <div className="space-y-6">
-            {/* Escolha do Tipo de Relatório */}
-            <div>
-              <Label className="text-sm font-medium mb-3 block text-gray-700">Tipo de Relatório</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div
-                  onClick={() => setReportType("historico")}
-                  className={`cursor-pointer p-4 rounded-xl border flex items-center gap-4 transition-all duration-200 group ${
-                    reportType === "historico"
-                      ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50"
-                      : "bg-white border-gray-100 hover:border-blue-200"
-                  }`}
-                >
-                  <div className={`p-3 rounded-lg transition-colors ${
-                    reportType === "historico" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500"
-                  }`}>
-                    📋
-                  </div>
-                  <div>
-                    <p className={`font-bold transition-colors ${reportType === "historico" ? "text-blue-900" : "text-gray-600 group-hover:text-blue-700"}`}>
-                      Histórico de Lote
-                    </p>
-                    <p className="text-xs text-gray-400">Finalizado e Em Estoque</p>
-                  </div>
-                </div>
-
-                <div
-                  onClick={() => setReportType("simplificado")}
-                  className={`cursor-pointer p-4 rounded-xl border flex items-center gap-4 transition-all duration-200 group ${
-                    reportType === "simplificado"
-                      ? "bg-blue-50 border-blue-500 ring-4 ring-blue-50"
-                      : "bg-white border-gray-100 hover:border-blue-200"
-                  }`}
-                >
-                  <div className={`p-3 rounded-lg transition-colors ${
-                    reportType === "simplificado" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-500"
-                  }`}>
-                    ⚡
-                  </div>
-                  <div>
-                    <p className={`font-bold transition-colors ${reportType === "simplificado" ? "text-blue-900" : "text-gray-600 group-hover:text-blue-700"}`}>
-                      Inventário Simplificado
-                    </p>
-                    <p className="text-xs text-gray-400">Apenas Em Estoque</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
             {/* Período */}
             <div>
               <Label className="text-sm font-medium mb-3 block">Período de Entrada</Label>

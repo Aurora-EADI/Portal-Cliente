@@ -20,9 +20,14 @@ export const estoqueNavigation: NavigationContext = {
                     isGroup: true,
                     children: [
                         {
-                            label: 'Estoque em Processo',
+                            label: 'Histórico Lote',
                             icon: LayoutDashboard,
-                            path: '/estoque/detalhado',
+                            path: '/estoque/historico-lote',
+                        },
+                        {
+                            label: 'Inventário Simplificado',
+                            icon: LayoutDashboard,
+                            path: '/estoque/inventario-simplificado',
                         },
                     ],
                 },
