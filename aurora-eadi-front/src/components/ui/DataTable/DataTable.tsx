@@ -60,13 +60,14 @@ export function DataTable<T>({
     return (
         <div className="space-y-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
                         <tr>
                             {columns.map((column) => (
                                 <th
                                     key={column.key}
-                                    className={`px-6 py-4 ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}`}
+                                    className={`px-3 py-3 text-xs whitespace-nowrap ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}`}
                                 >
                                     {column.header}
                                 </th>
@@ -84,7 +85,7 @@ export function DataTable<T>({
                                     {columns.map((column) => (
                                         <td
                                             key={column.key}
-                                            className={`px-6 py-4 ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}`}
+                                            className={`px-3 py-2.5 ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}`}
                                         >
                                             {column.render(item)}
                                         </td>
@@ -100,6 +101,7 @@ export function DataTable<T>({
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {pagination && pagination.total > pagination.limit && (

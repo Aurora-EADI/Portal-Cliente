@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Ship, Anchor, Building2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatNumberBR, parseNumberBR } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,8 @@ import {
   useUpdateContainer,
   useDeleteContainer,
 } from '@/hooks/useDtaMaritime';
+import { useCustomers } from '@/hooks/useCustomers';
+import { CustomerStatus } from '@/types/customer';
 import {
   ContainerDta,
   CreateProcessoDto,
@@ -180,11 +182,19 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
   const [conclusao, setConclusao] = useState('');
   const [fobTotal, setFobTotal] = useState('');
   const [freteTotal, setFreteTotal] = useState('');
-  const [cifTotal, setCifTotal] = useState('');
+
+  const cifTotal = useMemo(() => {
+    const fob = parseNumberBR(fobTotal);
+    const frete = parseNumberBR(freteTotal);
+    return fob + frete > 0 ? formatNumberBR(fob + frete) : '';
+  }, [fobTotal, freteTotal]);
 
   const [blGroups, setBlGroups] = useState<BLGroup[]>([emptyGroup()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: customersData } = useCustomers({ status: CustomerStatus.ACTIVE, limit: 200 });
+  const clientes = customersData?.data ?? [];
 
   const createMutation = useCreateProcesso();
   const updateMutation = useUpdateProcesso();
@@ -209,9 +219,8 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
       setAtaMao(toDateInputValue(processo.ataMao));
       setAtaEadi(toDateInputValue(processo.ataEadi));
       setConclusao(toDateInputValue(processo.conclusao));
-      setFobTotal(processo.fobTotal != null ? String(processo.fobTotal) : '');
-      setFreteTotal(processo.freteTotal != null ? String(processo.freteTotal) : '');
-      setCifTotal(processo.cifTotal != null ? String(processo.cifTotal) : '');
+      setFobTotal(processo.fobTotal != null ? formatNumberBR(processo.fobTotal) : '');
+      setFreteTotal(processo.freteTotal != null ? formatNumberBR(processo.freteTotal) : '');
       setBlGroups(
         processo.containers?.length
           ? buildGroupsFromApi(processo.containers)
@@ -221,7 +230,7 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
       setDta(''); setEmpresa(''); setPorto(''); setNavio('');
       setTransportador(''); setComissaria('');
       setAtaDta(''); setAtaMao(''); setAtaEadi(''); setConclusao('');
-      setFobTotal(''); setFreteTotal(''); setCifTotal('');
+      setFobTotal(''); setFreteTotal('');
       setBlGroups([emptyGroup()]);
     }
   }, [open, processo]);
@@ -322,9 +331,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
           ataMao: ataMao || undefined,
           ataEadi: ataEadi || undefined,
           conclusao: conclusao || undefined,
-          fobTotal: fobTotal ? parseFloat(fobTotal) : undefined,
-          freteTotal: freteTotal ? parseFloat(freteTotal) : undefined,
-          cifTotal: cifTotal ? parseFloat(cifTotal) : undefined,
+          fobTotal: fobTotal ? parseNumberBR(fobTotal) : undefined,
+          freteTotal: freteTotal ? parseNumberBR(freteTotal) : undefined,
+          cifTotal: cifTotal ? parseNumberBR(cifTotal) : undefined,
         };
         await updateMutation.mutateAsync({ id: processo.id, data: updateData });
 
@@ -365,9 +374,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
           ataMao: ataMao || undefined,
           ataEadi: ataEadi || undefined,
           conclusao: conclusao || undefined,
-          fobTotal: fobTotal ? parseFloat(fobTotal) : undefined,
-          freteTotal: freteTotal ? parseFloat(freteTotal) : undefined,
-          cifTotal: cifTotal ? parseFloat(cifTotal) : undefined,
+          fobTotal: fobTotal ? parseNumberBR(fobTotal) : undefined,
+          freteTotal: freteTotal ? parseNumberBR(freteTotal) : undefined,
+          cifTotal: cifTotal ? parseNumberBR(cifTotal) : undefined,
           containers: merged.map((c) => ({ number: c.number, tipo: c.tipo, bls: c.bls })),
         };
         await createMutation.mutateAsync(createData);
@@ -411,23 +420,28 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input
                     id="dta"
                     value={dta}
-                    onChange={(e) => setDta(e.target.value)}
+                    onChange={(e) => setDta(e.target.value.toUpperCase())}
                     placeholder="Ex: 26/0063224-1"
                     disabled={isEditing}
-                    className={cn(errors.dta && 'border-red-400')}
+                    className={cn('uppercase', errors.dta && 'border-red-400')}
                   />
                   {errors.dta && <p className="text-xs text-red-500">{errors.dta}</p>}
                 </div>
 
                 <div className="space-y-1">
                   <Label htmlFor="empresa">Empresa <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="empresa"
-                    value={empresa}
-                    onChange={(e) => setEmpresa(e.target.value)}
-                    placeholder="Ex: MEGA PACK"
-                    className={cn(errors.empresa && 'border-red-400')}
-                  />
+                  <Select value={empresa} onValueChange={setEmpresa}>
+                    <SelectTrigger id="empresa" className={cn(errors.empresa && 'border-red-400')}>
+                      <SelectValue placeholder="Selecione a empresa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientes.map((c) => (
+                        <SelectItem key={c.id} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.empresa && <p className="text-xs text-red-500">{errors.empresa}</p>}
                 </div>
 
@@ -436,8 +450,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input
                     id="navio"
                     value={navio}
-                    onChange={(e) => setNavio(e.target.value)}
+                    onChange={(e) => setNavio(e.target.value.toUpperCase())}
                     placeholder="Ex: MSC MALENA VG: AZ602R"
+                    className="uppercase"
                   />
                 </div>
 
@@ -446,8 +461,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input
                     id="transportador"
                     value={transportador}
-                    onChange={(e) => setTransportador(e.target.value)}
+                    onChange={(e) => setTransportador(e.target.value.toUpperCase())}
                     placeholder="Ex: FCC CARGO"
+                    className="uppercase"
                   />
                 </div>
 
@@ -456,8 +472,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input
                     id="comissaria"
                     value={comissaria}
-                    onChange={(e) => setComissaria(e.target.value)}
+                    onChange={(e) => setComissaria(e.target.value.toUpperCase())}
                     placeholder="Nome da comissária"
+                    className="uppercase"
                   />
                 </div>
 
@@ -539,15 +556,15 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="fobTotal">FOB Total (USD)</Label>
-                  <Input id="fobTotal" type="number" min="0" step="0.01" value={fobTotal} onChange={(e) => setFobTotal(e.target.value)} placeholder="0.00" />
+                  <Input id="fobTotal" type="text" inputMode="decimal" value={fobTotal} onChange={(e) => setFobTotal(e.target.value)} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFobTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="freteTotal">Frete Total (USD)</Label>
-                  <Input id="freteTotal" type="number" min="0" step="0.01" value={freteTotal} onChange={(e) => setFreteTotal(e.target.value)} placeholder="0.00" />
+                  <Input id="freteTotal" type="text" inputMode="decimal" value={freteTotal} onChange={(e) => setFreteTotal(e.target.value)} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFreteTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="cifTotal">CIF Total (USD)</Label>
-                  <Input id="cifTotal" type="number" min="0" step="0.01" value={cifTotal} onChange={(e) => setCifTotal(e.target.value)} placeholder="0.00" />
+                  <Input id="cifTotal" type="text" value={cifTotal} readOnly placeholder="0,00" className="bg-muted cursor-not-allowed" />
                 </div>
               </div>
             </div>
@@ -588,9 +605,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                     </span>
                     <Input
                       value={group.bl}
-                      onChange={(e) => handleGroupBL(gIdx, e.target.value)}
+                      onChange={(e) => handleGroupBL(gIdx, e.target.value.toUpperCase())}
                       placeholder="Ex: BCN0293743  ou  BCN0293743/BCN0295103/"
-                      className="h-7 text-sm font-mono flex-1 bg-white"
+                      className="h-7 text-sm font-mono flex-1 bg-white uppercase"
                     />
                     <span className="text-[10px] text-slate-400 whitespace-nowrap">
                       {group.containers.length} container(s)
@@ -627,9 +644,9 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                       >
                         <Input
                           value={c.number}
-                          onChange={(e) => handleContainerField(gIdx, cIdx, 'number', e.target.value)}
+                          onChange={(e) => handleContainerField(gIdx, cIdx, 'number', e.target.value.toUpperCase())}
                           placeholder="Ex: MSMU478784-2"
-                          className="h-8 text-sm font-mono"
+                          className="h-8 text-sm font-mono uppercase"
                         />
 
                         <Select

@@ -123,9 +123,8 @@ export function CustomerList() {
             });
             setIsAdding(false);
             setPage(1);
-        } catch (error) {
-            console.error('Erro ao criar cliente:', error);
-            toast.error('Erro ao cadastrar cliente. Verifique os dados.');
+        } catch {
+            // Erro já exibido pelo onError do hook
         }
     };
 

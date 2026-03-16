@@ -222,34 +222,34 @@ export function DtaMaritimoDashboard() {
       key: 'dta',
       header: 'DTA',
       render: (item) => (
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-100 text-slate-600">
-            <Ship size={18} />
+        <div className="flex items-center gap-2 min-w-[160px]">
+          <div className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+            <Ship size={14} />
           </div>
-          <span className="font-semibold text-slate-900 font-mono">{item.dta}</span>
+          <span className="font-semibold text-xs text-slate-900 font-mono">{item.dta}</span>
         </div>
       ),
     },
     {
       key: 'empresa',
       header: 'Empresa',
-      render: (item) => <span className="text-slate-700">{item.empresa}</span>,
+      render: (item) => <span className="text-xs text-slate-700">{item.empresa}</span>,
     },
     {
       key: 'porto',
       header: 'Porto',
       render: (item) => {
-        if (!item.porto) return <span className="text-slate-400">—</span>;
+        if (!item.porto) return <span className="text-xs text-slate-400">—</span>;
         const icon =
           item.porto === 'Chibatão' ? (
-            <Anchor className="w-3.5 h-3.5" />
+            <Anchor className="w-3 h-3" />
           ) : item.porto === 'Super Terminais' ? (
-            <Building2 className="w-3.5 h-3.5" />
+            <Building2 className="w-3 h-3" />
           ) : null;
         return (
-          <div className="flex items-center gap-1.5 text-slate-700">
+          <div className="flex items-center gap-1.5 text-xs text-slate-700">
             {icon}
-            <span className="text-sm">{item.porto}</span>
+            <span>{item.porto}</span>
           </div>
         );
       },
@@ -257,24 +257,24 @@ export function DtaMaritimoDashboard() {
     {
       key: 'navio',
       header: 'Navio',
-      render: (item) => <span className="text-slate-600">{item.navio || '—'}</span>,
+      render: (item) => <span className="text-xs text-slate-600">{item.navio || '—'}</span>,
     },
     {
       key: 'ataDta',
       header: 'ATA DTA',
-      render: (item) => <span className="text-slate-600">{formatDateBR(item.ataDta)}</span>,
+      render: (item) => <span className="text-xs text-slate-600">{formatDateBR(item.ataDta)}</span>,
     },
     {
       key: 'conclusao',
       header: 'Conclusão',
-      render: (item) => <span className="text-slate-600">{formatDateBR(item.conclusao)}</span>,
+      render: (item) => <span className="text-xs text-slate-600">{formatDateBR(item.conclusao)}</span>,
     },
     {
       key: 'cifTotal',
       header: 'CIF Total',
-      align: 'right',
+      align: 'center',
       render: (item) => (
-        <span className="font-semibold text-slate-800">{formatCurrency(item.cifTotal)}</span>
+        <span className="text-xs font-semibold text-slate-800">{formatCurrency(item.cifTotal)}</span>
       ),
     },
     {
