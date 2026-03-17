@@ -53,7 +53,7 @@ export class AuthController {
       userAgent,
     });
 
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.ENVIRONMENT === "production";
 
     res.cookie("access_token", result.access_token, {
       httpOnly: true,
@@ -120,7 +120,7 @@ export class AuthController {
 
     const result = await this.authService.refreshToken(refreshToken);
 
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.ENVIRONMENT === "production";
 
     res.cookie("access_token", result.access_token, {
       httpOnly: true,
@@ -146,7 +146,7 @@ export class AuthController {
     @Request() req: { cookies: Record<string, string> },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = process.env.ENVIRONMENT === "production";
 
     res.clearCookie("access_token", {
       httpOnly: true,

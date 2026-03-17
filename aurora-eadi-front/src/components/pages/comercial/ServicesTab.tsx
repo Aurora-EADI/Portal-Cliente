@@ -348,7 +348,8 @@ export function ServicesTab({
             <TableBody>
               {services
                 .filter(service => {
-                  const isLCLService = service.name.toUpperCase().includes('LCL');
+                  // Prefer the explicit flag `hasLcl`, but keep backward compatibility with legacy naming ("... LCL ...").
+                  const isLCLService = Boolean(service.hasLcl === true) || service.name.toUpperCase().includes('LCL');
                   
                   // Se o serviço é de desova, só mostra se a simulação tem desova.
                   // Se o serviço NÃO é de desova, mostra sempre.

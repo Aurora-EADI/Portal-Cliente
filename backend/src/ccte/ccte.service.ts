@@ -13,7 +13,7 @@ import {
   FlightStatus,
   CargoItemStatus,
   FlightHistoryType,
-} from '@prisma/client-postgres';
+} from '@prisma/client';
 
 @Injectable()
 export class CcteService {

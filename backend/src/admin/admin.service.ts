@@ -1,9 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+﻿import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { UsersService } from "../user/user.service";
 import { CreateAdminDto } from "./dto/create-admin.dto";
 import { UpdateAdminDto } from "./dto/update.admin.dto";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class AdminService {
@@ -38,9 +38,9 @@ export class AdminService {
     });
 
     if (!admin) {
-      this.logger.warn(`Administrador não encontrado: ${id}`);
+      this.logger.warn(`Administrador nÃ£o encontrado: ${id}`);
       throw new HttpException(
-        "Esse administrador não existe.",
+        "Esse administrador nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -61,7 +61,7 @@ export class AdminService {
         `Tentativa de atualizar administrador inexistente: ${id}`,
       );
       throw new HttpException(
-        "Esse administrador não existe.",
+        "Esse administrador nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -81,12 +81,13 @@ export class AdminService {
     if (!exists) {
       this.logger.warn(`Tentativa de remover administrador inexistente: ${id}`);
       throw new HttpException(
-        "Esse administrador não existe.",
+        "Esse administrador nÃ£o existe.",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    // Usa o método centralizado do UsersService que tem todas as verificações de segurança
+    // Usa o mÃ©todo centralizado do UsersService que tem todas as verificaÃ§Ãµes de seguranÃ§a
     return this.usersService.remove(id);
   }
 }
+

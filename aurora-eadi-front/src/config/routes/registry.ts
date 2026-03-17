@@ -27,21 +27,28 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/simulacoes', label: 'Simulações', icon: 'BarChart3', isModuleRoot: true },
   { path: '/cliente', label: 'Cliente', icon: 'Users', isModuleRoot: true },
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
+  { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
 export const SUB_ROUTES: RouteDefinition[] = [
-  // CCTE
+  // DTA
   { path: '/dta/painel', label: 'Painel CT-e', icon: 'LayoutDashboard', parentPath: '/dta', isModuleRoot: false },
+  { path: '/dta/maritimo', label: 'Processos Marítimos', icon: 'Ship', parentPath: '/dta', isModuleRoot: false },
 
   // Comercial
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/history', label: 'Lista de Simulação Marítima', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/simulacoes/propostas', label: 'Propostas', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Faturamento
   { path: '/faturamento/detalhado', label: 'Faturamento Detalhado', icon: 'FileBarChart', parentPath: '/faturamento', isModuleRoot: false },
   { path: '/faturamento/cutoff', label: 'Relatório CutOff', icon: 'FileSpreadsheet', parentPath: '/faturamento', isModuleRoot: false },
+
+  // Estoque
+  { path: '/estoque/historico-lote', label: 'Histórico Lote', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
+  { path: '/estoque/inventario-simplificado', label: 'Inventário Simplificado', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
 
   // Fornecedor
   { path: '/fornecedor/lista', label: 'Lista de Fornecedores', icon: 'List', parentPath: '/fornecedor', isModuleRoot: false },
@@ -61,12 +68,23 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/documentos/gestao', label: 'Gestão Documentos', icon: 'Shield', parentPath: '/documentos', isModuleRoot: false },
   { path: '/documentos/empresa', label: 'Anexar Documentos', icon: 'Upload', parentPath: '/documentos', isModuleRoot: false },
   { path: '/documentos/cadastrar', label: 'Documentos Exigidos', icon: 'FilePlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/colaboradores', label: 'Colaboradores', icon: 'Users', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/colaboradores-gestao', label: 'Gestão Colaboradores', icon: 'UserCheck', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar-colaboradores', label: 'Docs Exigidos Colaboradores', icon: 'UserPlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar-documento', label: 'Cadastrar Documento', icon: 'FileCheck', parentPath: '/documentos', isModuleRoot: false },
 
   // Permissões
   { path: '/permissoes/catalogo', label: 'Catálogo Técnico', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/atividades', label: 'Atividades e Vínculos', icon: 'Layers', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/usuario', label: 'Usuário', icon: 'Users', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/gestao', label: 'Gestão de Permissões', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
+
+  // Simulações
+  { path: '/simulacoes/dashboard', label: 'Dashboard de Simulações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/maritimo', label: 'Simulação Marítima', icon: 'Ship', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/historico-maritimo', label: 'Histórico Marítimo', icon: 'ClipboardList', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/aereo', label: 'Simulação Aérea', icon: 'Plane', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/historico-aereo', label: 'Histórico Aéreo', icon: 'FileSearch', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },

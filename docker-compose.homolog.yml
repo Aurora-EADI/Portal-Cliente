@@ -27,9 +27,7 @@ services:
   sql-proxy:
     image: alpine/socat:latest
     container_name: sql-server-proxy-homolog
-    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:host.docker.internal:1433"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:${SQL_SERVER_HOST}:${SQL_SERVER_PORT:-1433}"
     networks:
       - aurora-network
     restart: always
@@ -50,13 +48,12 @@ services:
       dockerfile: Dockerfile.prod
     container_name: portal-aurora-backend-homolog
     command: >
-      sh -c "npx prisma migrate deploy --schema=prisma/postgres/schema.prisma &&
+      sh -c "npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate &&
              node dist/seed/seed.js &&
              node dist/src/main.js"
     environment:
       NODE_ENV: production
       PORT: 5000
-      PROTHEUS_API_KEY: ${PROTHEUS_API_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:

@@ -97,6 +97,19 @@ docker compose -f docker-compose.prod.yml logs -f frontend
 docker compose -f docker-compose.prod.yml logs -f backend
 ```
 
+Confirmado. O sql-proxy está unhealthy e o warning aparece toda vez — SQL_SERVER_HOST não está sendo carregado porque o --env-file .env.homolog não foi passado nos
+  comandos.
+                                                                                                                                                                      
+  fica vazia e o socat inicia como tcp-connect::1433 (host em branco) — por isso fica unhealthy.                                                                         
+  
+  Fix — recriar o proxy com a variável correta:
+
+  docker compose -f docker-compose.homolog.yml --env-file .env.homolog up -d sql-proxy
+
+  Após o proxy ficar healthy, reinicie o backend para reconectar ao SQL Server:
+
+  docker compose -f docker-compose.homolog.yml --env-file .env.homolog restart backend
+
 ## Architecture Patterns
 
 ## UI Styling Patterns
@@ -196,6 +209,7 @@ Sub-páginas com guards de permissão envolvem o conteúdo com `PermissionRouteG
 | `/servicos` | `ServicosSelectionPage` | `/servicos/lista` (ServiceList), `/servicos/cadastro` |
 | `/cliente` | `ClienteSelectionPage` | `/cliente/lista` (CustomerList) |
 | `/documentos` | `DocumentosSelectionPage` | `/documentos/gestao` (AdminDashboard + RoleGuard), `/documentos/empresa`, `/documentos/cadastrar` |
+| `/dta` | `DtaSelectionPage` | `/dta/maritimo` (DtaMaritimoDashboard) |
 | `/dashboard` | `DashboardSelectionPage` | `/dashboard/kanban` |
 | `/simulacoes` | `SimulationsSelectionPage` | (links para sub-rotas de outros módulos) |
 | `/permissoes` | `PermissoesDashboard` | `/permissoes/catalogo`, `/permissoes/atividades`, `/permissoes/usuario`, `/permissoes/gestao` |
@@ -211,7 +225,10 @@ A navegação é configurada em dois níveis — estático e dinâmico:
 
 2. **Navegação dinâmica**: Gerada a partir do banco de dados via `buildNavigation.ts`
    - Construída a partir de `ModuleAccess.sharedItems` retornados pelo backend
-   - Tem prioridade sobre a navegação estática
+   - Tem prioridade sobre a navegação estática quando o módulo tem sharedItems configurados
+   - **Merge automático com static nav**: após construir os `children` a partir dos sharedItems, `buildNavigation.ts` também inclui filhos definidos no static nav (`staticGroupItem.children`) que ainda não estejam na lista. Isso garante que novas sub-rotas adicionadas ao arquivo `.ts` do módulo apareçam na sidebar sem exigir configuração manual no banco
+   - Módulos sem sharedItems no banco usam o fallback estático integralmente
+   - **Estrutura correta para grupos colapsáveis** no static nav: o item do grupo deve ter `isGroup: true` + `children: [...]`. Itens fora do grupo (ex: `CLIENTE_ITEM`) ficam no nível raiz do `items[]` — `buildNavigation.ts` os coleta via `extraItems` filtrando `!i.isGroup`
 
 3. **Route Registry**: Lista centralizada de todas as rotas válidas
    - Frontend: `src/config/routes/registry.ts` (MODULE_ROUTES + SUB_ROUTES)
@@ -317,6 +334,21 @@ items: [HOME_ITEM, /* items do módulo */, CLIENTE_ITEM],
 - `lastUsedAt` updated on each use (optional tracking)
 
 ## Module Domains
+
+### DTA Maritime (DTA Marítimo)
+- Gestão de Processos de Importação marítima com containers e Bills of Lading
+- **Data model**: `ProcessoImportacao` → `ContainerDta` (1:N) → `BillOfLading` (1:N)
+- **BL normalization**: o campo BL é uma entidade separada (`BillOfLading`). Um container pode ter múltiplos BLs. No formulário, o usuário informa BLs agrupados por container (abordagem "BL-group-first" para espelhar células mescladas do Excel)
+- **Entrada de múltiplos BLs**: o usuário pode separar BLs com `/` (ex: `BCN0293743/BCN0295103/`). O frontend usa `splitBl()` para dividir e `sanitizeBl()` para limpar caracteres inválidos (`"',;`). A barra `/` é separador — não deve ser removida por `sanitizeBl`
+- **Update de containers**: estratégia replace-all para BLs — ao editar, todos os BLs do container são deletados e recriados via `$transaction` no backend
+- **Arquivos principais**:
+  - `backend/src/dta-maritime/` — module, controller, service, DTOs
+  - `aurora-eadi-front/src/types/dtaMaritime.ts` — tipos TypeScript
+  - `aurora-eadi-front/src/services/dtaMaritimeService.ts` — serviço de API
+  - `aurora-eadi-front/src/hooks/useDtaMaritime.ts` — hooks TanStack Query
+  - `aurora-eadi-front/src/components/pages/dta/DtaMaritimoDashboard.tsx` — lista
+  - `aurora-eadi-front/src/components/pages/dta/DtaProcessoDetail.tsx` — detalhe
+  - `aurora-eadi-front/src/components/pages/dta/modals/ProcessoFormModal.tsx` — modal criar/editar
 
 ### Commercial (Comercial)
 - Maritime cost simulations
@@ -456,6 +488,10 @@ CORS_ORIGIN=http://localhost:3000
    - `backend/src/modules/available-routes.ts` (registry backend — string do nome do ícone)
 
    A navegação dinâmica (`buildNavigation.ts`) resolve ícones na ordem: `sharedItem.icon` (banco) → `registry icon` (pela rota) → `moduleIcon` (fallback). Se o ícone não estiver no registry, todos os items ficarão com o mesmo ícone do módulo.
+
+10. **`mutateAsync` exige `catch {}` no caller**: Hooks TanStack Query com `useMutation` tratam erros via `onError`, mas quando se usa `mutateAsync` (ao invés de `mutate`), o erro também é relançado como Promise rejection. Se o caller não tiver `try/catch` ou `.catch()`, o Next.js exibe o overlay de erro. Sempre envolva chamadas a `mutateAsync` com `try { await mutateAsync(...) } catch { /* tratado pelo onError */ }`.
+
+11. **`JwtAuthGuard` deve lançar `UnauthorizedException`, não `Error`**: Em `handleRequest`, usar `throw new UnauthorizedException(...)` do `@nestjs/common`. Lançar `new Error(...)` genérico faz o NestJS tratar como erro 500 (não 401), o que quebra o interceptor de refresh de token do frontend que só reconhece respostas 401.
 
 ## Testing Strategy
 

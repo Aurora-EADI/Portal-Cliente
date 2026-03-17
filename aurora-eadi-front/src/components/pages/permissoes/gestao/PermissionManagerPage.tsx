@@ -29,7 +29,6 @@ import {
   ChevronRight,
   Search,
   ShieldCheck,
-  Building2,
   UserCog,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -68,13 +67,6 @@ const ROLE_CARDS = [
     icon: UserCog,
     bgColor: 'bg-blue-100',
     textColor: 'text-blue-600',
-  },
-  {
-    role: UserRole.SUPPLIER,
-    label: 'Fornecedores',
-    icon: Building2,
-    bgColor: 'bg-green-100',
-    textColor: 'text-green-600',
   },
 ];
 
@@ -120,7 +112,7 @@ export function PermissionManagerPage() {
 
   // Paginação de usuários
   const [userPage, setUserPage] = useState(1);
-  const userLimit = 5;
+  const [userLimit, setUserLimit] = useState(10);
 
   // Busca/filtro de módulos
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,7 +140,7 @@ export function PermissionManagerPage() {
       setError(null);
 
       const [usersResponse, modulesData, activitiesData] = await Promise.all([
-        usersService.findAll({ companyStatus: 'ACTIVE' }),
+        usersService.findAll({ limit: 100 }),
         modulesService.findAll(),
         activitiesService.findAll(),
       ]);
@@ -340,7 +332,12 @@ export function PermissionManagerPage() {
   // Filtro e paginação de usuários
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
-      // Filtro por role
+      // Apenas ADMIN e EMPLOYEE
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.EMPLOYEE) {
+        return false;
+      }
+
+      // Filtro por role (cards)
       if (roleFilter && user.role !== roleFilter) {
         return false;
       }
@@ -378,6 +375,11 @@ export function PermissionManagerPage() {
 
   const handleUserPageChange = (newPage: number) => {
     setUserPage(newPage);
+  };
+
+  const handleUserLimitChange = (newLimit: number) => {
+    setUserLimit(newLimit);
+    setUserPage(1);
   };
 
   const handleUserSelect = (userId: string) => {
@@ -608,12 +610,13 @@ export function PermissionManagerPage() {
         </table>
 
         {/* Pagination */}
-        {filteredUsers.length > userLimit && (
+        {filteredUsers.length > 0 && (
           <Pagination
             page={userPage}
             total={filteredUsers.length}
             limit={userLimit}
             onPageChange={handleUserPageChange}
+            onLimitChange={handleUserLimitChange}
             className="rounded-b-xl border-t rounded-t-none"
           />
         )}

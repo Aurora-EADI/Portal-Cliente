@@ -1,35 +1,36 @@
-import { IsEmail, IsNotEmpty, IsEnum } from "class-validator";
+﻿import { IsEmail, IsNotEmpty, IsEnum } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 /**
  * DTO para Login
  *
- * Valida as credenciais do usuário
+ * Valida as credenciais do usuÃ¡rio
  * Requer email, senha e o tipo de acesso (ADMIN ou SUPPLIER)
  */
 export class LoginDto {
   @ApiProperty({
-    description: "Email do usuário",
+    description: "Email do usuÃ¡rio",
     example: "usuario@example.com",
   })
-  @IsEmail({}, { message: "Email inválido" })
-  @IsNotEmpty({ message: "Email é obrigatório" })
+  @IsEmail({}, { message: "Email invÃ¡lido" })
+  @IsNotEmpty({ message: "Email Ã© obrigatÃ³rio" })
   email: string;
 
   @ApiProperty({
-    description: "Senha do usuário",
+    description: "Senha do usuÃ¡rio",
     example: "senha123",
   })
-  @IsNotEmpty({ message: "Senha é obrigatória" })
+  @IsNotEmpty({ message: "Senha Ã© obrigatÃ³ria" })
   password: string;
 
   @ApiProperty({
-    description: "Tipo de acesso do usuário",
+    description: "Tipo de acesso do usuÃ¡rio",
     enum: UserRole,
     example: UserRole.SUPPLIER,
   })
-  @IsEnum(UserRole, { message: "Tipo de acesso inválido" })
-  @IsNotEmpty({ message: "Tipo de acesso é obrigatório" })
+  @IsEnum(UserRole, { message: "Tipo de acesso invÃ¡lido" })
+  @IsNotEmpty({ message: "Tipo de acesso Ã© obrigatÃ³rio" })
   role: UserRole;
 }
+

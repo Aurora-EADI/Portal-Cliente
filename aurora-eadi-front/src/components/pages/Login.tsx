@@ -178,10 +178,12 @@ export function Login({ onRegisterClick }: LoginProps) {
                       disabled={isLoading}
                     />
 
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-transparent"
                       disabled={isLoading}
                     >
                       {showPassword ? (
@@ -189,7 +191,7 @@ export function Login({ onRegisterClick }: LoginProps) {
                       ) : (
                         <Eye size={18} />
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 

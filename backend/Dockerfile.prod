@@ -24,22 +24,28 @@ ENV NO_PROXY=${NO_PROXY}
 
 # Configuração npm
 RUN npm config set registry https://registry.npmjs.org \
-  && npm config set fetch-retries 10 \
-  && npm config set fetch-retry-mintimeout 30000 \
-  && npm config set fetch-retry-maxtimeout 180000 \
-  && npm config set fetch-timeout 900000
+  && npm config set strict-ssl false \
+  && npm config set fetch-retries 3 \
+  && npm config set fetch-retry-mintimeout 5000 \
+  && npm config set fetch-retry-maxtimeout 30000 \
+  && npm config set fetch-timeout 120000 \
+  && npm config set maxsockets 3
+
+# Necessário para downloads do Prisma engine via proxy com cert auto-assinado
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Copiar manifests
 COPY package.json package-lock.json ./
 
-# Instalar dependências (cache mount acelera rebuilds)
-RUN --mount=type=cache,target=/root/.npm npm ci
+# Instalar dependências (NODE_OPTIONS limita heap para evitar OOM kill durante build paralelo)
+RUN --mount=type=cache,target=/root/.npm NODE_OPTIONS="--max-old-space-size=512" npm ci
 
 # Copiar código
 COPY . .
 
-# Prisma
-RUN npx prisma generate --schema=prisma/postgres/schema.prisma
+# Prisma (cache mount evita re-download dos binários do engine a cada build)
+RUN --mount=type=cache,target=/root/.cache/prisma \
+    npx prisma generate --schema=prisma/postgres/schema.prisma
 
 # Build
 RUN npm run build
@@ -49,6 +55,8 @@ RUN npx tsc prisma/postgres/seed.ts \
   --esModuleInterop \
   --module commonjs \
   --moduleResolution node \
+  --target ES2017 \
+  --skipLibCheck \
   --outDir dist/seed
 
 # =========================

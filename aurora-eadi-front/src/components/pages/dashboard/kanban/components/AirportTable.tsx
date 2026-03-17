@@ -303,11 +303,9 @@ export function AirportTable({ containers, isTvMode = false }: AirportTableProps
                       )}>
                         {container.containerNumber}
                       </span>
-                      {!isTvMode && (
-                        <span className="text-slate-500 text-xs">
-                          {container.containerType}
-                        </span>
-                      )}
+                      <span className={cn("text-slate-400", isTvMode ? "text-xs" : "text-xs")}>
+                        {container.containerType}
+                      </span>
                     </div>
                   </td>
 

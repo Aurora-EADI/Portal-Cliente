@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Body,
@@ -18,7 +18,7 @@ import { CreateSupplierDto } from "./dto/create-supplier.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Controller("suppliers")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -72,3 +72,4 @@ export class SupplierController {
     return this.supplierService.getRequirements(req.user.id);
   }
 }
+

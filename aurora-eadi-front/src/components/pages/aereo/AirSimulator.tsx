@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Printer, Building2, History, Lock, Save, ArrowLeft, Plane } from 'lucide-react';
+import { Printer, Building2, History, Lock, Save, ArrowLeft, Plane, CheckCircle, Send, XCircle, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +32,17 @@ import {
   useAirSimulation,
   useCreateAirSimulationVersion,
   useAddAirSimulationService,
+  useStartAirSimulationValidation,
+  useChangeAirSimulationStatus,
 } from '@/hooks/useAirSimulations';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAirServices, useServices } from '@/hooks/useServices';
 import { SimulationStatus } from '@/types';
@@ -61,6 +71,8 @@ export function AirSimulator() {
   const updateSimulationMutation = useUpdateAirSimulation();
   const createVersionMutation = useCreateAirSimulationVersion();
   const addServiceMutation = useAddAirSimulationService();
+  const startValidationMutation = useStartAirSimulationValidation();
+  const changeStatusMutation = useChangeAirSimulationStatus();
 
   // State Management
   const [currentSimulationId, setCurrentSimulationId] = useState<string | null>(urlId);
@@ -80,6 +92,7 @@ export function AirSimulator() {
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
   const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
   const [vinciPeriods, setVinciPeriods] = useState<string>('1');
+  const [cifInputMode, setCifInputMode] = useState<'USD' | 'BRL'>('USD');
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -92,10 +105,14 @@ export function AirSimulator() {
 
   // Calculate CIF BRL numeric value
   const cifBrlNum = useMemo(() => {
-    const usd = parseNumberBR(cifUsd);
-    const rate = parseNumberBR(dollarRate);
-    return usd * rate;
-  }, [cifUsd, dollarRate]);
+    if (cifInputMode === 'USD') {
+      const usd = parseNumberBR(cifUsd) || 0;
+      const rate = parseNumberBR(dollarRate) || 0;
+      return usd * rate;
+    } else {
+      return parseNumberBR(cifBrl) || 0;
+    }
+  }, [cifInputMode, cifUsd, dollarRate, cifBrl]);
 
   // Current Simulation Data
   const { data: currentSimulation, isLoading: isLoadingSimulation } = useAirSimulation(currentSimulationId);
@@ -163,7 +180,7 @@ export function AirSimulator() {
   const calculatedCapataziaCost = useMemo(() => {
     const weight = parseNumberBR(weightKg);
     if (!weight || weight <= 0) return 0;
-    return Math.max(weight * 1.4104, 94.11);
+    return Math.max(weight * 1.4737, 94.11);
   }, [weightKg]);
 
   // Calculate total general in real-time
@@ -188,10 +205,25 @@ export function AirSimulator() {
 
   const calculatedTotalGeneral = totalGeneral;
 
-  // Auto-calculate CIF BRL
+  // Auto-calculate CIF BRL (apenas no modo USD)
   useEffect(() => {
-    setCifBrl(formatNumberBR(cifBrlNum));
-  }, [cifBrlNum]);
+    if (cifInputMode === 'USD') {
+      if (cifBrlNum > 0) {
+        setCifBrl(formatCurrency(cifBrlNum, false));
+      } else {
+        setCifBrl('0,00');
+      }
+    }
+  }, [cifBrlNum, cifInputMode]);
+
+  // Auto-calculate CIF USD (apenas no modo BRL)
+  useEffect(() => {
+    if (cifInputMode === 'BRL') {
+      const rate = parseNumberBR(dollarRate) || 0;
+      const brl = parseNumberBR(cifBrl) || 0;
+      setCifUsd(formatNumberBR(rate > 0 ? brl / rate : 0));
+    }
+  }, [cifBrl, dollarRate, cifInputMode]);
 
   // Sync currentSimulationId with URL
   useEffect(() => {
@@ -199,6 +231,16 @@ export function AirSimulator() {
       setCurrentSimulationId(urlId);
     }
   }, [urlId]);
+
+  // Auto-transition PENDING → IN_VALIDATION when simulation is opened
+  useEffect(() => {
+    if (
+      currentSimulation &&
+      currentSimulation.status === SimulationStatus.PENDING
+    ) {
+      startValidationMutation.mutate(currentSimulation.id);
+    }
+  }, [currentSimulation?.id, currentSimulation?.status]);
 
   // Load current simulation data
   useEffect(() => {
@@ -396,7 +438,7 @@ export function AirSimulator() {
                       value={currentSimulation.id}
                       onValueChange={(value) => {
                         setIsEditingVersion(false);
-                        router.push(`/aereo?id=${value}`);
+                        router.push(`/aereo/simulador?id=${value}`);
                       }}
                     >
                       <SelectTrigger className="w-[110px] h-8 text-xs font-bold bg-white border-primary-100">
@@ -413,9 +455,21 @@ export function AirSimulator() {
                   </div>
                 )}
 
-                <Badge variant={currentSimulation.status === SimulationStatus.DRAFT ? 'secondary' : 'default'}>
-                  {currentSimulation.status}
-                </Badge>
+                {(() => {
+                  const statusLabels: Record<string, { label: string; color: string }> = {
+                    PENDING:       { label: 'Pendente',      color: 'bg-gray-100 text-gray-600 border-gray-200' },
+                    IN_VALIDATION: { label: 'Em Validação',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                    APPROVED:      { label: 'Aprovada',      color: 'bg-green-50 text-green-700 border-green-200' },
+                    DRAFT:         { label: 'Rascunho',      color: 'bg-gray-100 text-gray-500 border-gray-200' },
+                    SENT:          { label: 'Enviada',       color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                  };
+                  const cfg = statusLabels[currentSimulation.status] ?? { label: currentSimulation.status, color: 'bg-gray-100 text-gray-500 border-gray-200' };
+                  return (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.color}`}>
+                      {cfg.label}
+                    </span>
+                  );
+                })()}
                 {!currentSimulation.isCurrentVersion && (
                   <Badge variant="outline" className="text-gray-500 bg-gray-50">
                     <Lock className="w-3 h-3 mr-1" />
@@ -427,6 +481,46 @@ export function AirSimulator() {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Dropdown unificado de status */}
+          {currentSimulationId && currentSimulation?.isCurrentVersion && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  Definir Status
+                  <ChevronDown size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Definir Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.APPROVED || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.APPROVED })}
+                  className="gap-2"
+                >
+                  <CheckCircle size={16} className="text-green-600" />
+                  Aprovada
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.SENT || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.SENT })}
+                  className="gap-2"
+                >
+                  <Send size={16} className="text-blue-500" />
+                  Enviada
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={currentSimulation?.status === SimulationStatus.REJECTED || changeStatusMutation.isPending}
+                  onClick={() => changeStatusMutation.mutate({ id: currentSimulationId, status: SimulationStatus.REJECTED })}
+                  className="gap-2 text-red-600 focus:text-red-600"
+                >
+                  <XCircle size={16} className="text-red-500" />
+                  Rejeitada
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* Novo Simulado */}
           {!currentSimulationId && (
             <Button
@@ -548,6 +642,42 @@ export function AirSimulator() {
                 </div>
 
                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* CIF Currency Mode Toggle */}
+                  <div className="md:col-span-2 flex items-center gap-3 flex-wrap">
+                    <Label className="text-sm font-medium text-gray-700">Moeda de entrada do CIF</Label>
+                    <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setCifInputMode('USD')}
+                        disabled={!isEditable}
+                        className={`px-4 py-1.5 text-sm font-semibold transition-colors ${
+                          cifInputMode === 'USD'
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        USD
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCifInputMode('BRL')}
+                        disabled={!isEditable}
+                        className={`px-4 py-1.5 text-sm font-semibold transition-colors border-l border-gray-200 ${
+                          cifInputMode === 'BRL'
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        BRL
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {cifInputMode === 'USD'
+                        ? 'Informe o valor em dólares; o R$ será calculado automaticamente.'
+                        : 'Informe o valor em reais; o USD será calculado automaticamente.'}
+                    </p>
+                  </div>
+
                   {/* Row 1 */}
                   <div className="space-y-2">
                     <Label htmlFor="cifUsd">Valor CIF da carga USD</Label>
@@ -559,8 +689,8 @@ export function AirSimulator() {
                         value={cifUsd}
                         onChange={(e) => setCifUsd(e.target.value)}
                         onBlur={(e) => setCifUsd(formatNumberBR(parseNumberBR(e.target.value)))}
-                        className="pl-7"
-                        disabled={!isEditable}
+                        className={`pl-7 ${cifInputMode === 'BRL' ? 'bg-gray-50 text-gray-500' : ''}`}
+                        disabled={!isEditable || cifInputMode === 'BRL'}
                       />
                     </div>
                   </div>
@@ -584,8 +714,11 @@ export function AirSimulator() {
                       <Input
                         id="cifBrl"
                         value={cifBrl}
-                        readOnly
-                        className="bg-gray-50 text-gray-600 font-medium pl-9"
+                        readOnly={cifInputMode === 'USD'}
+                        disabled={cifInputMode === 'BRL' ? !isEditable : false}
+                        onChange={cifInputMode === 'BRL' ? (e) => setCifBrl(e.target.value) : undefined}
+                        onBlur={cifInputMode === 'BRL' ? (e) => setCifBrl(formatCurrency(parseNumberBR(e.target.value), false)) : undefined}
+                        className={`pl-9 ${cifInputMode === 'USD' ? 'bg-gray-50 text-gray-600 font-medium' : ''}`}
                       />
                     </div>
                   </div>

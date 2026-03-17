@@ -100,6 +100,16 @@ export function buildNavigationContexts(
         };
       });
 
+    // Inclui children da navegação estática que não foram cobertos pelos sharedItems
+    // Isso garante que novas rotas adicionadas ao static nav apareçam automaticamente
+    if (staticGroupItem?.children) {
+      for (const staticChild of staticGroupItem.children) {
+        if (!children.some((c) => c.path === staticChild.path)) {
+          children.push(staticChild);
+        }
+      }
+    }
+
     const moduleItem: NavItem = {
       label: moduleLabel,
       icon: moduleIcon,

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -14,7 +14,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 import { PermissionsService } from "./permissions.service";
 import { CreatePermissionDto } from "./dto/create-permission.dto";
 import { UpdatePermissionDto } from "./dto/update-permission.dto";
@@ -26,7 +26,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions
-   * Lista todas as permissões técnicas
+   * Lista todas as permissÃµes tÃ©cnicas
    * Query params:
    *  - category: filtrar por categoria (opcional)
    */
@@ -38,7 +38,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/categories
-   * Lista todas as categorias únicas
+   * Lista todas as categorias Ãºnicas
    */
   @Get("categories")
   @Roles(UserRole.ADMIN)
@@ -48,7 +48,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/orphaned
-   * Lista permissões não vinculadas a atividades
+   * Lista permissÃµes nÃ£o vinculadas a atividades
    */
   @Get("orphaned")
   @Roles(UserRole.ADMIN)
@@ -58,7 +58,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/:id
-   * Busca uma permissão específica
+   * Busca uma permissÃ£o especÃ­fica
    */
   @Get(":id")
   @Roles(UserRole.ADMIN)
@@ -68,7 +68,7 @@ export class PermissionsController {
 
   /**
    * POST /permissions
-   * Cria uma nova permissão técnica
+   * Cria uma nova permissÃ£o tÃ©cnica
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -79,7 +79,7 @@ export class PermissionsController {
 
   /**
    * PATCH /permissions/:id
-   * Atualiza uma permissão existente
+   * Atualiza uma permissÃ£o existente
    */
   @Patch(":id")
   @Roles(UserRole.ADMIN)
@@ -92,8 +92,8 @@ export class PermissionsController {
 
   /**
    * DELETE /permissions/:id
-   * Remove uma permissão
-   * Só permite se não houver atividades vinculadas
+   * Remove uma permissÃ£o
+   * SÃ³ permite se nÃ£o houver atividades vinculadas
    */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)
@@ -102,3 +102,4 @@ export class PermissionsController {
     return this.permissionsService.remove(id);
   }
 }
+

@@ -29,7 +29,7 @@ import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { OverdueDocumentsQueryDto } from "./dto/overdue-documents-query.dto";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @ApiTags("Documentos")
 @ApiBearerAuth()
@@ -148,3 +148,4 @@ export class DocumentsController {
     stream.pipe(res);
   }
 }
+

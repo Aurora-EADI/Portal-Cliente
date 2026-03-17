@@ -1,7 +1,7 @@
-import { PartialType } from "@nestjs/mapped-types";
+﻿import { PartialType } from "@nestjs/mapped-types";
 import { CreateAirSimulationDto } from "./create-air-simulation.dto";
 import { IsEnum, IsOptional } from "class-validator";
-import { SimulationStatus } from "@prisma/client-postgres";
+import { SimulationStatus } from "@prisma/client";
 
 export class UpdateAirSimulationDto extends PartialType(
   CreateAirSimulationDto,
@@ -10,3 +10,4 @@ export class UpdateAirSimulationDto extends PartialType(
   @IsEnum(SimulationStatus)
   status?: SimulationStatus;
 }
+

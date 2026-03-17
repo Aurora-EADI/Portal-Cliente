@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Get,
@@ -18,7 +18,7 @@ import { UpdateEmployeeDto } from "./dto/update-employee.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
 
 @Controller("employees")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -31,21 +31,21 @@ export class EmployeesController {
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateEmployeeDto) {
-    this.logger.log(`Criando funcionário: ${JSON.stringify(dto)}`);
+    this.logger.log(`Criando funcionÃ¡rio: ${JSON.stringify(dto)}`);
     return this.employeesService.create(dto);
   }
 
   @Get()
   @Roles(UserRole.ADMIN)
   findAll() {
-    this.logger.log("Listando todos os funcionários");
+    this.logger.log("Listando todos os funcionÃ¡rios");
     return this.employeesService.findAll();
   }
 
   @Get(":id")
   @Roles(UserRole.ADMIN)
   findOne(@Param("id", ParseUUIDPipe) id: string) {
-    this.logger.log(`Buscando funcionário com ID: ${id}`);
+    this.logger.log(`Buscando funcionÃ¡rio com ID: ${id}`);
     return this.employeesService.findOne(id);
   }
 
@@ -56,7 +56,7 @@ export class EmployeesController {
     @Body() dto: UpdateEmployeeDto,
   ) {
     this.logger.log(
-      `Atualizando funcionário ${id} com dados: ${JSON.stringify(dto)}`,
+      `Atualizando funcionÃ¡rio ${id} com dados: ${JSON.stringify(dto)}`,
     );
     return this.employeesService.update(id, dto);
   }
@@ -64,7 +64,8 @@ export class EmployeesController {
   @Delete(":id")
   @Roles(UserRole.ADMIN)
   remove(@Param("id", ParseUUIDPipe) id: string) {
-    this.logger.log(`Removendo funcionário com ID: ${id}`);
+    this.logger.log(`Removendo funcionÃ¡rio com ID: ${id}`);
     return this.employeesService.remove(id);
   }
 }
+

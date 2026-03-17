@@ -7,6 +7,7 @@ import { CreateCustomerDTO } from '@/types';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import { formatDocument } from '@/lib/utils';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export function RegisterCustomer() {
     const router = useRouter();
@@ -26,6 +27,8 @@ export function RegisterCustomer() {
         let finalValue = value;
         if (name === 'document') {
             finalValue = formatDocument(value);
+        } else if (name === 'name') {
+            finalValue = value.toUpperCase();
         }
 
         setFormData(prev => ({ ...prev, [name]: finalValue }));
@@ -162,23 +165,23 @@ export function RegisterCustomer() {
                         >
                             Cancelar
                         </Link>
-                        <button
+                        <Button
                             type="submit"
                             disabled={isPending}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-primary-600 hover:bg-primary-700"
                         >
                             {isPending ? (
                                 <>
-                                    <Loader2 size={20} className="animate-spin" />
+                                    <Loader2 size={16} className="animate-spin" />
                                     Salvando...
                                 </>
                             ) : (
                                 <>
-                                    <Save size={20} />
+                                    <Save size={16} />
                                     Salvar Cliente
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </form>
             </div>

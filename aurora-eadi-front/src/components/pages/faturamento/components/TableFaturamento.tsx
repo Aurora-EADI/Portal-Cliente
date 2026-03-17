@@ -23,11 +23,11 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
+import { Pagination } from "@/components/ui/Pagination";
 
 interface Props {
   data: FaturamentoDetalhado[];
   isLoading: boolean;
-  itemsPerPage?: number;
   onVisibleColumnsChange?: (columns: ColumnConfig[]) => void;
 }
 
@@ -309,47 +309,10 @@ const ResizableHeader = React.memo(({ column, isResizing, onMouseDown }: Resizab
   </TableHead>
 ));
 
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  itemsPerPage: number;
-  totalItems: number;
-  onPrev: () => void;
-  onNext: () => void;
-}
 
-// 🚀 OTIMIZAÇÃO: React.memo previne re-renders desnecessários
-const Pagination = React.memo(({ currentPage, totalPages, itemsPerPage, totalItems, onPrev, onNext }: PaginationProps) => (
-  <div className="flex justify-between items-center mt-4">
-    <div className="text-sm text-gray-600">
-      Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} registros
-    </div>
-    <div className="flex items-center gap-2">
-      <Button
-        onClick={onPrev}
-        disabled={currentPage === 1}
-        variant="outline"
-        size="sm"
-      >
-        Anterior
-      </Button>
-      <span className="text-sm text-gray-600 px-2">
-        Página {currentPage} de {totalPages}
-      </span>
-      <Button
-        onClick={onNext}
-        disabled={currentPage === totalPages}
-        variant="outline"
-        size="sm"
-      >
-        Próxima
-      </Button>
-    </div>
-  </div>
-));
-
-export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisibleColumnsChange }: Props) {
+export function FaturamentoTable({ data, isLoading, onVisibleColumnsChange }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
@@ -378,14 +341,14 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisible
   }, [data]);
 
   const totalPages = useMemo(
-    () => Math.ceil(groupedData.length / itemsPerPage),
-    [groupedData.length, itemsPerPage]
+    () => Math.ceil(groupedData.length / limit),
+    [groupedData.length, limit]
   );
 
   const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return groupedData.slice(start, start + itemsPerPage);
-  }, [currentPage, groupedData, itemsPerPage]);
+    const start = (currentPage - 1) * limit;
+    return groupedData.slice(start, start + limit);
+  }, [currentPage, groupedData, limit]);
 
   const visibleColumns = useMemo(() =>
     columns.filter(col => col.visible),
@@ -444,15 +407,6 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisible
     setResizingColumn(columnId);
   }, [columns]);
 
-  const handlePrev = useCallback(() =>
-    setCurrentPage(prev => Math.max(prev - 1, 1)),
-    []
-  );
-
-  const handleNext = useCallback(() =>
-    setCurrentPage(prev => Math.min(prev + 1, totalPages)),
-    [totalPages]
-  );
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -636,15 +590,16 @@ export function FaturamentoTable({ data, isLoading, itemsPerPage = 20, onVisible
               </Table>
             </div>
 
-            {!isLoading && totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                itemsPerPage={itemsPerPage}
-                totalItems={groupedData.length}
-                onPrev={handlePrev}
-                onNext={handleNext}
-              />
+            {!isLoading && groupedData.length > 0 && (
+              <div className="border-t bg-gray-50/50 py-3 px-4">
+                <Pagination
+                  page={currentPage}
+                  total={groupedData.length}
+                  limit={limit}
+                  onPageChange={setCurrentPage}
+                  onLimitChange={(newLimit) => { setLimit(newLimit); setCurrentPage(1); }}
+                />
+              </div>
             )}
           </>
         )}

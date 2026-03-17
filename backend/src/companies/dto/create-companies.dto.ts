@@ -1,33 +1,58 @@
-import {
-  IsString,
+﻿import {
+  IsArray,
+  IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
   Length,
-  IsEmail,
+  ValidateNested,
 } from "class-validator";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
+import {
+  AllocationRegime,
+  CompanyClassification,
+} from "@prisma/client";
+
+class WorkforceEmployeeInputDto {
+  @IsString()
+  @IsNotEmpty({ message: "Nome completo nao pode ser vazio" })
+  fullName: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "CPF nao pode ser vazio" })
+  cpf: string;
+
+  @IsString()
+  @IsNotEmpty({ message: "Funcao nao pode ser vazia" })
+  position: string;
+
+  @IsDateString()
+  @IsNotEmpty({ message: "Data de admissao e obrigatoria" })
+  hiredAt: string;
+}
 
 export class CreateCompanyDto {
   @IsString()
-  @IsNotEmpty({ message: "CNPJ não pode ser vazio" })
-  @Length(14, 14, { message: "CNPJ deve ter 14 caracteres (somente números)" })
+  @IsNotEmpty({ message: "CNPJ nao pode ser vazio" })
+  @Length(14, 14, { message: "CNPJ deve ter 14 caracteres (somente numeros)" })
   cnpj: string;
 
   @IsString()
-  @IsNotEmpty({ message: "Nome fantasia não pode ser vazio" })
+  @IsNotEmpty({ message: "Nome fantasia nao pode ser vazio" })
   @Transform(({ value }) => value?.trim().toUpperCase())
   fantasyName: string;
 
   @IsString()
-  @IsNotEmpty({ message: "Razão social não pode ser vazia" })
+  @IsNotEmpty({ message: "Razao social nao pode ser vazia" })
   @Transform(({ value }) => value?.trim().toUpperCase())
   socialReason: string;
 
   @IsString()
-  @Length(8, 8, { message: "CEP deve ter 8 caracteres (somente números)" })
+  @Length(8, 8, { message: "CEP deve ter 8 caracteres (somente numeros)" })
   zipCode: string;
 
-  @IsNotEmpty({ message: "Endereço não pode ser vazio" })
+  @IsNotEmpty({ message: "Endereco nao pode ser vazio" })
   @Transform(({ value }) => value?.trim().toUpperCase())
   address: string;
 
@@ -40,12 +65,12 @@ export class CreateCompanyDto {
   complement?: string;
 
   @IsString()
-  @IsNotEmpty({ message: "Bairro não pode ser vazio" })
+  @IsNotEmpty({ message: "Bairro nao pode ser vazio" })
   @Transform(({ value }) => value?.trim().toUpperCase())
   neighborhood: string;
 
   @IsString()
-  @IsNotEmpty({ message: "Cidade não pode ser vazia" })
+  @IsNotEmpty({ message: "Cidade nao pode ser vazia" })
   @Transform(({ value }) => value?.trim().toUpperCase())
   city: string;
 
@@ -55,6 +80,26 @@ export class CreateCompanyDto {
   state: string;
 
   @IsString()
-  @IsNotEmpty({ message: "Telefone não pode ser vazio" })
+  @IsNotEmpty({ message: "Telefone nao pode ser vazio" })
   phone: string;
+
+  @IsOptional()
+  @IsEnum(CompanyClassification)
+  classification?: CompanyClassification;
+
+  @IsOptional()
+  @IsEnum(AllocationRegime)
+  allocationRegime?: AllocationRegime;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  supplierTypeIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkforceEmployeeInputDto)
+  workforceEmployees?: WorkforceEmployeeInputDto[];
 }
+

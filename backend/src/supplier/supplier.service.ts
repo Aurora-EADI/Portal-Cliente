@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+﻿import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { CreateSupplierDto } from "./dto/create-supplier.dto";
 import * as bcrypt from "bcrypt";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
+import { RequirementRulesService } from "../requirement-rules/requirement-rules.service";
 
 @Injectable()
 export class SupplierService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly requirementRulesService: RequirementRulesService,
+  ) {}
 
   async create(dto: CreateSupplierDto) {
     const company = await this.prisma.company.findUnique({
@@ -14,7 +18,7 @@ export class SupplierService {
     });
 
     if (!company) {
-      throw new NotFoundException("Empresa não encontrada.");
+      throw new NotFoundException("Empresa nÃ£o encontrada.");
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -44,7 +48,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier não encontrado.");
+      throw new NotFoundException("Supplier nÃ£o encontrado.");
     }
 
     return supplier;
@@ -56,7 +60,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier não encontrado.");
+      throw new NotFoundException("Supplier nÃ£o encontrado.");
     }
 
     const data: any = { ...dto };
@@ -77,7 +81,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier não encontrado.");
+      throw new NotFoundException("Supplier nÃ£o encontrado.");
     }
 
     return this.prisma.user.delete({
@@ -86,20 +90,8 @@ export class SupplierService {
   }
 
   async getRequirements(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { companyId: true },
-    });
-
-    if (!user || !user.companyId) {
-      throw new NotFoundException("Empresa não encontrada para este usuário.");
-    }
-
-    return this.prisma.companyDocumentRequirement.findMany({
-      where: { companyId: user.companyId },
-      include: {
-        documentType: true,
-      },
-    });
+    return this.requirementRulesService.getEffectiveRequirementsByUser(userId);
   }
 }
+
+

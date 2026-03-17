@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException } from "@nestjs/common";
+﻿import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
-import { Prisma } from "@prisma/client-postgres";
+import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class DocumentTypesService {
@@ -28,32 +28,38 @@ export class DocumentTypesService {
   }
 
   async remove(id: number) {
-    // Verificar se há documentos usando este tipo
     const documentsCount = await this.prisma.document.count({
       where: { documentTypeId: id },
     });
 
     if (documentsCount > 0) {
       throw new BadRequestException(
-        `Não é possível deletar tipo de documento com ${documentsCount} documento(s) vinculado(s). ` +
-          `Use o campo 'active' para desativar ao invés de deletar.`,
+        `Nao e possivel deletar tipo de documento com ${documentsCount} documento(s) vinculado(s). Use o campo 'active' para desativar.`,
       );
     }
 
-    // Verificar se há requisitos de empresas vinculados
-    const requirementsCount =
-      await this.prisma.companyDocumentRequirement.count({
-        where: { documentTypeId: id },
-      });
+    const requirementsCount = await this.prisma.companyDocumentRequirement.count({
+      where: { documentTypeId: id },
+    });
 
     if (requirementsCount > 0) {
       throw new BadRequestException(
-        `Não é possível deletar tipo de documento com ${requirementsCount} requisito(s) de empresa(s). ` +
-          `Use o campo 'active' para desativar ao invés de deletar.`,
+        `Nao e possivel deletar tipo de documento com ${requirementsCount} requisito(s) de empresa vinculados.`,
       );
     }
 
-    // Se passou por todas as verificações, pode deletar
+    const rulesCount = await this.prisma.documentRequirementRuleItem.count({
+      where: { documentTypeId: id },
+    });
+
+    if (rulesCount > 0) {
+      throw new BadRequestException(
+        `Nao e possivel deletar tipo de documento com ${rulesCount} regra(s) de obrigatoriedade vinculada(s).`,
+      );
+    }
+
     return this.prisma.documentType.delete({ where: { id } });
   }
 }
+
+

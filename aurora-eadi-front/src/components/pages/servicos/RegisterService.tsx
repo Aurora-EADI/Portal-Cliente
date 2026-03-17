@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useCreateService, useCreateServiceCost } from '@/hooks/useServices';
 import { CreateServiceDto, ServiceCalculationType, ServiceModal } from '@/types';
 import { Loader2, ArrowLeft, Save, Plane, Ship, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
+import { formatNumberBR, parseNumberBR } from '@/lib/utils';
 
 const calculationTypeLabels: Record<ServiceCalculationType, string> = {
     [ServiceCalculationType.FIXED]: 'Valor Fixo (R$)',
@@ -43,10 +44,10 @@ interface FormData {
     isActive: boolean;
     initialCost: string;
     hasStripping: boolean;
+    hasLcl: boolean;
 }
 
 export function RegisterService() {
-    const router = useRouter();
     const { mutateAsync: createService, isPending: isCreatingService } = useCreateService();
     const { mutateAsync: createServiceCost, isPending: isCreatingCost } = useCreateServiceCost();
 
@@ -60,12 +61,17 @@ export function RegisterService() {
         isActive: true,
         initialCost: '',
         hasStripping: false,
+        hasLcl: false,
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
+
+        if (name === 'initialCost') {
+            return; // Tratado separadamente
+        }
 
         if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
@@ -76,6 +82,31 @@ export function RegisterService() {
 
         if (errors[name as keyof FormData]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    const handleInitialCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        // Remove pontos digitados pelo usuário
+        value = value.replace(/\./g, '');
+        // Permite apenas números e vírgula
+        value = value.replace(/[^0-9,]/g, '');
+        // Garante apenas uma vírgula
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+
+        setFormData(prev => ({ ...prev, initialCost: value }));
+        if (errors.initialCost) {
+            setErrors(prev => ({ ...prev, initialCost: undefined }));
+        }
+    };
+
+    const handleInitialCostBlur = () => {
+        if (formData.initialCost) {
+            const parsed = parseNumberBR(formData.initialCost);
+            setFormData(prev => ({ ...prev, initialCost: formatNumberBR(parsed) }));
         }
     };
 
@@ -99,7 +130,7 @@ export function RegisterService() {
         if (!formData.initialCost.trim()) {
             newErrors.initialCost = 'O valor TX/VALOR é obrigatório';
         } else {
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             if (isNaN(costValue) || costValue < 0) {
                 newErrors.initialCost = 'Informe um valor válido';
             }
@@ -133,20 +164,33 @@ export function RegisterService() {
                 modal: formData.modal, // ⚠️ INCLUIR MODAL
                 isActive: formData.isActive,
                 hasStripping: formData.hasStripping,
+                ...(formData.hasLcl ? { hasLcl: true } : {}),
             };
 
             const newService = await createService(serviceData);
 
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             await createServiceCost({
                 serviceId: newService.id,
                 cost: costValue,
                 reason: 'Valor inicial do serviço',
             });
 
-            router.push('/servicos');
+            toast.success('Serviço cadastrado com sucesso!');
+            setFormData({
+                name: '',
+                description: '',
+                calculationType: ServiceCalculationType.FIXED,
+                modal: ServiceModal.AIR,
+                isActive: true,
+                initialCost: '',
+                hasStripping: false,
+                hasLcl: false,
+            });
+            setErrors({});
         } catch (error) {
             console.error('Erro ao criar serviço:', error);
+            toast.error('Erro ao cadastrar serviço. Tente novamente.');
         }
     };
 
@@ -272,7 +316,8 @@ export function RegisterService() {
                                 id="initialCost"
                                 name="initialCost"
                                 value={formData.initialCost}
-                                onChange={handleChange}
+                                onChange={handleInitialCostChange}
+                                onBlur={handleInitialCostBlur}
                                 className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.initialCost ? 'border-red-500' : 'border-gray-300'}`}
                                 placeholder={getCostPlaceholder()}
                             />
@@ -334,6 +379,24 @@ export function RegisterService() {
                                     </span>
                                     <span className="text-xs text-gray-500">
                                         Se marcado, este serviço só aparecerá em simulações que tenham desova
+                                    </span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasLcl"
+                                    checked={formData.hasLcl}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Carga Solta (LCL)?
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Se marcado, este serviço só aparecerá em simulações que tenham carga solta (LCL)
                                     </span>
                                 </div>
                             </label>

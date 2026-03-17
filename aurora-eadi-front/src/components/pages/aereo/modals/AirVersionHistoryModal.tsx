@@ -39,7 +39,7 @@ export function AirVersionHistoryModal({
     const { data: versions, isLoading } = useAirSimulationVersionHistory(simulationNumber);
 
     const handleOpenVersion = (id: string) => {
-        router.push(`/aereo?id=${id}`);
+        router.push(`/aereo/simulador?id=${id}`);
         onClose();
     };
 

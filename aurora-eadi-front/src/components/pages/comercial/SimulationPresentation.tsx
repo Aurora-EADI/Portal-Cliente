@@ -2,7 +2,7 @@ import React from 'react';
 import { Logo } from '@/components/ui/Logo';
 import { Button } from '@/components/ui/button';
 import { Printer, X } from 'lucide-react';
-import { formatCurrency, formatPercent } from '@/lib/utils';
+import { formatCurrency, formatNumberBR, formatPercent } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Separator } from '@/components/ui/separator';
 
@@ -60,7 +60,7 @@ export function SimulationPresentation({
                     <header className="flex justify-between items-start border-b-2 border-primary-800 pb-6 mb-8">
                         <Logo src="/aurora-MANAUS_logo_principal.png" size="md" />
                         <div className="text-right">
-                            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Simulação de Custos</h1>
+                            <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-tight">Proposta comercial</h1>
                             <p className="text-sm text-gray-500 mt-1">
                                 Ref: <span className="font-mono font-medium text-gray-700">{simulation?.displayNumber || 'N/A'}</span>
                             </p>
@@ -111,7 +111,7 @@ export function SimulationPresentation({
                             <div>
                                 <span className="text-gray-500 block text-xs mb-1">Peso (Toneladas)</span>
                                 <span className="font-medium text-gray-900 text-base">
-                                    {simulation?.tonnes || '-'} ton
+                                    {Number(simulation?.tonnes || 0) > 0 ? `${formatNumberBR(simulation.tonnes, 3)} ton` : '-'}
                                 </span>
                             </div>
                             <div>
@@ -190,7 +190,7 @@ export function SimulationPresentation({
 
                                 {calculatedValues.minDiff > 0 && (
                                     <div className="flex justify-between items-center py-2 px-2 bg-amber-50 rounded border border-amber-100 text-xs">
-                                        <span className="text-amber-800 font-semibold uppercase">Ajus. Faturamento Mínimo</span>
+                                        <span className="text-amber-800 font-semibold uppercase">Diferença para Faturamento Mínimo</span>
                                         <span className="font-bold text-amber-900">{formatCurrency(calculatedValues.minDiff)}</span>
                                     </div>
                                 )}

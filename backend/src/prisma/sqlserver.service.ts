@@ -62,7 +62,7 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
           idleTimeoutMillis: 30000,
         },
         connectionTimeout: 15000,
-        requestTimeout: 30000,
+        requestTimeout: 90000,
       }).connect();
 
       this.connected = true;

@@ -1,6 +1,6 @@
-import { IsString, IsNumber, IsEnum, IsOptional } from "class-validator";
+﻿import { IsString, IsNumber, IsEnum, IsOptional } from "class-validator";
 import { Type } from "class-transformer";
-import { ServiceCostType } from "@prisma/client-postgres";
+import { ServiceCostType } from "@prisma/client";
 
 export class AddSimulationServiceDto {
   @IsString()
@@ -11,13 +11,14 @@ export class AddSimulationServiceDto {
 
   @IsNumber()
   @Type(() => Number)
-  originalCost: number; // Custo original do serviço
+  originalCost: number; // Custo original do serviÃ§o
 
   @IsNumber()
   @Type(() => Number)
-  appliedCost: number; // Custo que será aplicado
+  appliedCost: number; // Custo que serÃ¡ aplicado
 
   @IsOptional()
   @IsString()
-  customReason?: string; // Obrigatório se costType = CUSTOM
+  customReason?: string; // ObrigatÃ³rio se costType = CUSTOM
 }
+

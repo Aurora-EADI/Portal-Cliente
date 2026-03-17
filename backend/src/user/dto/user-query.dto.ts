@@ -1,4 +1,4 @@
-import {
+﻿import {
   IsOptional,
   IsInt,
   IsEnum,
@@ -7,7 +7,7 @@ import {
   IsArray,
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
-import { UserRole, CompanyStatus } from "@prisma/client-postgres";
+import { UserRole, CompanyStatus } from "@prisma/client";
 
 export class UserQueryDto {
   @IsOptional()
@@ -51,3 +51,4 @@ export class UserQueryDto {
   @IsEnum(CompanyStatus)
   companyStatus?: CompanyStatus; // Filtrar por status da empresa
 }
+

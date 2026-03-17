@@ -36,6 +36,7 @@ export interface Service {
   formulaExpression?: string; 
   isActive: boolean;
   hasStripping: boolean;
+  hasLcl?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,6 +77,7 @@ export interface CreateServiceDto {
   calculationType: ServiceCalculationType;
   isActive: boolean;
   hasStripping: boolean;
+  hasLcl?: boolean;
 }
 
 /**

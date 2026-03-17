@@ -1,3 +1,20 @@
+export enum CompanyClassification {
+    MEI = 'MEI',
+    ME = 'ME',
+    EPP = 'EPP',
+    EIRELI = 'EIRELI',
+}
+
+export enum AllocationRegime {
+    NO_WORKFORCE_AT_EADI = 'NO_WORKFORCE_AT_EADI',
+    FULL_WORKFORCE_AT_EADI = 'FULL_WORKFORCE_AT_EADI',
+}
+
+export enum EmployeeStatus {
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+}
+
 export interface Company {
     id: string;
     cnpj: string;
@@ -11,10 +28,21 @@ export interface Company {
     city: string;
     state: string;
     phone: string;
+    classification?: CompanyClassification;
+    allocationRegime?: AllocationRegime;
+    supplierTypeIds?: string[];
+    workforceEmployees?: WorkforceEmployeeInput[];
     status?: CompanyStatus;
-    hasUser?: boolean; // Indica se a empresa já tem usuário cadastrado (virtual field if applicable)
+    hasUser?: boolean;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface WorkforceEmployeeInput {
+    fullName: string;
+    cpf: string;
+    position: string;
+    hiredAt: string;
 }
 
 export enum CompanyStatus {

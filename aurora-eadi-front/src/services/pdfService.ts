@@ -3,7 +3,8 @@ import autoTable from 'jspdf-autotable';
 import { AirSimulation } from '@/types/air-simulation';
 import { Simulation } from '@/types/simulation';
 import { formatCurrency, formatNumberBR, formatDateBR, formatPercent } from '@/lib/utils';
-import { ServiceCalculationType } from '@/types';
+import { calculateServiceCost } from '@/lib/calculations';
+import { ServiceCalculationType, ServiceCostType } from '@/types';
 
 const AURORA_LOGO_URL = '/logo-aurora.png';
 
@@ -22,12 +23,32 @@ const getServiceDetail = (service: any): string => {
       return `${formatCurrency(rate)} por KG`;
     case ServiceCalculationType.PER_TONNE:
       return `${formatCurrency(rate)} por Ton/M³`;
+    case ServiceCalculationType.PER_CONTAINER:
+      return `${formatCurrency(rate)} por CNTR`;
     case ServiceCalculationType.FIXED:
       return `${formatCurrency(rate)}`;
     default:
       return '-';
   }
 };
+
+const getServiceFinalCost = (
+  service: any,
+  calcData: { cifBrl: number; tonnes: number; cntrCount: number }
+): number => {
+  const costType = service.costType;
+  const originalCost = Number(service.originalCost || 0);
+  const appliedCost = Number(service.appliedCost || 0);
+  const calcType = service.service?.calculationType || service.calculationType;
+
+  if (costType === ServiceCostType.DEFAULT) {
+    return calculateServiceCost(originalCost, calcType, calcData as any);
+  }
+
+  return appliedCost;
+};
+
+
 
 export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const doc = new jsPDF();
@@ -75,7 +96,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   doc.setFontSize(10);
   doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
   doc.text(`Cliente: ${simulation.customer?.name || 'Não informado'}`, 15, 68);
-  doc.text(`Documento: ${simulation.customer?.document || 'Não informado'}`, 15, 73);
+  doc.text(`CNPJ: ${simulation.customer?.document || 'Não informado'}`, 15, 73);
 
   // Seção 2: Dados da Carga
   doc.setFontSize(12);
@@ -105,6 +126,8 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const services = [...(simulation.services || [])].sort((a, b) => 
     (a.service?.name || '').localeCompare(b.service?.name || '')
   );
+
+  const servicesTotal = services.reduce((sum, s) => sum + Number(s.appliedCost || 0), 0);
 
   const tableData = [
     ...(simulation.storageCost ? [[
@@ -151,7 +174,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   // Subtotal Serviços
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(Number(simulation.totalServices || 0) + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(servicesTotal), valueX, currentY, { align: 'right' });
 
   // Capatazia
   currentY += 7;
@@ -312,7 +335,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text('Simulação de Custo EADI', pageWidth - 15, 15, { align: 'right' });
+  doc.text('Proposta comercial', pageWidth - 15, 15, { align: 'right' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -329,7 +352,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.setFontSize(10);
   doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
   doc.text(`Cliente: ${simulation.customer?.name || 'Não informado'}`, 15, 68);
-  doc.text(`Documento: ${simulation.customer?.document || 'Não informado'}`, 15, 73);
+  doc.text(`CNPJ: ${simulation.customer?.document || 'Não informado'}`, 15, 73);
 
   // Seção 2: Dados da Carga
   doc.setFontSize(12);
@@ -344,38 +367,43 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.text(`Valor CIF (USD): $ ${formatNumberBR(simulation.cifUsd)}`, 15, cargaY);
   doc.text(`Taxa do Dólar: R$ ${formatNumberBR(simulation.dollarRate)}`, 15, cargaY + 5);
   doc.text(`Valor CIF (R$): ${formatCurrency(simulation.cifBrl)}`, 15, cargaY + 10);
+  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
   
   const col2X = pageWidth / 2 + 10;
-  doc.text(`Tonelagem: ${formatNumberBR(simulation.tonnes || 0, 3)} t`, col2X, cargaY);
+  if (simulation.tonnes && Number(simulation.tonnes) > 0) {
+    doc.text(`Tonelagem: ${formatNumberBR(simulation.tonnes, 3)} t`, col2X, cargaY);
+  }
   doc.text(`Quantidade CNTR: ${simulation.cntrCount || 0}`, col2X, cargaY + 5);
   doc.text(`Tipo CNTR: ${simulation.cntrType || '-'}`, col2X, cargaY + 10);
-  doc.text(`Períodos Aurora (10 dias cada): ${simulation.auroraPeriods || 1}`, 15, cargaY + 15);
 
   // Seção 3: Tabela de Serviços
-  const storageRate = simulation.cifBrl > 0 
-    ? ((simulation.storageCost || 0) / simulation.cifBrl) * 100 
-    : 0;
+  const services = [...(simulation.services || [])]
+    .sort((a, b) => (a.serviceName || '').localeCompare(b.serviceName || ''));
 
-  const services = [...(simulation.services || [])].sort((a, b) => 
-    (a.serviceName || '').localeCompare(b.serviceName || '')
-  );
+  const calcData = {
+    cifBrl: Number(simulation.cifBrl || 0),
+    tonnes: Number(simulation.tonnes || 0),
+    cntrCount: Number(simulation.cntrCount || 0),
+  };
 
-  const tableData = [
-    ...(simulation.storageCost ? [[
-      'Armazenagem Aurora',
-      `${formatNumberBR(storageRate, 2)}% sobre CIF`,
-      formatCurrency(simulation.storageCost)
-    ]] : []),
-    ...services.map(s => [
-      s.serviceName || 'Serviço',
-      getServiceDetail(s),
-      formatCurrency(s.appliedCost || 0)
-    ])
-  ];
+  const servicesWithCost = services.map(s => ({
+    s,
+    finalCost: getServiceFinalCost(s, calcData),
+  }));
+
+  const visibleServices = servicesWithCost.filter(row => Number(row.finalCost) > 0);
+
+  const servicesTotal = visibleServices.reduce((sum, row) => sum + row.finalCost, 0);
+
+  const tableData = visibleServices.map(({ s, finalCost }) => [
+    s.serviceName || 'Serviço',
+    getServiceDetail(s),
+    formatCurrency(finalCost)
+  ]);
 
   autoTable(doc, {
     startY: 115,
-    head: [['Descrição do Serviço', 'Taxa/Valor', 'Valor']],
+    head: [['Descrição do Serviço', 'Base de Cálculo', 'Valor']],
     body: tableData,
     headStyles: { 
       fillColor: auroraOrange as any,
@@ -405,7 +433,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
 
   // Subtotal Serviços
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(Number(simulation.totalServices || 0) + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(servicesTotal + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
 
   // Desconto
   if (simulation.discount && simulation.discount > 0) {
@@ -424,22 +452,31 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
     return normalized.includes('transporte') && normalized.includes('dta');
   };
 
-  const eligibleServices = (simulation.services || []).filter(s => {
+  const eligibleServices = visibleServices.filter(({ s }) => {
     const sName = s.serviceName || s.service?.name || '';
     return !isExcluded(sName);
   });
+
+  const excludedServices = visibleServices.filter(({ s }) => {
+    const sName = s.serviceName || s.service?.name || '';
+    return isExcluded(sName);
+  });
   
-  const eligibleServicesTotal = eligibleServices.reduce((sum, s) => sum + Number(s.appliedCost || 0), 0);
+  const eligibleServicesTotal = eligibleServices.reduce((sum, row) => sum + row.finalCost, 0);
+  const excludedServicesTotal = excludedServices.reduce((sum, row) => sum + row.finalCost, 0);
   
   const baseForMinBilling = eligibleServicesTotal; 
   const cntrCount = Number(simulation.cntrCount || 0);
   const minBillingPerCntr = Number(simulation.minBillingValue || 5500);
   const totalMinThreshold = minBillingPerCntr * cntrCount;
 
-  if (cntrCount > 0 && baseForMinBilling < totalMinThreshold) {
-    const diff = totalMinThreshold - baseForMinBilling;
+  const diff = (cntrCount > 0 && baseForMinBilling < totalMinThreshold)
+    ? totalMinThreshold - baseForMinBilling
+    : 0;
+
+  if (diff > 0) {
     currentY += 7;
-    doc.text('Ajuste p/ Faturamento Mínimo:', labelX, currentY);
+    doc.text('Diferença para Faturamento Mínimo:', labelX, currentY);
     doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
     doc.text(formatCurrency(diff), valueX, currentY, { align: 'right' });
     doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
@@ -454,8 +491,10 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
-  doc.text('VALOR TOTAL DA SIMULAÇÃO:', 15, totalY);
-  doc.text(formatCurrency(simulation.totalGeneral || 0), pageWidth - 15, totalY, { align: 'right' });
+  doc.text('VALOR TOTAL DA PROPOSTA:', 15, totalY);
+  const discountValue = Number(simulation.discount || 0);
+  const totalGeneral = eligibleServicesTotal + diff + excludedServicesTotal - discountValue;
+  doc.text(formatCurrency(totalGeneral), pageWidth - 15, totalY, { align: 'right' });
 
   // Aurora Storage Item in Summary
   // Aurora Storage Item in Summary - Removido daqui e passado para a tabela

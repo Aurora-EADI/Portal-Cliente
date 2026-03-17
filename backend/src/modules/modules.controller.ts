@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -15,7 +15,8 @@ import { ModulesService } from "./modules.service";
 import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
 import { Roles } from "../common/decorators/roles.decorator";
-import { UserRole } from "@prisma/client-postgres";
+import { UserRole } from "@prisma/client";
+
 @Controller("modules")
 @UseGuards(JwtAuthGuard)
 export class ModulesController {
@@ -53,3 +54,4 @@ export class ModulesController {
     await this.modulesService.remove(id);
   }
 }
+

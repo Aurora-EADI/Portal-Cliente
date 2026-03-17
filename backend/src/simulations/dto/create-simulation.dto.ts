@@ -57,6 +57,10 @@ export class CreateSimulationDto {
   hasStripping?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  hasLcl?: boolean;
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   minBillingValue?: number;

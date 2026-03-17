@@ -11,7 +11,6 @@ export const clienteNavigation: NavigationContext = {
             label: 'Lista de Clientes',
             icon: List,
             path: '/cliente/lista',
-            requiredPermissions: ['CAD_CLIENTE'],
         },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],

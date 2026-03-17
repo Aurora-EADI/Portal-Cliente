@@ -1,4 +1,4 @@
-import { FileText, Shield, Upload, FilePlus } from 'lucide-react';
+import { FileText, Shield, Upload, FilePlus, Users, UserCheck, UserPlus, FileCheck } from 'lucide-react';
 import { UserRole } from '@/types';
 import { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
@@ -32,6 +32,31 @@ export const documentosNavigation: NavigationContext = {
                     path: '/documentos/cadastrar',
                     requiredPermissions: ['DOC_REGISTER'],
                     requiredRoles: [UserRole.ADMIN],
+                },
+                {
+                    label: 'Colaboradores',
+                    icon: Users,
+                    path: '/documentos/colaboradores',
+                    requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER],
+                },
+                {
+                    label: 'Gestão Colaboradores',
+                    icon: UserCheck,
+                    path: '/documentos/colaboradores-gestao',
+                    requiredPermissions: ['DOC_VIEW'],
+                    requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
+                },
+                {
+                    label: 'Docs Exigidos Colaboradores',
+                    icon: UserPlus,
+                    path: '/documentos/cadastrar-colaboradores',
+                    requiredPermissions: ['DOC_REGISTER'],
+                },
+                {
+                    label: 'Cadastrar Documento',
+                    icon: FileCheck,
+                    path: '/documentos/cadastrar-documento',
+                    requiredPermissions: ['DOC_VIEW'],
                 },
             ],
         },
