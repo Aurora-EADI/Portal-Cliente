@@ -47,14 +47,14 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: "n_conhecimento", label: "Conhecimento",   visible: true,  width: 160, minWidth: 100 },
   { id: "cliente",        label: "Cliente",         visible: true,  width: 200, minWidth: 120 },
   { id: "status_estoque", label: "Status",          visible: false, width: 120, minWidth: 100 },
-  { id: "n_da",           label: "Nº DA",           visible: false,  width: 130, minWidth: 100 },
-  { id: "dta",            label: "DTA",             visible: false,  width: 130, minWidth: 100 },
-  { id: "container",      label: "Container",       visible: false, width: 200, minWidth: 120 },
-  { id: "Saldo_(Vol)",    label: "Saldo (Vol)",     visible: true,  width: 100, minWidth: 80  },
-  { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", visible: true, width: 130, minWidth: 100 },
-  { id: "valor_cif_total", label: "CIF Total",      visible: false,  width: 130, minWidth: 100 },
-  { id: "m3_total",        label: "M3 Total",       visible: false,  width: 100, minWidth: 80  },
-  { id: "qtd_container",   label: "Qtd Container",  visible: false, width: 100, minWidth: 80  },
+  { id: "n_da",           label: "Nº DA",           visible: true,  width: 130, minWidth: 100 },
+  { id: "dta",            label: "DTA",             visible: true,  width: 130, minWidth: 100 },
+  { id: "container",      label: "Container",       visible: true, width: 200, minWidth: 120 },
+  { id: "Saldo_(Vol)",    label: "Saldo (Vol)",     visible: false,  width: 100, minWidth: 80  },
+  { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", visible: false, width: 130, minWidth: 100 },
+  { id: "valor_cif_total", label: "CIF Total",      visible: true,  width: 130, minWidth: 100 },
+  { id: "m3_total",        label: "M3 Total",       visible: true,  width: 100, minWidth: 80  },
+  { id: "qtd_container",   label: "Qtd Container",  visible: true, width: 100, minWidth: 80  },
 ];
 
 const SKELETON_ROWS = 10;
