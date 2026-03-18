@@ -88,6 +88,7 @@ export const SUB_ROUTES: RouteDefinition[] = [
 
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
+  { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====

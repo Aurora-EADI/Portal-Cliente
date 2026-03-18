@@ -27,6 +27,7 @@ import { RequirementRulesModule } from "src/requirement-rules/requirement-rules.
 import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-documents.module";
 import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
 import { CcteModule } from 'src/ccte/ccte.module';
+import { ConferenciaCargaModule } from 'src/conferencia-carga/conferencia-carga.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { CcteModule } from 'src/ccte/ccte.module';
     WorkforceDocumentsModule,
     DtaMaritimeModule,
     CcteModule,
+    ConferenciaCargaModule,
   ],
 })
 export class AppModule {}
