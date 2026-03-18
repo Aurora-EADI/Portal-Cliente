@@ -127,7 +127,30 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
     (a.service?.name || '').localeCompare(b.service?.name || '')
   );
 
-  const servicesTotal = services.reduce((sum, s) => sum + Number(s.appliedCost || 0), 0);
+  const isExcluded = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes('transporte') && normalized.includes('dta');
+  };
+
+  const isStorage = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes('armazenagem');
+  };
+
+  const eligibleServices = services.filter((s: any) => {
+    const sName = s.service?.name || s.serviceName || '';
+    return !isExcluded(sName) && !isStorage(sName);
+  });
+
+  const excludedServices = services.filter((s: any) => {
+    const sName = s.service?.name || s.serviceName || '';
+    return isExcluded(sName);
+  });
+
+  const eligibleServicesTotal = eligibleServices.reduce((sum: number, s: any) => sum + Number(s.appliedCost || 0), 0);
+  const excludedServicesTotal = excludedServices.reduce((sum: number, s: any) => sum + Number(s.appliedCost || 0), 0);
 
   const tableData = [
     ...(simulation.storageCost ? [[
@@ -135,7 +158,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
       `${formatNumberBR(storageRate, 2)}% sobre CIF`,
       formatCurrency(simulation.storageCost)
     ]] : []),
-    ...services.map(s => [
+    ...eligibleServices.map((s: any) => [
       s.service?.name || 'Serviço',
       getServiceDetail(s),
       formatCurrency(s.appliedCost || 0)
@@ -172,9 +195,23 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const valueX = pageWidth - 15;
   let currentY = finalY + 10;
 
-  // Subtotal Serviços
+  // Subtotal Serviços (Aéreo exclui armazenagem no subtotal da tela)
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(servicesTotal), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(eligibleServicesTotal), valueX, currentY, { align: 'right' });
+
+  // Armazenagem Aurora
+  if (simulation.storageCost && simulation.storageCost > 0) {
+    currentY += 7;
+    doc.text('Armazenagem Aurora:', labelX, currentY);
+    doc.text(formatCurrency(simulation.storageCost), valueX, currentY, { align: 'right' });
+  }
+
+  // Transporte DTA
+  excludedServices.forEach(s => {
+    currentY += 7;
+    doc.text(`${s.service?.name || 'Transporte DTA'}:`, labelX, currentY);
+    doc.text(formatCurrency(s.appliedCost || 0), valueX, currentY, { align: 'right' });
+  });
 
   // Capatazia
   currentY += 7;
@@ -194,25 +231,11 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
     doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
   }
 
-  // Diferença Mínima (Ajuste Faturamento Mínimo)
-  // Exclui Transporte DTA da base de faturamento mínimo usando lógica robusta
-  const isExcluded = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('transporte') && normalized.includes('dta');
-  };
-
-  const eligibleServices = (simulation.services || []).filter(s => {
-    const sName = s.service?.name || s.serviceName || '';
-    return !isExcluded(sName);
-  });
-  
-  const eligibleServicesTotal = eligibleServices.reduce((sum, s) => sum + Number(s.appliedCost || 0), 0);
-  
-  const baseForMinBilling = eligibleServicesTotal + Number(simulation.capataziaCost || 0);
+  const storageVal = Number(simulation.storageCost || 0);
+  const baseForMinBilling = eligibleServicesTotal + storageVal + Number(simulation.capataziaCost || 0);
   const minBilling = Number(simulation.minBillingValue || 350);
-  if (baseForMinBilling < minBilling) {
-    const diff = minBilling - baseForMinBilling;
+  const diff = (baseForMinBilling < minBilling) ? minBilling - baseForMinBilling : 0;
+  if (diff > 0) {
     currentY += 7;
     doc.text('Ajuste p/ Faturamento Mínimo:', labelX, currentY);
     doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
@@ -230,7 +253,11 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
   doc.text('VALOR TOTAL DA SIMULAÇÃO:', 15, totalY);
-  doc.text(formatCurrency(simulation.totalGeneral || 0), pageWidth - 15, totalY, { align: 'right' });
+  
+  const discountVal = Number(simulation.discount || 0);
+  const capataziaVal = Number(simulation.capataziaCost || 0);
+  const totalGeneral = eligibleServicesTotal + storageVal + capataziaVal + diff + excludedServicesTotal - discountVal;
+  doc.text(formatCurrency(totalGeneral), pageWidth - 15, totalY, { align: 'right' });
 
   // Seção 5: Comparativo de Mercado (Aurora vs Vinci)
   const comparisonY = totalY + 20;
@@ -248,8 +275,8 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const capatazia = Number(simulation.capataziaCost) || 0;
 
   // Cálculo da Capatazia Vinci
-  // 0,2500 por quilograma Cobrança mínima de R$ 55,61
-  const vinciCapataziaCalc = (Number(simulation.weightKg) || 0) * 0.25;
+  // 0,2598 por quilograma Cobrança mínima de R$ 55,61
+  const vinciCapataziaCalc = (Number(simulation.weightKg) || 0) * 0.2598;
   const vinciCapatazia = Math.max(vinciCapataziaCalc, 55.61);
   
   // Cálculo da economia: Total Vinci (Armazenagem + Capatazia) vs Total Geral Aurora
@@ -386,16 +413,49 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
     cntrCount: Number(simulation.cntrCount || 0),
   };
 
-  const servicesWithCost = services.map(s => ({
+  const servicesWithCost = services.map((s: any) => ({
     s,
     finalCost: getServiceFinalCost(s, calcData),
   }));
 
-  const visibleServices = servicesWithCost.filter(row => Number(row.finalCost) > 0);
+  const visibleServices = servicesWithCost.filter((row: any) => Number(row.finalCost) > 0);
 
-  const servicesTotal = visibleServices.reduce((sum, row) => sum + row.finalCost, 0);
+  const isExcluded = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes('transporte') && normalized.includes('dta');
+  };
 
-  const tableData = visibleServices.map(({ s, finalCost }) => [
+  const isStorage = (name: string | undefined): boolean => {
+    if (!name) return false;
+    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    return normalized.includes('armazenagem');
+  };
+
+  const eligibleServices = visibleServices.filter(({ s }: any) => {
+    const sName = s.serviceName || s.service?.name || '';
+    return !isExcluded(sName);
+  });
+
+  const excludedServices = visibleServices.filter(({ s }: any) => {
+    const sName = s.serviceName || s.service?.name || '';
+    return isExcluded(sName);
+  });
+
+  const storageServices = eligibleServices.filter(({ s }: any) => {
+    const sName = s.serviceName || s.service?.name || '';
+    return isStorage(sName);
+  });
+
+  const eligibleServicesOnly = eligibleServices.filter(({ s }: any) => {
+    const sName = s.serviceName || s.service?.name || '';
+    return !isStorage(sName);
+  });
+
+  const eligibleServicesTotal = eligibleServices.reduce((sum: number, row: any) => sum + row.finalCost, 0);
+  const excludedServicesTotal = excludedServices.reduce((sum: number, row: any) => sum + row.finalCost, 0);
+
+  const tableData = eligibleServices.map(({ s, finalCost }: any) => [
     s.serviceName || 'Serviço',
     getServiceDetail(s),
     formatCurrency(finalCost)
@@ -433,7 +493,14 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
 
   // Subtotal Serviços
   doc.text('Subtotal Serviços:', labelX, currentY);
-  doc.text(formatCurrency(servicesTotal + Number(simulation.storageCost || 0)), valueX, currentY, { align: 'right' });
+  doc.text(formatCurrency(eligibleServicesTotal), valueX, currentY, { align: 'right' });
+
+  // Transporte DTA
+  excludedServices.forEach(({ s, finalCost }) => {
+    currentY += 7;
+    doc.text(`${s.serviceName || 'Transporte DTA'}:`, labelX, currentY);
+    doc.text(formatCurrency(finalCost), valueX, currentY, { align: 'right' });
+  });
 
   // Desconto
   if (simulation.discount && simulation.discount > 0) {
@@ -444,27 +511,6 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
     doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
   }
 
-  // Diferença Mínima (Ajuste Faturamento Mínimo)
-  // Exclui Transporte DTA da base de faturamento mínimo usando lógica robusta
-  const isExcluded = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('transporte') && normalized.includes('dta');
-  };
-
-  const eligibleServices = visibleServices.filter(({ s }) => {
-    const sName = s.serviceName || s.service?.name || '';
-    return !isExcluded(sName);
-  });
-
-  const excludedServices = visibleServices.filter(({ s }) => {
-    const sName = s.serviceName || s.service?.name || '';
-    return isExcluded(sName);
-  });
-  
-  const eligibleServicesTotal = eligibleServices.reduce((sum, row) => sum + row.finalCost, 0);
-  const excludedServicesTotal = excludedServices.reduce((sum, row) => sum + row.finalCost, 0);
-  
   const baseForMinBilling = eligibleServicesTotal; 
   const cntrCount = Number(simulation.cntrCount || 0);
   const minBillingPerCntr = Number(simulation.minBillingValue || 5500);
