@@ -34,7 +34,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
 // ===== Sub-rotas (páginas internas dos módulos) =====
 export const SUB_ROUTES: RouteDefinition[] = [
   // DTA
-  { path: '/dta/painel', label: 'Painel CT-e', icon: 'LayoutDashboard', parentPath: '/dta', isModuleRoot: false },
+  { path: '/dta/painel', label: 'Processos Aéreos', icon: 'LayoutDashboard', parentPath: '/dta', isModuleRoot: false },
   { path: '/dta/maritimo', label: 'Processos Marítimos', icon: 'Ship', parentPath: '/dta', isModuleRoot: false },
 
   // Comercial

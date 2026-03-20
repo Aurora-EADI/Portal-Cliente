@@ -96,9 +96,9 @@ export const dtaMaritimeService = {
 
   // ========== BILL OF LADINGS ==========
 
-  addBl: async (containerId: string, numero: string): Promise<BillOfLading> => {
+  addBl: async (processoId: string, numero: string): Promise<BillOfLading> => {
     try {
-      const response = await api.post(`/dta-maritime/containers/${containerId}/bls`, { numero });
+      const response = await api.post(`/dta-maritime/processos/${processoId}/bls`, { numero });
       return response.data;
     } catch (error: any) {
       const msg = error.response?.data?.message;

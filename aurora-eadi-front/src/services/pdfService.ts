@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AirSimulation } from '@/types/air-simulation';
 import { Simulation } from '@/types/simulation';
+import { ProcessoImportacao } from '@/types/dtaMaritime';
 import { formatCurrency, formatNumberBR, formatDateBR, formatPercent } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCalculationType, ServiceCostType } from '@/types';
@@ -49,6 +50,123 @@ const getServiceFinalCost = (
 };
 
 
+
+export const exportDtaProcessoToPDF = async (processo: ProcessoImportacao) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  const auroraOrange = [245, 130, 32];
+  const auroraDarkGray = [51, 51, 51];
+  const auroraLightGray = [245, 247, 250];
+
+  // ── Cabeçalho ──
+  doc.setFillColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+  doc.rect(0, 0, pageWidth, 45, 'F');
+
+  try {
+    doc.addImage(AURORA_LOGO_URL, 'PNG', 15, 15, 45, 15);
+  } catch {
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AURORA EADI', 15, 25);
+  }
+
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DTA Marítimo', pageWidth - 15, 15, { align: 'right' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`DTA: ${processo.dta}`, pageWidth - 15, 23, { align: 'right' });
+  doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - 15, 30, { align: 'right' });
+
+  // ── Informações Gerais ──
+  doc.setFontSize(12);
+  doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMAÇÕES GERAIS', 15, 60);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
+
+  const col1X = 15;
+  const col2X = pageWidth / 2 + 10;
+  let y = 68;
+
+  doc.text(`Empresa: ${processo.empresa || '—'}`, col1X, y);
+  doc.text(`Porto: ${processo.porto || '—'}`, col2X, y);
+  y += 7;
+  doc.text(`Navio: ${processo.navio || '—'}`, col1X, y);
+  doc.text(`Transportador: ${processo.transportador || '—'}`, col2X, y);
+  y += 7;
+  doc.text(`Comissária: ${processo.comissaria || '—'}`, col1X, y);
+
+  // ── Datas ──
+  y += 14;
+  doc.setFontSize(12);
+  doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATAS', 15, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(auroraDarkGray[0], auroraDarkGray[1], auroraDarkGray[2]);
+  y += 8;
+
+  doc.text(`Registro DTA: ${formatDateBR(processo.ataDta) || '—'}`, col1X, y);
+  doc.text(`ATA MAO: ${formatDateBR(processo.ataMao) || '—'}`, col2X, y);
+  y += 7;
+  doc.text(`Chegada EADI: ${formatDateBR(processo.ataEadi) || '—'}`, col1X, y);
+  doc.text(`Conclusão: ${formatDateBR(processo.conclusao) || '—'}`, col2X, y);
+
+  // ── H/HBLs ──
+  const bls = processo.bls ?? [];
+  y += 14;
+  doc.setFontSize(12);
+  doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`H/HBL (${bls.length})`, 15, y);
+
+  autoTable(doc, {
+    startY: y + 4,
+    head: [['#', 'Número H/HBL']],
+    body: bls.length
+      ? bls.map((bl, i) => [String(i + 1), bl.numero])
+      : [['—', 'Nenhum H/HBL cadastrado']],
+    headStyles: { fillColor: auroraOrange as any, textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: auroraLightGray as any },
+    columnStyles: { 0: { cellWidth: 15 } },
+    margin: { left: 15, right: 15 },
+    styles: { fontSize: 9 },
+  });
+
+  // ── Containers ──
+  const containers = processo.containers ?? [];
+  const containersY = (doc as any).lastAutoTable.finalY + 10;
+
+  doc.setFontSize(12);
+  doc.setTextColor(auroraOrange[0], auroraOrange[1], auroraOrange[2]);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`CONTAINERS (${containers.length})`, 15, containersY);
+
+  autoTable(doc, {
+    startY: containersY + 4,
+    head: [['#', 'Número do Container', 'Tipo']],
+    body: containers.length
+      ? containers.map((c, i) => [String(i + 1), c.number, c.tipo])
+      : [['—', 'Nenhum container cadastrado', '']],
+    headStyles: { fillColor: auroraOrange as any, textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: auroraLightGray as any },
+    columnStyles: { 0: { cellWidth: 15 }, 2: { cellWidth: 25 } },
+    margin: { left: 15, right: 15 },
+    styles: { fontSize: 9 },
+  });
+
+  doc.save(`DTA_${processo.dta.replace(/\//g, '-')}.pdf`);
+};
 
 export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
   const doc = new jsPDF();

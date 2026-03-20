@@ -261,7 +261,7 @@ export function DtaMaritimoDashboard() {
     },
     {
       key: 'ataDta',
-      header: 'ATA DTA',
+      header: 'Registro DTA',
       render: (item) => <span className="text-xs text-slate-600">{formatDateBR(item.ataDta)}</span>,
     },
     {

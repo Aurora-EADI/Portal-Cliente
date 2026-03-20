@@ -30,6 +30,7 @@ import {
 import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerStatus } from '@/types/customer';
 import {
+  BillOfLading,
   ContainerDta,
   CreateProcessoDto,
   ProcessoImportacao,
@@ -47,30 +48,10 @@ const PORTO_OPTIONS = [
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * Um container dentro de um grupo H/HBL.
- * `containerId` fica preenchido somente em modo edição (Container.id do banco).
- */
-interface ContainerInGroup {
+interface ContainerForm {
   containerId?: string;
   number: string;
   tipo: string;
-}
-
-/**
- * Grupo H/HBL — espelha a célula mesclada do Excel.
- * Cada grupo tem um código BL e N containers abaixo dele.
- */
-interface BLGroup {
-  bl: string;
-  containers: ContainerInGroup[];
-}
-
-interface MergedContainer {
-  containerId?: string;
-  number: string;
-  tipo: string;
-  bls: string[];
 }
 
 interface FormErrors {
@@ -87,82 +68,50 @@ interface ProcessoFormModalProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Aplica máscara DTA no formato NN/NNNNNNN-N (ex: 26/0054328-1).
+ * Aceita apenas dígitos e formata automaticamente conforme a digitação.
+ */
+function applyDtaMask(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 10);
+  let result = '';
+  for (let i = 0; i < digits.length; i++) {
+    if (i === 2) result += '/';
+    else if (i === 9) result += '-';
+    result += digits[i];
+  }
+  return result;
+}
+
+/**
+ * Aplica máscara de moeda BR em tempo real (ex: 1.234.567,89).
+ * Aceita apenas dígitos e vírgula, formata com pontos nos milhares.
+ */
+function applyNumberMask(raw: string): string {
+  const cleaned = raw.replace(/[^\d,]/g, '');
+  const [intRaw, ...rest] = cleaned.split(',');
+  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  if (rest.length === 0) return intFormatted;
+  const decPart = rest[0].slice(0, 2);
+  return `${intFormatted},${decPart}`;
+}
+
 function toDateInputValue(dateStr?: string | null): string {
   if (!dateStr) return '';
   return dateStr.substring(0, 10);
 }
 
-/**
- * Sanitiza um único número de BL (sem barra — já separado).
- * Remove aspas, vírgulas, ponto-e-vírgula e espaços extras.
- * A barra NÃO é removida aqui; ela é tratada como separador em `splitBl`.
- */
-function sanitizeBl(value: string): string {
-  return value.trim().replace(/["',;]/g, '').replace(/\s+/g, '');
+function emptyContainer(): ContainerForm {
+  return { number: '', tipo: '' };
 }
 
-/**
- * Divide um valor de H/HBL pela barra e retorna os códigos válidos.
- * Exemplos:
- *   "OPLSU25MAO1466"              → ["OPLSU25MAO1466"]
- *   "BCN0293743/BCN0295103/"      → ["BCN0293743", "BCN0295103"]
- *   "BCN0293743 / BCN0295103"     → ["BCN0293743", "BCN0295103"]
- */
-function splitBl(raw: string): string[] {
-  return raw.split('/').map(sanitizeBl).filter(Boolean);
+function buildContainersFromApi(apiContainers: ContainerDta[]): ContainerForm[] {
+  if (!apiContainers.length) return [emptyContainer()];
+  return apiContainers.map((c) => ({ containerId: c.id, number: c.number, tipo: c.tipo }));
 }
 
-function emptyGroup(): BLGroup {
-  return { bl: '', containers: [{ number: '', tipo: '' }] };
-}
-
-/**
- * Reconstrói os grupos H/HBL a partir dos containers vindos da API.
- * Um container com 2 BLs aparecerá em 2 grupos — exatamente como no Excel.
- */
-function buildGroupsFromApi(containers: ContainerDta[]): BLGroup[] {
-  const blMap = new Map<string, ContainerInGroup[]>();
-  for (const c of containers) {
-    for (const bl of c.bls ?? []) {
-      if (!blMap.has(bl.numero)) blMap.set(bl.numero, []);
-      blMap.get(bl.numero)!.push({
-        containerId: c.id,
-        number: c.number,
-        tipo: c.tipo,
-      });
-    }
-  }
-  if (blMap.size === 0) return [emptyGroup()];
-  return Array.from(blMap.entries()).map(([bl, cs]) => ({ bl, containers: cs }));
-}
-
-/**
- * Achata os grupos em containers únicos (merge por número).
- * Se o mesmo container aparecer em dois grupos (dois BLs), ele é unificado.
- */
-/**
- * Achata os grupos em containers únicos (merge por número).
- * O valor do H/HBL é dividido por "/" para suportar múltiplos BLs num campo só.
- * Ex: "BCN0293743/BCN0295103/" → BillOfLading BCN0293743 + BillOfLading BCN0295103
- */
-function mergeGroups(groups: BLGroup[]): MergedContainer[] {
-  const map = new Map<string, MergedContainer>();
-  for (const group of groups) {
-    const bls = splitBl(group.bl);
-    if (bls.length === 0) continue;
-    for (const c of group.containers) {
-      const num = c.number.trim().toUpperCase();
-      if (!num || !c.tipo) continue;
-      if (!map.has(num)) {
-        map.set(num, { containerId: c.containerId, number: num, tipo: c.tipo, bls: [] });
-      }
-      const entry = map.get(num)!;
-      for (const bl of bls) {
-        if (!entry.bls.includes(bl)) entry.bls.push(bl);
-      }
-    }
-  }
-  return Array.from(map.values());
+function extractHblsFromApi(bls: BillOfLading[]): string[] {
+  return bls.length ? bls.map((bl) => bl.numero) : [''];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -189,7 +138,8 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
     return fob + frete > 0 ? formatNumberBR(fob + frete) : '';
   }, [fobTotal, freteTotal]);
 
-  const [blGroups, setBlGroups] = useState<BLGroup[]>([emptyGroup()]);
+  const [hbls, setHbls] = useState<string[]>(['']);
+  const [containers, setContainers] = useState<ContainerForm[]>([emptyContainer()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -209,7 +159,7 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
     setErrors({});
 
     if (processo) {
-      setDta(processo.dta ?? '');
+      setDta(applyDtaMask(processo.dta ?? ''));
       setEmpresa(processo.empresa ?? '');
       setPorto(processo.porto ?? '');
       setNavio(processo.navio ?? '');
@@ -221,58 +171,37 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
       setConclusao(toDateInputValue(processo.conclusao));
       setFobTotal(processo.fobTotal != null ? formatNumberBR(processo.fobTotal) : '');
       setFreteTotal(processo.freteTotal != null ? formatNumberBR(processo.freteTotal) : '');
-      setBlGroups(
-        processo.containers?.length
-          ? buildGroupsFromApi(processo.containers)
-          : [emptyGroup()],
-      );
+      setHbls(extractHblsFromApi(processo.bls ?? []));
+      setContainers(buildContainersFromApi(processo.containers ?? []));
     } else {
       setDta(''); setEmpresa(''); setPorto(''); setNavio('');
       setTransportador(''); setComissaria('');
       setAtaDta(''); setAtaMao(''); setAtaEadi(''); setConclusao('');
       setFobTotal(''); setFreteTotal('');
-      setBlGroups([emptyGroup()]);
+      setHbls(['']);
+      setContainers([emptyContainer()]);
     }
   }, [open, processo]);
 
-  // ─── Handlers de grupos ───────────────────────────────────────────
+  // ─── Handlers de H/HBLs ───────────────────────────────────────────
 
-  const addGroup = () => setBlGroups((prev) => [...prev, emptyGroup()]);
+  const addHbl = () => setHbls((prev) => [...prev, '']);
 
-  const removeGroup = (gIdx: number) =>
-    setBlGroups((prev) => prev.filter((_, i) => i !== gIdx));
+  const removeHbl = (idx: number) => setHbls((prev) => prev.filter((_, i) => i !== idx));
 
-  const handleGroupBL = (gIdx: number, value: string) =>
-    setBlGroups((prev) => prev.map((g, i) => (i === gIdx ? { ...g, bl: value } : g)));
+  const handleHblField = (idx: number, value: string) =>
+    setHbls((prev) => prev.map((bl, i) => (i === idx ? value.toUpperCase() : bl)));
 
-  // ─── Handlers de containers dentro do grupo ───────────────────────
+  // ─── Handlers de containers ───────────────────────────────────────
 
-  const addContainerToGroup = (gIdx: number) =>
-    setBlGroups((prev) =>
-      prev.map((g, i) =>
-        i === gIdx ? { ...g, containers: [...g.containers, { number: '', tipo: '' }] } : g,
-      ),
-    );
+  const addContainer = () => setContainers((prev) => [...prev, emptyContainer()]);
 
-  const removeContainerFromGroup = (gIdx: number, cIdx: number) =>
-    setBlGroups((prev) =>
-      prev.map((g, i) =>
-        i === gIdx ? { ...g, containers: g.containers.filter((_, ci) => ci !== cIdx) } : g,
-      ),
-    );
+  const removeContainer = (cIdx: number) =>
+    setContainers((prev) => prev.filter((_, i) => i !== cIdx));
 
-  const handleContainerField = (
-    gIdx: number,
-    cIdx: number,
-    field: 'number' | 'tipo',
-    value: string,
-  ) =>
-    setBlGroups((prev) =>
-      prev.map((g, i) =>
-        i === gIdx
-          ? { ...g, containers: g.containers.map((c, ci) => (ci === cIdx ? { ...c, [field]: value } : c)) }
-          : g,
-      ),
+  const handleContainerField = (cIdx: number, field: 'number' | 'tipo', value: string) =>
+    setContainers((prev) =>
+      prev.map((c, i) => (i === cIdx ? { ...c, [field]: value } : c)),
     );
 
   // ─── Validação ────────────────────────────────────────────────────
@@ -283,28 +212,19 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
     if (!dta.trim()) newErrors.dta = 'DTA é obrigatória';
     if (!empresa.trim()) newErrors.empresa = 'Empresa é obrigatória';
 
-    const merged = mergeGroups(blGroups);
+    const validHbls = hbls.filter((bl) => bl.trim());
+    if (validHbls.length === 0) {
+      newErrors.containers = 'Adicione pelo menos 1 H/HBL';
+    }
 
-    if (merged.length === 0) {
-      newErrors.containers = 'Adicione pelo menos 1 H/HBL com 1 container';
+    const filledContainers = containers.filter((c) => c.number.trim() || c.tipo);
+    if (filledContainers.length === 0) {
+      newErrors.containers = 'Adicione pelo menos 1 container';
     } else {
-      for (const group of blGroups) {
-        if (splitBl(group.bl).length === 0 && group.containers.some((c) => c.number.trim())) {
-          newErrors.containers = 'Preencha o código H/HBL antes de adicionar containers';
-          break;
-        }
-      }
-      if (!newErrors.containers) {
-        for (const c of merged) {
-          if (!c.tipo) {
-            newErrors.containers = `Container ${c.number}: selecione o Tipo`;
-            break;
-          }
-          if (c.bls.length === 0) {
-            newErrors.containers = `Container ${c.number}: precisa de pelo menos 1 H/HBL válido`;
-            break;
-          }
-        }
+      for (const c of filledContainers) {
+        const label = c.number.trim() || 'Container';
+        if (!c.number.trim()) { newErrors.containers = 'Preencha o número do container'; break; }
+        if (!c.tipo) { newErrors.containers = `${label}: selecione o Tipo`; break; }
       }
     }
 
@@ -318,7 +238,10 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      const merged = mergeGroups(blGroups);
+      const validHbls = hbls.map((bl) => bl.trim()).filter(Boolean);
+      const validContainers = containers
+        .filter((c) => c.number.trim() && c.tipo)
+        .map((c) => ({ ...c, number: c.number.trim().toUpperCase() }));
 
       if (isEditing && processo) {
         const updateData: UpdateProcessoDto = {
@@ -334,11 +257,11 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
           fobTotal: fobTotal ? parseNumberBR(fobTotal) : undefined,
           freteTotal: freteTotal ? parseNumberBR(freteTotal) : undefined,
           cifTotal: cifTotal ? parseNumberBR(cifTotal) : undefined,
+          bls: validHbls,
         };
         await updateMutation.mutateAsync({ id: processo.id, data: updateData });
 
-        // Containers que existiam mas foram removidos do formulário
-        const keptIds = new Set(merged.filter((c) => c.containerId).map((c) => c.containerId!));
+        const keptIds = new Set(validContainers.filter((c) => c.containerId).map((c) => c.containerId!));
         const toDelete = (processo.containers ?? []).filter((c) => !keptIds.has(c.id));
         await Promise.all(
           toDelete.map((c) =>
@@ -346,19 +269,18 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
           ),
         );
 
-        // Cria novos ou atualiza existentes
         await Promise.all(
-          merged.map((c) => {
+          validContainers.map((c) => {
             if (!c.containerId) {
               return addContainerMutation.mutateAsync({
                 processoId: processo.id,
-                data: { number: c.number, tipo: c.tipo, bls: c.bls },
+                data: { number: c.number, tipo: c.tipo },
               });
             }
             return updateContainerMutation.mutateAsync({
               id: c.containerId,
               processoId: processo.id,
-              data: { number: c.number, tipo: c.tipo, bls: c.bls },
+              data: { number: c.number, tipo: c.tipo },
             });
           }),
         );
@@ -377,7 +299,8 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
           fobTotal: fobTotal ? parseNumberBR(fobTotal) : undefined,
           freteTotal: freteTotal ? parseNumberBR(freteTotal) : undefined,
           cifTotal: cifTotal ? parseNumberBR(cifTotal) : undefined,
-          containers: merged.map((c) => ({ number: c.number, tipo: c.tipo, bls: c.bls })),
+          bls: validHbls,
+          containers: validContainers.map((c) => ({ number: c.number, tipo: c.tipo })),
         };
         await createMutation.mutateAsync(createData);
       }
@@ -389,8 +312,6 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
       setIsSubmitting(false);
     }
   };
-
-  const totalContainers = mergeGroups(blGroups).length;
 
   // ─── Render ───────────────────────────────────────────────────────
 
@@ -420,10 +341,10 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input
                     id="dta"
                     value={dta}
-                    onChange={(e) => setDta(e.target.value.toUpperCase())}
+                    onChange={(e) => setDta(applyDtaMask(e.target.value))}
                     placeholder="Ex: 26/0063224-1"
                     disabled={isEditing}
-                    className={cn('uppercase', errors.dta && 'border-red-400')}
+                    className={cn(errors.dta && 'border-red-400')}
                   />
                   {errors.dta && <p className="text-xs text-red-500">{errors.dta}</p>}
                 </div>
@@ -533,7 +454,7 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Datas</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="ataDta">ATA DTA</Label>
+                  <Label htmlFor="ataDta">Registro DTA</Label>
                   <Input id="ataDta" type="date" value={ataDta} onChange={(e) => setAtaDta(e.target.value)} />
                 </div>
                 <div className="space-y-1">
@@ -541,7 +462,7 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
                   <Input id="ataMao" type="date" value={ataMao} onChange={(e) => setAtaMao(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="ataEadi">ATA EADI</Label>
+                  <Label htmlFor="ataEadi">Chegada EADI</Label>
                   <Input id="ataEadi" type="date" value={ataEadi} onChange={(e) => setAtaEadi(e.target.value)} />
                 </div>
                 <div className="space-y-1">
@@ -556,11 +477,11 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="fobTotal">FOB Total (USD)</Label>
-                  <Input id="fobTotal" type="text" inputMode="decimal" value={fobTotal} onChange={(e) => setFobTotal(e.target.value)} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFobTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
+                  <Input id="fobTotal" type="text" inputMode="decimal" value={fobTotal} onChange={(e) => setFobTotal(applyNumberMask(e.target.value))} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFobTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="freteTotal">Frete Total (USD)</Label>
-                  <Input id="freteTotal" type="text" inputMode="decimal" value={freteTotal} onChange={(e) => setFreteTotal(e.target.value)} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFreteTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
+                  <Input id="freteTotal" type="text" inputMode="decimal" value={freteTotal} onChange={(e) => setFreteTotal(applyNumberMask(e.target.value))} onBlur={(e) => { const n = parseNumberBR(e.target.value); setFreteTotal(n > 0 ? formatNumberBR(n) : ''); }} placeholder="0,00" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="cifTotal">CIF Total (USD)</Label>
@@ -571,138 +492,109 @@ export function ProcessoFormModal({ open, onOpenChange, processo }: ProcessoForm
 
           </div>
 
-          {/* ── Bloco 3: Grupos H/HBL ── */}
-          <div className="space-y-3">
+          {/* ── Bloco 3: H/HBLs + Containers ── */}
+          <div className="grid grid-cols-2 gap-6">
 
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Containers por H/HBL
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Digite o H/HBL uma vez e adicione todos os containers abaixo.
-                </p>
-              </div>
-              <span className="text-xs text-slate-400">
-                {blGroups.length} H/HBL · {totalContainers} container(s)
-              </span>
-            </div>
-
-            {errors.containers && (
-              <p className="text-xs text-red-500">{errors.containers}</p>
-            )}
-
+            {/* ── H/HBLs ── */}
             <div className="space-y-3">
-              {blGroups.map((group, gIdx) => (
-                <div
-                  key={gIdx}
-                  className="border border-slate-200 rounded-xl overflow-hidden shadow-sm"
-                >
-                  {/* ── H/HBL header ── */}
-                  <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                      H/HBL
-                    </span>
-                    <Input
-                      value={group.bl}
-                      onChange={(e) => handleGroupBL(gIdx, e.target.value.toUpperCase())}
-                      placeholder="Ex: BCN0293743  ou  BCN0293743/BCN0295103/"
-                      className="h-7 text-sm font-mono flex-1 bg-white uppercase"
-                    />
-                    <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                      {group.containers.length} container(s)
-                    </span>
-                    {blGroups.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeGroup(gIdx)}
-                        className="flex-shrink-0 p-1 text-slate-300 hover:text-red-400 transition-colors rounded"
-                        title="Remover este H/HBL"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">H/HBL</h3>
 
-                  {/* ── Column headers ── */}
-                  <div className="grid grid-cols-[1fr_128px_36px] px-4 py-1.5 gap-3 bg-white border-b border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Número do Container
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Tipo
-                    </span>
-                    <span />
-                  </div>
+              {errors.containers && errors.containers.includes('H/HBL') && (
+                <p className="text-xs text-red-500">{errors.containers}</p>
+              )}
 
-                  {/* ── Container rows ── */}
-                  <div className="divide-y divide-slate-50">
-                    {group.containers.map((c, cIdx) => (
-                      <div
-                        key={cIdx}
-                        className="grid grid-cols-[1fr_128px_36px] items-center px-4 py-2 gap-3 bg-white hover:bg-slate-50/50 transition-colors"
-                      >
-                        <Input
-                          value={c.number}
-                          onChange={(e) => handleContainerField(gIdx, cIdx, 'number', e.target.value.toUpperCase())}
-                          placeholder="Ex: MSMU478784-2"
-                          className="h-8 text-sm font-mono uppercase"
-                        />
-
-                        <Select
-                          value={c.tipo}
-                          onValueChange={(v) => handleContainerField(gIdx, cIdx, 'tipo', v)}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="Tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CONTAINER_TIPOS.map((t) => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="divide-y divide-slate-100">
+                  {hbls.map((bl, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50/50 transition-colors">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest w-8 shrink-0">
+                        {idx + 1}
+                      </span>
+                      <Input
+                        value={bl}
+                        onChange={(e) => handleHblField(idx, e.target.value)}
+                        placeholder="Ex: BCN0293743"
+                        className="h-8 text-sm font-mono flex-1 uppercase"
+                      />
+                      {hbls.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => removeContainerFromGroup(gIdx, cIdx)}
-                          className="flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors rounded p-1"
-                          title="Remover container"
+                          onClick={() => removeHbl(idx)}
+                          className="shrink-0 p-1 text-slate-300 hover:text-red-400 transition-colors rounded"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
-                    ))}
-
-                    {group.containers.length === 0 && (
-                      <p className="px-4 py-4 text-center text-xs text-slate-400">
-                        Nenhum container neste H/HBL.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* ── Add container to group ── */}
-                  <button
-                    type="button"
-                    onClick={() => addContainerToGroup(gIdx)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-slate-400 hover:text-primary-600 hover:bg-primary-50/30 border-t border-slate-100 transition-all"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Adicionar container neste H/HBL
-                  </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={addHbl}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-slate-400 hover:text-primary-600 hover:bg-primary-50/30 border-t border-slate-100 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar H/HBL
+                </button>
+              </div>
             </div>
 
-            {/* Add new H/HBL group */}
-            <button
-              type="button"
-              onClick={addGroup}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50/30 transition-all duration-200"
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar H/HBL
-            </button>
+            {/* ── Containers ── */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Containers</h3>
+
+              {errors.containers && !errors.containers.includes('H/HBL') && (
+                <p className="text-xs text-red-500">{errors.containers}</p>
+              )}
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="divide-y divide-slate-100">
+                  {containers.map((container, cIdx) => (
+                    <div key={cIdx} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50/50 transition-colors">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest w-8 shrink-0">
+                        {cIdx + 1}
+                      </span>
+                      <Input
+                        value={container.number}
+                        onChange={(e) => handleContainerField(cIdx, 'number', e.target.value.toUpperCase())}
+                        placeholder="Ex: MSMU478784-2"
+                        className="h-8 text-sm font-mono flex-1 uppercase"
+                      />
+                      <Select
+                        value={container.tipo}
+                        onValueChange={(v) => handleContainerField(cIdx, 'tipo', v)}
+                      >
+                        <SelectTrigger className="h-8 text-sm w-24 shrink-0">
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CONTAINER_TIPOS.map((t) => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {containers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeContainer(cIdx)}
+                          className="shrink-0 p-1 text-slate-300 hover:text-red-400 transition-colors rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addContainer}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-slate-400 hover:text-primary-600 hover:bg-primary-50/30 border-t border-slate-100 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar Container
+                </button>
+              </div>
+            </div>
 
           </div>
 

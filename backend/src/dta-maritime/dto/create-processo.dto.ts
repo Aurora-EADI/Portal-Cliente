@@ -22,12 +22,6 @@ export class CreateContainerDto {
   @IsString()
   @IsNotEmpty()
   tipo: string;
-
-  @ApiProperty({ example: ['MSCUBR123456789', 'MSCUBR987654321'], type: [String] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  bls: string[];
 }
 
 export class CreateProcessoDto {
@@ -98,6 +92,12 @@ export class CreateProcessoDto {
   @IsNumber()
   @Min(0)
   cifTotal?: number;
+
+  @ApiProperty({ example: ['MSCUBR123456789', 'MSCUBR987654321'], type: [String] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  bls: string[];
 
   @ApiProperty({ type: [CreateContainerDto] })
   @IsArray()

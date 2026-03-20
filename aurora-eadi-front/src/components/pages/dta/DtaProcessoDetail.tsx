@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Edit,
   Package,
+  Printer,
   Ship,
   Calendar,
   DollarSign,
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useProcesso } from '@/hooks/useDtaMaritime';
 import { ProcessoImportacao } from '@/types/dtaMaritime';
 import { formatDateBR } from '@/lib/date-format-utils';
+import { exportDtaProcessoToPDF } from '@/services/pdfService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,7 +78,8 @@ export function DtaProcessoDetail({ processoId, onBack, onEdit }: DtaProcessoDet
 
   const allContainers = processo.containers ?? [];
   const totalContainers = allContainers.length;
-  const totalBls = allContainers.reduce((acc, c) => acc + (c.bls?.length ?? 0), 0);
+  const allBls = processo.bls ?? [];
+  const totalBls = allBls.length;
 
   return (
     <div className="space-y-5 animate-in fade-in duration-500">
@@ -103,10 +106,16 @@ export function DtaProcessoDetail({ processoId, onBack, onEdit }: DtaProcessoDet
             </div>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => onEdit(processo)} className="gap-2">
-          <Edit className="w-4 h-4" />
-          Editar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportDtaProcessoToPDF(processo)} className="gap-2">
+            <Printer className="w-4 h-4" />
+            Exportar PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onEdit(processo)} className="gap-2">
+            <Edit className="w-4 h-4" />
+            Editar
+          </Button>
+        </div>
       </div>
 
       {/* ── Informações Gerais ── */}
@@ -144,9 +153,9 @@ export function DtaProcessoDetail({ processoId, onBack, onEdit }: DtaProcessoDet
           </h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          <InfoField label="ATA DTA" value={formatDateBR(processo.ataDta)} />
+          <InfoField label="Registro DTA" value={formatDateBR(processo.ataDta)} />
           <InfoField label="ATA MAO" value={formatDateBR(processo.ataMao)} />
-          <InfoField label="ATA EADI" value={formatDateBR(processo.ataEadi)} />
+          <InfoField label="ChegadaEADI" value={formatDateBR(processo.ataEadi)} />
           <InfoField label="Conclusão" value={formatDateBR(processo.conclusao)} />
         </div>
       </div>
@@ -181,66 +190,68 @@ export function DtaProcessoDetail({ processoId, onBack, onEdit }: DtaProcessoDet
         </div>
       </div>
 
-      {/* ── Containers ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-slate-400" />
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Containers
-            </h3>
+      {/* ── H/HBLs + Containers ── */}
+      <div className="grid grid-cols-2 gap-5">
+
+        {/* H/HBLs */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-slate-400" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                H/HBL
+              </h3>
+            </div>
+            <Badge variant="secondary" className="font-mono text-xs">
+              {totalBls} H/HBL{totalBls !== 1 ? 's' : ''}
+            </Badge>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">{totalBls} H/HBL(s)</span>
+
+          {allBls.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">Nenhum H/HBL cadastrado.</p>
+          ) : (
+            <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+              {allBls.map((bl, idx) => (
+                <div key={bl.id} className="flex items-center gap-3 px-4 py-2.5 bg-white">
+                  <span className="text-[10px] font-bold text-slate-400 w-5">{idx + 1}</span>
+                  <span className="font-mono text-sm text-slate-800">{bl.numero}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Containers */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-slate-400" />
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Containers
+              </h3>
+            </div>
             <Badge variant="secondary" className="font-mono text-xs">
               {totalContainers} container{totalContainers !== 1 ? 's' : ''}
             </Badge>
           </div>
-        </div>
 
-        {allContainers.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-6">
-            Nenhum container cadastrado.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {allContainers.map((c) => (
-              <div
-                key={c.id}
-                className="border border-slate-200 rounded-xl overflow-hidden"
-              >
-                {/* Container header */}
-                <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 border-b border-slate-200">
-                  <span className="font-mono font-semibold text-slate-800 text-sm">
-                    {c.number}
-                  </span>
+          {allContainers.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">Nenhum container cadastrado.</p>
+          ) : (
+            <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+              {allContainers.map((c, idx) => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-2.5 bg-white">
+                  <span className="text-[10px] font-bold text-slate-400 w-5">{idx + 1}</span>
+                  <span className="font-mono font-semibold text-slate-800 text-sm flex-1">{c.number}</span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 text-xs font-bold font-mono">
                     {c.tipo}
                   </span>
-                  <Badge variant="secondary" className="ml-auto font-mono text-xs">
-                    {c.bls?.length ?? 0} H/HBL{(c.bls?.length ?? 0) !== 1 ? 's' : ''}
-                  </Badge>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                {/* BL list */}
-                {c.bls && c.bls.length > 0 ? (
-                  <div className="divide-y divide-slate-50">
-                    {c.bls.map((bl) => (
-                      <div key={bl.id} className="flex items-center gap-2 px-4 py-2.5 bg-white">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest w-12 flex-shrink-0">
-                          H/HBL
-                        </span>
-                        <span className="font-mono text-sm text-slate-800">{bl.numero}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="px-4 py-3 text-xs text-slate-400">Sem H/HBL cadastrado.</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
     </div>

@@ -83,10 +83,10 @@ export class DtaMaritimeController {
 
   // ========== BILL OF LADINGS ==========
 
-  @Post('containers/:id/bls')
-  @ApiOperation({ summary: 'Adicionar BL avulso a um container' })
-  addBl(@Param('id') containerId: string, @Body('numero') numero: string) {
-    return this.dtaMaritimeService.addBl(containerId, numero);
+  @Post('processos/:id/bls')
+  @ApiOperation({ summary: 'Adicionar BL avulso a uma DTA' })
+  addBl(@Param('id') processoId: string, @Body('numero') numero: string) {
+    return this.dtaMaritimeService.addBl(processoId, numero);
   }
 
   @Delete('bls/:id')

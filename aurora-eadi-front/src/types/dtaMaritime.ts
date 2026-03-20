@@ -1,6 +1,6 @@
 export interface BillOfLading {
   id: string;
-  containerId: string;
+  processoId: string;
   numero: string;
   createdAt: string;
   updatedAt: string;
@@ -11,7 +11,6 @@ export interface ContainerDta {
   processoId: string;
   number: string;
   tipo: string;
-  bls?: BillOfLading[];
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +30,7 @@ export interface ProcessoImportacao {
   fobTotal?: number | null;
   freteTotal?: number | null;
   cifTotal?: number | null;
+  bls?: BillOfLading[];
   containers?: ContainerDta[];
   _count?: { containers: number };
   createdAt: string;
@@ -40,15 +40,11 @@ export interface ProcessoImportacao {
 export interface CreateContainerDtaDto {
   number: string;
   tipo: string;
-  /** Lista de números de BL — mínimo 1 */
-  bls: string[];
 }
 
 export interface UpdateContainerDtaDto {
   number?: string;
   tipo?: string;
-  /** Quando presente, substitui todos os BLs do container (replace-all) */
-  bls?: string[];
 }
 
 export interface CreateProcessoDto {
@@ -65,6 +61,7 @@ export interface CreateProcessoDto {
   fobTotal?: number;
   freteTotal?: number;
   cifTotal?: number;
+  bls: string[];
   containers: CreateContainerDtaDto[];
 }
 
@@ -82,4 +79,5 @@ export interface UpdateProcessoDto {
   fobTotal?: number;
   freteTotal?: number;
   cifTotal?: number;
+  bls?: string[];
 }

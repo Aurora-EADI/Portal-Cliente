@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateProcessoDto {
   @ApiPropertyOptional({ example: '01234/567-8' })
@@ -73,4 +73,10 @@ export class UpdateProcessoDto {
   @IsNumber()
   @Min(0)
   cifTotal?: number;
+
+  @ApiPropertyOptional({ example: ['MSCUBR123456789'], type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bls?: string[];
 }

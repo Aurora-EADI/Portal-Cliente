@@ -794,6 +794,7 @@ model ProcessoImportacao {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   containers    Container[]
+  bls           BillOfLading[]
 
   @@map("processos_importacao")
 }
@@ -806,20 +807,20 @@ model Container {
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
   processo   ProcessoImportacao @relation(fields: [processoId], references: [id], onDelete: Cascade)
-  bls        BillOfLading[]
 
   @@unique([processoId, number])
   @@map("containers")
 }
 
 model BillOfLading {
-  id          String    @id @default(uuid())
-  containerId String
-  numero      String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  container   Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  id         String             @id @default(uuid())
+  processoId String
+  numero     String
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  processo   ProcessoImportacao @relation(fields: [processoId], references: [id], onDelete: Cascade)
 
-  @@unique([containerId, numero])
+  @@unique([processoId, numero])
   @@map("bill_of_ladings")
 }
+
