@@ -36,7 +36,8 @@ export function isSessionExpired(): boolean {
 
 /**
  * Renova o access token via cookie httpOnly refresh_token
- * Retorna o novo expires_at (string ISO) se bem-sucedido, ou null se falhar
+ * Retorna o novo expires_at (string ISO) se bem-sucedido, ou null se falhar.
+ * NÃO limpa dados de auth internamente — o caller decide o que fazer com o erro.
  */
 export async function refreshAccessToken(): Promise<string | null> {
   try {
@@ -57,9 +58,27 @@ export async function refreshAccessToken(): Promise<string | null> {
     // Retorna expires_at (truthy) para sinalizar sucesso ao caller
     return expires_at ?? 'ok';
   } catch {
-    clearAllAuthData();
+    // Não chama clearAllAuthData() aqui — erros transitórios (rede, timeout)
+    // não devem deslogar o usuário. O caller decide o que fazer.
     return null;
   }
+}
+
+/**
+ * Tenta renovar o access token com retry e back-off exponencial.
+ * Útil para erros transitórios de rede — evita logout desnecessário.
+ * Retorna o expires_at em caso de sucesso, ou null após esgotar as tentativas.
+ */
+export async function refreshAccessTokenWithRetry(maxRetries = 2): Promise<string | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await refreshAccessToken();
+    if (result) return result;
+    if (attempt < maxRetries) {
+      // Back-off: 1s na 1ª falha, 2s na 2ª, etc.
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+  return null;
 }
 
 /**
@@ -86,15 +105,13 @@ export async function logout(): Promise<void> {
 export function clearAllAuthData(): void {
   if (typeof window === 'undefined') return;
 
-  // Remove expiração do access token
+  // Remove apenas as chaves de auth — NÃO limpa o sessionStorage inteiro
+  // para não afetar dados do Next.js router, React Query, etc.
   sessionStorage.removeItem(EXPIRES_AT_KEY);
 
   // Remove dados de sessão e permissões do localStorage
   localStorage.removeItem('auth_session');
   localStorage.removeItem('user_permissions');
-
-  // Limpa o cache de módulos e rotas
-  sessionStorage.clear();
 
   // Remove o cookie de sessão não-httpOnly (usado pelo middleware Next.js)
   document.cookie = 'auth_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';

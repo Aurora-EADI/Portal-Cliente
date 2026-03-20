@@ -48,7 +48,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: portal-aurora-backend-homolog
     command: >
-      sh -c "npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate &&
+      sh -c "npx prisma db push --schema=prisma/postgres/schema.prisma --skip-generate --accept-data-loss &&
              node dist/seed/seed.js &&
              node dist/src/main.js"
     environment:

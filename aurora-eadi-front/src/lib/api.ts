@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
-  refreshAccessToken,
+  refreshAccessTokenWithRetry,
   clearAllAuthData,
 } from '@/services/auth/token.service';
 
@@ -63,6 +63,8 @@ api.interceptors.response.use(
     if (status === 401 && !isPublicRoute && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      console.log('[INTERCEPTOR] 401 recebido para:', requestUrl);
+
       if (isRefreshing) {
         // Outro refresh já está em andamento — enfileira e aguarda
         return new Promise((resolve, reject) => {
@@ -76,7 +78,11 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const success = await refreshAccessToken();
+        console.log('[INTERCEPTOR] tentando refresh com retry...');
+        // Tenta até 2 vezes com back-off antes de deslogar (erros transitórios de rede)
+        const success = await refreshAccessTokenWithRetry(2);
+
+        console.log('[INTERCEPTOR] refresh resultado:', success ? 'sucesso' : 'falhou');
 
         if (success) {
           // Refresh bem-sucedido — libera a fila e retry da requisição original
@@ -84,7 +90,7 @@ api.interceptors.response.use(
           isRefreshing = false;
           return api(originalRequest);
         } else {
-          throw new Error('Refresh token falhou');
+          throw new Error('Refresh token falhou após todas as tentativas');
         }
       } catch (refreshError) {
         isRefreshing = false;

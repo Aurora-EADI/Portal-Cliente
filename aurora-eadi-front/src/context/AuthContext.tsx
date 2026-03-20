@@ -9,7 +9,7 @@ import {
   saveTokenExpiry,
   isSessionExpired,
   clearAllAuthData,
-  refreshAccessToken,
+  refreshAccessTokenWithRetry,
   logout as logoutService,
 } from '@/services/auth/token.service';
 
@@ -44,18 +44,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const saved = localStorage.getItem(AUTH_SESSION_KEY);
         const savedPermissions = localStorage.getItem(PERMISSIONS_KEY);
 
+        console.log('[AUTH] isSessionExpired:', isSessionExpired());
+        console.log('[AUTH] token_expires_at:', sessionStorage.getItem('token_expires_at'));
+        console.log('[AUTH] auth_session no localStorage:', !!saved);
+
         // Sem dados de usuário no localStorage — tenta fallback via cookie
         if (!saved) {
           const cookieData = Cookies.get(AUTH_SESSION_KEY);
           if (cookieData) {
-            // Tenta renovar sessão via cookie httpOnly refresh_token
-            const success = await refreshAccessToken();
+            // Tenta renovar sessão via cookie httpOnly refresh_token (com retry)
+            const success = await refreshAccessTokenWithRetry(2);
             if (success) {
               const user = JSON.parse(cookieData);
               localStorage.setItem(AUTH_SESSION_KEY, cookieData);
               setCurrentUser(user);
               await fetchUserPermissions(user.id);
             } else {
+              console.log('[AUTH] refresh falhou (sem auth_session) — limpando dados');
               clearAllAuthData();
             }
           }
@@ -66,10 +71,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const user = JSON.parse(saved);
 
         // Verifica se a sessão expirou com base no expires_at armazenado
+        // (também é true quando sessionStorage está vazio, ex: nova aba)
         if (isSessionExpired()) {
-          // Tenta renovar via cookie httpOnly refresh_token
+          console.log('[AUTH] sessão expirada ou sem expires_at — tentando refresh com retry...');
+          // Tenta renovar via cookie httpOnly refresh_token (com retry para erros transitórios)
           try {
-            const success = await refreshAccessToken();
+            const success = await refreshAccessTokenWithRetry(2);
+
+            console.log('[AUTH] refresh resultado:', success ? 'sucesso' : 'falhou');
 
             if (success) {
               setCurrentUser(user);
@@ -80,6 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 await fetchUserPermissions(user.id);
               }
             } else {
+              console.log('[AUTH] refresh falhou após tentativas — limpando dados');
               clearAllAuthData();
               setCurrentUser(null);
               setUserPermissions(null);
