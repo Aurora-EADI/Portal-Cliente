@@ -199,7 +199,7 @@ export function ConferenciaCargaAirportTable({
               <th className={cn("px-4 py-3 text-left font-semibold", isTvMode && "px-3 py-2")}>
                 <div className="flex items-center gap-2">
                   <span className="w-1 h-4 bg-blue-500 rounded-full" />
-                  ID
+                  Conferência nº
                 </div>
               </th>
               <th className={cn("px-4 py-3 text-center font-semibold", isTvMode && "px-3 py-2")}>
@@ -234,7 +234,7 @@ export function ConferenciaCargaAirportTable({
                   Modalidade
                 </div>
               </th>
-              <th className={cn("px-4 py-3 text-left font-semibold", isTvMode && "px-3 py-2")}>Usuario</th>
+              <th className={cn("px-4 py-3 text-left font-semibold", isTvMode && "px-3 py-2")}>Funcionário Solicitante</th>
             </tr>
           </thead>
           <tbody>
@@ -260,13 +260,11 @@ export function ConferenciaCargaAirportTable({
                   <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
                     <div className="flex flex-col items-center">
                       <span className="font-mono font-bold text-emerald-400 text-base">
+                        {formatDate(row.dtConferencia)}
+                      </span>
+                      <span className="text-slate-500 text-xs">
                         {formatTime(row.dtConferencia)}
                       </span>
-                      {!isTvMode && (
-                        <span className="text-slate-500 text-xs">
-                          {formatDate(row.dtConferencia)}
-                        </span>
-                      )}
                     </div>
                   </td>
 

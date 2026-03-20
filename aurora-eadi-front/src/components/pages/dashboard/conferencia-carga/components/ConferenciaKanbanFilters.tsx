@@ -90,14 +90,14 @@ export function ConferenciaKanbanFilters({
 
         {/* Conferencia */}
         <div className="min-w-[180px]">
-          <Label className="text-xs text-gray-500 mb-1.5 block">Conferencia</Label>
+          <Label className="text-xs text-gray-500 mb-1.5 block">Conferência nº</Label>
           <MultiSelect
             options={conferenciaOptions}
             selected={filters.conferenciaIds}
             onChange={(selected) => setFilters((prev) => ({ ...prev, conferenciaIds: selected }))}
             placeholder="Selecione..."
             searchPlaceholder="Buscar..."
-            emptyMessage="Nenhum ID encontrado."
+            emptyMessage="Nenhuma Conferência encontrada."
             className={cn(isTvMode && "h-12 text-lg")}
           />
         </div>
