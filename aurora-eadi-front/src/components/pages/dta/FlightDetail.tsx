@@ -102,7 +102,7 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     return filteredItems.slice(startIndex, endIndex);
-  }, [filteredItems, page]);
+  }, [filteredItems, page, limit]);
 
   const dtaFilledCount = items.filter(
     (item) => item.dta && item.dta.trim() !== '',
@@ -487,7 +487,7 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-sm text-slate-500 font-medium">Total de Itens</p>
@@ -504,15 +504,6 @@ export function FlightDetail({ flightId, onBack }: FlightDetailProps) {
           </div>
           <div className={`p-3 rounded-lg ${allDtaFilled ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
             <FileText size={20} />
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-500 font-medium">Prev. Chegada</p>
-            <p className="text-2xl font-bold text-slate-800">{flight.arrivalTime}</p>
-          </div>
-          <div className="p-3 bg-primary-100 rounded-lg text-primary-600">
-            <Clock size={20} />
           </div>
         </div>
       </div>

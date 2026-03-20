@@ -49,13 +49,19 @@ export class CcteService {
       ];
     }
 
-    return this.prisma.flight.findMany({
+    const flights = await this.prisma.flight.findMany({
       where,
       include: {
         _count: { select: { cargoItems: true } },
+        cargoItems: { select: { dta: true } },
       },
       orderBy: { arrivalDate: 'desc' },
     });
+
+    return flights.map(({ cargoItems, ...flight }) => ({
+      ...flight,
+      dtaFilledCount: cargoItems.filter((item) => item.dta && item.dta.trim() !== '').length,
+    }));
   }
 
   async findOneFlight(id: string) {

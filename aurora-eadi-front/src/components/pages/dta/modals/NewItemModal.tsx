@@ -302,7 +302,7 @@ export function NewItemModal({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={TCOptions.P}>P (Patio)</SelectItem>
-                      <SelectItem value={TCOptions.A}>A (Armazem)</SelectItem>
+                      <SelectItem value={TCOptions.A}>A (Armazenamento)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

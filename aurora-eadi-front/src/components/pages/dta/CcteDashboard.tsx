@@ -17,7 +17,8 @@ import {
   Edit,
   Folder,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Package,
 } from 'lucide-react';
 import { useFlights, useDeleteFlight } from '@/hooks/useCcte';
 import { Flight, FlightStatus } from '@/types/ccte';
@@ -171,15 +172,9 @@ export function CcteDashboard() {
   };
 
   const handleStatusCardClick = (status: string) => {
-    if (statusFilter === status && !searchTerm) {
-      // If clicking already active card, maybe reset? 
-      // User said "corrigir contagem ao clicar", usually clicking should just filter.
-      setStatusFilter(status);
-    } else {
-      setStatusFilter(status);
-      setSearchTerm('');
-      setSelectedFolder(null);
-    }
+    setStatusFilter(status);
+    setSearchTerm('');
+    setSelectedFolder(null);
     setPage(1);
   };
 
@@ -203,7 +198,7 @@ export function CcteDashboard() {
       : (statusFilter ? flightsInPeriod.filter(f => f.status === statusFilter) : flightsInPeriod);
 
     return baseFlights.slice(startIndex, endIndex);
-  }, [flights, flightsInPeriod, page, selectedFolder, statusFilter, searchTerm]);
+  }, [flights, flightsInPeriod, page, limit, selectedFolder, statusFilter, searchTerm]);
 
   const flightDataInFolder = useMemo(() => {
     if (!selectedFolder) return [];
@@ -211,17 +206,28 @@ export function CcteDashboard() {
     return folder ? folder.flights : [];
   }, [groupedFolders, selectedFolder]);
 
+  // Todos os voos da pasta selecionada, sem filtro de status (para cards e tabela)
+  const folderStatsFlights = useMemo(() => {
+    if (!selectedFolder) return [];
+    const [year, month] = selectedFolder.split('-').map(Number);
+    return flightsInPeriod.filter(f => {
+      const d = parseLocaleDate(f.arrivalDate);
+      if (!d) return false;
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+  }, [flightsInPeriod, selectedFolder]);
+
   const paginatedFlights = useMemo(() => {
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
-    return flightDataInFolder.slice(startIndex, endIndex);
-  }, [flightDataInFolder, page]);
+    return folderStatsFlights.slice(startIndex, endIndex);
+  }, [folderStatsFlights, page, limit]);
 
   // Accurate Status Counts from flights IN PERIOD
   const statusCounts = useMemo(() => {
     return {
       PENDING: flightsInPeriod.filter(f => f.status === 'PENDING').length,
-      SENT: flightsInPeriod.filter(f => f.status === 'SENT').length
+      SENT: flightsInPeriod.filter(f => f.status === 'SENT').length,
     };
   }, [flightsInPeriod]);
 
@@ -407,6 +413,44 @@ export function CcteDashboard() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+                  <Package size={18} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total de Cargas</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {folderStatsFlights.reduce((acc, f) => acc + (f._count?.cargoItems || 0), 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+                <div className="p-3 bg-amber-100 text-amber-600 rounded-lg">
+                  <Clock size={18} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">DTA Pendente</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {folderStatsFlights.reduce((acc, f) => acc + (f._count?.cargoItems || 0) - (f.dtaFilledCount || 0), 0)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg">
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">DTA Preenchida</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {folderStatsFlights.reduce((acc, f) => acc + (f.dtaFilledCount || 0), 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <DataTable
               columns={columns}
               data={paginatedFlights}
@@ -418,7 +462,7 @@ export function CcteDashboard() {
               onRowClick={(flight) => setEditingFlight(flight)}
               pagination={{
                 page,
-                total: flightDataInFolder.length,
+                total: folderStatsFlights.length,
                 limit,
                 onPageChange: setPage,
                 onLimitChange: setLimit,

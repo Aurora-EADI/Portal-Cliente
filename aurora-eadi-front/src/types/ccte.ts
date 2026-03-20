@@ -41,6 +41,7 @@ export interface Flight {
   updatedAt: string;
   cargoItems?: CargoItem[];
   history?: FlightHistoryRecord[];
+  dtaFilledCount?: number;
   _count?: {
     cargoItems: number;
   };

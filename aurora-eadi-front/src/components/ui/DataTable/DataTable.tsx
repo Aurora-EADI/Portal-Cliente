@@ -104,7 +104,7 @@ export function DataTable<T>({
                 </div>
             </div>
 
-            {pagination && pagination.total > pagination.limit && (
+            {pagination && pagination.total > 0 && (
                 <div className="mt-4">
                     <Pagination
                         page={pagination.page}
