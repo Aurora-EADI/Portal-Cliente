@@ -30,6 +30,7 @@ interface Props {
   data: TypeEstoque[];
   isLoading: boolean;
   loadingMessage?: string;
+  reportType?: "historico" | "simplificado";
 }
 
 type ColumnConfig = {
@@ -40,22 +41,32 @@ type ColumnConfig = {
   minWidth: number;
 };
 
-const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { id: "ano",            label: "Ano",           visible: false, width: 80,  minWidth: 60  },
-  { id: "dt_entrada",     label: "Data Entrada",  visible: true,  width: 120, minWidth: 100 },
-  { id: "n_lote",         label: "Nº Lote",        visible: true,  width: 120, minWidth: 100 },
-  { id: "n_conhecimento", label: "Conhecimento",   visible: true,  width: 160, minWidth: 100 },
-  { id: "cliente",        label: "Cliente",         visible: true,  width: 200, minWidth: 120 },
-  { id: "status_estoque", label: "Status",          visible: false, width: 120, minWidth: 100 },
-  { id: "n_da",           label: "Nº DA",           visible: true,  width: 130, minWidth: 100 },
-  { id: "dta",            label: "DTA",             visible: true,  width: 130, minWidth: 100 },
-  { id: "container",      label: "Container",       visible: true, width: 200, minWidth: 120 },
-  { id: "Saldo_(Vol)",    label: "Saldo (Vol)",     visible: false,  width: 100, minWidth: 80  },
-  { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", visible: false, width: 130, minWidth: 100 },
-  { id: "valor_cif_total", label: "CIF Total",      visible: true,  width: 130, minWidth: 100 },
-  { id: "m3_total",        label: "M3 Total",       visible: true,  width: 100, minWidth: 80  },
-  { id: "qtd_container",   label: "Qtd Container",  visible: true, width: 100, minWidth: 80  },
+const BASE_COLUMNS: Omit<ColumnConfig, "visible">[] = [
+  { id: "ano",               label: "Ano",               width: 80,  minWidth: 60  },
+  { id: "dt_entrada",        label: "Data Entrada",       width: 120, minWidth: 100 },
+  { id: "n_lote",            label: "Nº Lote",            width: 120, minWidth: 100 },
+  { id: "n_conhecimento",    label: "Conhecimento",        width: 160, minWidth: 100 },
+  { id: "cliente",           label: "Cliente",             width: 200, minWidth: 120 },
+  { id: "status_estoque",    label: "Status",              width: 120, minWidth: 100 },
+  { id: "n_da",              label: "Nº DA",               width: 130, minWidth: 100 },
+  { id: "dta",               label: "DTA",                 width: 130, minWidth: 100 },
+  { id: "container",         label: "Container",           width: 200, minWidth: 120 },
+  { id: "Saldo_(Vol)",       label: "Saldo (Vol)",         width: 100, minWidth: 80  },
+  { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)",   width: 130, minWidth: 100 },
+  { id: "valor_cif_total",   label: "CIF Total",           width: 130, minWidth: 100 },
+  { id: "m3_total",          label: "M3 Total",            width: 100, minWidth: 80  },
+  { id: "qtd_container",     label: "Qtd Container",       width: 100, minWidth: 80  },
 ];
+
+const VISIBLE_BY_REPORT: Record<"historico" | "simplificado", (keyof TypeEstoque)[]> = {
+  historico:     ["dt_entrada", "n_lote", "n_conhecimento", "cliente", "n_da", "dta", "container", "valor_cif_total", "m3_total", "qtd_container"],
+  simplificado:  ["dt_entrada", "n_lote", "n_conhecimento", "cliente", "n_da", "dta", "container", "Saldo_(Vol)", "Saldo_Valor_(US$)", "qtd_container"],
+};
+
+function buildDefaultColumns(reportType: "historico" | "simplificado"): ColumnConfig[] {
+  const visible = new Set(VISIBLE_BY_REPORT[reportType]);
+  return BASE_COLUMNS.map(col => ({ ...col, visible: visible.has(col.id) }));
+}
 
 const SKELETON_ROWS = 10;
 
@@ -164,16 +175,33 @@ const ResizableHeader = React.memo(({ column, isResizing, onMouseDown, className
   </TableHead>
 ));
 
-export function TableEstoque({ data, isLoading, loadingMessage = 'Consultando dados do estoque...' }: Props) {
+export function TableEstoque({ data, isLoading, loadingMessage = 'Consultando dados do estoque...', reportType = "historico" }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [columns, setColumns] = useState<ColumnConfig[]>(() => buildDefaultColumns(reportType));
   const [resizingColumn, setResizingColumn] = useState<string | null>(null);
   const [lastSearchTime, setLastSearchTime] = useState<string | null>(null);
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const resizeRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   const visibleColumns = useMemo(() => columns.filter(c => c.visible), [columns]);
+
+  // Colunas de resumo exibidas no outer table (respeitam visibilidade)
+  const SUMMARY_COL_DEFS: { id: keyof TypeEstoque; label: string; align: string; getValue: (g: { saldoVolTotal: number; saldoValorTotal: number; cifTotal: number; m3Total: number }) => string }[] = [
+    { id: "Saldo_(Vol)",      label: "Saldo (Vol)",      align: "text-right", getValue: g => g.saldoVolTotal.toLocaleString("pt-BR") },
+    { id: "Saldo_Valor_(US$)", label: "Saldo Valor (US$)", align: "text-right", getValue: g => `US$ ${g.saldoValorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+    { id: "valor_cif_total",  label: "CIF Total",        align: "text-right", getValue: g => `US$ ${formatNumberBR(g.cifTotal, 2)}` },
+    { id: "m3_total",         label: "M3 Total",         align: "text-right", getValue: g => formatNumberBR(g.m3Total, 2) },
+  ];
+
+  const visibleSummaryCols = useMemo(
+    () => SUMMARY_COL_DEFS.filter(sc => visibleColumns.some(vc => vc.id === sc.id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleColumns]
+  );
+
+  // expand + Cliente + colunas de resumo visíveis
+  const outerColCount = 2 + visibleSummaryCols.length;
 
   // Group data by client
   const groupedData = useMemo(() => {
@@ -337,8 +365,11 @@ export function TableEstoque({ data, isLoading, loadingMessage = 'Consultando da
                   <TableRow className="bg-gray-100 border-b">
                     <TableHead className="w-10 p-2 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_rgba(0,0,0,0.1)]"></TableHead>
                     <TableHead className="p-3 font-bold text-gray-700 bg-gray-100">Cliente</TableHead>
-                    <TableHead className="p-3 font-bold text-gray-700 text-right bg-gray-100">Saldo (Vol)</TableHead>
-                    <TableHead className="p-3 font-bold text-gray-700 text-right bg-gray-100">Saldo Valor (US$)</TableHead>
+                    {visibleSummaryCols.map(sc => (
+                      <TableHead key={String(sc.id)} className={`p-3 font-bold text-gray-700 bg-gray-100 ${sc.align}`}>
+                        {sc.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
 
@@ -354,18 +385,17 @@ export function TableEstoque({ data, isLoading, loadingMessage = 'Consultando da
                           {expandedClients.has(group.cliente) ? <ChevronDown className="w-4 h-4 text-blue-600" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                         </TableCell>
                         <TableCell className="p-3 font-medium text-gray-900">{group.cliente}</TableCell>
-                        <TableCell className="p-3 text-right font-semibold text-gray-700">
-                          {group.saldoVolTotal.toLocaleString("pt-BR")}
-                        </TableCell>
-                        <TableCell className="p-3 text-right font-semibold text-blue-700">
-                          US$ {group.saldoValorTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </TableCell>
+                        {visibleSummaryCols.map(sc => (
+                          <TableCell key={String(sc.id)} className={`p-3 font-semibold text-blue-700 ${sc.align}`}>
+                            {sc.getValue(group)}
+                          </TableCell>
+                        ))}
                       </TableRow>
 
                       {/* Detailed Lots Section */}
                       {expandedClients.has(group.cliente) && (
                         <TableRow className="bg-gray-50/30">
-                          <TableCell colSpan={4} className="p-4 bg-gray-50/30">
+                          <TableCell colSpan={outerColCount} className="p-4 bg-gray-50/30">
                             <div className="rounded-lg border bg-white shadow-sm overflow-hidden border-l-4 border-l-blue-500">
                               <div className="px-4 py-2 border-b bg-blue-50/50 flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-blue-700">
                                 <span>Detalhamento de Lotes - {group.cliente}</span>
