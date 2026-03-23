@@ -28,6 +28,7 @@ import { WorkforceDocumentsModule } from "src/workforce-documents/workforce-docu
 import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
 import { CcteModule } from 'src/ccte/ccte.module';
 import { ConferenciaCargaModule } from 'src/conferencia-carga/conferencia-carga.module';
+import { ReceptionModule } from '../reception/reception.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ConferenciaCargaModule } from 'src/conferencia-carga/conferencia-carga.
     DtaMaritimeModule,
     CcteModule,
     ConferenciaCargaModule,
+    ReceptionModule,
   ],
 })
 export class AppModule {}

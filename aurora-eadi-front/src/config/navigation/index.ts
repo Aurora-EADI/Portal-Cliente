@@ -15,6 +15,7 @@ import { simulacoesNavigation } from './modules/simulacoes';
 import { clienteNavigation } from './modules/cliente';
 import { dtaNavigation } from './modules/dta';
 import { dashboardNavigation } from './modules/dashboard';
+import { recepcaoNavigation } from './modules/recepcao';
 import { mainNavigation } from './modules/main';
 
 // Navegação estática (fallback)
@@ -31,6 +32,7 @@ export const allNavigationContexts: NavigationContext[] = [
     clienteNavigation,
     dtaNavigation,
     dashboardNavigation,
+    recepcaoNavigation,
     mainNavigation,
 ];
 

@@ -29,6 +29,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
+  { path: '/recepcao', label: 'Recepção', icon: 'Users', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
