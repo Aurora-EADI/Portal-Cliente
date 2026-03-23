@@ -303,7 +303,7 @@ export function MaritimeSimulator() {
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
       setHasStripping(currentSimulation.hasStripping || false);
       setHasLCL(currentSimulation.hasLcl || false);
-      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
+      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue ?? DEFAULT_MIN_BILLING));
       setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
     }
   }, [currentSimulation]);
@@ -359,7 +359,7 @@ export function MaritimeSimulator() {
           discount: discount ? parseNumberBR(discount) : 0,
           hasStripping,
           hasLcl: hasLCL,
-          minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+          minBillingValue: (parseNumberBR(minBillingValue) !== null && parseNumberBR(minBillingValue) !== undefined) ? parseNumberBR(minBillingValue) : DEFAULT_MIN_BILLING,
           auroraPeriods: parseInt(auroraPeriods) || 1,
           initialServices: storageService
             ? [
@@ -393,7 +393,7 @@ export function MaritimeSimulator() {
             discount: discount ? parseNumberBR(discount) : 0,
             hasStripping,
             hasLcl: hasLCL,
-            minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+            minBillingValue: (parseNumberBR(minBillingValue) !== null && parseNumberBR(minBillingValue) !== undefined) ? parseNumberBR(minBillingValue) : DEFAULT_MIN_BILLING,
             auroraPeriods: parseInt(auroraPeriods) || 1,
           },
         });
@@ -459,7 +459,7 @@ export function MaritimeSimulator() {
       discount: discount ? parseNumberBR(discount) : 0,
       hasStripping,
       hasLcl: hasLCL,
-      minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+      minBillingValue: (parseNumberBR(minBillingValue) !== null && parseNumberBR(minBillingValue) !== undefined) ? parseNumberBR(minBillingValue) : DEFAULT_MIN_BILLING,
       auroraPeriods: parseInt(auroraPeriods) || 1,
       services: storageServiceForPdf ? [...baseServices, storageServiceForPdf] : baseServices,
     } as any);
@@ -482,7 +482,7 @@ export function MaritimeSimulator() {
         discount: discount ? parseNumberBR(discount) : 0,
         hasStripping,
         hasLcl: hasLCL,
-        minBillingValue: parseNumberBR(minBillingValue) || DEFAULT_MIN_BILLING,
+        minBillingValue: (parseNumberBR(minBillingValue) !== null && parseNumberBR(minBillingValue) !== undefined) ? parseNumberBR(minBillingValue) : DEFAULT_MIN_BILLING,
         auroraPeriods: parseInt(auroraPeriods) || 1,
       });
 

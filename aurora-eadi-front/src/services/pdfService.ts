@@ -351,7 +351,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   const storageVal = Number(simulation.storageCost || 0);
   const baseForMinBilling = eligibleServicesTotal + storageVal + Number(simulation.capataziaCost || 0);
-  const minBilling = Number(simulation.minBillingValue || 350);
+  const minBilling = Number(simulation.minBillingValue ?? 350);
   const diff = (baseForMinBilling < minBilling) ? minBilling - baseForMinBilling : 0;
   if (diff > 0) {
     currentY += 7;
@@ -631,7 +631,7 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
 
   const baseForMinBilling = eligibleServicesTotal; 
   const cntrCount = Number(simulation.cntrCount || 0);
-  const minBillingPerCntr = Number(simulation.minBillingValue || 5500);
+  const minBillingPerCntr = Number(simulation.minBillingValue ?? 5500);
   const totalMinThreshold = minBillingPerCntr * cntrCount;
 
   const diff = (cntrCount > 0 && baseForMinBilling < totalMinThreshold)

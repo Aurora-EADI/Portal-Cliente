@@ -259,7 +259,7 @@ export function AirSimulator() {
       }
 
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
-      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue || DEFAULT_MIN_BILLING));
+      setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue ?? DEFAULT_MIN_BILLING));
       setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
       setVinciPeriods(currentSimulation.vinciPeriods?.toString() || '1');
     }

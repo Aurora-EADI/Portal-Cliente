@@ -208,7 +208,7 @@ export function SimulationPresentation({
                     {/* Footer / Notes */}
                     <footer className="mt-auto pt-10 border-t border-gray-100 text-xs text-gray-400 print:mt-8 print:pt-4 print:text-center">
                         <p className="mb-2">
-                            * Obs.: Tarifa mínima de emissão de nota fiscal por contêiner - R$5.500,00.
+                            * Obs.: Tarifa mínima de emissão de nota fiscal por contêiner - {formatCurrency(simulation?.minBillingValue ?? 5500)}.
                         </p>
                         <p className="mb-2">
                             * Esta simulação possui valores estimados e pode sofrer alterações sem aviso prévio. Os valores finais serão confirmados mediante faturamento.
