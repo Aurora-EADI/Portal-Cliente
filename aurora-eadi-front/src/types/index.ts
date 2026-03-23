@@ -13,3 +13,4 @@ export * from './customer';
 export * from './container-kanban';
 export * from './ccte';
 export * from './dtaMaritime';
+export * from './conferencia-carga';
