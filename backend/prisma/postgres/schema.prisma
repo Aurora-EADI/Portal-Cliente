@@ -824,3 +824,98 @@ model BillOfLading {
   @@map("bill_of_ladings")
 }
 
+// ============ MOBILE MODULE ============
+
+enum UserMobileRole {
+  INSPECTOR
+  SUPERVISOR
+}
+
+model UserMobile {
+  id             String             @id @default(uuid())
+  name           String
+  email          String             @unique
+  password       String
+  role           UserMobileRole     @default(INSPECTOR)
+  avatarInitials String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  inspections    InspectionMobile[]
+
+  @@map("users_mobile")
+}
+
+model InspectionMobile {
+  id                     String                  @id @default(uuid())
+  tipoOperacao           String
+  statusContainer        String
+  containerNumero        String
+  containerType          String
+  destino                String?
+  origem                 String?
+  transportadora         String?
+  condicaoContainer      String?
+  lacre                  String?
+  motorista              String
+  cpf                    String
+  placaCavalo            String
+  placaPrancha           String?
+  dataHora               DateTime
+  localizacaoArmazenagem String?
+  observacaoGeral        String?
+  assinatura             String?
+  gpsLat                 Float?
+  gpsLng                 Float?
+  inspectionStatus       String                  @default("pending")
+  userId                 String
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  user                   UserMobile              @relation(fields: [userId], references: [id])
+  lados                  SideInspectionMobile[]
+  fotos                  InspectionPhotoMobile[]
+
+  @@index([userId])
+  @@map("inspections_mobile")
+}
+
+model SideInspectionMobile {
+  id           String                 @id @default(uuid())
+  lado         String
+  inspecionado Boolean                @default(false)
+  inspectionId String
+  inspection   InspectionMobile       @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  itens        InspectionItemMobile[]
+
+  @@index([inspectionId])
+  @@map("side_inspections_mobile")
+}
+
+model InspectionItemMobile {
+  id         String                  @id @default(uuid())
+  nome       String
+  posicao    String?
+  status     String?
+  avarias    String[]
+  observacao String?
+  sideId     String
+  side       SideInspectionMobile    @relation(fields: [sideId], references: [id], onDelete: Cascade)
+  fotos      InspectionPhotoMobile[]
+
+  @@index([sideId])
+  @@map("inspection_items_mobile")
+}
+
+model InspectionPhotoMobile {
+  id           String                @id @default(uuid())
+  fileName     String
+  url          String?
+  isMock       Boolean               @default(false)
+  inspectionId String?
+  itemId       String?
+  createdAt    DateTime              @default(now())
+  inspection   InspectionMobile?     @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  item         InspectionItemMobile? @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@map("inspection_photos_mobile")
+}
+

@@ -16,6 +16,7 @@ import { clienteNavigation } from './modules/cliente';
 import { dtaNavigation } from './modules/dta';
 import { dashboardNavigation } from './modules/dashboard';
 import { mainNavigation } from './modules/main';
+import { inspecaoContainerNavigation } from './modules/inspecao-container';
 
 // Navegação estática (fallback)
 export const allNavigationContexts: NavigationContext[] = [
@@ -32,6 +33,7 @@ export const allNavigationContexts: NavigationContext[] = [
     dtaNavigation,
     dashboardNavigation,
     mainNavigation,
+    inspecaoContainerNavigation,
 ];
 
 // Map para lookup O(1) da navegação estática

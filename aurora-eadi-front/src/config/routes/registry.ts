@@ -29,6 +29,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
+  { path: '/inspecao-container', label: 'Inspeção Container', icon: 'Container', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -77,6 +78,7 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/permissoes/catalogo', label: 'Catálogo Técnico', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/atividades', label: 'Atividades e Vínculos', icon: 'Layers', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/usuario', label: 'Usuário', icon: 'Users', parentPath: '/permissoes', isModuleRoot: false },
+  { path: '/permissoes/usuario-mobile', label: 'Usuário Mobile', icon: 'Smartphone', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/gestao', label: 'Gestão de Permissões', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
 
   // Simulações
@@ -89,6 +91,9 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
   { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
+
+  // Inspeção Container
+  { path: '/inspecao-container/painel', label: 'Painel de Vistorias', icon: 'ClipboardList', parentPath: '/inspecao-container', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====

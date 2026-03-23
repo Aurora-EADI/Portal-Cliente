@@ -3,11 +3,337 @@ import autoTable from 'jspdf-autotable';
 import { AirSimulation } from '@/types/air-simulation';
 import { Simulation } from '@/types/simulation';
 import { ProcessoImportacao } from '@/types/dtaMaritime';
+import { Inspection } from '@/services/inspections/inspections.service';
 import { formatCurrency, formatNumberBR, formatDateBR, formatPercent } from '@/lib/utils';
 import { calculateServiceCost } from '@/lib/calculations';
 import { ServiceCalculationType, ServiceCostType } from '@/types';
 
 const AURORA_LOGO_URL = '/logo-aurora.png';
+
+/** Carrega uma URL de imagem externa e retorna data URL via canvas */
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 400;
+        canvas.height = img.naturalHeight || 400;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        } catch {
+          resolve(null); // canvas tainted por CORS
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** Converte uma string SVG para PNG data URL via canvas (necessário para jsPDF) */
+async function svgToPngDataUrl(svgString: string, width = 400, height = 150): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(null); return; }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pendente',
+  in_progress: 'Em Andamento',
+  completed: 'Concluída',
+};
+
+export const exportInspecaoToPDF = async (inspection: Inspection) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const mX = 10;
+
+  const orange = [245, 130, 32] as [number, number, number];
+  const darkGray = [51, 51, 51] as [number, number, number];
+  const lightGray = [245, 247, 250] as [number, number, number];
+
+  // ── Cabeçalho ──
+  doc.setFillColor(...orange);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+
+  try {
+    doc.addImage(AURORA_LOGO_URL, 'PNG', mX, 7, 35, 12);
+  } catch {
+    doc.setFontSize(14); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
+    doc.text('AURORA EADI', mX, 19);
+  }
+
+  doc.setFontSize(13); doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
+  doc.text('VISTORIA DE CONTAINER', pageWidth - mX, 12, { align: 'right' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+  doc.text(
+    `Container: ${inspection.containerNumero}  |  ${STATUS_LABEL[inspection.inspectionStatus] ?? inspection.inspectionStatus}  |  Emitido: ${new Date().toLocaleDateString('pt-BR')}`,
+    pageWidth - mX, 20, { align: 'right' },
+  );
+
+  // ── Card de informações — 4 colunas, label+valor ──
+  const COLS = 4;
+  const ROW_H = 10;   // altura de cada linha de campos (label + valor)
+  const PAD = 3;
+  const fieldW = (pageWidth - mX * 2) / COLS;
+
+  const fieldGroups: [string, string][][] = [
+    [
+      ['Container Nº', inspection.containerNumero],
+      ['Tipo Container', inspection.containerType],
+      ['Tipo Operação', inspection.tipoOperacao],
+      ['Status Container', inspection.statusContainer],
+    ],
+    [
+      ['Origem', inspection.origem || '—'],
+      ['Destino', inspection.destino || '—'],
+      ['Transportadora', inspection.transportadora || '—'],
+      ['Condição', inspection.condicaoContainer || '—'],
+    ],
+    [
+      ['Motorista', inspection.motorista],
+      ['CPF', inspection.cpf],
+      ['Placa Cavalo', inspection.placaCavalo],
+      ['Placa Prancha', inspection.placaPrancha || '—'],
+    ],
+    [
+      ['Data / Hora', new Date(inspection.dataHora).toLocaleString('pt-BR')],
+      ['Inspetor', inspection.user?.name ?? '—'],
+      ['Lacre', inspection.lacre || '—'],
+      ['Armazenagem', inspection.localizacaoArmazenagem || '—'],
+    ],
+  ];
+
+  const numRows = fieldGroups.length + (inspection.observacaoGeral ? 1 : 0);
+  const cardH = numRows * ROW_H + PAD * 2;
+  const cardY = 31;
+
+  // Fundo do card
+  doc.setFillColor(...lightGray);
+  doc.roundedRect(mX, cardY, pageWidth - mX * 2, cardH, 2, 2, 'F');
+
+  // Linhas divisórias horizontais entre grupos
+  doc.setDrawColor(210, 213, 218);
+  doc.setLineWidth(0.2);
+  for (let r = 1; r < fieldGroups.length; r++) {
+    const lineY = cardY + PAD + r * ROW_H - 1;
+    doc.line(mX + PAD, lineY, pageWidth - mX - PAD, lineY);
+  }
+
+  // Renderizar campos
+  fieldGroups.forEach((row, rowIdx) => {
+    row.forEach(([label, value], colIdx) => {
+      const fx = mX + colIdx * fieldW + PAD;
+      const fy = cardY + PAD + rowIdx * ROW_H + 3;
+      doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 130, 130);
+      doc.text(label.toUpperCase(), fx, fy);
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkGray);
+      doc.text(value, fx, fy + 4.5, { maxWidth: fieldW - PAD * 2 });
+    });
+  });
+
+  // Observação geral (linha completa, se existir)
+  if (inspection.observacaoGeral) {
+    const obsRowY = cardY + PAD + fieldGroups.length * ROW_H + 3;
+    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 130, 130);
+    doc.text('OBSERVAÇÃO GERAL', mX + PAD, obsRowY);
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkGray);
+    doc.text(inspection.observacaoGeral, mX + PAD, obsRowY + 4.5, { maxWidth: pageWidth - mX * 2 - PAD * 2 });
+  }
+
+  let y = cardY + cardH + 2;
+
+  // ── Legenda de avarias ──
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 110, 110);
+  doc.text('Legenda: AM=Amassado  |  QB=Quebrado  |  ST=Sujo  |  FU=Furado  |  CT=Cortado  |  FA=Faltando  |  CO=Corroído', mX, y + 3);
+  y += 7;
+
+  // ── Checklist 2×2 (lados lado a lado) ──
+  const lados = inspection.lados ?? [];
+  const tW = (pageWidth - mX * 2 - 4) / 2; // largura de cada mini-tabela
+  const rX = mX + tW + 4;                  // X da coluna direita
+
+  const buildSideRows = (side: typeof lados[number]) =>
+    (side.itens ?? []).map((item) => {
+      const avarias = (item.avarias ?? []).join(', ');
+      const status = item.status ? item.status.toUpperCase() : '—';
+      return [
+        `${item.nome}${item.posicao ? ` (${item.posicao})` : ''}`,
+        status,
+        avarias || '—',
+        item.observacao || '',
+      ];
+    });
+
+  const sideHead = (side: typeof lados[number]) => [[
+    `${side.lado}${side.inspecionado ? '' : '  ✗'}`,
+    'Status', 'Avarias', 'Obs.',
+  ]];
+
+  const sideColStyles = {
+    0: { cellWidth: tW * 0.44 },
+    1: { cellWidth: tW * 0.16, halign: 'center' as const },
+    2: { cellWidth: tW * 0.25 },
+  };
+
+  const didParseCell = (data: any) => {
+    if (data.section === 'body' && data.column.index === 1) {
+      const v = String(data.cell.raw ?? '');
+      if (v === 'OK') data.cell.styles.textColor = [22, 163, 74];
+      else if (v === 'NOK') { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+    }
+  };
+
+  const sidePairs: [typeof lados[number] | undefined, typeof lados[number] | undefined][] = [
+    [lados[0], lados[1]],
+    [lados[2], lados[3]],
+  ];
+
+  for (const [left, right] of sidePairs) {
+    const pairStartY = y;
+
+    if (left) {
+      autoTable(doc, {
+        startY: pairStartY,
+        head: sideHead(left),
+        body: buildSideRows(left),
+        headStyles: { fillColor: orange, textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', cellPadding: 1.2 },
+        alternateRowStyles: { fillColor: lightGray },
+        margin: { left: mX, right: pageWidth - mX - tW },
+        styles: { fontSize: 7, cellPadding: 1 },
+        columnStyles: sideColStyles,
+        didParseCell,
+      });
+    }
+    const leftEnd = (doc as any).lastAutoTable?.finalY ?? pairStartY;
+
+    if (right) {
+      autoTable(doc, {
+        startY: pairStartY,
+        head: sideHead(right),
+        body: buildSideRows(right),
+        headStyles: { fillColor: orange, textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold', cellPadding: 1.2 },
+        alternateRowStyles: { fillColor: lightGray },
+        margin: { left: rX, right: mX },
+        styles: { fontSize: 7, cellPadding: 1 },
+        columnStyles: sideColStyles,
+        didParseCell,
+      });
+    }
+    const rightEnd = (doc as any).lastAutoTable?.finalY ?? pairStartY;
+
+    y = Math.max(leftEnd, rightEnd) + 3;
+  }
+
+  // ── Fotos das Avarias ──
+  const itensComFoto = lados.flatMap((side) =>
+    (side.itens ?? [])
+      .filter((item) => item.fotos && item.fotos.length > 0)
+      .map((item) => ({ ...item, lado: side.lado })),
+  );
+
+  if (itensComFoto.length > 0) {
+    y += 2;
+    if (y + 20 > pageHeight - 15) { doc.addPage(); y = 15; }
+
+    doc.setFontSize(8); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
+    doc.text('FOTOS DAS AVARIAS', mX, y);
+    y += 5;
+
+    const photoSize = 55;
+    const photoGap = 4;
+    const photosPerRow = 3;
+
+    for (const item of itensComFoto) {
+      const validFotos = item.fotos!.filter((f) => f.url);
+      if (validFotos.length === 0) continue;
+
+      if (y + 14 + photoSize > pageHeight - 15) { doc.addPage(); y = 15; }
+
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkGray);
+      const caption = `${item.lado} — ${item.nome}${item.posicao ? ` (${item.posicao})` : ''}${item.avarias?.length ? ' | ' + item.avarias.join(', ') : ''}`;
+      doc.text(caption, mX, y);
+      y += 4;
+
+      let photoX = mX;
+      let colIndex = 0;
+
+      for (const foto of validFotos) {
+        if (colIndex > 0 && colIndex % photosPerRow === 0) {
+          y += photoSize + photoGap;
+          photoX = mX;
+          if (y + photoSize > pageHeight - 15) { doc.addPage(); y = 15; }
+        }
+        try {
+          const dataUrl = await loadImageAsDataUrl(foto.url!);
+          if (dataUrl) doc.addImage(dataUrl, 'JPEG', photoX, y, photoSize, photoSize);
+        } catch { /* skip */ }
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(photoX, y, photoSize, photoSize);
+        photoX += photoSize + photoGap;
+        colIndex++;
+      }
+      y += photoSize + photoGap + 5;
+    }
+  }
+
+  // ── Assinatura ──
+  if (inspection.assinatura) {
+    const signatureDate = new Date(inspection.updatedAt).toLocaleString('pt-BR');
+    if (y + 50 > pageHeight - 10) { doc.addPage(); y = 15; }
+
+    y += 3;
+    doc.setFontSize(8); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
+    doc.text('ASSINATURA DO MOTORISTA', mX, y);
+    y += 4;
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...darkGray);
+    doc.text(`Data da assinatura: ${signatureDate}`, mX, y);
+    y += 3;
+
+    const sigWidth = 90;
+    const sigHeight = 35;
+    doc.setDrawColor(200, 200, 200); doc.setFillColor(250, 250, 250);
+    doc.roundedRect(mX, y, sigWidth, sigHeight, 2, 2, 'FD');
+
+    const pngDataUrl = await svgToPngDataUrl(inspection.assinatura, 540, 210);
+    if (pngDataUrl) {
+      doc.addImage(pngDataUrl, 'PNG', mX + 2, y + 2, sigWidth - 4, sigHeight - 4);
+    } else {
+      doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+      doc.text('[Assinatura não pôde ser renderizada]', mX + 4, y + sigHeight / 2);
+    }
+  }
+
+  doc.save(`Inspecao_${inspection.containerNumero}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+};
 
 const getServiceDetail = (service: any): string => {
   if (service.customReason && service.customReason !== '-') {

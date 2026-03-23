@@ -51,6 +51,7 @@ export class MinioService implements OnModuleInit {
     );
 
     await this.ensureBucketExists();
+    await this.ensureContainersBucketExists();
   }
 
   private async ensureBucketExists() {
@@ -61,12 +62,22 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  async ensureContainersBucketExists() {
+    const exists = await this.minioClient.bucketExists("containers");
+    if (!exists) {
+      await this.minioClient.makeBucket("containers", "us-east-1");
+      this.logger.log(`Bucket "containers" created.`);
+    }
+  }
+
   async uploadFile(
     file: Express.Multer.File,
     fileName: string,
+    bucket?: string,
   ): Promise<string> {
+    const targetBucket = bucket ?? this.bucketName;
     await this.minioClient.putObject(
-      this.bucketName,
+      targetBucket,
       fileName,
       file.buffer,
       file.size,
@@ -75,23 +86,27 @@ export class MinioService implements OnModuleInit {
     return fileName;
   }
 
-  async getFileUrl(fileName: string): Promise<string> {
+  async getFileUrl(fileName: string, bucket?: string): Promise<string> {
+    const targetBucket = bucket ?? this.bucketName;
     return this.publicMinioClient.presignedGetObject(
-      this.bucketName,
+      targetBucket,
       fileName,
       24 * 60 * 60,
     );
   }
 
-  async deleteFile(fileName: string): Promise<void> {
-    await this.minioClient.removeObject(this.bucketName, fileName);
+  async deleteFile(fileName: string, bucket?: string): Promise<void> {
+    const targetBucket = bucket ?? this.bucketName;
+    await this.minioClient.removeObject(targetBucket, fileName);
   }
 
-  async getFileStream(fileName: string): Promise<any> {
-    return this.minioClient.getObject(this.bucketName, fileName);
+  async getFileStream(fileName: string, bucket?: string): Promise<any> {
+    const targetBucket = bucket ?? this.bucketName;
+    return this.minioClient.getObject(targetBucket, fileName);
   }
 
-  async getFileStat(fileName: string): Promise<any> {
-    return this.minioClient.statObject(this.bucketName, fileName);
+  async getFileStat(fileName: string, bucket?: string): Promise<any> {
+    const targetBucket = bucket ?? this.bucketName;
+    return this.minioClient.statObject(targetBucket, fileName);
   }
 }
