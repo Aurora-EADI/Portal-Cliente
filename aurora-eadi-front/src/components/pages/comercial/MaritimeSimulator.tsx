@@ -101,6 +101,7 @@ export function MaritimeSimulator() {
   const [minBillingValue, setMinBillingValue] = useState<string>(DEFAULT_MIN_BILLING.toString());
   const [auroraPeriods, setAuroraPeriods] = useState<string>('1');
   const [cifInputMode, setCifInputMode] = useState<'USD' | 'BRL'>('USD');
+  const [loadedSimulationId, setLoadedSimulationId] = useState<string | null>(null);
 
   // Local state for services before saving simulation
   const [localServices, setLocalServices] = useState<Array<{
@@ -291,7 +292,7 @@ export function MaritimeSimulator() {
 
   // Load current simulation data
   useEffect(() => {
-    if (currentSimulation) {
+    if (currentSimulation && currentSimulation.id !== loadedSimulationId) {
       setSelectedCustomerId(currentSimulation.customerId);
       setCifUsd(formatNumberBR(currentSimulation.cifUsd));
       setDollarRate(formatNumberBR(currentSimulation.dollarRate));
@@ -305,8 +306,10 @@ export function MaritimeSimulator() {
       setHasLCL(currentSimulation.hasLcl || false);
       setMinBillingValue(formatNumberBR(currentSimulation.minBillingValue ?? DEFAULT_MIN_BILLING));
       setAuroraPeriods(currentSimulation.auroraPeriods?.toString() || '1');
+      
+      setLoadedSimulationId(currentSimulation.id);
     }
-  }, [currentSimulation]);
+  }, [currentSimulation, loadedSimulationId]);
 
   // Handler: Update customer selection (local state only)
   const handleCustomerChange = (customerId: string) => {
