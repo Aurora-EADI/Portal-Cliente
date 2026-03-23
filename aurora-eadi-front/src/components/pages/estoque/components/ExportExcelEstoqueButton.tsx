@@ -65,10 +65,16 @@ export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: 
       const formatted = data.map((item) => {
         const row: Record<string, string | number> = {};
 
+        const NUMERIC_KEYS: (keyof TypeEstoque)[] = ["Saldo_Valor_(US$)", "valor_cif_total"];
+
         (Object.keys(COLUMN_LABELS) as (keyof TypeEstoque)[]).forEach((key) => {
           const val = item[key];
           if (key === "dt_entrada") {
             row[COLUMN_LABELS[key]] = parseLocalDate(val as string | null);
+          } else if (NUMERIC_KEYS.includes(key)) {
+            const raw = String(val ?? "").replace(",", ".");
+            const parsed = parseFloat(raw);
+            row[COLUMN_LABELS[key]] = isNaN(parsed) ? "" : parsed;
           } else {
             row[COLUMN_LABELS[key]] = val ?? "";
           }
@@ -78,6 +84,25 @@ export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: 
       });
 
       const worksheet = XLSX.utils.json_to_sheet(formatted);
+
+      // Aplicar formato numérico pt-BR nas colunas de valor
+      const NUMERIC_HEADERS = ["Saldo Valor (US$)", "CIF Total"];
+      const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
+      const numericCols: number[] = [];
+
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const headerCell = worksheet[XLSX.utils.encode_cell({ r: 0, c: C })];
+        if (headerCell && NUMERIC_HEADERS.includes(headerCell.v)) {
+          numericCols.push(C);
+        }
+      }
+
+      for (let R = range.s.r + 1; R <= range.e.r; R++) {
+        for (const C of numericCols) {
+          const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
+          if (cell) cell.z = "#,##0.00";
+        }
+      }
 
       // Auto-width das colunas
       worksheet["!cols"] = Object.keys(formatted[0] || {}).map((col) => {
