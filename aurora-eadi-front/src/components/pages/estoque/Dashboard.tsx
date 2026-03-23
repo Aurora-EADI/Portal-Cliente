@@ -249,6 +249,7 @@ export function EstoquePage({ reportType }: EstoquePageProps) {
             data={filteredData}
             isLoading={isLoading}
             loadingMessage={loadingMessage}
+            reportType={reportType}
           />
         )}
       </div>
