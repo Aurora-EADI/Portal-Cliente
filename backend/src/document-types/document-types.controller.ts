@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Get,
   Post,
@@ -21,7 +21,7 @@ export class DocumentTypesController {
   constructor(private readonly documentTypesService: DocumentTypesService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   create(@Body() data: Prisma.DocumentTypeCreateInput) {
     return this.documentTypesService.create(data);
   }
@@ -37,7 +37,7 @@ export class DocumentTypesController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   update(
     @Param("id") id: string,
     @Body() data: Prisma.DocumentTypeUpdateInput,

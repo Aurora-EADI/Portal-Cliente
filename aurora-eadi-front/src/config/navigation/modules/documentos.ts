@@ -31,7 +31,7 @@ export const documentosNavigation: NavigationContext = {
                     icon: FilePlus,
                     path: '/documentos/cadastrar',
                     requiredPermissions: ['DOC_REGISTER'],
-                    requiredRoles: [UserRole.ADMIN],
+                    requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
                 },
                 {
                     label: 'Colaboradores',

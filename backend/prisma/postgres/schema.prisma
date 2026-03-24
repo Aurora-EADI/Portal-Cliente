@@ -22,7 +22,7 @@ model Company {
   state                    String
   phone                    String
   status                   CompanyStatus                @default(PENDING)
-  classification           CompanyClassification        @default(ME)
+  classification           CompanyClassification?
   allocationRegime         AllocationRegime             @default(NO_WORKFORCE_AT_EADI)
   createdAt                DateTime                     @default(now())
   updatedAt                DateTime                     @updatedAt
