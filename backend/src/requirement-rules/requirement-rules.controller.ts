@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   ForbiddenException,
@@ -41,13 +41,13 @@ export class RequirementRulesController {
   }
 
   @Post("supplier-types")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   createSupplierType(@Body() dto: UpsertSupplierTypeDto) {
     return this.requirementRulesService.createSupplierType(dto);
   }
 
   @Patch("supplier-types/:id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   updateSupplierType(
     @Param("id") id: string,
     @Body() dto: Partial<UpsertSupplierTypeDto>,
@@ -56,19 +56,19 @@ export class RequirementRulesController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   listRules() {
     return this.requirementRulesService.listRules();
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   upsertRule(@Body() dto: UpsertRequirementRuleDto) {
     return this.requirementRulesService.upsertRule(dto);
   }
 
   @Put("companies/:companyId/profile")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   updateCompanyProfile(
     @Param("companyId") companyId: string,
     @Body() dto: UpdateCompanyProfileDto,
@@ -157,7 +157,7 @@ export class RequirementRulesController {
   }
 
   @Put("workforce-requirements/global")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   updateGlobalWorkforceRequirements(
     @Body() dto: UpdateWorkforceRequirementsDto,
   ) {

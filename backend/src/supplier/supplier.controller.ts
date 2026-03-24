@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Post,
   Body,
@@ -28,7 +28,7 @@ export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateSupplierDto) {
     this.logger.log(`Criando supplier: ${dto.email}`);
@@ -36,21 +36,21 @@ export class SupplierController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findAll() {
     this.logger.log("Listando todos os suppliers");
     return this.supplierService.findAll();
   }
 
   @Get(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findOne(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Buscando supplier ID: ${id}`);
     return this.supplierService.findOne(id);
   }
 
   @Patch(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: Partial<CreateSupplierDto>,
@@ -60,7 +60,7 @@ export class SupplierController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   remove(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Removendo supplier ID: ${id}`);
     return this.supplierService.remove(id);

@@ -8,6 +8,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -22,14 +23,20 @@ import { UpdateRequirementsDto } from "./dto/update-requirements.dto";
 import { CreateCompanyDto } from "./dto/create-companies.dto";
 import { RequestAccessDto } from "./dto/request-access.dto";
 import { Public } from "../common/decorators/public.decorator";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client";
 
 @ApiTags("Empresas")
 @ApiBearerAuth()
 @Controller("companies")
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @ApiOperation({ summary: "Criar nova empresa" })
   @ApiResponse({ status: 201, description: "Empresa criada com sucesso" })
   @ApiResponse({ status: 400, description: "Dados inválidos" })
@@ -38,6 +45,7 @@ export class CompaniesController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @ApiOperation({ summary: "Listar todas as empresas" })
   @ApiResponse({
     status: 200,
@@ -48,6 +56,7 @@ export class CompaniesController {
   }
 
   @Get("with-responsible")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @ApiOperation({ summary: "Listar todas as empresas com seus responsáveis" })
   @ApiResponse({
     status: 200,
@@ -58,6 +67,7 @@ export class CompaniesController {
   }
 
   @Get("active")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
   @ApiOperation({ summary: "Listar apenas empresas ativas" })
   @ApiResponse({
     status: 200,
@@ -68,6 +78,7 @@ export class CompaniesController {
   }
 
   @Get("cnpj/:cnpj")
+  @Public()
   @ApiOperation({ summary: "Buscar empresa por CNPJ" })
   @ApiResponse({ status: 200, description: "Empresa encontrada" })
   @ApiResponse({ status: 404, description: "Empresa não encontrada" })
@@ -76,6 +87,7 @@ export class CompaniesController {
   }
 
   @Patch(":id/status")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @ApiOperation({ summary: "Atualizar status da empresa" })
   @ApiResponse({
     status: 200,
@@ -90,6 +102,7 @@ export class CompaniesController {
   }
 
   @Get(":companyId/requirements")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
   @ApiOperation({ summary: "Obter requisitos de documentos da empresa" })
   @ApiResponse({
     status: 200,
@@ -100,6 +113,7 @@ export class CompaniesController {
   }
 
   @Patch(":companyId/requirements")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @ApiOperation({ summary: "Atualizar requisitos de documentos da empresa" })
   @ApiResponse({
     status: 200,

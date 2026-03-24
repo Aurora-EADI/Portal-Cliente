@@ -24,6 +24,7 @@ import {
   ApiBody,
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { DocumentsService } from "./documents.service";
 import { UploadDocumentDto } from "./dto/upload-document.dto";
 import { UpdateStatusDto } from "./dto/update-status.dto";
@@ -34,7 +35,7 @@ import { UserRole } from "@prisma/client";
 @ApiTags("Documentos")
 @ApiBearerAuth()
 @Controller("documents")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) { }
 
@@ -58,7 +59,7 @@ export class DocumentsController {
     status: 200,
     description: "Lista de documentos retornada com sucesso",
   })
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   async findAll(@Query("latestOnly") latestOnly: string = "true") {
     return this.documentsService.findAll(latestOnly === "true");
   }
@@ -78,8 +79,12 @@ export class DocumentsController {
     @Query("latestOnly") latestOnly: string = "false",
     @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
-    // 1. Verifica permissão: Admin pode ver tudo, Supplier só vê sua própria empresa
-    if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
+    // 1. Verifica permissão: Admin e Employee podem ver tudo, Supplier só vê sua própria empresa
+    if (
+      req.user.role !== UserRole.ADMIN &&
+      req.user.role !== UserRole.EMPLOYEE &&
+      req.user.companyId !== companyId
+    ) {
       throw new ForbiddenException(
         "Você não tem permissão para acessar documentos desta empresa",
       );
@@ -101,9 +106,9 @@ export class DocumentsController {
     @Query() query: OverdueDocumentsQueryDto,
     @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
-    // Admin pode ver todos os documentos atrasados (geral)
+    // Admin e Employee podem ver todos os documentos atrasados (geral)
     // Usuário comum só pode ver documentos da sua própria empresa
-    if (req.user.role !== UserRole.ADMIN) {
+    if (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.EMPLOYEE) {
       // Se não for admin, força o filtro pela empresa do usuário
       query.companyId = req.user.companyId;
     }
@@ -118,7 +123,7 @@ export class DocumentsController {
     description: "Status do documento atualizado com sucesso",
   })
   @ApiResponse({ status: 404, description: "Documento não encontrado" })
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   async updateStatus(@Param("id") id: string, @Body() dto: UpdateStatusDto) {
     return this.documentsService.updateStatus(id, dto);
   }
