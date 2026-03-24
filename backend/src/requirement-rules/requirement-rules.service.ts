@@ -23,7 +23,7 @@ type WorkforceStatus = "ACTIVE" | "INACTIVE";
 
 @Injectable()
 export class RequirementRulesService {
-  constructor(private readonly prisma: PrismaPostgresService) {}
+  constructor(private readonly prisma: PrismaPostgresService) { }
 
   private readonly defaultSupplierTypes = [
     "TRANSPORTADOR",
@@ -349,22 +349,22 @@ export class RequirementRulesService {
       ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
       ...(search
         ? {
-            OR: [
-              { fullName: { contains: search, mode: "insensitive" } },
-              { position: { contains: search, mode: "insensitive" } },
-              {
-                company: {
-                  OR: [
-                    { fantasyName: { contains: search, mode: "insensitive" } },
-                    { socialReason: { contains: search, mode: "insensitive" } },
-                  ],
-                },
+          OR: [
+            { fullName: { contains: search, mode: "insensitive" } },
+            { position: { contains: search, mode: "insensitive" } },
+            {
+              company: {
+                OR: [
+                  { fantasyName: { contains: search, mode: "insensitive" } },
+                  { socialReason: { contains: search, mode: "insensitive" } },
+                ],
               },
-              ...(cleanSearch
-                ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
-                : []),
-            ],
-          }
+            },
+            ...(cleanSearch
+              ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
+              : []),
+          ],
+        }
         : {}),
     };
 
@@ -562,12 +562,12 @@ export class RequirementRulesService {
       await tx.workforceDocumentRequirement.updateMany({
         where: incomingIds.length
           ? {
-              companyId,
-              documentTypeId: { notIn: incomingIds },
-            }
+            companyId,
+            documentTypeId: { notIn: incomingIds },
+          }
           : {
-              companyId,
-            },
+            companyId,
+          },
         data: {
           active: false,
           isRequired: false,
@@ -637,8 +637,8 @@ export class RequirementRulesService {
       await tx.globalWorkforceDocumentRequirement.updateMany({
         where: incomingIds.length
           ? {
-              documentTypeId: { notIn: incomingIds },
-            }
+            documentTypeId: { notIn: incomingIds },
+          }
           : {},
         data: {
           active: false,
@@ -705,9 +705,9 @@ export class RequirementRulesService {
       ) {
         allowedSupplierTypeIds = value
           ? value
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean)
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean)
           : [];
         continue;
       }
@@ -715,9 +715,9 @@ export class RequirementRulesService {
       if (normalizedToken.includes("tipos de fornecedor")) {
         allowedSupplierTypeNames = value
           ? value
-              .split(",")
-              .map((item) => this.normalizeTextLoose(item))
-              .filter(Boolean)
+            .split(",")
+            .map((item) => this.normalizeTextLoose(item))
+            .filter(Boolean)
           : [];
       }
     }
@@ -732,7 +732,7 @@ export class RequirementRulesService {
 
   private isDocumentApplicableToCompany(
     description: string | null | undefined,
-    companyClassification: CompanyClassification,
+    companyClassification: CompanyClassification | null,
     companySupplierTypeIds: string[],
     companySupplierTypeNames: string[],
   ) {
@@ -743,7 +743,7 @@ export class RequirementRulesService {
 
     if (
       parsed.allowedClassifications.length > 0 &&
-      !parsed.allowedClassifications.includes(companyClassification)
+      (!companyClassification || !parsed.allowedClassifications.includes(companyClassification))
     ) {
       return false;
     }
@@ -820,24 +820,25 @@ export class RequirementRulesService {
       cst.supplierType?.name?.trim().toUpperCase(),
     ).filter((name): name is string => Boolean(name));
 
+    const classification = company.classification;
     const [rules, overrides] = await Promise.all([
-      supplierTypeIds.length
+      supplierTypeIds.length > 0 && classification
         ? this.prisma.documentRequirementRule.findMany({
-            where: {
-              active: true,
-              companyClassification: company.classification,
-              allocationRegime: company.allocationRegime,
-              supplierTypeId: { in: supplierTypeIds },
-            },
-            include: {
-              items: {
-                include: {
-                  documentType: true,
-                },
+          where: {
+            active: true,
+            companyClassification: classification,
+            allocationRegime: company.allocationRegime,
+            supplierTypeId: { in: supplierTypeIds },
+          },
+          include: {
+            items: {
+              include: {
+                documentType: true,
               },
             },
-          })
-        : Promise.resolve([]),
+          },
+        })
+        : Promise.resolve([] as any[]),
       this.prisma.companyDocumentRequirement.findMany({
         where: { companyId },
         include: {
