@@ -95,6 +95,14 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 const SKELETON_ROWS_COUNT = 10;
 
 
+const formatNumber = (value: string | number): string => {
+  const num = typeof value === "string"
+    ? parseFloat(value.replace(/\./g, '').replace(',', '.'))
+    : value;
+  if (isNaN(num)) return "0,00";
+  return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+};
+
 const formatCurrency = (value: string | number): string => {
   // Remove pontos de milhares e substitui vírgula por ponto se necessário
   let num: number;
@@ -148,6 +156,8 @@ const getCellValue = (item: FaturamentoDetalhado, columnId: string, group?: Grou
     case "iss_valor":
     case "valor":
       return formatCurrency(item[fieldName]);
+    case "valor_cif":
+      return formatNumber(item[fieldName]);
     case "dt_fatura":
     case "dt_vencimento":
     case "dt_periodo_f":

@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import * as XLSX from 'xlsx';
+import { applyAutoWidth } from '@/lib/exportExcel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -43,6 +44,7 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
+    applyAutoWidth(worksheet, data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Contatos');
     XLSX.writeFile(workbook, `Contatos_Recepcao_${new Date().toISOString().split('T')[0]}.xlsx`);
