@@ -317,6 +317,7 @@ export interface PaginationParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   status?: string;
+  onlyPending?: boolean;
 }
 
 /**
@@ -527,6 +528,7 @@ export interface WorkforceListItemDto {
     fantasyName: string;
     socialReason?: string;
   };
+  hasPendingDocuments?: boolean;
 }
 
 export interface WorkforceDetailsDto {

@@ -456,7 +456,7 @@ export function FaturamentoTable({ data, isLoading }: Props) {
                         {visibleColumns.map((column) => (
                           <TableCell
                             key={column.id}
-                            className={`p-2 whitespace-nowrap ${['SUB-TOTAL', 'VALOR ISS', 'VALOR LÃQUIDO'].includes(column.id)
+                            className={`p-2 whitespace-nowrap ${['SUB-TOTAL', 'VALOR ISS', 'VALOR LIQUIDO'].includes(column.id)
                               ? 'font-semibold'
                               : ''
                               } ${column.id === 'CLIENTE' ? 'font-medium' : ''}`}

@@ -1,16 +1,12 @@
 'use client';
 
-import { Header } from '@/components/layout/Header';
-import { Layout } from '@/components/layout/Layout';
+import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
 import { PropostasKanban } from '@/components/pages/comercial/PropostasKanban';
 
 export default function PropostasPage() {
     return (
-        <div className="h-screen flex flex-col overflow-hidden">
-            <Header />
-            <Layout maxWidth="full">
-                <PropostasKanban />
-            </Layout>
-        </div>
+        <ModuleRouteShell layout={{ maxWidth: 'full' }}>
+            <PropostasKanban />
+        </ModuleRouteShell>
     );
 }

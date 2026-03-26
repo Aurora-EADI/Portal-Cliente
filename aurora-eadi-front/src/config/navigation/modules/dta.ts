@@ -1,6 +1,6 @@
 import { Ship, Package } from 'lucide-react';
 import { UserRole } from '@/types';
-import { NavigationContext } from '../types';
+import type { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
 
 export const dtaNavigation: NavigationContext = {

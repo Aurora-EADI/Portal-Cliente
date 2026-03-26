@@ -1,16 +1,12 @@
 "use client"
 
-import { Layout } from '@/components/layout/Layout'
-import { Header } from '@/components/layout/Header'
+import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell'
 import { ServicosSelectionPage } from '@/components/pages/servicos/ServicosSelectionPage'
 
 export default function ServicosPage() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
-      <Layout>
-        <ServicosSelectionPage />
-      </Layout>
-    </div>
+    <ModuleRouteShell>
+      <ServicosSelectionPage />
+    </ModuleRouteShell>
   )
 }

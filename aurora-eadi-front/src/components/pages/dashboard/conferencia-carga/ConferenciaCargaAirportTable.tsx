@@ -352,7 +352,7 @@ export function ConferenciaCargaAirportTable({
               {isLoading ? "Carregando conferencias..." : "Nenhuma conferencia encontrada"}
             </p>
             {!isLoading && (
-              <p className="text-sm text-slate-600 mt-2">NÃ£o hÃ¡ conferencias em aberto no momento</p>
+              <p className="text-sm text-slate-600 mt-2">Não há conferências em aberto no momento</p>
             )}
           </div>
         )}

@@ -81,11 +81,19 @@ export function useNavigationWithPermissions(): NavItem[] {
     };
 
     /**
-     * Função recursiva que filtra itens e seus children baseado em permissões
+     * Função helper que verifica se o role do usuário está na lista de roles permitidos
+     */
+    const hasRequiredRoles = (item: NavItem): boolean => {
+      if (!item.requiredRoles || item.requiredRoles.length === 0) return true;
+      return item.requiredRoles.includes(userRole);
+    };
+
+    /**
+     * Função recursiva que filtra itens e seus children baseado em permissões e roles
      */
     const filterItemWithChildren = (item: NavItem): NavItem | null => {
-      // Verifica se o item atual tem permissão
-      if (!hasRequiredPermissions(item)) {
+      // Verifica role e permissão
+      if (!hasRequiredRoles(item) || !hasRequiredPermissions(item)) {
         return null;
       }
 

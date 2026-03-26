@@ -34,4 +34,8 @@ export class WorkforceQueryDto {
   @IsOptional()
   @IsEnum(["asc", "desc"])
   sortOrder?: "asc" | "desc" = "desc";
+
+  @IsOptional()
+  @Type(() => Boolean)
+  onlyPending?: boolean;
 }

@@ -73,6 +73,10 @@ export const useUpdateWorkforceDocumentStatus = () => {
       queryClient.invalidateQueries({
         queryKey: [...WORKFORCE_DOCS_KEY, 'missing', variables.employeeId],
       });
+      // Invalidate the main workforce list and metrics
+      queryClient.invalidateQueries({
+        queryKey: ['workforce'],
+      });
     },
   });
 };

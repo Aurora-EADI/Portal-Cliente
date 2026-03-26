@@ -1,16 +1,12 @@
 'use client';
 
-import { Header } from '@/components/layout/Header';
-import { Layout } from '@/components/layout/Layout';
+import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
 import { SimulationHistory } from '@/components/pages/comercial/SimulationHistory';
 
 export default function SimulationHistoryPage() {
     return (
-        <div className="h-screen flex flex-col overflow-hidden">
-            <Header />
-            <Layout>
-                <SimulationHistory />
-            </Layout>
-        </div>
+        <ModuleRouteShell>
+            <SimulationHistory />
+        </ModuleRouteShell>
     );
 }

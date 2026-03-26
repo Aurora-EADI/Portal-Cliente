@@ -1,18 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { Download, Loader2, UploadCloud, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuthContext } from '@/context/AuthContext';
 import { useUpdateWorkforceEmployee, useUpdateWorkforceStatus, useWorkforceDetails } from '@/hooks/useWorkforce';
-import {
-  useUploadWorkforceDocument,
-  useWorkforceDocuments,
-  useWorkforceMissingDocuments,
-} from '@/hooks/useWorkforceDocuments';
+import { useUploadWorkforceDocument, useWorkforceDocuments, useWorkforceMissingDocuments, useUpdateWorkforceDocumentStatus } from '@/hooks/useWorkforceDocuments';
 import { Badge } from '@/components/ui/Badge';
-import { EmployeeStatus, UserRole } from '@/types';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ActionButton } from '@/components/ui/ActionButton';
+import { RejectionReasonModal } from '@/components/pages/documentos/modals/RejectionReasonModal';
+import { DocumentStatus, EmployeeStatus, UserRole } from '@/types';
 import { formatCNPJ, formatCPF, formatDateBR } from '@/lib/utils';
 import { toast } from 'sonner';
 import { documentTypeService, workforceDocumentService } from '@/services/api';
-import { useAuthContext } from '@/context/AuthContext';
 import { filterDocumentTypesByScope } from '@/lib/documentTypeScope';
 
 interface WorkforceDetailsModalProps {
@@ -69,23 +68,38 @@ function calculateExpirationDate(
   return expiration.toISOString().slice(0, 10);
 }
 
-function getDeadlineStatus(dateExpiration?: string): 'EM_DIA' | 'ATRASADO' {
-  if (!dateExpiration) return 'EM_DIA';
+function getDocumentStatusInfo(status: DocumentStatus, dateExpiration?: string) {
+  if (status === DocumentStatus.PENDING) {
+    return { variant: 'warning' as const, text: 'Pendente' };
+  }
+  if (status === DocumentStatus.REJECTED) {
+    return { variant: 'danger' as const, text: 'Reprovado' };
+  }
+  if (status === DocumentStatus.APPROVED) {
+    if (!dateExpiration) return { variant: 'success' as const, text: 'Aprovado' };
+    
+    const expiration = new Date(`${dateExpiration}T23:59:59`);
+    const now = new Date();
+    const diffTime = expiration.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  const expiration = new Date(`${dateExpiration}T23:59:59`);
-  if (Number.isNaN(expiration.getTime())) return 'EM_DIA';
-
-  return expiration.getTime() < Date.now() ? 'ATRASADO' : 'EM_DIA';
+    if (diffDays < 0) return { variant: 'danger' as const, text: 'Atrasado' };
+    if (diffDays <= 7) return { variant: 'warning' as const, text: 'Aprovado' };
+    return { variant: 'success' as const, text: 'Aprovado' };
+  }
+  return { variant: 'default' as const, text: status };
 }
 
 export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetailsModalProps) {
   const { currentUser } = useAuthContext();
   const { data, isLoading } = useWorkforceDetails(workforceId);
-  const { mutateAsync: updateStatus, isPending } = useUpdateWorkforceStatus();
+  const { mutateAsync: updateEmployeeStatus, isPending } = useUpdateWorkforceStatus();
   const { mutateAsync: updateEmployee, isPending: isUpdatingEmployee } = useUpdateWorkforceEmployee();
+
   const { data: missing = [] } = useWorkforceMissingDocuments(workforceId);
   const { data: documents = [], isLoading: isLoadingDocuments } = useWorkforceDocuments(workforceId, false);
   const { mutateAsync: uploadDocument, isPending: isUploading } = useUploadWorkforceDocument();
+
   const { data: workforceDocumentTypes = [] } = useQuery({
     queryKey: ['workforce-document-types'],
     queryFn: async () => {
@@ -95,6 +109,8 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
     },
   });
+
+  const { mutateAsync: updateDocumentStatus, isPending: isUpdatingStatus } = useUpdateWorkforceDocumentStatus();
 
   const [activeTab, setActiveTab] = useState<'info' | 'documents'>('info');
   const [isEditingData, setIsEditingData] = useState(false);
@@ -107,7 +123,10 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
   const [dateIssue, setDateIssue] = useState('');
   const [dateExpiration, setDateExpiration] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [approvingDoc, setApprovingDoc] = useState<any | null>(null);
+  const [rejectingDoc, setRejectingDoc] = useState<any | null>(null);
   const canUploadDocuments = currentUser?.role === UserRole.SUPPLIER;
+  const canModerate = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.EMPLOYEE;
 
   const documentTypeOptions = useMemo(
     () =>
@@ -130,7 +149,7 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
     if (!data) return;
     const nextStatus =
       data.status === EmployeeStatus.ACTIVE ? EmployeeStatus.INACTIVE : EmployeeStatus.ACTIVE;
-    await updateStatus({ id: data.id, status: nextStatus });
+    await updateEmployeeStatus({ id: data.id, status: nextStatus });
   };
 
   const handleCpfChange = (value: string) => {
@@ -247,6 +266,33 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
       resetForm();
     } catch (error: any) {
       toast.error(error?.message || 'Erro ao enviar documento do colaborador.');
+    }
+  };
+
+  const approveDocument = async (doc: any) => {
+    try {
+      await updateDocumentStatus({
+        id: doc.id,
+        status: DocumentStatus.APPROVED,
+        employeeId: workforceId,
+      });
+      toast.success('Documento aprovado com sucesso.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao aprovar documento.');
+    }
+  };
+
+  const rejectDocument = async (doc: any, reason: string) => {
+    try {
+      await updateDocumentStatus({
+        id: doc.id,
+        status: DocumentStatus.REJECTED,
+        rejectionReason: reason,
+        employeeId: workforceId,
+      });
+      toast.success('Documento reprovado com sucesso.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Erro ao reprovar documento.');
     }
   };
 
@@ -574,26 +620,53 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
                             <td className="px-3 py-2 text-gray-600">{formatDateBR(doc.uploadedAt)}</td>
                             <td className="px-3 py-2 text-gray-600">{formatDateBR(doc.dateExpiration)}</td>
                             <td className="px-3 py-2">
-                              {getDeadlineStatus(doc.dateExpiration) === 'ATRASADO' ? (
-                                <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold bg-red-100 text-red-800">
-                                  Atrasado
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
-                                  Em dia
-                                </span>
-                              )}
+                              <div className="flex flex-col gap-1">
+                                {(() => {
+                                  const { variant, text } = getDocumentStatusInfo(doc.status, doc.dateExpiration);
+                                  return (
+                                    <Badge variant={variant}>
+                                      {text}
+                                    </Badge>
+                                  );
+                                })()}
+                                {doc.status === DocumentStatus.REJECTED && doc.rejectionReason && (
+                                  <p className="text-[10px] text-red-600 font-medium">{doc.rejectionReason}</p>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-2 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <button
+                                {canModerate && doc.status === DocumentStatus.PENDING && (
+                                  <>
+                                    <ActionButton
+                                      type="button"
+                                      onClick={() => setRejectingDoc(doc)}
+                                      disabled={isUpdatingStatus}
+                                      variant="danger"
+                                      size="sm"
+                                    >
+                                      Reprovar
+                                    </ActionButton>
+                                    <ActionButton
+                                      type="button"
+                                      onClick={() => setApprovingDoc(doc)}
+                                      disabled={isUpdatingStatus}
+                                      variant="success"
+                                      size="sm"
+                                    >
+                                      Aprovar
+                                    </ActionButton>
+                                  </>
+                                )}
+                                <ActionButton
                                   type="button"
                                   onClick={() => handleDownload(doc.id)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                  variant="subtle"
+                                  size="sm"
+                                  icon={<Download size={14} />}
                                 >
-                                  <Download size={14} />
                                   Baixar
-                                </button>
+                                </ActionButton>
                               </div>
                             </td>
                           </tr>
@@ -607,6 +680,34 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!approvingDoc}
+        onOpenChange={(open) => !open && setApprovingDoc(null)}
+        title="Aprovar Documento"
+        description={`Deseja realmente aprovar o documento "${approvingDoc?.name || ''}"?`}
+        confirmText="Aprovar"
+        cancelText="Cancelar"
+        variant="default"
+        onConfirm={async () => {
+          if (!approvingDoc) return;
+          await approveDocument(approvingDoc);
+          setApprovingDoc(null);
+        }}
+        isLoading={isUpdatingStatus}
+      />
+
+      <RejectionReasonModal
+        open={!!rejectingDoc}
+        onOpenChange={(open) => !open && setRejectingDoc(null)}
+        document={rejectingDoc ? { name: rejectingDoc.name } : null}
+        onConfirm={async (reason) => {
+          if (!rejectingDoc) return;
+          await rejectDocument(rejectingDoc, reason.trim());
+          setRejectingDoc(null);
+        }}
+        isLoading={isUpdatingStatus}
+      />
     </div>
   );
 }

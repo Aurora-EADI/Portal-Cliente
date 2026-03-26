@@ -1,6 +1,6 @@
-import { Truck, List } from 'lucide-react';
+import { List } from 'lucide-react';
 import { UserRole } from '@/types';
-import { NavigationContext } from '../types';
+import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
 
 export const fornecedorNavigation: NavigationContext = {
