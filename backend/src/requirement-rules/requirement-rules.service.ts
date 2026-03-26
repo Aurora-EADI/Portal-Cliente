@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -347,6 +347,14 @@ export class RequirementRulesService {
     const where: Prisma.CompanyEmployeeWhereInput = {
       ...(status ? { status } : {}),
       ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
+      ...(query.onlyPending ? {
+        documents: {
+          some: {
+            status: "PENDING",
+            isLatest: true
+          }
+        }
+      } : {}),
       ...(search
         ? {
           OR: [
@@ -370,7 +378,7 @@ export class RequirementRulesService {
 
     const orderBy = this.buildWorkforceOrderBy(sortBy, sortOrder);
 
-    const [employees, total] = await Promise.all([
+    const results = await Promise.all([
       this.prisma.companyEmployee.findMany({
         where,
         include: {
@@ -381,13 +389,53 @@ export class RequirementRulesService {
               socialReason: true,
             },
           },
+          documents: {
+            where: {
+              status: "PENDING",
+              isLatest: true,
+            },
+            take: 1,
+          },
         },
         orderBy,
         skip,
         take: limit,
       } as any),
       this.prisma.companyEmployee.count({ where }),
+      // Extra queries for status counts
+      this.prisma.companyEmployee.count({
+        where: {
+          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
+          status: "ACTIVE"
+        }
+      }),
+      this.prisma.companyEmployee.count({
+        where: {
+          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
+          status: "INACTIVE"
+        }
+      }),
+      this.prisma.companyEmployee.count({
+        where: {
+          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
+          documents: { some: { status: "PENDING", isLatest: true } }
+        }
+      }),
+      this.prisma.companyEmployee.count({
+        where: {
+          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
+        }
+      }),
     ]);
+
+    const [
+      employees,
+      total,
+      totalActive,
+      totalInactive,
+      totalWithPending,
+      totalAll,
+    ] = results as [any[], number, number, number, number, number];
 
     const totalPages = Math.ceil(total / limit);
 
@@ -400,6 +448,7 @@ export class RequirementRulesService {
         hiredAt: employee.hiredAt,
         status: employee.status,
         company: employee.company,
+        hasPendingDocuments: employee.documents?.length > 0,
       })),
       pagination: {
         page,
@@ -408,6 +457,12 @@ export class RequirementRulesService {
         totalPages,
         hasNext: page < totalPages,
         hasPrev: page > 1,
+      },
+      statusCounts: {
+        total: totalAll,
+        active: totalActive,
+        pending: totalWithPending,
+        inactive: totalInactive,
       },
     };
   }

@@ -49,7 +49,7 @@ export function RegisterCompanies() {
     }
 
     if (!validateStep2()) {
-      toast.error('Preencha todos os campos obrigatÃ³rios (*).');
+      toast.error('Preencha todos os campos obrigatórios (*).');
       return;
     }
 

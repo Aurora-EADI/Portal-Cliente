@@ -1,7 +1,7 @@
-﻿"use client"
+"use client"
 
 import React, { useMemo, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, FileText, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useWorkforce } from '@/hooks/useWorkforce';
 import { useUpdateWorkforceDocumentStatus } from '@/hooks/useWorkforceDocuments';
@@ -132,6 +132,15 @@ export function WorkforceDocumentsModeration() {
   };
 
   const isLoading = isLoadingWorkforce || isLoadingDocuments;
+  
+  const metrics = useMemo(() => {
+    return {
+      total: rows.length,
+      approved: rows.filter(r => r.status === DocumentStatus.APPROVED).length,
+      pending: rows.filter(r => r.status === DocumentStatus.PENDING).length,
+      rejected: rows.filter(r => r.status === DocumentStatus.REJECTED).length,
+    };
+  }, [rows]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -139,6 +148,85 @@ export function WorkforceDocumentsModeration() {
         <h1 className="text-2xl font-bold text-gray-900">Gestão de Documentos de Colaboradores</h1>
         <p className="text-gray-500">Aprove, reprove e baixe documentos sem abrir colaborador por colaborador.</p>
       </header>
+
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Card: Total */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('ALL')}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === 'ALL' 
+              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-blue-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+            <FileText size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Total de documentos</p>
+            <p className="text-2xl font-bold text-gray-900">{metrics.total}</p>
+          </div>
+        </button>
+
+        {/* Card: Ativos (Approved) */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(DocumentStatus.APPROVED)}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === DocumentStatus.APPROVED 
+              ? 'border-green-500 ring-2 ring-green-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-green-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
+            <CheckCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Aprovados</p>
+            <p className="text-2xl font-bold text-gray-900">{metrics.approved}</p>
+          </div>
+        </button>
+
+        {/* Card: Pendentes */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(DocumentStatus.PENDING)}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === DocumentStatus.PENDING 
+              ? 'border-yellow-500 ring-2 ring-yellow-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-yellow-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-yellow-100 text-yellow-600 rounded-lg">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Pendentes</p>
+            <p className="text-2xl font-bold text-gray-900">{metrics.pending}</p>
+          </div>
+        </button>
+
+        {/* Card: Inativos (Rejected) */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter(DocumentStatus.REJECTED)}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === DocumentStatus.REJECTED 
+              ? 'border-red-500 ring-2 ring-red-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-red-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
+            <XCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Reprovados</p>
+            <p className="text-2xl font-bold text-gray-900">{metrics.rejected}</p>
+          </div>
+        </button>
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 space-y-3">
         <SearchBar

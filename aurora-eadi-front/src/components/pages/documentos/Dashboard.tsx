@@ -5,6 +5,7 @@ import { useAuthContext } from '../../../context/AuthContext';
 import { useActiveCompanies, useUpdateCompanyStatus } from '../../../hooks/useSuppliers';
 import { useDocuments, useUpdateDocumentStatus } from '../../../hooks/useDocuments';
 import { Badge } from '../../ui/Badge';
+import { ActionButton } from '../../ui/ActionButton';
 import { DocumentStatus, Document, CompanyStatus, Company } from '../../../types';
 import { documentService, companyRequirementService, documentTypeService, requirementRulesService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, AlertCircle, AlertTriangle, CheckCircle2, ShieldCheck, ChevronLeft, ChevronRight, Loader2, Clock, Calendar } from 'lucide-react';
@@ -386,22 +387,20 @@ export function AdminDashboard() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
+                      <ActionButton
                         onClick={() => setSelectedSupplierId(String(company.id))}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+                        icon={<FileText size={16} />}
                       >
-                        <FileText size={16} />
                         Documentos
-                      </button>
+                      </ActionButton>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
+                      <ActionButton
                         onClick={() => setViewingCompany(company)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+                        icon={<Eye size={16} />}
                       >
-                        <Eye size={16} />
                         Detalhes
-                      </button>
+                      </ActionButton>
                     </td>
                   </tr>
                 );

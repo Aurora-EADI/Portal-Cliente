@@ -62,6 +62,11 @@ export function buildNavigationContexts(
     // Prioridade: navegação estática > registry > banco > fallback
     const registryRoute = getRouteByPath(mod.route);
     const staticContext = navigationContextMap.get(mod.route);
+
+    // Se o módulo está marcado como staticOnly, ignora a navegação dinâmica
+    // e deixa o fallback estático ser usado pelo useNavigationWithPermissions
+    if (staticContext?.staticOnly) continue;
+
     const staticGroupItem = staticContext?.items.find((i) => i.isGroup);
 
     const moduleIcon = staticGroupItem?.icon

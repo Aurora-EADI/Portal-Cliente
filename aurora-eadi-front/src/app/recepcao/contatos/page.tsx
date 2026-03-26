@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Header } from '@/components/layout/Header';
-import { Layout } from '@/components/layout/Layout';
+import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
 import { ContactList } from '@/components/pages/reception/ContactList';
 import { ContactFilters } from '@/components/pages/reception/ContactFilters';
 import { ContactFormModal } from '@/components/pages/reception/ContactFormModal';
@@ -94,9 +93,7 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50/50">
-      <Header />
-      <Layout>
+    <ModuleRouteShell wrapperClassName="h-screen flex flex-col overflow-hidden bg-gray-50/50">
         <div className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto pb-10">
             {/* Header Area */}
@@ -173,7 +170,6 @@ export default function ContactsPage() {
           description={`Tem certeza que deseja remover o contato de ${contactToDelete?.name}?`}
           variant="destructive"
         />
-      </Layout>
-    </div>
+    </ModuleRouteShell>
   );
 }

@@ -1,6 +1,7 @@
-﻿import React, { useMemo, useState } from 'react';
-import { Eye, Loader2, Plus, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Eye, Loader2, Plus, X, AlertCircle, CheckCircle, FileText, XCircle } from 'lucide-react';
 import { DataTable, Column, PageHeader, SearchBar } from '@/components/ui/DataTable';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { useCreateWorkforceEmployee, useWorkforce } from '@/hooks/useWorkforce';
 import { WorkforceListItemDto } from '@/services/api';
 import { EmployeeStatus } from '@/types';
@@ -37,6 +38,7 @@ export function WorkforceList({
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'PENDING'>('ALL');
   const [selectedWorkforceId, setSelectedWorkforceId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -50,7 +52,8 @@ export function WorkforceList({
     page,
     limit,
     search: search || undefined,
-    status: status || undefined,
+    status: statusFilter === 'ACTIVE' ? EmployeeStatus.ACTIVE : statusFilter === 'INACTIVE' ? EmployeeStatus.INACTIVE : undefined,
+    onlyPending: statusFilter === 'PENDING' ? true : undefined,
     companyId,
   });
 
@@ -91,17 +94,32 @@ export function WorkforceList({
         ),
       },
       {
+        key: 'docStatus',
+        header: 'Status Documental',
+        render: (item) => (
+          <span
+            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold ${
+              item.hasPendingDocuments
+                ? 'bg-yellow-100 text-yellow-800'
+                : 'bg-green-100 text-green-800'
+            }`}
+          >
+            {item.hasPendingDocuments ? 'Com Pendência' : 'Regular'}
+          </span>
+        ),
+      },
+      {
         key: 'actions',
         header: 'Acoes',
         align: 'center',
         render: (item) => (
-          <button
+          <ActionButton
             onClick={() => setSelectedWorkforceId(item.id)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+            icon={<Eye size={16} />}
+            className="border-gray-200"
           >
-            <Eye size={16} />
             Detalhes
-          </button>
+          </ActionButton>
         ),
       },
       ];
@@ -131,7 +149,7 @@ export function WorkforceList({
 
   const clearFilters = () => {
     setSearch('');
-    setStatus('');
+    setStatusFilter('ALL');
     setPage(1);
   };
 
@@ -207,13 +225,92 @@ export function WorkforceList({
           ) : undefined
         }
       />
+      
+      {/* Metric cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+        {/* Card: Total */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('ALL')}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === 'ALL' 
+              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-blue-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+            <FileText size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Total de colaboradores</p>
+            <p className="text-2xl font-bold text-gray-900">{data?.statusCounts?.total ?? 0}</p>
+          </div>
+        </button>
+
+        {/* Card: Ativos */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('ACTIVE')}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === 'ACTIVE' 
+              ? 'border-green-500 ring-2 ring-green-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-green-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
+            <CheckCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Ativos</p>
+            <p className="text-2xl font-bold text-gray-900">{data?.statusCounts?.active ?? 0}</p>
+          </div>
+        </button>
+
+        {/* Card: Pendentes */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('PENDING')}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === 'PENDING' 
+              ? 'border-yellow-500 ring-2 ring-yellow-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-yellow-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-yellow-100 text-yellow-600 rounded-lg">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Com Pendência</p>
+            <p className="text-2xl font-bold text-gray-900">{data?.statusCounts?.pending ?? 0}</p>
+          </div>
+        </button>
+
+        {/* Card: Inativos */}
+        <button
+          type="button"
+          onClick={() => setStatusFilter('INACTIVE')}
+          className={`bg-white p-6 rounded-xl border transition-all text-left flex items-center gap-4 ${
+            statusFilter === 'INACTIVE' 
+              ? 'border-red-500 ring-2 ring-red-500/20 shadow-md' 
+              : 'border-gray-200 shadow-sm hover:border-red-300 hover:shadow-md'
+          }`}
+        >
+          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
+            <XCircle size={24} />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Inativos</p>
+            <p className="text-2xl font-bold text-gray-900">{data?.statusCounts?.inactive ?? 0}</p>
+          </div>
+        </button>
+      </div>
 
       <div className="space-y-3">
         <SearchBar
           placeholder="Buscar por nome, CPF, funcao ou empresa"
           onSearch={onSearch}
           onClear={clearFilters}
-          showClearButton={!!(search || status)}
+          showClearButton={!!(search || statusFilter !== 'ALL')}
           initialValue={search}
         />
 
@@ -221,16 +318,17 @@ export function WorkforceList({
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-700 font-medium whitespace-nowrap">Status</label>
             <select
-              value={status}
+              value={statusFilter}
               onChange={(e) => {
-                setStatus(e.target.value);
+                setStatusFilter(e.target.value as any);
                 setPage(1);
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
             >
-              <option value="">Todos</option>
-              <option value={EmployeeStatus.ACTIVE}>Ativo</option>
-              <option value={EmployeeStatus.INACTIVE}>Inativo</option>
+              <option value="ALL">Todos</option>
+              <option value="ACTIVE">Ativo</option>
+              <option value="PENDING">Com Pendência</option>
+              <option value="INACTIVE">Inativo</option>
             </select>
           </div>
         </div>

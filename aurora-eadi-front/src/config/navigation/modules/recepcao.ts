@@ -1,6 +1,6 @@
-import { Users, BookOpen } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { UserRole } from '@/types';
-import { NavigationContext } from '../types';
+import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
 
 export const recepcaoNavigation: NavigationContext = {
