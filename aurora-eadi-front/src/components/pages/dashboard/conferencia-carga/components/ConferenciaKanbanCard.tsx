@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { ConferenciaCargaItem } from "@/types";
 import { cn } from "@/lib/utils";
-import { Building2, Clock, FileText, Package, User } from "lucide-react";
+import { Building2, Clock, FileText, MessageSquare, Package, User } from "lucide-react";
 
 interface ConferenciaKanbanCardProps {
   item: ConferenciaCargaItem;
@@ -78,6 +78,21 @@ export function ConferenciaKanbanCard({ item, isTvMode = false }: ConferenciaKan
           {item.modalidade ?? "N/A"}
         </span>
       </div>
+
+      {/* Observação (subtítulo) */}
+      {item.obs && (
+        <div className={cn("flex items-start gap-1.5 -mt-1 mb-2 px-1 py-1 rounded bg-amber-50 border border-amber-100", isTvMode && "py-1.5")}>
+          <MessageSquare className={cn("h-3 w-3 text-amber-400 mt-0.5 shrink-0", isTvMode && "h-3.5 w-3.5")} />
+          <span
+            className={cn(
+              "text-amber-700 italic leading-tight line-clamp-1",
+              isTvMode ? "text-sm" : "text-[11px]",
+            )}
+          >
+            {item.obs}
+          </span>
+        </div>
+      )}
 
       {/* Cliente */}
       <div className="flex items-center gap-2 mb-2">

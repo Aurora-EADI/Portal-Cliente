@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
 import {
@@ -10,6 +10,7 @@ import {
   Building2,
   User,
   FileText,
+  MessageSquare,
   Truck,
   Package,
   Loader2,
@@ -242,99 +243,122 @@ export function ConferenciaCargaAirportTable({
               const k = toKey(row.modalidade);
               const mod = modalidadeConfig[k];
 
+              const rowKey = `${row.conferenciaId}-${row.nLote ?? "x"}-${row.nDocumento ?? "x"}-${row.nConhecimento ?? "x"}`;
+
               return (
-                <tr
-                  key={`${row.conferenciaId}-${row.nLote ?? "x"}-${row.nDocumento ?? "x"}-${row.nConhecimento ?? "x"}`}
-                  className={cn(
-                    "transition-all duration-300 border-b border-slate-800/50",
-                    index % 2 === 0 ? "bg-slate-900/50" : "bg-slate-900/30",
-                    "hover:bg-slate-800/50",
+                <Fragment key={rowKey}>
+                  <tr
+                    className={cn(
+                      "transition-all duration-300",
+                      !row.obs && "border-b border-slate-800/50",
+                      index % 2 === 0 ? "bg-slate-900/50" : "bg-slate-900/30",
+                      "hover:bg-slate-800/50",
+                    )}
+                  >
+                    <td className={cn("px-4 py-3", isTvMode && "px-3 py-2")}>
+                      <span className="font-mono font-bold text-white text-base">
+                        {row.conferenciaId}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
+                      <div className="flex flex-col items-center">
+                        <span className="font-mono font-bold text-emerald-400 text-base">
+                          {formatDate(row.dtConferencia)}
+                        </span>
+                        <span className="text-slate-500 text-xs">
+                          {formatTime(row.dtConferencia)}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className={cn("px-4 py-3 max-w-[240px]", isTvMode && "px-3 py-2 max-w-[240px]")}>
+                      <span className="truncate block text-sm text-white">
+                        {row.cliente ?? "-"}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 max-w-[220px]", isTvMode && "px-3 py-2 max-w-[200px]")}>
+                      <span className="truncate block text-sm text-slate-300">
+                        {row.despachante ?? "-"}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
+                      <span
+                        className={cn(
+                          "inline-block font-mono font-bold rounded-lg px-2 py-1",
+                          "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300",
+                          "border border-cyan-500/30 text-sm",
+                        )}
+                      >
+                        {row.nLote ?? "-"}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
+                      <span
+                        className={cn(
+                          "inline-block font-mono rounded-lg px-2 py-1",
+                          "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300",
+                          "border border-purple-500/30 text-sm",
+                        )}
+                      >
+                        {row.nDocumento ?? "-"}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
+                      <span
+                        className={cn(
+                          "inline-block font-mono rounded-lg px-2 py-1",
+                          "bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-slate-200",
+                          "border border-slate-600/50 text-sm",
+                        )}
+                      >
+                        {row.nConhecimento ?? "-"}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 font-bold rounded-full border text-xs px-3 py-1",
+                          mod.color,
+                          mod.bgColor,
+                        )}
+                      >
+                        <span className={cn("w-1.5 h-1.5 rounded-full", mod.dotColor)} />
+                        {mod.label}
+                      </span>
+                    </td>
+
+                    <td className={cn("px-4 py-3 max-w-[220px]", isTvMode && "px-3 py-2 max-w-[200px]")}>
+                      <span className="truncate block text-sm text-slate-300">
+                        {row.usuarioCadastro ?? row.cadUser ?? "-"}
+                      </span>
+                    </td>
+                  </tr>
+                  
+                  {row.obs && (
+                    <tr
+                      className={cn(
+                        "transition-all duration-300 border-b border-slate-800/50",
+                        index % 2 === 0 ? "bg-slate-900/50" : "bg-slate-900/30",
+                        "hover:bg-slate-800/50"
+                      )}
+                    >
+                      <td colSpan={9} className={cn("px-4 pb-3 pt-0", isTvMode && "px-3 pb-2 pt-0")}>
+                        <div className="flex items-start gap-1.5 px-3 py-2 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
+                          <MessageSquare className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                          <span className={cn("italic text-emerald-300", isTvMode ? "text-[13px]" : "text-sm")}>
+                            {row.obs}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                >
-                  <td className={cn("px-4 py-3", isTvMode && "px-3 py-2")}>
-                    <span className="font-mono font-bold text-white text-base">
-                      {row.conferenciaId}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
-                    <div className="flex flex-col items-center">
-                      <span className="font-mono font-bold text-emerald-400 text-base">
-                        {formatDate(row.dtConferencia)}
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        {formatTime(row.dtConferencia)}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className={cn("px-4 py-3 max-w-[240px]", isTvMode && "px-3 py-2 max-w-[240px]")}>
-                    <span className="truncate block text-sm text-white">
-                      {row.cliente ?? "-"}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 max-w-[220px]", isTvMode && "px-3 py-2 max-w-[200px]")}>
-                    <span className="truncate block text-sm text-slate-300">
-                      {row.despachante ?? "-"}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
-                    <span
-                      className={cn(
-                        "inline-block font-mono font-bold rounded-lg px-2 py-1",
-                        "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300",
-                        "border border-cyan-500/30 text-sm",
-                      )}
-                    >
-                      {row.nLote ?? "-"}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
-                    <span
-                      className={cn(
-                        "inline-block font-mono rounded-lg px-2 py-1",
-                        "bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300",
-                        "border border-purple-500/30 text-sm",
-                      )}
-                    >
-                      {row.nDocumento ?? "-"}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
-                    <span
-                      className={cn(
-                        "inline-block font-mono rounded-lg px-2 py-1",
-                        "bg-gradient-to-r from-purple-500/10 to-indigo-500/10 text-slate-200",
-                        "border border-slate-600/50 text-sm",
-                      )}
-                    >
-                      {row.nConhecimento ?? "-"}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 text-center", isTvMode && "px-3 py-2")}>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 font-bold rounded-full border text-xs px-3 py-1",
-                        mod.color,
-                        mod.bgColor,
-                      )}
-                    >
-                      <span className={cn("w-1.5 h-1.5 rounded-full", mod.dotColor)} />
-                      {mod.label}
-                    </span>
-                  </td>
-
-                  <td className={cn("px-4 py-3 max-w-[220px]", isTvMode && "px-3 py-2 max-w-[200px]")}>
-                    <span className="truncate block text-sm text-slate-300">
-                      {row.usuarioCadastro ?? row.cadUser ?? "-"}
-                    </span>
-                  </td>
-                </tr>
+                </Fragment>
               );
             })}
           </tbody>
