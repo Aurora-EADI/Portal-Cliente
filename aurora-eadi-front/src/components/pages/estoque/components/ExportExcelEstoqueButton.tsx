@@ -5,6 +5,13 @@ import * as XLSX from "xlsx";
 import { TypeEstoque } from "@/services/estoque/types/TypeEstoque";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  parseLocalDate,
+  formatDateForFilename,
+  formatCellValue,
+  applyNumericFormat,
+  applyAutoWidth,
+} from "@/lib/exportExcel";
 
 interface Props {
   data: TypeEstoque[];
@@ -33,23 +40,6 @@ const COLUMN_LABELS: Record<keyof TypeEstoque, string> = {
 export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const parseLocalDate = (value: string | null): string => {
-    if (!value) return "";
-    const normalized = value.includes("T") ? value.split("T")[0] : value;
-    const parts = normalized.split("-");
-    if (parts.length !== 3) return value;
-    const [year, month, day] = parts;
-    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
-  };
-
-  const formatDateForFilename = (dateStr: string): string => {
-    if (!dateStr) return "";
-    const parts = dateStr.split("T")[0].split("-");
-    if (parts.length !== 3) return "";
-    const [year, month, day] = parts;
-    return `${day.padStart(2, "0")}${month.padStart(2, "0")}${year}`;
-  };
-
   const exportToExcel = async () => {
     if (!data || data.length === 0) {
       toast.error("Não há dados para exportar.");
@@ -62,21 +52,18 @@ export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: 
       // Pequeno delay para o React renderizar o spinner antes do trabalho pesado
       await new Promise((resolve) => setTimeout(resolve, 10));
 
+      const NUMERIC_KEYS: (keyof TypeEstoque)[] = ["Saldo_Valor_(US$)", "valor_cif_total"];
+      const NUMERIC_HEADERS = ["Saldo Valor (US$)", "CIF Total"];
+
       const formatted = data.map((item) => {
         const row: Record<string, string | number> = {};
-
-        const NUMERIC_KEYS: (keyof TypeEstoque)[] = ["Saldo_Valor_(US$)", "valor_cif_total"];
 
         (Object.keys(COLUMN_LABELS) as (keyof TypeEstoque)[]).forEach((key) => {
           const val = item[key];
           if (key === "dt_entrada") {
             row[COLUMN_LABELS[key]] = parseLocalDate(val as string | null);
-          } else if (NUMERIC_KEYS.includes(key)) {
-            const raw = String(val ?? "").replace(",", ".");
-            const parsed = parseFloat(raw);
-            row[COLUMN_LABELS[key]] = isNaN(parsed) ? "" : parsed;
           } else {
-            row[COLUMN_LABELS[key]] = val ?? "";
+            row[COLUMN_LABELS[key]] = formatCellValue(val, key, NUMERIC_KEYS as string[]);
           }
         });
 
@@ -85,32 +72,8 @@ export function ExportExcelEstoqueButton({ data, disabled, dt_inicio, dt_fim }: 
 
       const worksheet = XLSX.utils.json_to_sheet(formatted);
 
-      // Aplicar formato numérico pt-BR nas colunas de valor
-      const NUMERIC_HEADERS = ["Saldo Valor (US$)", "CIF Total"];
-      const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
-      const numericCols: number[] = [];
-
-      for (let C = range.s.c; C <= range.e.c; C++) {
-        const headerCell = worksheet[XLSX.utils.encode_cell({ r: 0, c: C })];
-        if (headerCell && NUMERIC_HEADERS.includes(headerCell.v)) {
-          numericCols.push(C);
-        }
-      }
-
-      for (let R = range.s.r + 1; R <= range.e.r; R++) {
-        for (const C of numericCols) {
-          const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })];
-          if (cell) cell.z = "#,##0.00";
-        }
-      }
-
-      // Auto-width das colunas
-      worksheet["!cols"] = Object.keys(formatted[0] || {}).map((col) => {
-        const maxLen = formatted.reduce((max, row) => {
-          return Math.max(max, String(row[col] ?? "").length);
-        }, 0);
-        return { wch: Math.min(Math.max(col.length, maxLen) + 2, 50) };
-      });
+      applyNumericFormat(worksheet, NUMERIC_HEADERS);
+      applyAutoWidth(worksheet, formatted);
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Estoque");

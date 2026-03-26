@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FaturamentoFilters } from "./components/filtersFaturamento";
 import { FaturamentoTable } from "./components/TableFaturamento";
+import { CifLineChart } from "./components/CifLineChart";
 import { getFaturamento } from "@/services/faturamento/faturamentoDetalhado";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
+import { LineChart } from "lucide-react";
 
 interface ColumnConfig {
   id: string;
@@ -38,6 +40,7 @@ export function FaturamentoPage() {
 
   // Estado para armazenar as colunas visíveis da tabela
   const [visibleColumns, setVisibleColumns] = useState<ColumnConfig[]>([]);
+  const [showCifChart, setShowCifChart] = useState(false);
 
   // Armazena os parâmetros da última busca realizada
   const [searchParams, setSearchParams] = useState<{
@@ -49,13 +52,32 @@ export function FaturamentoPage() {
   const { data, isLoading, refetch } = useQuery<FaturamentoDetalhado[]>({
     queryKey: ["faturamento", searchParams?.dt_inicio, searchParams?.dt_fim],
     queryFn: () => {
-      if (!searchParams) {
-        return Promise.resolve([]);
-      }
+      if (!searchParams) return Promise.resolve([]);
       return getFaturamento(searchParams.dt_inicio, searchParams.dt_fim);
     },
     enabled: searchParams !== null,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const currentYear = new Date().getFullYear();
+  const prevYear = currentYear - 1;
+
+  const { data: yearData, isLoading: isLoadingYear } = useQuery<FaturamentoDetalhado[]>({
+    queryKey: ["faturamento-year", currentYear],
+    queryFn: () => getFaturamento(`${currentYear}-01-01`, `${currentYear}-12-31`),
+    enabled: showCifChart,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const { data: prevYearData, isLoading: isLoadingPrevYear } = useQuery<FaturamentoDetalhado[]>({
+    queryKey: ["faturamento-year", prevYear],
+    queryFn: () => getFaturamento(`${prevYear}-01-01`, `${prevYear}-12-31`),
+    enabled: showCifChart,
+    staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
@@ -81,7 +103,8 @@ export function FaturamentoPage() {
   const formatarMoeda = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'BRL',
+      maximumFractionDigits: 0
     }).format(valor);
   };
 
@@ -158,6 +181,7 @@ export function FaturamentoPage() {
         totalFaturado: 0,
         quantidadeRPS: 0,
         totalISS: 0,
+        totalCIF: 0,
         totalOutrosServicos: 0
       };
     }
@@ -184,7 +208,8 @@ export function FaturamentoPage() {
       if (rps) {
         rpsMap.set(rps, {
           valor_fatura: parseNumericValue(item.valor_fatura),
-          iss_valor: parseNumericValue(item.iss_valor)
+          iss_valor: parseNumericValue(item.iss_valor),
+          valor_cif: parseNumericValue(item.valor_cif)
         });
       }
     });
@@ -199,6 +224,11 @@ export function FaturamentoPage() {
       return acc + item.iss_valor;
     }, 0);
 
+    // Total CIF: soma dos valores de CIF sem RPS repetidos
+    const totalCIF = Array.from(rpsMap.values()).reduce((acc, item) => {
+      return acc + item.valor_cif;
+    }, 0);
+
     // Total Outros Serviços: soma (quantidade * valor) de TODOS os registros (inclui RPS repetidos)
     const totalOutrosServicos = filteredData.reduce((acc, item) => {
       const valor = parseNumericValue(item.valor);
@@ -209,6 +239,7 @@ export function FaturamentoPage() {
       totalFaturado,
       quantidadeRPS,
       totalISS,
+      totalCIF,
       totalOutrosServicos
     };
   }, [filteredData]);
@@ -232,7 +263,7 @@ export function FaturamentoPage() {
           visibleColumns={visibleColumns}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
             <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
@@ -245,12 +276,22 @@ export function FaturamentoPage() {
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+            <div className="p-3 bg-yellow-100 text-yellow-600 rounded-lg">
+              🌍
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total CIF</p>
+              <p className="text-base font-bold text-gray-900">{new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(metricas.totalCIF)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
             <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
               🔧
             </div>
             <div>
               <p className="text-sm text-gray-500">Valor Bruto</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalOutrosServicos)}</p>
+              <p className="text-base font-bold text-gray-900">{formatarMoeda(metricas.totalOutrosServicos)}</p>
             </div>
           </div>
 
@@ -260,7 +301,7 @@ export function FaturamentoPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total ISS 5%</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalISS)}</p>
+              <p className="text-base font-bold text-gray-900">{formatarMoeda(metricas.totalISS)}</p>
             </div>
           </div>
 
@@ -270,10 +311,33 @@ export function FaturamentoPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Valor Líquido</p>
-              <p className="text-xl font-bold text-gray-900">{formatarMoeda(metricas.totalFaturado)}</p>
+              <p className="text-base font-bold text-gray-900">{formatarMoeda(metricas.totalFaturado)}</p>
             </div>
           </div>
         </div>
+
+        {/* {filteredData.length > 0 && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowCifChart((prev) => !prev)}
+              className="flex items-center gap-2 px-4 py-1.5 text-sm border border-yellow-400 text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+            >
+              <LineChart className="w-4 h-4" />
+              {showCifChart ? "Ocultar Gráfico" : "Gráfico por Mês"}
+            </button>
+          </div>
+        )} */}
+
+        {showCifChart && (
+          <CifLineChart
+            yearData={yearData ?? []}
+            prevYearData={prevYearData ?? []}
+            isLoading={isLoadingYear || isLoadingPrevYear}
+            currentYear={currentYear}
+            prevYear={prevYear}
+            onClose={() => setShowCifChart(false)}
+          />
+        )}
 
         <FaturamentoTable
           data={filteredData}
