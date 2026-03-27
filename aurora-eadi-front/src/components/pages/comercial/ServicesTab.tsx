@@ -51,6 +51,7 @@ interface ServicesTabProps {
     cifBrl: number;
     tonnes: number;
     cntrCount: number;
+    periods?: number;
   };
   localServices?: LocalService[];
   onAddLocalService?: (service: LocalService) => void;
@@ -58,6 +59,14 @@ interface ServicesTabProps {
   hasStripping?: boolean;
   hasLCL?: boolean;
 }
+
+const normalizeText = (value: string | undefined | null): string =>
+  (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const isGrisService = (service: Pick<Service, 'name' | 'code'>): boolean => {
+  const haystack = `${service.name || ''} ${service.code || ''}`;
+  return normalizeText(haystack).includes('gris');
+};
 
 // Helper to calculate final cost based on calculationType
 const calculateFinalCostGlobal = (rate: number, service: Service, simulationData: { cifBrl: number; tonnes: number; cntrCount: number }): number => {
@@ -103,6 +112,7 @@ export function ServicesTab({
 }: ServicesTabProps) {
   // Working mode: local (before save) or saved (with simulationId)
   const isLocalMode = !simulationId;
+  const periods = Math.max(1, Number(simulationData.periods || 1));
 
   // Query for simulation services (only if simulation exists)
   const { data: simulationServices, isLoading: isLoadingSimServices } =
@@ -394,9 +404,14 @@ export function ServicesTab({
                                 : 'font-bold text-green-600'
                           }>
                             {formatCurrency(
-                              simService.costType === ServiceCostType.DEFAULT
-                                ? calculateServiceCost(Number(simService.originalCost), service.calculationType, simulationData)
-                                : simService.appliedCost
+                              (() => {
+                                const baseCost =
+                                  simService.costType === ServiceCostType.DEFAULT
+                                    ? calculateServiceCost(Number(simService.originalCost), service.calculationType, simulationData)
+                                    : simService.appliedCost;
+
+                                return isGrisService(service) ? baseCost * periods : baseCost;
+                              })()
                             )}
                           </span>
                         ) : (

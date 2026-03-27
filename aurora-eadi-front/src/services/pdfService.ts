@@ -50,6 +50,12 @@ const getServiceFinalCost = (
 };
 
 
+const normalizeText = (value: string | undefined | null): string =>
+  (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+const isGrisServiceName = (value: string | undefined | null): boolean =>
+  normalizeText(value).includes('gris');
+
 
 export const exportDtaProcessoToPDF = async (processo: ProcessoImportacao) => {
   const doc = new jsPDF();
@@ -455,6 +461,7 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const periodsNum = Math.max(1, Number(simulation.auroraPeriods || 1));
   
   // Cores Aurora (Laranja e Cinza Profundo)
   const auroraOrange = [245, 130, 32];
@@ -533,7 +540,11 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
 
   const servicesWithCost = services.map((s: any) => ({
     s,
-    finalCost: getServiceFinalCost(s, calcData),
+    finalCost: (() => {
+      const base = getServiceFinalCost(s, calcData);
+      const sName = s.serviceName || s.service?.name || '';
+      return isGrisServiceName(sName) ? base * periodsNum : base;
+    })(),
   }));
 
   const visibleServices = servicesWithCost.filter((row: any) => Number(row.finalCost) > 0);
