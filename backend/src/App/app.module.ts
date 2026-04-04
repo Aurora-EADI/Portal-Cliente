@@ -63,7 +63,11 @@ import { ReceptionModule } from '../reception/reception.module';
     DtaMaritimeModule,
     CcteModule,
     ConferenciaCargaModule,
+<<<<<<< HEAD
     ReceptionModule,
+=======
+    MobileModule,
+>>>>>>> feature/Mobile
   ],
 })
 export class AppModule {}
