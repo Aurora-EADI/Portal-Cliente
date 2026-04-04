@@ -52,7 +52,7 @@ export function AirVersionHistoryModal({
                         Histórico de Versões: {simulationNumber}
                     </DialogTitle>
                     <DialogDescription>
-                        Visualize e acesse todas as versões criadas para esta simulação aérea.
+                        Visualize e acesse todas as versões criadas para esta cotação aérea.
                     </DialogDescription>
                 </DialogHeader>
 

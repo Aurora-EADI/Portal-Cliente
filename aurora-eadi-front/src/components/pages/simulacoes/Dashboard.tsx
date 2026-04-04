@@ -241,8 +241,8 @@ export function Dashboard() {
     <div className="p-6 space-y-8 overflow-y-auto h-full">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard de Simulações</h1>
-        <p className="text-muted-foreground text-sm mt-1">Visão consolidada de simulações marítimas e aéreas</p>
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard de Cotações</h1>
+        <p className="text-muted-foreground text-sm mt-1">Visão consolidada de cotações marítimas e aéreas</p>
       </div>
 
       {/* Cards Marítimas */}

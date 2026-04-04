@@ -138,7 +138,8 @@ export function MultiSelect({
               <CommandSeparator />
               <CommandGroup>
                 {options.map((option) => (
-                  <CommandItem key={option.value} value={option.value} onSelect={() => handleSelect(option.value)}>
+                  <React.Fragment key={option.value}>
+                  <CommandItem value={option.value} onSelect={() => handleSelect(option.value)}>
                     <div className="flex items-center flex-1">
                       <div className={cn("mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary shrink-0", selected.includes(option.value) ? "bg-primary text-primary-foreground" : "opacity-50")}>
                         {selected.includes(option.value) && <Check className="h-3 w-3" />}
@@ -146,6 +147,7 @@ export function MultiSelect({
                       <span className="flex-1 truncate">{option.label}</span>
                     </div>
                   </CommandItem>
+                  </React.Fragment>
                 ))}
               </CommandGroup>
             </CommandList>

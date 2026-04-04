@@ -337,7 +337,7 @@ export function ServicesTab({
           Serviços Disponíveis
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          Selecione os serviços para esta simulação. Os valores padrão são carregados automaticamente.
+          Selecione os serviços para esta cotação. Os valores padrão são carregados automaticamente.
         </p>
       </div>
 

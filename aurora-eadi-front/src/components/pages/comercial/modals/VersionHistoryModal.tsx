@@ -52,7 +52,7 @@ export function VersionHistoryModal({
                         Histórico de Versões: {simulationNumber}
                     </DialogTitle>
                     <DialogDescription>
-                        Visualize e acesse todas as versões criadas para esta simulação.
+                        Visualize e acesse todas as versões criadas para esta cotação.
                     </DialogDescription>
                 </DialogHeader>
 

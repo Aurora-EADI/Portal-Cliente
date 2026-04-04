@@ -94,10 +94,10 @@ export function AirSimulationHistory() {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
                         <Plane className="w-8 h-8 text-primary-600" />
-                        Lista de Simulações Aéreas
+                        Lista de Cotações Aéreas
                     </h1>
                     <p className="text-gray-500 mt-1">
-                        Gerencie e localize suas simulações aéreas salvas.
+                        Gerencie e localize suas cotações aéreas salvas.
                     </p>
                 </div>
                 <Button
@@ -105,7 +105,7 @@ export function AirSimulationHistory() {
                     className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-200 transition-all hover:scale-105"
                 >
                     <Plus className="w-4 h-4 mr-2" />
-                    Nova Simulação Aérea
+                    Nova Cotação Aérea
                 </Button>
             </div>
 
@@ -114,7 +114,7 @@ export function AirSimulationHistory() {
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <Input
-                            placeholder="Buscar por cliente, documento ou número da simulação..."
+                            placeholder="Buscar por cliente, documento ou número da cotação..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-12 h-12 bg-gray-50/50 border-gray-100 focus:bg-white transition-all text-lg"
@@ -127,7 +127,7 @@ export function AirSimulationHistory() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Simulação</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cotação</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cliente</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Geral</th>
                                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Data</th>
@@ -139,13 +139,13 @@ export function AirSimulationHistory() {
                                 {isLoading ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                                            Carregando simulações aéreas...
+                                            Carregando cotações aéreas...
                                         </td>
                                     </tr>
                                 ) : filteredSimulations.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                                            Nenhuma simulação aérea encontrada.
+                                            Nenhuma cotação aérea encontrada.
                                         </td>
                                     </tr>
                                 ) : (

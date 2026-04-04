@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
-import { SqlServerService } from "src/prisma/sqlserver.service";
+import { SqlServerService } from "../prisma/sqlserver.service";
 import { TypeEstoque } from "./type/Estoque.type";
 
 @Injectable()

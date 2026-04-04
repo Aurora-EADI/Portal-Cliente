@@ -24,7 +24,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/comercial', label: 'Comercial', icon: 'ShoppingCart', isModuleRoot: true },
   { path: '/aereo', label: 'Aéreo', icon: 'Briefcase', isModuleRoot: true },
   { path: '/servicos', label: 'Serviços', icon: 'Wrench', isModuleRoot: true },
-  { path: '/simulacoes', label: 'Simulações', icon: 'BarChart3', isModuleRoot: true },
+  { path: '/simulacoes', label: 'Cotações', icon: 'BarChart3', isModuleRoot: true },
   { path: '/cliente', label: 'Cliente', icon: 'Users', isModuleRoot: true },
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
@@ -40,8 +40,8 @@ export const SUB_ROUTES: RouteDefinition[] = [
 
   // Comercial
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
-  { path: '/comercial/history', label: 'Lista de Simulação Marítima', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
-  { path: '/simulacoes/propostas', label: 'Propostas', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/comercial/history', label: 'Lista de Cotações Marítimas', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/simulacoes/propostas', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Faturamento
   { path: '/faturamento/detalhado', label: 'Faturamento Detalhado', icon: 'FileBarChart', parentPath: '/faturamento', isModuleRoot: false },
@@ -56,7 +56,7 @@ export const SUB_ROUTES: RouteDefinition[] = [
 
   // Aéreo
   { path: '/aereo/simulador', label: 'Simulador Aéreo', icon: 'Plane', parentPath: '/aereo', isModuleRoot: false },
-  { path: '/aereo/history', label: 'Lista de Simulação Aérea', icon: 'FileText', parentPath: '/aereo', isModuleRoot: false },
+  { path: '/aereo/history', label: 'Lista de Cotações Aéreas', icon: 'FileText', parentPath: '/aereo', isModuleRoot: false },
 
   // Serviços
   { path: '/servicos/lista', label: 'Lista de Serviços', icon: 'Wrench', parentPath: '/servicos', isModuleRoot: false },
@@ -80,10 +80,10 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/permissoes/gestao', label: 'Gestão de Permissões', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
 
   // Simulações
-  { path: '/simulacoes/dashboard', label: 'Dashboard de Simulações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
-  { path: '/simulacoes/maritimo', label: 'Simulação Marítima', icon: 'Ship', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/dashboard', label: 'Dashboard de Cotações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/maritimo', label: 'Cotação Marítima', icon: 'Ship', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/historico-maritimo', label: 'Histórico Marítimo', icon: 'ClipboardList', parentPath: '/simulacoes', isModuleRoot: false },
-  { path: '/simulacoes/aereo', label: 'Simulação Aérea', icon: 'Plane', parentPath: '/simulacoes', isModuleRoot: false },
+  { path: '/simulacoes/aereo', label: 'Cotação Aérea', icon: 'Plane', parentPath: '/simulacoes', isModuleRoot: false },
   { path: '/simulacoes/historico-aereo', label: 'Histórico Aéreo', icon: 'FileSearch', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Dashboard

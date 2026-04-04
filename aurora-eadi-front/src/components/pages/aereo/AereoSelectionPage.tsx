@@ -11,10 +11,10 @@ export function AereoSelectionPage() {
 
             <div className="space-y-4 text-primary-800 text-lg leading-relaxed">
                 <p>
-                    Aqui você encontrará as ferramentas necessárias para simulações de frete aéreo e acompanhamento de operações aéreas.
+                    Aqui você encontrará as ferramentas necessárias para cotações de frete aéreo e acompanhamento de operações aéreas.
                 </p>
                 <p>
-                    Este espaço foi desenvolvido para otimizar os processos de simulação e apoiar a tomada de decisões no transporte aéreo.
+                    Este espaço foi desenvolvido para otimizar os processos de cotação e apoiar a tomada de decisões no transporte aéreo.
                 </p>
             </div>
         </div>

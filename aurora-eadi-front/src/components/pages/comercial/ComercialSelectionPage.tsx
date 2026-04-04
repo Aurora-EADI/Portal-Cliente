@@ -11,7 +11,7 @@ export function ComercialSelectionPage() {
 
             <div className="space-y-4 text-primary-800 text-lg leading-relaxed">
                 <p>
-                    Aqui você encontrará as ferramentas e informações necessárias para apoiar as atividades do setor comercial, incluindo simulações marítimas e aéreas.
+                    Aqui você encontrará as ferramentas e informações necessárias para apoiar as atividades do setor comercial, incluindo cotações marítimas e aéreas.
                 </p>
                 <p>
                     Este espaço foi desenvolvido para otimizar processos, centralizar dados e apoiar a tomada de decisões no dia a dia.

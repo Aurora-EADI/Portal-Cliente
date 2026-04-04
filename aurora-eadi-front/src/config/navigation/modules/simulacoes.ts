@@ -8,12 +8,12 @@ export const simulacoesNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Propostas',
+            label: 'Kanban Cotações',
             icon: KanbanSquare,
             path: '/simulacoes/propostas',
         },
         {
-            label: 'Simulações',
+            label: 'Cotações',
             icon: Calculator,
             path: '/simulacoes',
             isGroup: true,
@@ -24,7 +24,7 @@ export const simulacoesNavigation: NavigationContext = {
                     path: '/simulacoes/dashboard',
                 },
                 {
-                    label: 'Simulação Marítima',
+                    label: 'Cotação Marítima',
                     icon: Ship,
                     path: '/simulacoes/maritimo',
                 },
@@ -34,7 +34,7 @@ export const simulacoesNavigation: NavigationContext = {
                     path: '/simulacoes/historico-maritimo',
                 },
                 {
-                    label: 'Simulação Aérea',
+                    label: 'Cotação Aérea',
                     icon: Plane,
                     path: '/simulacoes/aereo',
                 },

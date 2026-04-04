@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { SqlServerService } from "src/prisma/sqlserver.service";
+import { SqlServerService } from "../prisma/sqlserver.service";
 import { TypeDetailedBilling } from "./type/DetailedBilling.type";
 import { TypeBillingCutOff } from "./type/BillingCutOff.type";
 

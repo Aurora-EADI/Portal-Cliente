@@ -555,7 +555,7 @@ export function MaritimeSimulator() {
         // Clear local services after saving
         setLocalServices([]);
         setCurrentSimulationId(newSimulation.id);
-        toast.success("Simulação criada com sucesso!");
+        toast.success("Cotação criada com sucesso!");
         router.push("/comercial/history");
       } else {
         // Update existing simulation
@@ -590,20 +590,20 @@ export function MaritimeSimulator() {
             },
           });
         }
-        toast.success("Simulação atualizada com sucesso!");
+        toast.success("Cotação atualizada com sucesso!");
         setIsEditingVersion(false);
         router.push("/comercial/history");
       }
     } catch (error) {
       console.error("Error saving simulation:", error);
-      toast.error("Erro ao salvar simulação. Por favor, tente novamente.");
+      toast.error("Erro ao salvar cotação. Por favor, tente novamente.");
     }
   };
 
   // Handler: Export to PDF
   const handleExportPDF = () => {
     if (!currentSimulation) {
-      toast.error("Salve a simulação antes de exportar o PDF");
+      toast.error("Salve a cotação antes de exportar o PDF");
       return;
     }
 
@@ -746,7 +746,7 @@ export function MaritimeSimulator() {
             {currentSimulation && (
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-500 flex items-center gap-2">
-                  ID da Simulação:
+                  ID da Cotação:
                   <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
                     {currentSimulation.displayNumber}
                   </span>
@@ -905,7 +905,7 @@ export function MaritimeSimulator() {
               disabled={createSimulationMutation.isPending}
             >
               <Save size={16} />
-              Salvar Simulação
+              Salvar Cotação
             </Button>
           )}
 
@@ -981,7 +981,7 @@ export function MaritimeSimulator() {
                     Seleção de Cliente
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    Selecione o cliente para a simulação
+                    Selecione o cliente para a cotação
                   </p>
                 </div>
 
@@ -1025,7 +1025,7 @@ export function MaritimeSimulator() {
                     <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                       <p className="text-sm text-yellow-800">
                         <strong>Cliente selecionado.</strong> Preencha os dados
-                        da carga e clique em <strong>"Salvar Simulação"</strong>{" "}
+                        da carga e clique em <strong>"Salvar Cotação"</strong>{" "}
                         para continuar.
                       </p>
                     </div>
@@ -1365,7 +1365,7 @@ export function MaritimeSimulator() {
           <Card className="sticky top-6 shadow-md border-gray-200 overflow-hidden ring-1 ring-gray-950/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gray-50/80">
               <CardTitle className="text-lg font-bold text-gray-900">
-                Resumo da Simulação
+                Resumo da Cotação
               </CardTitle>
               <Button
                 variant="ghost"
@@ -1455,7 +1455,7 @@ export function MaritimeSimulator() {
           <DialogHeader>
             <DialogTitle>Criar Nova Versão</DialogTitle>
             <DialogDescription>
-              Você está criando uma nova versão da simulação{" "}
+              Você está criando uma nova versão da cotação{" "}
               <strong>{currentSimulation?.displayNumber}</strong>. Informe o
               motivo da alteração.
             </DialogDescription>

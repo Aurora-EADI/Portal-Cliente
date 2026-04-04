@@ -322,7 +322,7 @@ export function AirSimulator() {
 
         setLocalServices([]);
         setCurrentSimulationId(newSimulation.id);
-        toast.success('Simulação aérea criada com sucesso!');
+        toast.success('Cotação aérea criada com sucesso!');
         router.push('/aereo/history');
       } else {
         await updateSimulationMutation.mutateAsync({
@@ -341,13 +341,13 @@ export function AirSimulator() {
             vinciPeriods: parseInt(vinciPeriods) || 1,
           },
         });
-        toast.success('Simulação aérea atualizada com sucesso!');
+        toast.success('Cotação aérea atualizada com sucesso!');
         setIsEditingVersion(false);
         router.push('/aereo/history');
       }
     } catch (error) {
       console.error('Error saving simulation:', error);
-      toast.error('Erro ao salvar simulação. Por favor, tente novamente.');
+      toast.error('Erro ao salvar cotação. Por favor, tente novamente.');
     }
   };
 
@@ -427,7 +427,7 @@ export function AirSimulator() {
             {currentSimulation && (
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-500 flex items-center gap-2">
-                  ID da Simulação:
+                  ID da Cotação:
                   <span className="font-mono font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700 border border-gray-200">
                     {currentSimulation.displayNumber}
                   </span>
@@ -532,7 +532,7 @@ export function AirSimulator() {
               disabled={createSimulationMutation.isPending}
             >
               <Save size={16} />
-              Salvar Simulação
+              Salvar Cotação
             </Button>
           )}
 
@@ -602,7 +602,7 @@ export function AirSimulator() {
                     <Building2 className="w-5 h-5 text-primary-600" />
                     Seleção de Cliente
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">Selecione o cliente para a simulação aérea</p>
+                  <p className="text-sm text-gray-500 mt-1">Selecione o cliente para a cotação aérea</p>
                 </div>
 
                 <div className="p-8">
@@ -869,7 +869,7 @@ export function AirSimulator() {
         <div className="lg:col-span-1 pt-10">
           <Card className="sticky top-6 shadow-md border-gray-200 overflow-hidden ring-1 ring-gray-950/5">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gray-50/80">
-              <CardTitle className="text-lg font-bold text-gray-900">Resumo da Simulação</CardTitle>
+              <CardTitle className="text-lg font-bold text-gray-900">Resumo da Cotação</CardTitle>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -958,7 +958,7 @@ export function AirSimulator() {
           <DialogHeader>
             <DialogTitle>Criar Nova Versão</DialogTitle>
             <DialogDescription>
-              Você está criando uma nova versão da simulação{' '}
+              Você está criando uma nova versão da cotação{' '}
               <strong>{currentSimulation?.displayNumber}</strong>. Informe o motivo da alteração.
             </DialogDescription>
           </DialogHeader>

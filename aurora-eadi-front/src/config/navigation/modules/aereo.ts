@@ -1,4 +1,4 @@
-import { Plane, Ship, History as HistoryIcon, Wrench, Calculator } from 'lucide-react';
+import { Plane, Ship, History as HistoryIcon, Wrench, Calculator, KanbanSquare } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
@@ -8,25 +8,30 @@ export const aereoNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Simulações',
+            label: 'Kanban Cotações',
+            icon: KanbanSquare,
+            path: '/simulacoes/propostas',
+        },
+        {
+            label: 'Cotações',
             icon: Calculator,
             path: '/simulacoes',
             isGroup: true,
             children: [
                 {
-                    label: 'Simulação Marítima',
+                    label: 'Cotação Marítima',
                     icon: Ship,
                     path: '/comercial/simulador',
                 },
                 {
-                    label: 'Simulador Aéreo',
+                    label: 'Cotação Aérea',
                     icon: Plane,
                     path: '/aereo/simulador',
                 },
             ],
         },
         {
-            label: 'Lista de simulação Aérea',
+            label: 'Lista de Cotações Aéreas',
             icon: HistoryIcon,
             path: '/aereo/history',
         },

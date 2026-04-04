@@ -211,7 +211,7 @@ export function SimulationPresentation({
                             * Obs.: Tarifa mínima de emissão de nota fiscal por contêiner - {formatCurrency(simulation?.minBillingValue ?? 5500)}.
                         </p>
                         <p className="mb-2">
-                            * Esta simulação possui valores estimados e pode sofrer alterações sem aviso prévio. Os valores finais serão confirmados mediante faturamento.
+                            * Esta cotação possui valores estimados e pode sofrer alterações sem aviso prévio. Os valores finais serão confirmados mediante faturamento.
                         </p>
                         <p>
                             Gerado pelo Sistema Portal Aurora em {new Date().toLocaleString('pt-BR')}
