@@ -29,6 +29,8 @@ import { DtaMaritimeModule } from 'src/dta-maritime/dta-maritime.module';
 import { CcteModule } from 'src/ccte/ccte.module';
 import { ConferenciaCargaModule } from 'src/conferencia-carga/conferencia-carga.module';
 import { ReceptionModule } from '../reception/reception.module';
+import { CarriersModule } from "../carriers/carriers.module";
+import { ArmazemGeralModule } from "../armazem-geral/armazem-geral.module";
 
 @Module({
   imports: [
@@ -64,6 +66,8 @@ import { ReceptionModule } from '../reception/reception.module';
     CcteModule,
     ConferenciaCargaModule,
     ReceptionModule,
+    CarriersModule,
+    ArmazemGeralModule,
   ],
 })
 export class AppModule {}

@@ -12,6 +12,7 @@
   ParseIntPipe,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client";
 import { UserModuleAccessService } from "./user-module-access.service";
@@ -19,7 +20,7 @@ import { ToggleModuleDto } from "./dto/toggle-module.dto";
 import { BulkAssignModulesDto } from "./dto/bulk-assign-modules.dto";
 
 @Controller("user-module-access")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserModuleAccessController {
   constructor(
     private readonly userModuleAccessService: UserModuleAccessService,

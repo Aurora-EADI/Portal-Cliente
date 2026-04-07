@@ -14,6 +14,7 @@
   ParseIntPipe,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client";
 import { ActivitiesService } from "./activities.service";
@@ -22,7 +23,7 @@ import { UpdateActivityDto } from "./dto/update-activity.dto";
 import { UpdateActivityPermissionsDto } from "./dto/update-activity-permissions.dto";
 
 @Controller("activities")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ActivitiesController {
   constructor(private readonly activitiesService: ActivitiesService) {}
 

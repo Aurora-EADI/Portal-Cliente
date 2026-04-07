@@ -56,6 +56,8 @@ model User {
   AirSimulationVersion AirSimulationVersion[]   @relation("UserAirSimulationVersions")
   moduleAccess         UserModuleAccess[]
   tokens               UserToken[]
+  operationalContainerMovements OperationalContainerMovement[] @relation("UserOperationalContainerMovements")
+  warehouseAuditLogs   WarehouseAuditLog[]       @relation("UserWarehouseAuditLogs")
   company              Company?                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("users")
@@ -529,7 +531,10 @@ model Customer {
   street        String?
   zipCode       String?
   AirSimulation AirSimulation[]
-  simulations   Simulation[]
+  simulations           Simulation[]
+  operationalContainers OperationalContainer[]
+  warehouseCargos       WarehouseCargo[]
+  heldOwnedContainers   WarehouseOwnedContainer[] @relation("OwnedContainerHolderCustomer")
 
   @@map("customers")
 }
@@ -933,5 +938,387 @@ model ReceptionContact {
   updatedAt   DateTime @updatedAt
 
   @@map("reception_contacts")
+}
+
+// ============ ARMAZÉM GERAL (SAGA) ============
+
+enum WarehouseModality {
+  GENERAL
+  BONDED
+}
+
+enum OperationalContainerStatus {
+  IN_WAREHOUSE
+  OUT
+  TRANSSHIPMENT
+}
+
+enum OperationalContainerMovementType {
+  ENTRY
+  EXIT
+  LOCATION_UPDATE
+  STATUS_CHANGE
+}
+
+enum WarehouseOwnedContainerStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  DAMAGED
+  WITH_CUSTOMER
+}
+
+model Warehouse {
+  id        String           @id @default(uuid())
+  code      String           @unique
+  name      String
+  modality  WarehouseModality
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  operationalContainers    OperationalContainer[]
+  warehouseOwnedContainers WarehouseOwnedContainer[]
+  cargos                   WarehouseCargo[]
+  transshipments           WarehouseTransshipment[]
+  damages                  WarehouseDamage[]
+  auditLogs                WarehouseAuditLog[]
+  containerSuppliers       WarehouseOwnedContainerSupplier[]
+  conferentes              Conferente[]
+
+  @@index([modality])
+  @@index([active])
+  @@map("warehouses")
+}
+
+model Carrier {
+  id        String   @id @default(uuid())
+  name      String
+  cnpj      String?  @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  drivers   CarrierDriver[]
+  vehicles  CarrierVehicle[]
+  movements OperationalContainerMovement[]
+
+  @@index([active])
+  @@map("carriers")
+}
+
+model CarrierDriver {
+  id        String   @id @default(uuid())
+  carrierId String
+  name      String
+  cpf       String?
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  carrier   Carrier   @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+  movements OperationalContainerMovement[]
+
+  @@index([carrierId])
+  @@index([active])
+  @@map("carrier_drivers")
+}
+
+model CarrierVehicle {
+  id        String   @id @default(uuid())
+  carrierId String
+  plate     String   @unique
+  type      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  carrier   Carrier   @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+  movements OperationalContainerMovement[]
+
+  @@index([carrierId])
+  @@index([active])
+  @@map("carrier_vehicles")
+}
+
+model OperationalContainer {
+  id              String                     @id @default(uuid())
+  warehouseId     String
+  containerNumber String
+  containerType   String?
+  entryNumber     String?                    @unique
+  exitNumber      String?                    @unique
+  originalSeal    String?
+  entryDate       DateTime?
+  exitDate        DateTime?
+  freeTimeDate    DateTime?
+  isFull          Boolean                    @default(true)
+  origin          String?
+  destination     String?
+  observations    String?
+  status          OperationalContainerStatus @default(IN_WAREHOUSE)
+  location        String?
+  customerId      String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  warehouse Warehouse                   @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  customer  Customer?                    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  movements OperationalContainerMovement[]
+  cargos    WarehouseCargo[] @relation("CurrentContainerCargos")
+  entryCargos WarehouseCargo[] @relation("EntryContainerCargos")
+  exitCargos  WarehouseCargo[] @relation("ExitContainerCargos")
+  transshipments WarehouseTransshipment[]
+  damages   WarehouseDamage[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([warehouseId])
+  @@unique([warehouseId, containerNumber])
+  @@map("operational_containers")
+}
+
+model OperationalContainerMovement {
+  id                String                          @id @default(uuid())
+  containerId       String
+  type              OperationalContainerMovementType
+  fromStatus        OperationalContainerStatus?
+  toStatus          OperationalContainerStatus?
+  location          String?
+  carrierId         String?
+  driverId          String?
+  vehicleId         String?
+  performedByUserId String?
+  createdAt         DateTime                        @default(now())
+
+  container       OperationalContainer @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  carrier         Carrier?             @relation(fields: [carrierId], references: [id], onDelete: SetNull)
+  driver          CarrierDriver?       @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicle         CarrierVehicle?      @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  performedByUser User?                @relation("UserOperationalContainerMovements", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([containerId])
+  @@index([carrierId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([performedByUserId])
+  @@index([createdAt])
+  @@map("operational_container_movements")
+}
+
+model WarehouseOwnedContainer {
+  id                String                        @id @default(uuid())
+  warehouseId       String
+  code              String
+  containerNumber   String?
+  containerType     String?
+  status            WarehouseOwnedContainerStatus @default(AVAILABLE)
+  isFull            Boolean                       @default(false)
+  supplierId        String?
+  supplier          WarehouseOwnedContainerSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  holderCustomerId  String?
+  location          String?
+  observations      String?
+  damages           WarehouseDamage[]
+  maintenanceNotes  String?
+  lastMaintenanceAt DateTime?
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  warehouseCargos WarehouseCargo[] @relation("OwnedContainerCargos")
+  holderCustomer Customer? @relation("OwnedContainerHolderCustomer", fields: [holderCustomerId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([warehouseId])
+  @@index([holderCustomerId])
+  @@unique([warehouseId, code])
+  @@map("warehouse_owned_containers")
+}
+
+model WarehouseOwnedContainerSupplier {
+  id          String   @id @default(uuid())
+  warehouseId String
+  name        String
+  document    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse  Warehouse                 @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  containers WarehouseOwnedContainer[]
+
+  @@index([warehouseId])
+  @@map("warehouse_owned_container_suppliers")
+}
+
+model WarehouseCargo {
+  id          String   @id @default(uuid())
+  warehouseId String
+  containerId String?
+  ownedContainerId String?
+  description String
+  cargoType   String?
+  weightKg    Decimal? @db.Decimal(15, 3)
+  quantity    Int      @default(1)
+  dangerous   Boolean  @default(false)
+  
+  // New Fields
+  customerId       String?
+  documentType     String?
+  documentNumber   String?
+  entryDate        DateTime?
+  exitDate         DateTime?
+  entryContainerId String?
+  exitContainerId  String?
+  packagingType    String?
+  volume           Decimal? @db.Decimal(15, 3)
+  location         String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  container      OperationalContainer? @relation("CurrentContainerCargos", fields: [containerId], references: [id], onDelete: SetNull)
+  ownedContainer WarehouseOwnedContainer? @relation("OwnedContainerCargos", fields: [ownedContainerId], references: [id], onDelete: SetNull)
+  customer       Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  entryContainer OperationalContainer? @relation("EntryContainerCargos", fields: [entryContainerId], references: [id], onDelete: SetNull)
+  exitContainer  OperationalContainer? @relation("ExitContainerCargos", fields: [exitContainerId], references: [id], onDelete: SetNull)
+  
+  damages   WarehouseDamage[]
+  transshipments WarehouseTransshipment[]
+
+  @@index([warehouseId])
+  @@index([containerId])
+  @@index([customerId])
+  @@map("warehouse_cargos")
+}
+
+enum TransshipmentStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
+enum TransshipmentReason {
+  CONTAINER_DAMAGE
+  CARGO_REGROUPING
+  CLIENT_REQUEST
+  OTHER
+}
+
+model WarehouseTransshipment {
+  id           String            @id @default(uuid())
+  warehouseId  String
+  containerId  String
+  cargoId      String?
+  originalSeal String?
+  newSeal      String?
+  reason       TransshipmentReason?
+  destinationContainerId     String?
+  destinationContainerNumber String?
+  responsibleName      String?
+  responsibleMatricula String?
+  responsibleCpf       String?
+  observations         String?
+  status       TransshipmentStatus @default(PENDING)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  warehouse Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  container OperationalContainer @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  cargo     WarehouseCargo?      @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId])
+  @@index([containerId])
+  @@index([cargoId])
+  @@index([status])
+  @@map("warehouse_transshipments")
+}
+
+enum DamageSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DamageStatus {
+  OPEN
+  RESOLVED
+}
+
+model WarehouseDamage {
+  id              String        @id @default(uuid())
+  warehouseId     String
+  containerId     String?
+  ownedContainerId String?
+  cargoId         String?
+  severity        DamageSeverity
+  status          DamageStatus  @default(OPEN)
+  description     String
+  photoObjectKeys String[]
+  resolvedAt      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  container   OperationalContainer?    @relation(fields: [containerId], references: [id], onDelete: SetNull)
+  ownedContainer WarehouseOwnedContainer? @relation(fields: [ownedContainerId], references: [id], onDelete: SetNull)
+  cargo          WarehouseCargo?          @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId])
+  @@index([containerId])
+  @@index([ownedContainerId])
+  @@index([cargoId])
+  @@index([status])
+  @@index([severity])
+  @@map("warehouse_damages")
+}
+
+model Conferente {
+  id          String   @id @default(uuid())
+  warehouseId String
+  name        String
+  matricula   String
+  cpf         String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+
+  @@unique([warehouseId, matricula])
+  @@unique([warehouseId, cpf])
+  @@index([warehouseId])
+  @@map("conferentes")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+}
+
+model WarehouseAuditLog {
+  id                String     @id @default(uuid())
+  warehouseId       String
+  entityType        String
+  entityId          String
+  action            AuditAction
+  before            Json?
+  after             Json?
+  performedByUserId String?
+  createdAt         DateTime   @default(now())
+
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  performedByUser   User?     @relation("UserWarehouseAuditLogs", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([createdAt])
+  @@map("warehouse_audit_logs")
 }
 

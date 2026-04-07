@@ -30,6 +30,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
   { path: '/recepcao', label: 'Recepção', icon: 'Users', isModuleRoot: true },
+  { path: '/armazem-geral', label: 'Armazém Geral', icon: 'Package', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -88,6 +89,17 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
   { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
+
+  // Armazém Geral
+  { path: '/armazem-geral/dashboard', label: 'Dashboard', icon: 'BarChart2', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/carga-geral', label: 'Carga Geral', icon: 'Package', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers', label: 'Containers', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers-ag', label: 'Containers AG', icon: 'Package', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/transbordos', label: 'Transbordos', icon: 'ArrowRightLeft', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/avarias', label: 'Avarias', icon: 'AlertTriangle', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios', label: 'Relatórios', icon: 'ClipboardList', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/auditoria', label: 'Auditoria', icon: 'Shield', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/fornecedores-container', label: 'Fornecedores de Containers', icon: 'Building2', parentPath: '/armazem-geral', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====
