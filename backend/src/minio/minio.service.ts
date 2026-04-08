@@ -6,16 +6,14 @@ export class MinioService implements OnModuleInit {
   private readonly logger = new Logger(MinioService.name);
 
   // Internal client for upload/delete/stream against Docker DNS host.
-  private minioClient: Minio.Client;
+  private minioClient!: Minio.Client;
 
   // Public client used only to generate presigned URLs with browser-reachable host.
-  private publicMinioClient: Minio.Client;
+  private publicMinioClient!: Minio.Client;
 
-  private readonly bucketName: string;
+  private readonly bucketName: string = process.env.MINIO_BUCKET_NAME || "documents";
 
-  constructor() {
-    this.bucketName = process.env.MINIO_BUCKET_NAME || "documents";
-  }
+  constructor() {}
 
   async onModuleInit() {
     // Internal client resolves Docker service hostname (e.g. "minio").
