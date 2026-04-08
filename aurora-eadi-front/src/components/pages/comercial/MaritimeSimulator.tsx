@@ -85,6 +85,9 @@ const normalizeText = (value: string | undefined | null): string =>
 const isGrisServiceName = (value: string | undefined | null): boolean =>
   normalizeText(value).includes("gris");
 
+const isStorageServiceName = (value: string | undefined | null): boolean =>
+  normalizeText(value).includes("armazenagem");
+
 export function MaritimeSimulator() {
   const { currentUser } = useAuthContext();
   const searchParams = useSearchParams();
@@ -151,6 +154,7 @@ export function MaritimeSimulator() {
     DEFAULT_MIN_BILLING.toString(),
   );
   const [auroraPeriods, setAuroraPeriods] = useState<string>("1");
+  const [storageRate, setStorageRate] = useState<string>("0,35");
   const [cifInputMode, setCifInputMode] = useState<"USD" | "BRL">("USD");
   const [loadedSimulationId, setLoadedSimulationId] = useState<string | null>(
     null,
@@ -264,22 +268,25 @@ export function MaritimeSimulator() {
     return normalized.includes("transporte") && normalized.includes("dta");
   };
 
-  const storageServiceRate = useMemo(() => {
-    if (!storageServiceId) return 0;
-    const rawCost = (storageCostData as any)?.cost;
-    const base =
-      typeof rawCost === "string"
-        ? parseNumberBR(rawCost)
-        : Number(rawCost || 0);
-    const periods = Math.max(1, parseInt(auroraPeriods) || 1);
-    return base * periods;
-  }, [storageServiceId, storageCostData, auroraPeriods]);
+  // Initialize storageRate when cost data is loaded
+  useEffect(() => {
+    if (storageCostData?.cost) {
+      const cost = typeof storageCostData.cost === 'string' 
+        ? storageCostData.cost 
+        : formatNumberBR(storageCostData.cost, 3);
+      setStorageRate(cost);
+    }
+  }, [storageCostData]);
+
+  const storageServiceRateNum = useMemo(() => {
+    return parseNumberBR(storageRate) || 0;
+  }, [storageRate]);
 
   const storageServiceAppliedCost = useMemo(() => {
     if (!storageServiceId) return 0;
     // Business rule: Armazenagem é sempre % sobre CIF (e cobrada por período).
-    return calculateServiceCost(
-      storageServiceRate,
+    const baseCost = calculateServiceCost(
+      storageServiceRateNum,
       ServiceCalculationType.PERCENTAGE_CIF,
       {
         cifBrl: cifBrlNum,
@@ -287,7 +294,16 @@ export function MaritimeSimulator() {
         cntrCount: parseInt(cntrCount || "0"),
       },
     );
-  }, [storageServiceId, storageServiceRate, cifBrlNum, tonnes, cntrCount]);
+    const periods = Math.max(1, parseInt(auroraPeriods) || 1);
+    return baseCost * periods;
+  }, [
+    storageServiceId,
+    storageServiceRateNum,
+    cifBrlNum,
+    tonnes,
+    cntrCount,
+    auroraPeriods,
+  ]);
 
   const periodsNum = useMemo(
     () => Math.max(1, parseInt(auroraPeriods) || 1),
@@ -313,8 +329,9 @@ export function MaritimeSimulator() {
           ),
           {
             serviceId: storageServiceId,
+            serviceName: "Armazenagem",
             costType: ServiceCostType.DEFAULT,
-            originalCost: storageServiceRate,
+            originalCost: storageServiceRateNum,
             appliedCost: storageServiceAppliedCost,
           } as any,
         ]
@@ -349,7 +366,7 @@ export function MaritimeSimulator() {
 
         // Check name against service definition or snapshot name
         const sName = serviceDef?.name || (s as any).serviceName || "";
-        if (isGrisServiceName(sName)) {
+        if (isGrisServiceName(sName) || isStorageServiceName(sName)) {
           cost *= periodsNum;
         }
         const isExcluded = isExcludedFromMinBilling(sName);
@@ -372,7 +389,7 @@ export function MaritimeSimulator() {
     cntrCount,
     servicesData,
     storageServiceId,
-    storageServiceRate,
+    storageServiceRateNum,
     storageServiceAppliedCost,
     periodsNum,
   ]);
@@ -542,7 +559,7 @@ export function MaritimeSimulator() {
                 {
                   serviceId: storageServiceId,
                   costType: ServiceCostType.DEFAULT,
-                  originalCost: storageServiceRate,
+                  originalCost: storageServiceRateNum,
                   appliedCost: storageServiceAppliedCost,
                 },
                 ...localServices.filter(
@@ -585,7 +602,7 @@ export function MaritimeSimulator() {
             data: {
               serviceId: storageServiceId,
               costType: ServiceCostType.DEFAULT,
-              originalCost: storageServiceRate,
+              originalCost: storageServiceRateNum,
               appliedCost: storageServiceAppliedCost,
             },
           });
@@ -614,10 +631,7 @@ export function MaritimeSimulator() {
     const storageServiceForPdf = storageServiceId
       ? ({
           serviceId: storageServiceId,
-          serviceName:
-            storageService?.name ||
-            storageServiceSnapshot?.serviceName ||
-            "Armazenagem",
+          serviceName: "Armazenagem",
           serviceCode:
             storageService?.code ||
             storageServiceSnapshot?.serviceCode ||
@@ -628,7 +642,7 @@ export function MaritimeSimulator() {
             storageServiceSnapshot?.hasStripping ??
             false,
           costType: ServiceCostType.DEFAULT,
-          originalCost: storageServiceRate,
+          originalCost: storageServiceRateNum,
           appliedCost: storageServiceAppliedCost,
           service: {
             id: storageServiceId,
@@ -704,7 +718,7 @@ export function MaritimeSimulator() {
           data: {
             serviceId: storageServiceId,
             costType: ServiceCostType.DEFAULT,
-            originalCost: storageServiceRate,
+            originalCost: storageServiceRateNum,
             appliedCost: storageServiceAppliedCost,
           },
         });
@@ -1257,30 +1271,55 @@ export function MaritimeSimulator() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="auroraPeriods">
-                      Períodos Aurora (10 dias cada)
-                    </Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                    <div className="space-y-2">
+                      <Label htmlFor="storageRate">Taxa de Armazenagem (%)</Label>
+                      <div className="relative">
                         <Input
-                          id="auroraPeriods"
-                          type="number"
-                          min="1"
-                          value={auroraPeriods}
-                          onChange={(e) => setAuroraPeriods(e.target.value)}
+                          id="storageRate"
+                          placeholder="0,35"
+                          value={storageRate}
+                          onChange={(e) => setStorageRate(e.target.value)}
+                          onBlur={(e) =>
+                            setStorageRate(
+                              formatNumberBR(parseNumberBR(e.target.value), 3),
+                            )
+                          }
                           disabled={!isEditable}
+                          className="pr-8 font-semibold bg-white"
                         />
-                      </div>
-                      <div className="relative flex-[1.5]">
-                        <Input
-                          value={formatCurrency(storageServiceAppliedCost)}
-                          readOnly
-                          className="bg-gray-50 text-gray-600 font-medium pl-9"
-                        />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                          R$
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                          %
                         </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="auroraPeriods">
+                        Períodos Aurora (10 dias cada)
+                      </Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="auroraPeriods"
+                            type="number"
+                            min="1"
+                            value={auroraPeriods}
+                            onChange={(e) => setAuroraPeriods(e.target.value)}
+                            disabled={!isEditable}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="relative flex-[1.5]">
+                          <Input
+                            value={formatCurrency(storageServiceAppliedCost)}
+                            readOnly
+                            className="bg-gray-100 text-gray-600 font-bold pl-9 border-gray-200"
+                          />
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                            R$
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

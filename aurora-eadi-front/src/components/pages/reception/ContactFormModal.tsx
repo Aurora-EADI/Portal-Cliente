@@ -32,6 +32,7 @@ export function ContactFormModal({ isOpen, onClose, contact, onSuccess }: Contac
     department: '',
     position: '',
     extension: '',
+    mobile: '',
     email: '',
     active: true,
   });
@@ -43,6 +44,7 @@ export function ContactFormModal({ isOpen, onClose, contact, onSuccess }: Contac
         department: contact.department,
         position: contact.position,
         extension: contact.extension || '',
+        mobile: contact.mobile || '',
         email: contact.email || '',
         active: contact.active ?? true,
       });
@@ -52,11 +54,22 @@ export function ContactFormModal({ isOpen, onClose, contact, onSuccess }: Contac
         department: '',
         position: '',
         extension: '',
+        mobile: '',
         email: '',
         active: true,
       });
     }
   }, [contact, isOpen]);
+
+  const formatPhone = (value: string) => {
+    let v = value.replace(/\D/g, '');
+    if (v.length > 11) v = v.slice(0, 11);
+    if (v.length === 0) return '';
+    if (v.length <= 2) return `(${v}`;
+    if (v.length <= 6) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+    if (v.length <= 10) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
+    return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +115,7 @@ export function ContactFormModal({ isOpen, onClose, contact, onSuccess }: Contac
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="extension">Ramal *</Label>
                 <Input
@@ -111,6 +124,16 @@ export function ContactFormModal({ isOpen, onClose, contact, onSuccess }: Contac
                   onChange={(e) => setFormData({ ...formData, extension: e.target.value })}
                   placeholder="Ex: 1234"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="mobile">Celular</Label>
+                <Input
+                  id="mobile"
+                  value={formData.mobile}
+                  onChange={(e) => setFormData({ ...formData, mobile: formatPhone(e.target.value) })}
+                  placeholder="Ex: (00) 00000-0000"
+                  maxLength={15}
                 />
               </div>
               <div className="space-y-2">

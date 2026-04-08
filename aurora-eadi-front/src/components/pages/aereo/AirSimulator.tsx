@@ -144,6 +144,7 @@ export function AirSimulator() {
     return effectiveServicesList.reduce((acc, s) => {
       let cost = 0;
       const serviceDef = servicesData?.find(sd => sd.id === s.serviceId);
+      const sName = serviceDef?.name || (s as any).serviceName || '';
 
       if (s.costType === ServiceCostType.DEFAULT) {
         if (serviceDef) {
@@ -153,8 +154,13 @@ export function AirSimulator() {
         cost = Number(s.appliedCost || 0);
       }
 
-      // Check name against service definition or snapshot name
-      const sName = serviceDef?.name || (s as any).serviceName || '';
+      // Adicionar multiplicador de períodos para GRIS em Serviços Diversos
+      // (Armazenagem Aurora já é mostrada separadamente no resumo)
+      const isGris = sName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").includes('gris');
+      if (isGris) {
+        cost *= (parseInt(auroraPeriods) || 1);
+      }
+
       const isExcluded = isExcludedFromMinBilling(sName);
 
       if (isExcluded) {
@@ -173,9 +179,10 @@ export function AirSimulator() {
 
   // Calculate costs based on rates
   const calculatedStorageCost = useMemo(() => {
-    const rate = 0.35 * (parseInt(auroraPeriods) || 1);
-    return (rate / 100) * (cifBrlNum || 0);
-  }, [auroraPeriods, cifBrlNum]);
+    const baseRate = parseNumberBR(storageRate) || 0.35;
+    const periods = Math.max(1, parseInt(auroraPeriods) || 1);
+    return (baseRate / 100) * (cifBrlNum || 0) * periods;
+  }, [storageRate, auroraPeriods, cifBrlNum]);
 
   // Calculate Capatazia cost
   const calculatedCapataziaCost = useMemo(() => {
@@ -256,7 +263,9 @@ export function AirSimulator() {
       const savedStorageCost = Number(currentSimulation.storageCost || 0);
       const savedCifBrl = Number(currentSimulation.cifBrl || 0);
       if (savedCifBrl > 0) {
-        setStorageRate(formatNumberBR((savedStorageCost / savedCifBrl) * 100, 4));
+        const periods = Math.max(1, currentSimulation.auroraPeriods || 1);
+        const baseRate = (savedStorageCost / savedCifBrl) * 100 / periods;
+        setStorageRate(formatNumberBR(baseRate, 4));
       }
 
       setDiscount(formatNumberBR(currentSimulation.discount || 0));
@@ -772,7 +781,23 @@ export function AirSimulator() {
                     </div>
                   </div>
 
-                  {/* Row 4: Storage Periods */}
+                  {/* Row 4: Storage Rate and Periods */}
+                  <div className="space-y-2">
+                    <Label htmlFor="storageRate">Taxa de Armazenagem (%)</Label>
+                    <div className="relative">
+                      <Input
+                        id="storageRate"
+                        placeholder="0,35"
+                        value={storageRate}
+                        onChange={(e) => setStorageRate(e.target.value)}
+                        onBlur={(e) => setStorageRate(formatNumberBR(parseNumberBR(e.target.value), 3))}
+                        disabled={!isEditable}
+                        className="pr-8 font-semibold"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="auroraPeriods">Períodos Aurora (10 dias cada)</Label>
                     <div className="flex gap-2">
@@ -853,8 +878,9 @@ export function AirSimulator() {
                   isEditable={isEditable}
                   simulationData={{
                     cifBrl: cifBrlNum,
-                    weightKg: parseFloat(weightKg) || 0,
-                    volumeM3: parseFloat(volumeM3) || 0,
+                    weightKg: parseNumberBR(weightKg) || 0,
+                    volumeM3: parseNumberBR(volumeM3) || 0,
+                    periods: parseInt(auroraPeriods) || 1,
                   }}
                   localServices={localServices}
                   onAddLocalService={handleAddLocalService}
