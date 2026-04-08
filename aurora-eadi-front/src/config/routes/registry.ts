@@ -30,6 +30,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
   { path: '/recepcao', label: 'Recepção', icon: 'Users', isModuleRoot: true },
+  { path: '/armazem-geral', label: 'Armazém Geral', icon: 'Package', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -89,9 +90,6 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
   { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
-
-  // Inspeção Container
-  { path: '/inspecao-container/painel', label: 'Painel de Vistorias', icon: 'ClipboardList', parentPath: '/inspecao-container', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====

@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+
+  webpack: (config, { dev }) => {
+    // Workaround para instabilidades de cache em alguns ambientes Windows/FS
+    if (dev) {
+      config.cache = false
+    }
+    return config
+  },
 }
 
 export default nextConfig

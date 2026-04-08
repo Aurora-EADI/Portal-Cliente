@@ -1,9 +1,10 @@
-export interface ReceptionContact {
+  export interface ReceptionContact {
   id: string;
   name: string;
   position: string;
   department: string;
   extension?: string;
+  mobile?: string;
   email?: string;
   active: boolean;
   createdAt: string;
@@ -15,6 +16,7 @@ export interface CreateContactDto {
   position: string;
   department: string;
   extension?: string;
+  mobile?: string;
   email?: string;
 }
 

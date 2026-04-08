@@ -51,6 +51,7 @@ interface AirServicesTabProps {
     cifBrl: number;
     weightKg: number;
     volumeM3: number;
+    periods?: number;
   };
   localServices?: LocalService[];
   onAddLocalService?: (service: LocalService) => void;
@@ -280,7 +281,25 @@ export function AirServicesTab({
                               ? 'font-bold text-orange-600'
                               : 'font-bold text-green-600'
                         }>
-                          {formatCurrency(simService.appliedCost)}
+                          {formatCurrency(
+                            (() => {
+                              const baseCost = simService.costType === ServiceCostType.DEFAULT
+                                ? calculateServiceCost(Number(simService.originalCost), service.calculationType, {
+                                    cifBrl: simulationData.cifBrl,
+                                    tonnes: simulationData.weightKg / 1000,
+                                    cntrCount: 1,
+                                    weightKg: simulationData.weightKg,
+                                    volumeM3: simulationData.volumeM3,
+                                  })
+                                : simService.appliedCost;
+                              
+                              const sName = service.name.toLowerCase();
+                              const isMultiplied = sName.includes('gris') || sName.includes('armazenagem');
+                              const periods = Math.max(1, simulationData.periods || 1);
+                              
+                              return isMultiplied ? baseCost * periods : baseCost;
+                            })()
+                          )}
                         </span>
                       ) : <span className="text-gray-400">-</span>}
                     </TableCell>

@@ -11,6 +11,7 @@
   HttpStatus,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { ModulesService } from "./modules.service";
 import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
@@ -18,7 +19,7 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client";
 
 @Controller("modules")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ModulesController {
   constructor(private readonly modulesService: ModulesService) {}
 

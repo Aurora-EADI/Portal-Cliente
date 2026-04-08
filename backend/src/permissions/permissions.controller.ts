@@ -13,6 +13,7 @@
   ParseIntPipe,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client";
 import { PermissionsService } from "./permissions.service";
@@ -20,7 +21,7 @@ import { CreatePermissionDto } from "./dto/create-permission.dto";
 import { UpdatePermissionDto } from "./dto/update-permission.dto";
 
 @Controller("permissions")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 

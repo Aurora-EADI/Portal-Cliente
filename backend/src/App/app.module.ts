@@ -29,7 +29,6 @@ import { DtaMaritimeModule } from '../dta-maritime/dta-maritime.module';
 import { CcteModule } from '../ccte/ccte.module';
 import { ConferenciaCargaModule } from '../conferencia-carga/conferencia-carga.module';
 import { ReceptionModule } from '../reception/reception.module';
-import { MobileModule } from '../mobile/mobile.module';
 
 @Module({
   imports: [
@@ -65,7 +64,6 @@ import { MobileModule } from '../mobile/mobile.module';
     CcteModule,
     ConferenciaCargaModule,
     ReceptionModule,
-    MobileModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
