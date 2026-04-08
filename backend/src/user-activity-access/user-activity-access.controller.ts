@@ -13,6 +13,7 @@
   ParseIntPipe,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client";
 import { UserActivityAccessService } from "./user-activity-access.service";
@@ -20,7 +21,7 @@ import { ToggleActivityDto } from "./dto/toggle-activity.dto";
 import { BulkConfigureActivitiesDto } from "./dto/bulk-configure-activities.dto";
 
 @Controller("user-activity-access")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserActivityAccessController {
   constructor(
     private readonly userActivityAccessService: UserActivityAccessService,

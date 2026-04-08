@@ -17,7 +17,7 @@ interface FindAllParams {
 
 @Injectable()
 export class CustomerService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateCustomerDto) {
     // Verificar se jÃ¡ existe cliente com o mesmo cÃ³digo
@@ -155,7 +155,9 @@ export class CustomerService {
       });
 
       if (existingByDocument) {
-        throw new ConflictException("JÃ¡ existe um cliente com este documento.");
+        throw new ConflictException(
+          "JÃ¡ existe um cliente com este documento.",
+        );
       }
     }
 
@@ -194,4 +196,3 @@ export class CustomerService {
     });
   }
 }
-
