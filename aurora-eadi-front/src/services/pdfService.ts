@@ -382,6 +382,18 @@ const normalizeText = (value: string | undefined | null): string =>
 const isGrisServiceName = (value: string | undefined | null): boolean =>
   normalizeText(value).includes('gris');
 
+const isExcluded = (name: string | undefined): boolean => {
+  if (!name) return false;
+  const normalized = normalizeText(name);
+  return normalized.includes('transporte') && normalized.includes('dta');
+};
+
+const isStorage = (name: string | undefined): boolean => {
+  if (!name) return false;
+  const normalized = normalizeText(name);
+  return normalized.includes('armazenagem');
+};
+
 
 export const exportDtaProcessoToPDF = async (processo: ProcessoImportacao) => {
   const doc = new jsPDF();
@@ -570,25 +582,13 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   // Seção 3: Tabela de Serviços
   const storageRate = simulation.cifBrl > 0 
-    ? ((simulation.storageCost || 0) / simulation.cifBrl) * 100 
+    ? ((simulation.storageCost || 0) / simulation.cifBrl) * 100 / Math.max(1, simulation.auroraPeriods || 1)
     : 0;
 
   const services = [...(simulation.services || [])].sort((a, b) => 
     (a.service?.name || '').localeCompare(b.service?.name || '')
   );
-
-  const isExcluded = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('transporte') && normalized.includes('dta');
-  };
-
-  const isStorage = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('armazenagem');
-  };
-
+  
   const eligibleServices = services.filter((s: any) => {
     const sName = s.service?.name || s.serviceName || '';
     return !isExcluded(sName) && !isStorage(sName);
@@ -604,15 +604,19 @@ export const exportAirSimulationToPDF = async (simulation: AirSimulation) => {
 
   const tableData = [
     ...(simulation.storageCost ? [[
-      'Armazenagem Aurora',
+      'Armazenagem',
       `${formatNumberBR(storageRate, 2)}% sobre CIF`,
       formatCurrency(simulation.storageCost)
     ]] : []),
-    ...eligibleServices.map((s: any) => [
-      s.service?.name || 'Serviço',
-      getServiceDetail(s),
-      formatCurrency(s.appliedCost || 0)
-    ])
+    ...eligibleServices.map((s: any) => {
+      const sName = s.service?.name || s.serviceName || '';
+      const displayName = isStorage(sName) ? 'Armazenagem' : (s.service?.name || 'Serviço');
+      return [
+        displayName,
+        getServiceDetail(s),
+        formatCurrency(s.appliedCost || 0)
+      ];
+    })
   ];
 
   autoTable(doc, {
@@ -869,23 +873,11 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
     finalCost: (() => {
       const base = getServiceFinalCost(s, calcData);
       const sName = s.serviceName || s.service?.name || '';
-      return isGrisServiceName(sName) ? base * periodsNum : base;
+      return (isGrisServiceName(sName) || isStorage(sName)) ? base * periodsNum : base;
     })(),
   }));
 
   const visibleServices = servicesWithCost.filter((row: any) => Number(row.finalCost) > 0);
-
-  const isExcluded = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('transporte') && normalized.includes('dta');
-  };
-
-  const isStorage = (name: string | undefined): boolean => {
-    if (!name) return false;
-    const normalized = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-    return normalized.includes('armazenagem');
-  };
 
   const eligibleServices = visibleServices.filter(({ s }: any) => {
     const sName = s.serviceName || s.service?.name || '';
@@ -910,11 +902,15 @@ export const exportMaritimeSimulationToPDF = async (simulation: Simulation) => {
   const eligibleServicesTotal = eligibleServices.reduce((sum: number, row: any) => sum + row.finalCost, 0);
   const excludedServicesTotal = excludedServices.reduce((sum: number, row: any) => sum + row.finalCost, 0);
 
-  const tableData = eligibleServices.map(({ s, finalCost }: any) => [
-    s.serviceName || 'Serviço',
-    getServiceDetail(s),
-    formatCurrency(finalCost)
-  ]);
+  const tableData = eligibleServices.map(({ s, finalCost }: any) => {
+    const sName = s.serviceName || s.service?.name || '';
+    const displayName = isStorage(sName) ? 'Armazenagem' : (s.serviceName || 'Serviço');
+    return [
+      displayName,
+      getServiceDetail(s),
+      formatCurrency(finalCost)
+    ];
+  });
 
   autoTable(doc, {
     startY: 115,

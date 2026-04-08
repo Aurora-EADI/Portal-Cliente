@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { Edit2, Trash2, Phone, Mail, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { Edit2, Trash2, Phone, Smartphone, Mail, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -39,6 +39,7 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
       'Setor': c.department,
       'Função': c.position,
       'Ramal': c.extension || '-',
+      'Celular': c.mobile || '-',
       'E-mail': c.email || '-',
       'Status': c.active ? 'Ativo' : 'Inativo'
     }));
@@ -86,12 +87,13 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
       c.department,
       c.position,
       c.extension || '-',
+      c.mobile || '-',
       c.email || '-'
     ]);
 
     autoTable(doc, {
       startY: 50,
-      head: [['Nome', 'Setor', 'Função', 'Ramal', 'E-mail']],
+      head: [['Nome', 'Setor', 'Função', 'Ramal', 'Celular', 'E-mail']],
       body: tableData,
       headStyles: { 
         fillColor: auroraOrange as any, 
@@ -139,6 +141,7 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
             <TableHead className="font-bold">Setor</TableHead>
             <TableHead className="font-bold">Função</TableHead>
             <TableHead className="font-bold text-center">Ramal</TableHead>
+            <TableHead className="font-bold text-center">Celular</TableHead>
             <TableHead className="font-bold">E-mail</TableHead>
             {isAdmin && <TableHead className="text-right font-bold w-[100px]">Ações</TableHead>}
           </TableRow>
@@ -146,7 +149,7 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
         <TableBody>
           {contacts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={isAdmin ? 6 : 5} className="h-32 text-center text-gray-500">
+              <TableCell colSpan={isAdmin ? 7 : 6} className="h-32 text-center text-gray-500">
                 Nenhum contato encontrado.
               </TableCell>
             </TableRow>
@@ -165,6 +168,16 @@ export function ContactList({ contacts, total, onEdit, onDelete, isAdmin }: Cont
                     <div className="flex items-center justify-center gap-1.5 text-orange-600 font-semibold bg-orange-50 px-2 py-1 rounded-md">
                       <Phone size={14} />
                       {contact.extension}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-center">
+                  {contact.mobile ? (
+                    <div className="flex items-center justify-center gap-1.5 text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-md">
+                      <Smartphone size={14} />
+                      {contact.mobile}
                     </div>
                   ) : (
                     <span className="text-gray-400">-</span>

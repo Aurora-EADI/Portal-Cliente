@@ -932,6 +932,7 @@ model ReceptionContact {
   position    String?  // Função (Opcional)
   department  String?  // Setor (Opcional)
   extension   String   // Ramal (Obrigatório)
+  mobile      String?  // Celular (Opcional)
   email       String?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())

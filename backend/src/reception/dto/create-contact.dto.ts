@@ -21,6 +21,10 @@ export class CreateContactDto {
   @IsOptional()
   email?: string;
 
+  @IsString()
+  @IsOptional()
+  mobile?: string;
+
   @IsBoolean()
   @IsOptional()
   active?: boolean;
