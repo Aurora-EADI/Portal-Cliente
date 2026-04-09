@@ -5,8 +5,6 @@ import {
   CreateOwnedContainerDto,
   UpdateOwnedContainerDto,
   WarehouseOwnedContainer,
-  WarehouseOwnedContainerSupplier,
-  CreateContainerAgSupplierDto,
 } from '@/types/armazem-geral';
 
 const BASE_PATH = '/armazem-geral/containers-proprios';
@@ -63,25 +61,5 @@ export const ownedContainersService = {
   remove: async (id: string): Promise<void> => {
     await api.delete(`${BASE_PATH}/${id}`);
   },
-
-  suppliers: {
-    findAll: async (): Promise<WarehouseOwnedContainerSupplier[]> => {
-      const response = await api.get(`${BASE_PATH}/suppliers`);
-      return response.data;
-    },
-
-    create: async (data: CreateContainerAgSupplierDto): Promise<WarehouseOwnedContainerSupplier> => {
-      const response = await api.post(`${BASE_PATH}/suppliers`, data);
-      return response.data;
-    },
-
-    update: async (id: string, data: Partial<CreateContainerAgSupplierDto>): Promise<WarehouseOwnedContainerSupplier> => {
-      const response = await api.patch(`${BASE_PATH}/suppliers/${id}`, data);
-      return response.data;
-    },
-
-    remove: async (id: string): Promise<void> => {
-      await api.delete(`${BASE_PATH}/suppliers/${id}`);
-    },
-  },
 };
+

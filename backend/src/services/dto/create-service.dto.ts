@@ -14,7 +14,7 @@ export class CreateServiceDto {
 
   @IsOptional()
   @IsString()
-  category?: string; // Ex: "Operacional", "LogÃ­stica"
+  category?: string; // Ex: "Operacional", "Logística"
   
   @IsEnum(ServiceModal)
   @IsNotEmpty()
@@ -22,11 +22,11 @@ export class CreateServiceDto {
 
   @IsOptional()
   @IsEnum(ServiceCalculationType)
-  calculationType?: ServiceCalculationType; // Tipo de cÃ¡lculo do serviÃ§o
+  calculationType?: ServiceCalculationType; // Tipo de cálculo do serviço
 
   @IsOptional()
   @IsString()
-  formulaExpression?: string; // FÃ³rmula para exibiÃ§Ã£o (ex: "0.35% do CIF")
+  formulaExpression?: string; // Fórmula para exibição (ex: "0.35% do CIF")
 
   @IsOptional()
   @IsBoolean()

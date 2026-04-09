@@ -51,7 +51,7 @@ export class UpdateCustomerDto {
   document?: string;
 
   @IsOptional()
-  @IsEnum(CustomerStatus, { message: "Status invÃ¡lido." })
+  @IsEnum(CustomerStatus, { message: "Status inválido." })
   status?: CustomerStatus;
 }
 

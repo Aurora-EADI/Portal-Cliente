@@ -24,14 +24,13 @@ import { CONTAINER_DAMAGE_GROUPS } from "@/config/armazem-geral/container-damage
 import { 
   useCreateOwnedContainer, 
   useUpdateOwnedContainer, 
-  useOwnedContainerSuppliers,
   useNextOwnedContainerCode 
 } from "@/hooks/armazem-geral/useOwnedContainers";
+import { useSuppliersByType } from "@/hooks/useSuppliers";
 import { WarehouseOwnedContainer, WarehouseOwnedContainerStatus } from "@/types/armazem-geral";
 import { toast } from "sonner";
 import { Package, Truck, AlertTriangle, ChevronRight, ChevronLeft, Save, Building2, Hash, MapPin, ClipboardList, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { RegisterOwnedContainerSupplierModal } from "./RegisterOwnedContainerSupplierModal";
 
 const CONTAINER_TYPES = ["20 DRY", "40 DRY", "40 HC", "20 REEFER", "40 REEFER", "OPEN TOP", "FLAT RACK"];
 
@@ -60,7 +59,8 @@ export function RegisterOwnedContainerModal({
     avarias: [] as string[],
   });
 
-  const { data: suppliers } = useOwnedContainerSuppliers();
+  const { data: suppliersData } = useSuppliersByType("Locação de equipamentos");
+  const suppliers = suppliersData?.data || [];
   const { data: nextCodeData, refetch: refetchNextCode } = useNextOwnedContainerCode(isOpen && !editingContainer);
   const { mutateAsync: createContainer, isPending: isCreating } = useCreateOwnedContainer();
   const { mutateAsync: updateContainer, isPending: isUpdating } = useUpdateOwnedContainer();
@@ -233,19 +233,11 @@ export function RegisterOwnedContainerModal({
                           <SelectContent>
                             <SelectItem value="NONE">Não Informado</SelectItem>
                             {suppliers?.map(s => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              <SelectItem key={s.id} value={s.id}>{s.fantasyName}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="icon" 
-                          className="h-11 w-11 shrink-0 border-primary-100 text-primary-600 hover:bg-primary-50"
-                          onClick={() => setIsSupplierModalOpen(true)}
-                        >
-                            <PlusCircle size={20} />
-                        </Button>
+
                     </div>
                   </div>
                   <div className="space-y-2 text-left">
@@ -388,11 +380,6 @@ export function RegisterOwnedContainerModal({
       </DialogContent>
     </Dialog>
 
-    <RegisterOwnedContainerSupplierModal 
-        isOpen={isSupplierModalOpen}
-        onClose={() => setIsSupplierModalOpen(false)}
-        onSuccess={(id) => setFormData(prev => ({ ...prev, supplierId: id }))}
-    />
     </>
   );
 }

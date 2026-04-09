@@ -95,7 +95,9 @@ export function CargoDetailsCard({ cargo, onClose, onDelete }: CargoDetailsCardP
                     <span className="text-[10px] font-bold uppercase tracking-wider">Documento</span>
                   </div>
                   <span className="text-sm font-semibold text-gray-900">
-                    {details.documentNumber && !details.documentNumber.includes('## Error Type') ? (
+                    {details.documents && details.documents.length > 0 ? (
+                      details.documents.map(d => `${d.type === 'DI' ? 'DI' : 'NR'}: ${d.number}`).join(', ')
+                    ) : details.documentNumber && !details.documentNumber.includes('## Error Type') ? (
                       `${details.documentType === 'DI' ? 'DI' : 'NR'}: ${details.documentNumber}`
                     ) : (
                       "N/A"
@@ -141,6 +143,16 @@ export function CargoDetailsCard({ cargo, onClose, onDelete }: CargoDetailsCardP
                   </div>
                   <span className="text-sm font-semibold text-gray-900">{details.volume ? `${details.volume} m³` : "---"}</span>
                 </div>
+                {details.cifValue !== null && details.cifValue !== undefined && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-100 flex flex-col justify-center">
+                    <div className="flex items-center gap-2 text-green-600 mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Valor CIF</span>
+                    </div>
+                    <span className="text-sm font-semibold text-green-900">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(details.cifValue))}
+                    </span>
+                  </div>
+                )}
               </section>
 
               {/* Informações Logísticas */}

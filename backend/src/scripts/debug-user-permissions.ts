@@ -3,9 +3,9 @@
 const prisma = new PrismaClient();
 
 async function debugUserPermissions(userEmail: string) {
-  console.log(`\nðŸ” DiagnÃ³stico de PermissÃµes para: ${userEmail}\n`);
+  console.log(`\nðŸ” Diagnóstico de Permissões para: ${userEmail}\n`);
 
-  // 1. Buscar usuÃ¡rio
+  // 1. Buscar usuário
   const user = await prisma.user.findUnique({
     where: { email: userEmail },
     select: {
@@ -17,16 +17,16 @@ async function debugUserPermissions(userEmail: string) {
   });
 
   if (!user) {
-    console.error(`âŒ UsuÃ¡rio nÃ£o encontrado: ${userEmail}`);
+    console.error(`âŒ Usuário não encontrado: ${userEmail}`);
     return;
   }
 
-  console.log("âœ… UsuÃ¡rio encontrado:");
+  console.log("✅ Usuário encontrado:");
   console.log(`   ID: ${user.id}`);
   console.log(`   Nome: ${user.name}`);
   console.log(`   Role: ${user.role}\n`);
 
-  // 2. Buscar mÃ³dulo Documentos
+  // 2. Buscar módulo Documentos
   const docModule = await prisma.module.findFirst({
     where: { route: "/documentos" },
     include: {
@@ -43,17 +43,17 @@ async function debugUserPermissions(userEmail: string) {
   });
 
   if (!docModule) {
-    console.error("âŒ MÃ³dulo /documentos nÃ£o encontrado");
+    console.error("âŒ Módulo /documentos não encontrado");
     return;
   }
 
-  console.log("ðŸ“¦ MÃ³dulo Documentos:");
+  console.log("📦 Módulo Documentos:");
   console.log(`   ID: ${docModule.id}`);
   console.log(`   Nome: ${docModule.name}`);
   console.log(`   Ativo: ${docModule.active}`);
   console.log(`   Total de atividades: ${docModule.activities.length}\n`);
 
-  // 3. Verificar acesso do usuÃ¡rio ao mÃ³dulo
+  // 3. Verificar acesso do usuário ao módulo
   const userModuleAccess = await prisma.userModuleAccess.findUnique({
     where: {
       userId_moduleId: {
@@ -63,22 +63,22 @@ async function debugUserPermissions(userEmail: string) {
     },
   });
 
-  console.log("ðŸ” Acesso ao MÃ³dulo:");
+  console.log("ðŸ” Acesso ao Módulo:");
   if (userModuleAccess) {
-    console.log(`   âœ… Tem acesso (ID: ${userModuleAccess.id})`);
+    console.log(`   ✅ Tem acesso (ID: ${userModuleAccess.id})`);
     console.log(`   Habilitado: ${userModuleAccess.isEnabled}`);
   } else {
-    console.log("   âŒ SEM acesso ao mÃ³dulo");
+    console.log("   âŒ SEM acesso ao módulo");
   }
   console.log("");
 
   // 4. Listar atividades e verificar acesso
-  console.log("ðŸ“‹ Atividades do mÃ³dulo:\n");
+  console.log("ðŸ“‹ Atividades do módulo:\n");
   for (const activity of docModule.activities) {
     console.log(`   Atividade: ${activity.name} (ID: ${activity.id})`);
-    console.log(`   ObrigatÃ³ria: ${activity.isMandatory}`);
+    console.log(`   Obrigatória: ${activity.isMandatory}`);
     console.log(
-      `   PermissÃµes: ${activity.permissions.map((p) => p.permission.key).join(", ")}`,
+      `   Permissões: ${activity.permissions.map((p) => p.permission.key).join(", ")}`,
     );
 
     if (userModuleAccess) {
@@ -91,17 +91,17 @@ async function debugUserPermissions(userEmail: string) {
 
       if (activityAccess) {
         console.log(
-          `   âœ… Acesso Ã  atividade: ${activityAccess.isEnabled ? "HABILITADO" : "DESABILITADO"}`,
+          `   ✅ Acesso à atividade: ${activityAccess.isEnabled ? "HABILITADO" : "DESABILITADO"}`,
         );
       } else {
-        console.log(`   âŒ SEM acesso Ã  atividade`);
+        console.log(`   âŒ SEM acesso à atividade`);
       }
     }
     console.log("");
   }
 
-  // 5. Verificar permissÃ£o DOC_VIEW especificamente
-  console.log("ðŸŽ¯ PermissÃ£o DOC_VIEW:");
+  // 5. Verificar permissão DOC_VIEW especificamente
+  console.log("ðŸŽ¯ Permissão DOC_VIEW:");
   const docViewPermission = await prisma.permission.findUnique({
     where: { key: "DOC_VIEW" },
     include: {
@@ -114,18 +114,18 @@ async function debugUserPermissions(userEmail: string) {
   });
 
   if (docViewPermission) {
-    console.log(`   âœ… PermissÃ£o existe (ID: ${docViewPermission.id})`);
-    console.log(`   DescriÃ§Ã£o: ${docViewPermission.description}`);
-    console.log(`   Vinculada Ã s atividades:`);
+    console.log(`   ✅ Permissão existe (ID: ${docViewPermission.id})`);
+    console.log(`   Descrição: ${docViewPermission.description}`);
+    console.log(`   Vinculada às atividades:`);
     for (const ap of docViewPermission.activities) {
       console.log(`      - ${ap.activity.name} (ID: ${ap.activity.id})`);
     }
   } else {
-    console.log("   âŒ PermissÃ£o DOC_VIEW nÃ£o encontrada no banco");
+    console.log("   âŒ Permissão DOC_VIEW não encontrada no banco");
   }
 }
 
-// Executar diagnÃ³stico
+// Executar diagnóstico
 const userEmail = process.argv[2] || "admin@example.com";
 
 debugUserPermissions(userEmail)

@@ -13,12 +13,12 @@ export interface JwtPayload {
   role: string;
   companyId?: string;
   type?: "access" | "refresh";
-  exp?: number; // Timestamp de expiraÃ§Ã£o (adicionado pelo JWT)
-  iat?: number; // Timestamp de emissÃ£o (adicionado pelo JWT)
+  exp?: number; // Timestamp de expiração (adicionado pelo JWT)
+  iat?: number; // Timestamp de emissão (adicionado pelo JWT)
 }
 
 /**
- * Interface para metadados de seguranÃ§a do token
+ * Interface para metadados de segurança do token
  */
 export interface TokenSecurityMetadata {
   ipAddress?: string;
@@ -26,14 +26,14 @@ export interface TokenSecurityMetadata {
 }
 
 /**
- * ServiÃ§o responsÃ¡vel por toda a lÃ³gica de gerenciamento de tokens
- * Implementa boas prÃ¡ticas de seguranÃ§a e separaÃ§Ã£o de responsabilidades
+ * Serviço responsável por toda a lógica de gerenciamento de tokens
+ * Implementa boas práticas de segurança e separação de responsabilidades
  */
 @Injectable()
 export class TokenService {
-  // Constantes de configuraÃ§Ã£o
-  private readonly ACCESS_TOKEN_EXPIRY = "1h"; // 1 hora - tempo padrÃ£o para access tokens
-  private readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 dias - tempo padrÃ£o para refresh tokens
+  // Constantes de configuração
+  private readonly ACCESS_TOKEN_EXPIRY = "1h"; // 1 hora - tempo padrão para access tokens
+  private readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 dias - tempo padrão para refresh tokens
   private readonly REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
 
   constructor(
@@ -42,7 +42,7 @@ export class TokenService {
   ) { }
 
   /**
-   * Gera um par de tokens (access + refresh) para um usuÃ¡rio
+   * Gera um par de tokens (access + refresh) para um usuário
    */
   async generateTokenPair(
     userId: string,
@@ -51,7 +51,7 @@ export class TokenService {
     companyId?: string,
     metadata?: TokenSecurityMetadata,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    // Gera access token (curta duraÃ§Ã£o)
+    // Gera access token (curta duração)
     const accessToken = await this.generateAccessToken(
       userId,
       email,
@@ -59,7 +59,7 @@ export class TokenService {
       companyId,
     );
 
-    // Gera refresh token (longa duraÃ§Ã£o)
+    // Gera refresh token (longa duração)
     const refreshToken = await this.generateRefreshToken(
       userId,
       email,
@@ -99,11 +99,11 @@ export class TokenService {
     email: string,
     metadata?: TokenSecurityMetadata,
   ): Promise<string> {
-    // Gera payload mÃ­nimo para o refresh token
+    // Gera payload mínimo para o refresh token
     const payload: JwtPayload = {
       sub: userId,
       email,
-      role: "", // NÃ£o incluÃ­mos role/companyId no refresh por seguranÃ§a
+      role: "", // Não incluímos role/companyId no refresh por segurança
       type: "refresh",
     };
 
@@ -118,7 +118,7 @@ export class TokenService {
     // Salva no banco de dados
     await this.saveRefreshToken(userId, tokenHash, metadata);
 
-    // Retorna o token original (nÃ£o o hash)
+    // Retorna o token original (não o hash)
     return refreshToken;
   }
 
@@ -153,11 +153,11 @@ export class TokenService {
   }
 
   /**
-   * Valida um refresh token e retorna os dados do usuÃ¡rio
+   * Valida um refresh token e retorna os dados do usuário
    */
   async validateRefreshToken(refreshToken: string): Promise<JwtPayload> {
     try {
-      // Verifica assinatura e expiraÃ§Ã£o do JWT
+      // Verifica assinatura e expiração do JWT
       const payload = this.jwtService.verify(refreshToken) as JwtPayload;
 
       console.log("[TOKEN SERVICE] Refresh token decodificado:", {
@@ -171,7 +171,7 @@ export class TokenService {
         throw new UnauthorizedException("Token inválido: tipo incorreto");
       }
 
-      // Verifica se o token existe e estÃ¡ vÃ¡lido no banco
+      // Verifica se o token existe e está válido no banco
       const tokenHash = this.hashToken(refreshToken);
       const tokenRecord = await this.prisma.userToken.findFirst({
         where: {
@@ -180,7 +180,7 @@ export class TokenService {
           type: TokenType.REFRESH,
           revokedAt: null,
           expiresAt: {
-            gte: new Date(), // NÃ£o expirado
+            gte: new Date(), // Não expirado
           },
         },
       });
@@ -189,9 +189,9 @@ export class TokenService {
         throw new UnauthorizedException("Token inválido ou revogado");
       }
 
-      console.log("[TOKEN SERVICE] Token vÃ¡lido, encontrado no banco");
+      console.log("[TOKEN SERVICE] Token válido, encontrado no banco");
 
-      // Atualiza Ãºltima utilizaÃ§Ã£o
+      // Atualiza última utilização
       await this.updateTokenLastUsed(tokenRecord.id);
 
       return payload;
@@ -205,7 +205,7 @@ export class TokenService {
   }
 
   /**
-   * Renova o access token usando um refresh token vÃ¡lido
+   * Renova o access token usando um refresh token válido
    */
   async refreshAccessToken(
     refreshToken: string,
@@ -213,7 +213,7 @@ export class TokenService {
     // Valida o refresh token
     const payload = await this.validateRefreshToken(refreshToken);
 
-    // Busca dados atualizados do usuÃ¡rio
+    // Busca dados atualizados do usuário
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
@@ -234,7 +234,7 @@ export class TokenService {
   }
 
   /**
-   * Revoga um refresh token especÃ­fico
+   * Revoga um refresh token específico
    */
   async revokeRefreshToken(refreshToken: string): Promise<void> {
     const tokenHash = this.hashToken(refreshToken);
@@ -251,8 +251,8 @@ export class TokenService {
   }
 
   /**
-   * Revoga todos os refresh tokens de um usuÃ¡rio
-   * Ãštil para logout de todas as sessÃµes
+   * Revoga todos os refresh tokens de um usuário
+   * Útil para logout de todas as sessões
    */
   async revokeAllUserTokens(userId: string): Promise<void> {
     await this.prisma.userToken.updateMany({
@@ -285,7 +285,7 @@ export class TokenService {
 
   /**
    * Limpa tokens revogados antigos (mais de 30 dias)
-   * MantÃ©m histÃ³rico por um tempo para auditoria
+   * Mantém histórico por um tempo para auditoria
    */
   async cleanOldRevokedTokens(): Promise<number> {
     const thirtyDaysAgo = new Date();
@@ -303,8 +303,8 @@ export class TokenService {
   }
 
   /**
-   * Lista todos os tokens ativos de um usuÃ¡rio
-   * Ãštil para mostrar sessÃµes ativas
+   * Lista todos os tokens ativos de um usuário
+   * Útil para mostrar sessões ativas
    */
   async getUserActiveTokens(userId: string) {
     return this.prisma.userToken.findMany({
@@ -331,7 +331,7 @@ export class TokenService {
   }
 
   /**
-   * Atualiza a data de Ãºltima utilizaÃ§Ã£o do token
+   * Atualiza a data de última utilização do token
    */
   private async updateTokenLastUsed(tokenId: string): Promise<void> {
     await this.prisma.userToken.update({
@@ -349,8 +349,8 @@ export class TokenService {
   }
 
   /**
-   * Decodifica um JWT sem validar (Ãºtil para debugging)
-   * ATENÃ‡ÃƒO: NÃ£o use para validaÃ§Ã£o de seguranÃ§a!
+   * Decodifica um JWT sem validar (útil para debugging)
+   * ATENÇÃO: Não use para validação de segurança!
    */
   decodeToken(token: string): JwtPayload | null {
     try {
@@ -361,7 +361,7 @@ export class TokenService {
   }
 
   /**
-   * Verifica se um token JWT estÃ¡ expirado sem validar a assinatura
+   * Verifica se um token JWT está expirado sem validar a assinatura
    */
   isTokenExpired(token: string): boolean {
     try {

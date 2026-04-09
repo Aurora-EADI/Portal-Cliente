@@ -85,6 +85,8 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
     packagingType: '',
     volume: 0,
     location: '',
+    cifValue: undefined,
+    documents: [],
   });
 
   const [showDocument, setShowDocument] = useState(false);
@@ -108,6 +110,8 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
         packagingType: editingCargo.packagingType || '',
         volume: editingCargo.volume || 0,
         location: editingCargo.location || '',
+        cifValue: editingCargo.cifValue ? Number(editingCargo.cifValue) : undefined,
+        documents: editingCargo.documents && editingCargo.documents.length > 0 ? editingCargo.documents : (editingCargo.documentNumber ? [{ type: editingCargo.documentType || 'NOTA_REMESSA', number: editingCargo.documentNumber }] : []),
       });
       if (editingCargo.documentNumber) setShowDocument(true);
     } else {
@@ -135,7 +139,9 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
         packagingType: '',
         volume: 0,
         location: '',
-    });
+        cifValue: undefined,
+        documents: [],
+      });
   };
 
   const handleNext = () => setStep((s) => s + 1);
@@ -147,6 +153,7 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
       
       // Sanitização rigorosa para evitar erros de validação no DTO (UUIDs e Datas não aceitam string vazia)
       const payload: any = {
+
         ...formData,
         containerId: formData.containerId?.trim() || undefined,
         customerId: formData.customerId?.trim() || undefined,
@@ -162,6 +169,8 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
         weightKg: sanitizedWeight || undefined,
         volume: !isNaN(Number(formData.volume)) ? Number(formData.volume) : undefined,
         quantity: !isNaN(Number(formData.quantity)) && Number(formData.quantity) > 0 ? Number(formData.quantity) : 1,
+        cifValue: formData.cifValue ? Number(formData.cifValue) : undefined,
+        documents: formData.documents?.filter(d => Boolean(d.number)) || undefined,
       };
 
       if (editingCargo) {
@@ -314,25 +323,27 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
                     <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                        <FileText size={14} className="text-primary-500" /> Documentação
                     </Label>
-                    {!showDocument && (
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 text-[10px] uppercase font-bold text-primary-600 hover:bg-primary-50"
-                            onClick={() => setShowDocument(true)}
-                        >
-                            <Plus size={12} className="mr-1" /> Adicionar
-                        </Button>
-                    )}
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 text-[10px] uppercase font-bold text-primary-600 hover:bg-primary-50"
+                        onClick={() => setFormData({ ...formData, documents: [...(formData.documents || []), { type: 'NOTA_REMESSA', number: '' }] })}
+                    >
+                        <Plus size={12} className="mr-1" /> Adicionar
+                    </Button>
                 </div>
 
-                {showDocument && (
-                    <div className="grid grid-cols-5 gap-2 animate-in zoom-in-95 duration-200">
+                {formData.documents && formData.documents.map((doc, idx) => (
+                    <div key={idx} className="grid grid-cols-5 gap-2 animate-in zoom-in-95 duration-200">
                         <div className="col-span-2">
                             <Select 
-                                value={formData.documentType || ''} 
-                                onValueChange={(v) => setFormData({ ...formData, documentType: v })}
+                                value={doc.type || ''} 
+                                onValueChange={(v) => {
+                                    const newDocs = [...formData.documents!];
+                                    newDocs[idx].type = v;
+                                    setFormData({ ...formData, documents: newDocs });
+                                }}
                             >
                                 <SelectTrigger className="bg-white border-gray-200 h-10 text-xs">
                                     <SelectValue placeholder="Tipo" />
@@ -346,8 +357,12 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
                         <div className="col-span-2">
                             <Input
                                 placeholder="Número"
-                                value={formData.documentNumber || ''}
-                                onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
+                                value={doc.number || ''}
+                                onChange={(e) => {
+                                    const newDocs = [...formData.documents!];
+                                    newDocs[idx].number = e.target.value;
+                                    setFormData({ ...formData, documents: newDocs });
+                                }}
                                 className="bg-white border-gray-200 h-10 text-xs font-mono"
                             />
                         </div>
@@ -358,15 +373,15 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
                                 size="icon" 
                                 className="h-8 w-8 text-gray-400 hover:text-red-500"
                                 onClick={() => {
-                                    setShowDocument(false);
-                                    setFormData({...formData, documentType: '', documentNumber: ''});
+                                    const newDocs = formData.documents!.filter((_, i) => i !== idx);
+                                    setFormData({ ...formData, documents: newDocs });
                                 }}
                             >
                                 <Trash2 size={16} />
                             </Button>
                         </div>
                     </div>
-                )}
+                ))}
               </div>
 
               {/* Physical details grid */}
@@ -423,6 +438,18 @@ export function RegisterCargoModal({ isOpen, onClose, editingCargo }: RegisterCa
                         value={formData.volume}
                         onChange={(e) => setFormData({ ...formData, volume: Number(e.target.value) })}
                         className="h-11 bg-gray-50 border-gray-200"
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="cifValue" className="text-gray-600 font-semibold">Valor CIF (R$)</Label>
+                    <Input
+                        id="cifValue"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={formData.cifValue || ''}
+                        onChange={(e) => setFormData({ ...formData, cifValue: e.target.value ? Number(e.target.value) : undefined })}
+                        className="h-11 bg-gray-50 border-gray-200 font-mono"
                     />
                 </div>
               </div>

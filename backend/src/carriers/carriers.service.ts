@@ -195,11 +195,11 @@ export class CarriersService {
       select: { id: true },
     });
     if (!carrier) {
-      throw new NotFoundException("Transportadora nÃ£o encontrada.");
+      throw new NotFoundException("Transportadora não encontrada.");
     }
 
     if (!Array.isArray(vehicles)) {
-      throw new BadRequestException("Body deve ser um array de veÃ­culos.");
+      throw new BadRequestException("Body deve ser um array de veículos.");
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -233,7 +233,7 @@ export class CarriersService {
   async remove(id: string) {
     const carrier = await this.prisma.carrier.findUnique({ where: { id } });
     if (!carrier) {
-      throw new NotFoundException("Transportadora nÃ£o encontrada.");
+      throw new NotFoundException("Transportadora não encontrada.");
     }
 
     try {

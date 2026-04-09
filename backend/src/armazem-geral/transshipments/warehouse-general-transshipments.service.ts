@@ -39,17 +39,17 @@ export class WarehouseGeneralTransshipmentsService {
       where: { id: dto.containerId },
     });
     if (!container || container.warehouseId !== warehouseId) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
 
     if (container.status === OperationalContainerStatus.OUT) {
       throw new BadRequestException(
-        "NÃ£o Ã© possÃ­vel iniciar transbordo para container com status OUT.",
+        "Não é possível iniciar transbordo para container com status OUT.",
       );
     }
 
     if (container.status === OperationalContainerStatus.TRANSSHIPMENT) {
-      throw new ConflictException("Container jÃ¡ estÃ¡ em TRANSSHIPMENT.");
+      throw new ConflictException("Container já está em TRANSSHIPMENT.");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -122,11 +122,11 @@ export class WarehouseGeneralTransshipmentsService {
       include: { container: true },
     });
     if (!existing || existing.warehouseId !== warehouseId) {
-      throw new NotFoundException("Transbordo nÃ£o encontrado.");
+      throw new NotFoundException("Transbordo não encontrado.");
     }
 
     if (existing.status !== TransshipmentStatus.PENDING) {
-      throw new ConflictException("Transbordo nÃ£o estÃ¡ em estado PENDING.");
+      throw new ConflictException("Transbordo não está em estado PENDING.");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -327,7 +327,7 @@ export class WarehouseGeneralTransshipmentsService {
       },
     });
     if (!item || item.warehouseId !== warehouseId) {
-      throw new NotFoundException("Transbordo nÃ£o encontrado.");
+      throw new NotFoundException("Transbordo não encontrado.");
     }
     return item;
   }

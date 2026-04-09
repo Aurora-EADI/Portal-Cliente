@@ -318,6 +318,8 @@ export interface PaginationParams {
   sortOrder?: 'asc' | 'desc';
   status?: string;
   onlyPending?: boolean;
+  supplierTypeName?: string;
+  supplierTypeId?: string;
 }
 
 /**

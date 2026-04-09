@@ -4,17 +4,17 @@ import { ServiceCalculationType } from "@prisma/client";
 /**
  * CalculationService
  *
- * ServiÃ§o responsÃ¡vel por calcular o custo final de serviÃ§os baseado no tipo de cÃ¡lculo.
- * Cada tipo de cÃ¡lculo tem uma fÃ³rmula especÃ­fica e dados obrigatÃ³rios.
+ * Serviço responsável por calcular o custo final de serviços baseado no tipo de cálculo.
+ * Cada tipo de cálculo tem uma fórmula específica e dados obrigatórios.
  */
 @Injectable()
 export class CalculationService {
   /**
-   * Calcula o custo final de um serviÃ§o baseado no tipo de cÃ¡lculo
+   * Calcula o custo final de um serviço baseado no tipo de cálculo
    *
-   * @param calculationType - Tipo de cÃ¡lculo (FIXED, PERCENTAGE_CIF, PER_CONTAINER, PER_TONNE)
-   * @param rate - Taxa base do serviÃ§o (ex: 500 para fixo, 0.35 para percentual, 350 para por unidade)
-   * @param simulationData - Dados da simulaÃ§Ã£o necessÃ¡rios para o cÃ¡lculo
+   * @param calculationType - Tipo de cálculo (FIXED, PERCENTAGE_CIF, PER_CONTAINER, PER_TONNE)
+   * @param rate - Taxa base do serviço (ex: 500 para fixo, 0.35 para percentual, 350 para por unidade)
+   * @param simulationData - Dados da simulação necessários para o cálculo
    * @returns Valor final calculado
    */
   calculateServiceCost(
@@ -41,14 +41,14 @@ export class CalculationService {
 
       default:
         throw new BadRequestException(
-          `Tipo de cÃ¡lculo nÃ£o suportado: ${calculationType}`,
+          `Tipo de cálculo não suportado: ${calculationType}`,
         );
     }
   }
 
   /**
    * FIXED: Valor fixo
-   * FÃ³rmula: rate
+   * Fórmula: rate
    * Exemplo: R$ 500,00 fixo
    */
   private calculateFixed(rate: number): number {
@@ -60,8 +60,8 @@ export class CalculationService {
 
   /**
    * PERCENTAGE_CIF: Percentual sobre o CIF BRL
-   * FÃ³rmula: (rate / 100) * cifBrl
-   * Exemplo: 0.35% de R$ 100.000 = (0.35/100) Ã— 100.000 = R$ 350
+   * Fórmula: (rate / 100) * cifBrl
+   * Exemplo: 0.35% de R$ 100.000 = (0.35/100) × 100.000 = R$ 350
    */
   private calculatePercentageCif(rate: number, cifBrl?: number): number {
     if (rate < 0) {
@@ -70,7 +70,7 @@ export class CalculationService {
 
     if (cifBrl === undefined || cifBrl === null) {
       throw new BadRequestException(
-        "CIF BRL Ã© obrigatÃ³rio para cÃ¡lculo percentual",
+        "CIF BRL é obrigatório para cálculo percentual",
       );
     }
 
@@ -78,15 +78,15 @@ export class CalculationService {
       throw new BadRequestException("CIF BRL deve ser maior que zero");
     }
 
-    // rate jÃ¡ vem como 0.35 (para 0.35%)
-    // FÃ³rmula: (rate / 100) * cifBrl
+    // rate já vem como 0.35 (para 0.35%)
+    // Fórmula: (rate / 100) * cifBrl
     return (rate / 100) * cifBrl;
   }
 
   /**
    * PER_CONTAINER: Valor por container
-   * FÃ³rmula: rate * cntrCount
-   * Exemplo: R$ 350 Ã— 5 containers = R$ 1.750
+   * Fórmula: rate * cntrCount
+   * Exemplo: R$ 350 × 5 containers = R$ 1.750
    */
   private calculatePerContainer(rate: number, cntrCount?: number): number {
     if (rate < 0) {
@@ -97,7 +97,7 @@ export class CalculationService {
 
     if (cntrCount === undefined || cntrCount === null) {
       throw new BadRequestException(
-        "Quantidade de containers Ã© obrigatÃ³ria para este tipo de cÃ¡lculo",
+        "Quantidade de containers é obrigatória para este tipo de cálculo",
       );
     }
 
@@ -112,8 +112,8 @@ export class CalculationService {
 
   /**
    * PER_TONNE: Valor por tonelada
-   * FÃ³rmula: rate * tonnes
-   * Exemplo: R$ 25 Ã— 20 toneladas = R$ 500
+   * Fórmula: rate * tonnes
+   * Exemplo: R$ 25 × 20 toneladas = R$ 500
    */
   private calculatePerTonne(rate: number, tonnes?: number): number {
     if (rate < 0) {
@@ -124,7 +124,7 @@ export class CalculationService {
 
     if (tonnes === undefined || tonnes === null) {
       throw new BadRequestException(
-        "Toneladas Ã© obrigatÃ³rio para este tipo de cÃ¡lculo",
+        "Toneladas é obrigatório para este tipo de cálculo",
       );
     }
 
@@ -137,11 +137,11 @@ export class CalculationService {
   }
 
   /**
-   * Gera a expressÃ£o da fÃ³rmula para exibiÃ§Ã£o
+   * Gera a expressão da fórmula para exibição
    *
-   * @param calculationType - Tipo de cÃ¡lculo
+   * @param calculationType - Tipo de cálculo
    * @param rate - Taxa base
-   * @returns String formatada da fÃ³rmula
+   * @returns String formatada da fórmula
    */
   getFormulaExpression(
     calculationType: ServiceCalculationType,
@@ -161,16 +161,16 @@ export class CalculationService {
         return `R$ ${rate.toFixed(2).replace(".", ",")} por tonelada`;
 
       default:
-        return "FÃ³rmula nÃ£o definida";
+        return "Fórmula não definida";
     }
   }
 
   /**
-   * Valida se os dados da simulaÃ§Ã£o sÃ£o suficientes para o tipo de cÃ¡lculo
+   * Valida se os dados da simulação são suficientes para o tipo de cálculo
    *
-   * @param calculationType - Tipo de cÃ¡lculo
-   * @param simulationData - Dados da simulaÃ§Ã£o
-   * @returns true se vÃ¡lido, lanÃ§a exceÃ§Ã£o se invÃ¡lido
+   * @param calculationType - Tipo de cálculo
+   * @param simulationData - Dados da simulação
+   * @returns true se válido, lança exceção se inválido
    */
   validateSimulationData(
     calculationType: ServiceCalculationType,
@@ -182,12 +182,12 @@ export class CalculationService {
   ): boolean {
     switch (calculationType) {
       case ServiceCalculationType.FIXED:
-        return true; // NÃ£o precisa de dados adicionais
+        return true; // Não precisa de dados adicionais
 
       case ServiceCalculationType.PERCENTAGE_CIF:
         if (!simulationData.cifBrl || simulationData.cifBrl <= 0) {
           throw new BadRequestException(
-            "CIF BRL vÃ¡lido Ã© obrigatÃ³rio para serviÃ§os com cÃ¡lculo percentual",
+            "CIF BRL válido é obrigatório para serviços com cálculo percentual",
           );
         }
         return true;
@@ -195,7 +195,7 @@ export class CalculationService {
       case ServiceCalculationType.PER_CONTAINER:
         if (!simulationData.cntrCount || simulationData.cntrCount <= 0) {
           throw new BadRequestException(
-            "Quantidade de containers vÃ¡lida Ã© obrigatÃ³ria para este serviÃ§o",
+            "Quantidade de containers válida é obrigatória para este serviço",
           );
         }
         return true;
@@ -203,14 +203,14 @@ export class CalculationService {
       case ServiceCalculationType.PER_TONNE:
         if (!simulationData.tonnes || simulationData.tonnes <= 0) {
           throw new BadRequestException(
-            "Toneladas vÃ¡lidas sÃ£o obrigatÃ³rias para este serviÃ§o",
+            "Toneladas válidas são obrigatórias para este serviço",
           );
         }
         return true;
 
       default:
         throw new BadRequestException(
-          `Tipo de cÃ¡lculo nÃ£o suportado: ${calculationType}`,
+          `Tipo de cálculo não suportado: ${calculationType}`,
         );
     }
   }

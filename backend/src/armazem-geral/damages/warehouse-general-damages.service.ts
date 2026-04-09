@@ -46,7 +46,7 @@ export class WarehouseGeneralDamagesService {
         select: { id: true, warehouseId: true },
       });
       if (!container || container.warehouseId !== warehouseId) {
-        throw new NotFoundException("Container nÃ£o encontrado.");
+        throw new NotFoundException("Container não encontrado.");
       }
     }
 
@@ -56,7 +56,7 @@ export class WarehouseGeneralDamagesService {
         select: { id: true, warehouseId: true },
       });
       if (!cargo || cargo.warehouseId !== warehouseId) {
-        throw new NotFoundException("Carga nÃ£o encontrada.");
+        throw new NotFoundException("Carga não encontrada.");
       }
     }
 
@@ -89,11 +89,11 @@ export class WarehouseGeneralDamagesService {
       where: { id },
     });
     if (!existing || existing.warehouseId !== warehouseId) {
-      throw new NotFoundException("Avaria nÃ£o encontrada.");
+      throw new NotFoundException("Avaria não encontrada.");
     }
 
     if (existing.status === DamageStatus.RESOLVED) {
-      throw new ConflictException("Avaria jÃ¡ estÃ¡ resolvida.");
+      throw new ConflictException("Avaria já está resolvida.");
     }
 
     const updated = await this.prisma.warehouseDamage.update({
@@ -167,7 +167,7 @@ export class WarehouseGeneralDamagesService {
       },
     });
     if (!damage || damage.warehouseId !== warehouseId) {
-      throw new NotFoundException("Avaria nÃ£o encontrada.");
+      throw new NotFoundException("Avaria não encontrada.");
     }
     return damage;
   }

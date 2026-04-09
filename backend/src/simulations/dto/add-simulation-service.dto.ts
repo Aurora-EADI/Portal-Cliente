@@ -11,14 +11,14 @@ export class AddSimulationServiceDto {
 
   @IsNumber()
   @Type(() => Number)
-  originalCost: number; // Custo original do serviÃ§o
+  originalCost: number; // Custo original do serviço
 
   @IsNumber()
   @Type(() => Number)
-  appliedCost: number; // Custo que serÃ¡ aplicado
+  appliedCost: number; // Custo que será aplicado
 
   @IsOptional()
   @IsString()
-  customReason?: string; // ObrigatÃ³rio se costType = CUSTOM
+  customReason?: string; // Obrigatório se costType = CUSTOM
 }
 

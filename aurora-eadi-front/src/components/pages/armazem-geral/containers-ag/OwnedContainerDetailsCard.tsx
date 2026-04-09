@@ -97,7 +97,7 @@ export function OwnedContainerDetailsCard({ container, onClose, onDelete }: Owne
                    <Label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] flex items-center gap-2">
                       <Truck size={12} className="text-primary-500" /> 2) Fornecedor
                    </Label>
-                   <div className="text-base font-bold text-gray-900 px-1">{details.supplier?.name || "N/A"}</div>
+                   <div className="text-base font-bold text-gray-900 px-1">{details.supplier?.fantasyName || "N/A"}</div>
                 </div>
 
                 <div className="space-y-1">

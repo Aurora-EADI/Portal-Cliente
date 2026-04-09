@@ -14,26 +14,26 @@ export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // ObtÃ©m os roles requeridos definidos no decorator @Roles()
+    // Obtém os roles requeridos definidos no decorator @Roles()
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
 
-    // Se nÃ£o hÃ¡ roles definidos, permite acesso
+    // Se não há roles definidos, permite acesso
     if (!requiredRoles) {
       return true;
     }
 
-    // ObtÃ©m o usuÃ¡rio do request (anexado pelo JwtStrategy)
+    // Obtém o usuário do request (anexado pelo JwtStrategy)
     const { user } = context.switchToHttp().getRequest();
 
-    // Verifica se o role do usuÃ¡rio estÃ¡ na lista de roles permitidos
+    // Verifica se o role do usuário está na lista de roles permitidos
     const hasRole = requiredRoles.some((role) => user.role === role);
 
     if (!hasRole) {
       throw new ForbiddenException(
-        "VocÃª nÃ£o tem permissÃ£o para acessar este recurso",
+        "Você não tem permissão para acessar este recurso",
       );
     }
 

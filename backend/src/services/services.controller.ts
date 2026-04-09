@@ -23,7 +23,7 @@ import { CreateServiceDto } from "./dto/create-service.dto";
 import { UpdateServiceDto } from "./dto/update-service.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 
-@ApiTags("ServiÃ§os")
+@ApiTags("Serviços")
 @ApiBearerAuth()
 @Controller("services")
 @UseGuards(JwtAuthGuard)
@@ -31,19 +31,19 @@ export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
   @Post()
-  @ApiOperation({ summary: "Criar novo serviÃ§o" })
-  @ApiResponse({ status: 201, description: "ServiÃ§o criado com sucesso" })
-  @ApiResponse({ status: 400, description: "Dados invÃ¡lidos" })
+  @ApiOperation({ summary: "Criar novo serviço" })
+  @ApiResponse({ status: 201, description: "Serviço criado com sucesso" })
+  @ApiResponse({ status: 400, description: "Dados inválidos" })
   create(@Body() createServiceDto: CreateServiceDto, @Request() req: { user: any }) {
     return this.servicesService.create(createServiceDto, req.user.userId);
   }
 
   @Get()
-  @ApiOperation({ summary: "Listar todos os serviÃ§os" })
+  @ApiOperation({ summary: "Listar todos os serviços" })
   @ApiQuery({
     name: "includeInactive",
     required: false,
-    description: "Incluir serviÃ§os inativos",
+    description: "Incluir serviços inativos",
     type: Boolean,
   })
   @ApiQuery({
@@ -54,7 +54,7 @@ export class ServicesController {
   })
   @ApiResponse({
     status: 200,
-    description: "Lista de serviÃ§os retornada com sucesso",
+    description: "Lista de serviços retornada com sucesso",
   })
   findAll(
     @Query("includeInactive") includeInactive?: string,
@@ -65,44 +65,44 @@ export class ServicesController {
   }
 
   @Get(":id")
-  @ApiOperation({ summary: "Obter detalhes de um serviÃ§o especÃ­fico" })
-  @ApiResponse({ status: 200, description: "ServiÃ§o encontrado" })
-  @ApiResponse({ status: 404, description: "ServiÃ§o nÃ£o encontrado" })
+  @ApiOperation({ summary: "Obter detalhes de um serviço específico" })
+  @ApiResponse({ status: 200, description: "Serviço encontrado" })
+  @ApiResponse({ status: 404, description: "Serviço não encontrado" })
   findOne(@Param("id") id: string) {
     return this.servicesService.findOne(id);
   }
 
   @Get(":id/current-cost")
-  @ApiOperation({ summary: "Obter custo atual de um serviÃ§o" })
+  @ApiOperation({ summary: "Obter custo atual de um serviço" })
   @ApiResponse({
     status: 200,
     description: "Custo atual retornado com sucesso",
   })
-  @ApiResponse({ status: 404, description: "ServiÃ§o nÃ£o encontrado" })
+  @ApiResponse({ status: 404, description: "Serviço não encontrado" })
   getCurrentCost(@Param("id") id: string) {
     return this.servicesService.getCurrentCost(id);
   }
 
   @Patch(":id")
-  @ApiOperation({ summary: "Atualizar dados de um serviÃ§o" })
-  @ApiResponse({ status: 200, description: "ServiÃ§o atualizado com sucesso" })
-  @ApiResponse({ status: 404, description: "ServiÃ§o nÃ£o encontrado" })
+  @ApiOperation({ summary: "Atualizar dados de um serviço" })
+  @ApiResponse({ status: 200, description: "Serviço atualizado com sucesso" })
+  @ApiResponse({ status: 404, description: "Serviço não encontrado" })
   update(@Param("id") id: string, @Body() updateServiceDto: UpdateServiceDto) {
     return this.servicesService.update(id, updateServiceDto);
   }
 
   @Delete(":id")
-  @ApiOperation({ summary: "Desativar serviÃ§o (soft delete)" })
-  @ApiResponse({ status: 200, description: "ServiÃ§o desativado com sucesso" })
-  @ApiResponse({ status: 404, description: "ServiÃ§o nÃ£o encontrado" })
+  @ApiOperation({ summary: "Desativar serviço (soft delete)" })
+  @ApiResponse({ status: 200, description: "Serviço desativado com sucesso" })
+  @ApiResponse({ status: 404, description: "Serviço não encontrado" })
   remove(@Param("id") id: string) {
     return this.servicesService.remove(id);
   }
 
   @Delete(":id/hard")
-  @ApiOperation({ summary: "Deletar serviÃ§o permanentemente (hard delete)" })
-  @ApiResponse({ status: 200, description: "ServiÃ§o deletado permanentemente" })
-  @ApiResponse({ status: 404, description: "ServiÃ§o nÃ£o encontrado" })
+  @ApiOperation({ summary: "Deletar serviço permanentemente (hard delete)" })
+  @ApiResponse({ status: 200, description: "Serviço deletado permanentemente" })
+  @ApiResponse({ status: 404, description: "Serviço não encontrado" })
   hardDelete(@Param("id") id: string) {
     return this.servicesService.hardDelete(id);
   }

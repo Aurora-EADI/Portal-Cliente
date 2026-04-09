@@ -123,7 +123,7 @@ export class RequirementRulesService {
     });
 
     if (!supplierType || !supplierType.active) {
-      throw new NotFoundException("Tipo de fornecedor nÃ£o encontrado");
+      throw new NotFoundException("Tipo de fornecedor não encontrado");
     }
 
     const normalizedItemsMap = new Map<
@@ -148,7 +148,7 @@ export class RequirementRulesService {
 
     if (existingDocumentTypes.length !== uniqueDocumentTypeIds.length) {
       throw new BadRequestException(
-        "Um ou mais tipos de documento informados nÃ£o existem",
+        "Um ou mais tipos de documento informados não existem",
       );
     }
 
@@ -206,7 +206,7 @@ export class RequirementRulesService {
     });
 
     if (!company) {
-      throw new NotFoundException(`Empresa com ID ${companyId} nÃ£o encontrada`);
+      throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
     }
 
     const uniqueSupplierTypeIds = [...new Set(dto.supplierTypeIds)];
@@ -220,7 +220,7 @@ export class RequirementRulesService {
 
     if (types.length !== uniqueSupplierTypeIds.length) {
       throw new BadRequestException(
-        "Um ou mais tipos de fornecedor informados nÃ£o existem ou estÃ£o inativos",
+        "Um ou mais tipos de fornecedor informados não existem ou estão inativos",
       );
     }
 
@@ -261,7 +261,7 @@ export class RequirementRulesService {
     });
 
     if (!company) {
-      throw new NotFoundException(`Empresa com ID ${companyId} nÃ£o encontrada`);
+      throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
     }
 
     if (
@@ -269,7 +269,7 @@ export class RequirementRulesService {
       dto.employees.length === 0
     ) {
       throw new BadRequestException(
-        "Empresas com regime FULL devem informar ao menos um funcionÃ¡rio",
+        "Empresas com regime FULL devem informar ao menos um funcionário",
       );
     }
 
@@ -284,12 +284,12 @@ export class RequirementRulesService {
           const normalizedCpf = employee.cpf.replace(/\D/g, "");
           if (normalizedCpf.length !== 11) {
             throw new BadRequestException(
-              `CPF invÃ¡lido para funcionÃ¡rio ${employee.fullName}`,
+              `CPF inválido para funcionário ${employee.fullName}`,
             );
           }
           if (uniqueCpfs.has(normalizedCpf)) {
             throw new BadRequestException(
-              `CPF duplicado na lista de funcionÃ¡rios: ${employee.cpf}`,
+              `CPF duplicado na lista de funcionários: ${employee.cpf}`,
             );
           }
           uniqueCpfs.add(normalizedCpf);
@@ -846,7 +846,7 @@ export class RequirementRulesService {
     });
 
     if (!user?.companyId) {
-      throw new NotFoundException("Empresa nÃ£o encontrada para este usuÃ¡rio");
+      throw new NotFoundException("Empresa não encontrada para este usuário");
     }
 
     return this.getEffectiveRequirementsByCompany(user.companyId);
@@ -865,7 +865,7 @@ export class RequirementRulesService {
     });
 
     if (!company) {
-      throw new NotFoundException(`Empresa com ID ${companyId} nÃ£o encontrada`);
+      throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
     }
 
     const supplierTypeIds = company.supplierTypes.map(

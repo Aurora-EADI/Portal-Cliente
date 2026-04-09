@@ -80,11 +80,6 @@ export const armazemGeralNavigation: NavigationContext = {
           path: '/armazem-geral/conferentes',
         },
         {
-          label: 'Fornecedores',
-          icon: Building2,
-          path: '/armazem-geral/fornecedores-container',
-        },
-        {
           label: 'Pátio',
           icon: LayoutGrid,
           path: '/armazem-geral/patio',

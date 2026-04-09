@@ -41,3 +41,16 @@ export const useUpdateCompanyStatus = () => {
     },
   });
 };
+
+export const useSuppliersByType = (typeName: string, params?: PaginationParams) => {
+  return useQuery({
+    queryKey: [...SUPPLIERS_KEY, 'by-type', typeName, params],
+    queryFn: async () => {
+      return await companyService.getActiveCompanies({
+        ...params,
+        supplierTypeName: typeName,
+      });
+    },
+    enabled: !!typeName,
+  });
+};

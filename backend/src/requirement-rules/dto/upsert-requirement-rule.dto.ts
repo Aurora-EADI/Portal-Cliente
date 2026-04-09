@@ -29,7 +29,7 @@ export class UpsertRequirementRuleDto {
   allocationRegime: AllocationRegime;
 
   @IsString()
-  @IsNotEmpty({ message: "supplierTypeId Ã© obrigatÃ³rio" })
+  @IsNotEmpty({ message: "supplierTypeId é obrigatório" })
   supplierTypeId: string;
 
   @IsArray()

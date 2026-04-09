@@ -8,7 +8,7 @@ export class UpdateWorkforceDocumentStatusDto {
   status: DocumentStatus;
 
   @ApiProperty({
-    description: "Motivo da rejeiÃ§Ã£o (obrigatÃ³rio quando REJECTED)",
+    description: "Motivo da rejeição (obrigatório quando REJECTED)",
     required: false,
   })
   @IsString()

@@ -183,6 +183,8 @@ export interface WarehouseCargo {
   packagingType?: string | null;
   volume?: number | null;
   location?: string | null;
+  cifValue?: number | null;
+  documents?: { type: string, number: string }[] | null;
 
   createdAt: string;
   updatedAt: string;
@@ -256,6 +258,8 @@ export interface CreateWarehouseCargoDto {
   packagingType?: string;
   volume?: number;
   location?: string;
+  cifValue?: number;
+  documents?: { type: string, number: string }[];
 }
 
 export interface UpdateWarehouseCargoDto extends Partial<CreateWarehouseCargoDto> {}
@@ -340,7 +344,7 @@ export interface WarehouseOwnedContainer {
   status: WarehouseOwnedContainerStatus;
   isFull: boolean;
   supplierId: string | null;
-  supplier?: WarehouseOwnedContainerSupplier | null;
+  supplier?: Company | null;
   holderCustomerId?: string | null;
   holderCustomer?: { id: string; name: string; document?: string | null } | null;
   location: string | null;
@@ -386,19 +390,6 @@ export interface CreateOwnedContainerDto {
   maintenanceNotes?: string;
 }
 
-export interface WarehouseOwnedContainerSupplier {
-  id: string;
-  warehouseId: string;
-  name: string;
-  document?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateContainerAgSupplierDto {
-  name: string;
-  document?: string;
-}
 
 export interface UpdateOwnedContainerDto extends Partial<CreateOwnedContainerDto> {}
 

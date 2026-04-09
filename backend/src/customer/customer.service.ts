@@ -20,22 +20,22 @@ export class CustomerService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateCustomerDto) {
-    // Verificar se jÃ¡ existe cliente com o mesmo cÃ³digo
+    // Verificar se já existe cliente com o mesmo código
     const existingByCode = await this.prisma.customer.findUnique({
       where: { code: dto.code },
     });
 
     if (existingByCode) {
-      throw new ConflictException("JÃ¡ existe um cliente com este cÃ³digo.");
+      throw new ConflictException("Já existe um cliente com este código.");
     }
 
-    // Verificar se jÃ¡ existe cliente com o mesmo documento
+    // Verificar se já existe cliente com o mesmo documento
     const existingByDocument = await this.prisma.customer.findUnique({
       where: { document: dto.document },
     });
 
     if (existingByDocument) {
-      throw new ConflictException("JÃ¡ existe um cliente com este documento.");
+      throw new ConflictException("Já existe um cliente com este documento.");
     }
 
     return this.prisma.customer.create({
@@ -122,7 +122,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente nÃ£o encontrado.");
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return customer;
@@ -134,17 +134,17 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente nÃ£o encontrado.");
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
-    // Verificar unicidade do cÃ³digo se estiver sendo alterado
+    // Verificar unicidade do código se estiver sendo alterado
     if (dto.code && dto.code !== customer.code) {
       const existingByCode = await this.prisma.customer.findUnique({
         where: { code: dto.code },
       });
 
       if (existingByCode) {
-        throw new ConflictException("JÃ¡ existe um cliente com este cÃ³digo.");
+        throw new ConflictException("Já existe um cliente com este código.");
       }
     }
 
@@ -156,7 +156,7 @@ export class CustomerService {
 
       if (existingByDocument) {
         throw new ConflictException(
-          "JÃ¡ existe um cliente com este documento.",
+          "Já existe um cliente com este documento.",
         );
       }
     }
@@ -173,7 +173,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente nÃ£o encontrado.");
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return this.prisma.customer.update({
@@ -188,7 +188,7 @@ export class CustomerService {
     });
 
     if (!customer) {
-      throw new NotFoundException("Cliente nÃ£o encontrado.");
+      throw new NotFoundException("Cliente não encontrado.");
     }
 
     return this.prisma.customer.delete({

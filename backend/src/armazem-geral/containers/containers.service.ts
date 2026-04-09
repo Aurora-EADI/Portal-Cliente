@@ -151,7 +151,7 @@ export class ContainersService {
       }
 
       if (existing.status === OperationalContainerStatus.IN_WAREHOUSE) {
-        throw new ConflictException("Container jÃ¡ estÃ¡ no armazÃ©m.");
+        throw new ConflictException("Container já está no armazém.");
       }
 
       const updated = await tx.operationalContainer.update({
@@ -196,14 +196,14 @@ export class ContainersService {
       where: { id },
     });
     if (!container) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
     if (container.warehouseId !== warehouseId) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
 
     if (container.status === OperationalContainerStatus.OUT) {
-      throw new ConflictException("Container jÃ¡ estÃ¡ marcado como OUT.");
+      throw new ConflictException("Container já está marcado como OUT.");
     }
 
     const exitNumber = await this.generateNumber(warehouseId, "exitNumber");
@@ -252,15 +252,15 @@ export class ContainersService {
       where: { id },
     });
     if (!container) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
     if (container.warehouseId !== warehouseId) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
 
     if (container.status !== OperationalContainerStatus.IN_WAREHOUSE) {
       throw new BadRequestException(
-        "SÃ³ Ã© possÃ­vel atualizar localizaÃ§Ã£o quando status for IN_WAREHOUSE.",
+        "Só é possível atualizar localização quando status for IN_WAREHOUSE.",
       );
     }
 
@@ -381,10 +381,10 @@ export class ContainersService {
     });
 
     if (!container) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
     if (container.warehouseId !== warehouseId) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
 
     const { cargos, ...rest } = container as any;
@@ -401,10 +401,10 @@ export class ContainersService {
       select: { id: true, warehouseId: true },
     });
     if (!container) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
     if (container.warehouseId !== warehouseId) {
-      throw new NotFoundException("Container nÃ£o encontrado.");
+      throw new NotFoundException("Container não encontrado.");
     }
 
     return this.prisma.operationalContainerMovement.findMany({

@@ -38,9 +38,9 @@ export class AdminService {
     });
 
     if (!admin) {
-      this.logger.warn(`Administrador nÃ£o encontrado: ${id}`);
+      this.logger.warn(`Administrador não encontrado: ${id}`);
       throw new HttpException(
-        "Esse administrador nÃ£o existe.",
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -61,7 +61,7 @@ export class AdminService {
         `Tentativa de atualizar administrador inexistente: ${id}`,
       );
       throw new HttpException(
-        "Esse administrador nÃ£o existe.",
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -81,12 +81,12 @@ export class AdminService {
     if (!exists) {
       this.logger.warn(`Tentativa de remover administrador inexistente: ${id}`);
       throw new HttpException(
-        "Esse administrador nÃ£o existe.",
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
 
-    // Usa o mÃ©todo centralizado do UsersService que tem todas as verificaÃ§Ãµes de seguranÃ§a
+    // Usa o método centralizado do UsersService que tem todas as verificações de segurança
     return this.usersService.remove(id);
   }
 }

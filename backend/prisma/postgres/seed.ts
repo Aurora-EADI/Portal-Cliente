@@ -4,24 +4,24 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('ðŸŒ± Iniciando seed do banco de dados...');
+  console.log('🌱 Iniciando seed do banco de dados...');
 
   // ============================================
   // 0. GARANTIR EMPRESA AURORA EADI
   // ============================================
-  console.log('ðŸ¢ Verificando/Criando empresa Aurora EADI...');
+  console.log('🏢 Verificando/Criando empresa Aurora EADI...');
 
   const company = await prisma.company.upsert({
     where: {
       cnpj: '04694548000210'
     },
-    update: {}, // MantÃ©m dados existentes se jÃ¡ houver
+    update: {}, // Mantém dados existentes se já houver
     create: {
       cnpj: '04694548000210',
       fantasyName: 'Aurora EADI',
-      socialReason: 'Aurora da AmazÃ´nia Terminais e ServiÃ§os LTDA',
+      socialReason: 'Aurora da Amazônia Terminais e Serviços LTDA',
       zipCode: '69075840',
-      address: 'Rua Ministro JoÃ£o GonÃ§alves de AraÃºjo',
+      address: 'Rua Ministro João Gonçalves de Araújo',
       number: '472',
       complement: 'Parte E',
       neighborhood: 'Distrito Industrial',
@@ -32,9 +32,9 @@ async function main() {
     },
   });
 
-  console.log(`âœ”ï¸ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
+  console.log(`✔️ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
 
-  // Verificar se jÃ¡ existe um usuÃ¡rio admin
+  // Verificar se já existe um usuário admin
   const existingAdmin = await prisma.user.findFirst({
     where: {
       email: 'admin@aurora.com.br',
@@ -42,7 +42,7 @@ async function main() {
   });
 
   if (existingAdmin) {
-    console.log('âš ï¸  Usuario admin ja existe. Atualizando vÃ­nculo com a empresa...');
+    console.log('⚠️  Usuario admin ja existe. Atualizando vínculo com a empresa...');
 
     await prisma.user.update({
       where: { id: existingAdmin.id },
@@ -51,15 +51,15 @@ async function main() {
       }
     });
 
-    console.log('âœ”ï¸ VÃ­nculo atualizado com sucesso.');
-    console.log(`ðŸ†” ID: ${existingAdmin.id}`);
-    console.log(`ðŸ‘¤ Nome: ${existingAdmin.name}`);
-    console.log(`ðŸŽ­ Role: ${existingAdmin.role}`);
-    console.log(`ðŸ¢ Empresa ID: ${company.id}`);
+    console.log('✔️ Vínculo atualizado com sucesso.');
+    console.log(`🆔 ID: ${existingAdmin.id}`);
+    console.log(`👤 Nome: ${existingAdmin.name}`);
+    console.log(`🎭 Role: ${existingAdmin.role}`);
+    console.log(`🏢 Empresa ID: ${company.id}`);
     return;
   }
 
-  console.log('ðŸ§¹ Limpando dados existentes...');
+  console.log('🧹 Limpando dados existentes...');
 
   // Limpeza de dados
   await prisma.activityPermission.deleteMany();
@@ -81,19 +81,19 @@ async function main() {
       email: 'admin@aurora.com.br',
       password: adminPassword,
       role: UserRole.ADMIN,
-      companyId: company.id, // Vincula Ã  empresa criada
+      companyId: company.id, // Vincula à empresa criada
     },
   });
 
-  console.log('âœ”ï¸ Admin Aurora criado com sucesso.');
+  console.log('✔️ Admin Aurora criado com sucesso.');
 
   // ============================================
-  // 2. CRIAR PERMISSÃ•ES TÃ‰CNICAS
+  // 2. CRIAR PERMISSÃ•ES TÉCNICAS
   // ============================================
   const pPermManageUsers = await prisma.permission.create({
     data: {
       key: 'PERM_MANAGE_USERS',
-      description: 'Gerenciar usuÃ¡rios e acessos',
+      description: 'Gerenciar usuários e acessos',
       category: 'PERMISSIONS',
     },
   });
@@ -101,35 +101,35 @@ async function main() {
   const pPermManageModules = await prisma.permission.create({
     data: {
       key: 'PERM_MANAGE_MODULES',
-      description: 'Gerenciar mÃ³dulos do sistema',
+      description: 'Gerenciar módulos do sistema',
       category: 'PERMISSIONS',
     },
   });
 
-  console.log('âœ”ï¸ PermissÃµes tÃ©cnicas criadas.');
+  console.log('✔️ Permissões técnicas criadas.');
 
   // ============================================
-  // 3. CRIAR MÃ“DULO DE PERMISSÃ•ES
+  // 3. CRIAR MÓDULO DE PERMISSÃ•ES
   // ============================================
   const modPermissoes = await prisma.module.create({
     data: {
-      name: 'PermissÃµes',
-      description: 'GestÃ£o de acessos e permissÃµes',
+      name: 'Permissões',
+      description: 'Gestão de acessos e permissões',
       route: '/permissoes',
       icon: 'Shield',
       active: true,
     },
   });
 
-  console.log('âœ”ï¸ MÃ³dulo de PermissÃµes criado.');
+  console.log('✔️ Módulo de Permissões criado.');
 
   // ============================================
-  // 4. CRIAR ATIVIDADES OBRIGATÃ“RIAS
+  // 4. CRIAR ATIVIDADES OBRIGATÓRIAS
   // ============================================
   const actPermUsers = await prisma.activity.create({
     data: {
-      name: 'Gerenciar UsuÃ¡rios',
-      description: 'Gerenciar usuÃ¡rios e seus acessos aos mÃ³dulos',
+      name: 'Gerenciar Usuários',
+      description: 'Gerenciar usuários e seus acessos aos módulos',
       moduleId: modPermissoes.id,
       isMandatory: true,
       permissions: {
@@ -140,8 +140,8 @@ async function main() {
 
   const actPermModules = await prisma.activity.create({
     data: {
-      name: 'Gerenciar MÃ³dulos',
-      description: 'Criar e gerenciar mÃ³dulos do sistema',
+      name: 'Gerenciar Módulos',
+      description: 'Criar e gerenciar módulos do sistema',
       moduleId: modPermissoes.id,
       isMandatory: true,
       permissions: {
@@ -150,10 +150,10 @@ async function main() {
     },
   });
 
-  console.log('âœ”ï¸ Atividades obrigatÃ³rias criadas.');
+  console.log('✔️ Atividades obrigatórias criadas.');
 
   // ============================================
-  // 5. ATRIBUIR MÃ“DULO AO ADMIN
+  // 5. ATRIBUIR MÓDULO AO ADMIN
   // ============================================
   await prisma.userModuleAccess.create({
     data: {
@@ -163,36 +163,36 @@ async function main() {
     },
   });
 
-  console.log('âœ”ï¸ MÃ³dulo de PermissÃµes atribuÃ­do ao Admin Aurora.');
+  console.log('✔️ Módulo de Permissões atribuído ao Admin Aurora.');
 
   // ============================================
   // 6. LOG FINAL
   // ============================================
-  console.log('\nâœ… Seed concluÃ­do com sucesso!');
-  console.log('ðŸŽ‰ Usuario admin criado com sucesso!');
+  console.log('\n✅ Seed concluído com sucesso!');
+  console.log('🎉 Usuario admin criado com sucesso!');
   console.log(`
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-USUÃRIO ADMINISTRADOR CRIADO:
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+USUÁRIO ADMINISTRADOR CRIADO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ðŸ“§ Email: admin@aurora.com.br
-ðŸ”‘ Senha: aurora@2025
-ðŸ‘¤ Nome: Admin Aurora
+📧 Email: admin@aurora.com.br
+🔑 Senha: aurora@2025
+👤 Nome: Admin Aurora
 ðŸ›¡ï¸  Role: ADMIN
-ðŸ¢ Empresa: Aurora EADI
+🏢 Empresa: Aurora EADI
 
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-MÃ“DULO E PERMISSÃ•ES ATRIBUÃDAS:
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MÓDULO E PERMISSÃ•ES ATRIBUÍDAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ðŸ“¦ MÃ³dulo: PermissÃµes
-ðŸ“ DescriÃ§Ã£o: GestÃ£o de acessos e permissÃµes
+📦 Módulo: Permissões
+ðŸ“ Descrição: Gestão de acessos e permissões
 
-Atividades ObrigatÃ³rias:
-  âœ“ Gerenciar UsuÃ¡rios (PERM_MANAGE_USERS)
-  âœ“ Gerenciar MÃ³dulos (PERM_MANAGE_MODULES)
+Atividades Obrigatórias:
+  ✓ Gerenciar Usuários (PERM_MANAGE_USERS)
+  ✓ Gerenciar Módulos (PERM_MANAGE_MODULES)
 
-â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
 }
 

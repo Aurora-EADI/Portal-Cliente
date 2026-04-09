@@ -20,7 +20,7 @@ export class ServicesService {
 
     if (existingService) {
       throw new ConflictException(
-        `ServiÃ§o com cÃ³digo ${createServiceDto.code} jÃ¡ existe`,
+        `Serviço com código ${createServiceDto.code} já existe`,
       );
     }
 
@@ -35,7 +35,7 @@ export class ServicesService {
     // Filtro por modal
     if (modal) {
       where.modal = {
-        in: [modal, ServiceModal.BOTH], // Inclui serviÃ§os especÃ­ficos + BOTH
+        in: [modal, ServiceModal.BOTH], // Inclui serviços específicos + BOTH
       };
     }
 
@@ -45,12 +45,12 @@ export class ServicesService {
     });
   }
 
-  // ðŸ‘‡ NOVO MÃ‰TODO: Buscar serviÃ§os aÃ©reos
+  // ðŸ‘‡ NOVO MÉTODO: Buscar serviços aéreos
   async findAirServices(includeInactive = false) {
     return this.findAll(includeInactive, ServiceModal.AIR);
   }
 
-  // ðŸ‘‡ NOVO MÃ‰TODO: Buscar serviÃ§os marÃ­timos
+  // ðŸ‘‡ NOVO MÉTODO: Buscar serviços marítimos
   async findMaritimeServices(includeInactive = false) {
     return this.findAll(includeInactive, ServiceModal.MARITIME);
   }
@@ -67,7 +67,7 @@ export class ServicesService {
     });
 
     if (!service) {
-      throw new NotFoundException(`ServiÃ§o com ID ${id} nÃ£o encontrado`);
+      throw new NotFoundException(`Serviço com ID ${id} não encontrado`);
     }
 
     return service;
@@ -105,7 +105,7 @@ export class ServicesService {
 
       if (existingService && existingService.id !== id) {
         throw new ConflictException(
-          `ServiÃ§o com cÃ³digo ${updateServiceDto.code} jÃ¡ existe`,
+          `Serviço com código ${updateServiceDto.code} já existe`,
         );
       }
     }
@@ -133,13 +133,13 @@ export class ServicesService {
     });
 
     if (!service) {
-      throw new NotFoundException(`ServiÃ§o com ID ${id} nÃ£o encontrado`);
+      throw new NotFoundException(`Serviço com ID ${id} não encontrado`);
     }
 
     if (service.serviceCosts.length > 0) {
       throw new BadRequestException(
-        `NÃ£o Ã© possÃ­vel deletar serviÃ§o com ${service.serviceCosts.length} registro(s) de custo no histÃ³rico. ` +
-          `Este histÃ³rico Ã© importante para auditoria. Use o mÃ©todo remove() para desativar o serviÃ§o.`,
+        `Não é possível deletar serviço com ${service.serviceCosts.length} registro(s) de custo no histórico. ` +
+          `Este histórico é importante para auditoria. Use o método remove() para desativar o serviço.`,
       );
     }
 

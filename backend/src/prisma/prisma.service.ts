@@ -18,8 +18,8 @@ export class PrismaPostgresService
   }
 }
 
-// DEPRECATED: SubstituÃ­do por SqlServerService (mssql/tedious)
-// Mantido comentado para fallback caso necessÃ¡rio
+// DEPRECATED: Substituído por SqlServerService (mssql/tedious)
+// Mantido comentado para fallback caso necessário
 // @Injectable()
 // export class PrismaSqlServerService extends PrismaClientSqlServer implements OnModuleInit {
 //   private readonly logger = new Logger(PrismaSqlServerService.name);

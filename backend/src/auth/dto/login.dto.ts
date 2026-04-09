@@ -5,32 +5,32 @@ import { UserRole } from "@prisma/client";
 /**
  * DTO para Login
  *
- * Valida as credenciais do usuÃ¡rio
+ * Valida as credenciais do usuário
  * Requer email, senha e o tipo de acesso (ADMIN ou SUPPLIER)
  */
 export class LoginDto {
   @ApiProperty({
-    description: "Email do usuÃ¡rio",
+    description: "Email do usuário",
     example: "usuario@example.com",
   })
-  @IsEmail({}, { message: "Email invÃ¡lido" })
-  @IsNotEmpty({ message: "Email Ã© obrigatÃ³rio" })
+  @IsEmail({}, { message: "Email inválido" })
+  @IsNotEmpty({ message: "Email é obrigatório" })
   email: string;
 
   @ApiProperty({
-    description: "Senha do usuÃ¡rio",
+    description: "Senha do usuário",
     example: "senha123",
   })
-  @IsNotEmpty({ message: "Senha Ã© obrigatÃ³ria" })
+  @IsNotEmpty({ message: "Senha é obrigatória" })
   password: string;
 
   @ApiProperty({
-    description: "Tipo de acesso do usuÃ¡rio",
+    description: "Tipo de acesso do usuário",
     enum: UserRole,
     example: UserRole.SUPPLIER,
   })
-  @IsEnum(UserRole, { message: "Tipo de acesso invÃ¡lido" })
-  @IsNotEmpty({ message: "Tipo de acesso Ã© obrigatÃ³rio" })
+  @IsEnum(UserRole, { message: "Tipo de acesso inválido" })
+  @IsNotEmpty({ message: "Tipo de acesso é obrigatório" })
   role: UserRole;
 }
 

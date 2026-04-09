@@ -40,14 +40,14 @@ export class AirSimulationsService {
     return `AIR-${sequential}-V${version}`;
   }
 
-  // ========== CRIAÃ‡ÃƒO ==========
+  // ========== CRIAÇÃO ==========
 
   async create(createAirSimulationDto: CreateAirSimulationDto, userId: string) {
     const customer = await this.prisma.customer.findUnique({
       where: { id: createAirSimulationDto.customerId },
     });
 
-    if (!customer) throw new NotFoundException(`Cliente nÃ£o encontrado`);
+    if (!customer) throw new NotFoundException(`Cliente não encontrado`);
 
     const simulationNumber = this.generateSimulationNumber();
     const displayNumber = this.generateDisplayNumber(simulationNumber, 1);
@@ -143,7 +143,7 @@ export class AirSimulationsService {
     return this.findOneVersion(result.id);
   }
 
-  // ========== NOVA VERSÃƒO ==========
+  // ========== NOVA VERSÃO ==========
 
   async createNewVersion(dto: CreateAirNewVersionDto, userId: string) {
     const baseVersion = await this.prisma.airSimulationVersion.findUnique({
@@ -151,7 +151,7 @@ export class AirSimulationsService {
       include: { simulation: true, services: true },
     });
 
-    if (!baseVersion) throw new NotFoundException("VersÃ£o base nÃ£o encontrada");
+    if (!baseVersion) throw new NotFoundException("Versão base não encontrada");
 
     const maxVersion = await this.prisma.airSimulationVersion.findFirst({
       where: { simulationId: baseVersion.simulationId },
@@ -230,7 +230,7 @@ export class AirSimulationsService {
   }
 
   async findOne(id: string) {
-    // Primeiro tenta buscar por ID da SimulaÃ§Ã£o (capa)
+    // Primeiro tenta buscar por ID da Simulação (capa)
     const simulation = await this.prisma.airSimulation.findUnique({
       where: { id },
       include: { versions: { where: { isCurrentVersion: true }, take: 1 } },
@@ -238,12 +238,12 @@ export class AirSimulationsService {
 
     if (simulation) {
       if (simulation.versions.length === 0) {
-        throw new NotFoundException("Nenhuma versÃ£o ativa encontrada para esta simulaÃ§Ã£o");
+        throw new NotFoundException("Nenhuma versão ativa encontrada para esta simulação");
       }
       return this.findOneVersion(simulation.versions[0].id);
     }
 
-    // Se nÃ£o encontrou como Simulation, tenta buscar como AirSimulationVersion
+    // Se não encontrou como Simulation, tenta buscar como AirSimulationVersion
     return this.findOneVersion(id);
   }
 
@@ -264,7 +264,7 @@ export class AirSimulationsService {
         services: true,
       },
     });
-    if (!version) throw new NotFoundException("VersÃ£o nÃ£o encontrada");
+    if (!version) throw new NotFoundException("Versão não encontrada");
     return this.formatVersionResponse(version.simulation, version);
   }
 
@@ -297,7 +297,7 @@ export class AirSimulationsService {
     };
   }
 
-  // ========== GERENCIAMENTO DE SERVIÃ‡OS ==========
+  // ========== GERENCIAMENTO DE SERVIÇOS ==========
 
   async getServices(versionId: string) {
     return this.prisma.airSimulationService.findMany({ where: { versionId } });
@@ -311,7 +311,7 @@ export class AirSimulationsService {
       where: { id: dto.serviceId },
     });
     if (!version || !service)
-      throw new NotFoundException("Dados nÃ£o encontrados");
+      throw new NotFoundException("Dados não encontrados");
 
     const currentCost = await this.prisma.serviceCost.findFirst({
       where: {
@@ -322,9 +322,9 @@ export class AirSimulationsService {
 
     if (
       Number(currentCost?.cost) === 7.06 &&
-      service.name.includes("MovimentaÃ§Ã£o")
+      service.name.includes("Movimentação")
     ) {
-      throw new BadRequestException("Use o valor AÃ©reo de R$ 2,62.");
+      throw new BadRequestException("Use o valor Aéreo de R$ 2,62.");
     }
 
     const rate = dto.originalCost ?? Number(currentCost?.cost || 0);
@@ -387,7 +387,7 @@ export class AirSimulationsService {
 
   async update(id: string, dto: UpdateAirSimulationDto) {
     const version = await this.prisma.airSimulationVersion.findUnique({ where: { id } });
-    if (!version) throw new NotFoundException("VersÃ£o nÃ£o encontrada");
+    if (!version) throw new NotFoundException("Versão não encontrada");
 
     if ((dto as any).status === SimulationStatus.APPROVED) {
       if (!version.isCurrentVersion) {
@@ -480,7 +480,7 @@ export class AirSimulationsService {
     if (!version) return;
 
     for (const s of version.services) {
-      // PULA: Se o custo nÃ£o for DEFAULT, nÃ£o devemos sobrescrever o valor definido pelo usuÃ¡rio.
+      // PULA: Se o custo não for DEFAULT, não devemos sobrescrever o valor definido pelo usuário.
       if (s.costType !== ServiceCostType.DEFAULT) continue;
 
       try {
@@ -494,8 +494,8 @@ export class AirSimulationsService {
           await this.prisma.airSimulationService.update({ where: { id: s.id }, data: { appliedCost: new Prisma.Decimal(nc) } });
         }
       } catch (error) {
-        // Ignora erros de cÃ¡lculo se dados obrigatÃ³rios estiverem faltando (ex: peso ainda nÃ£o preenchido)
-        console.warn(`Erro ao recalcular serviÃ§o ${s.serviceName}:`, error.message);
+        // Ignora erros de cálculo se dados obrigatórios estiverem faltando (ex: peso ainda não preenchido)
+        console.warn(`Erro ao recalcular serviço ${s.serviceName}:`, error.message);
       }
     }
     await this.recalculateTotals(versionId);

@@ -31,7 +31,7 @@ export class ActivitiesController {
    * GET /activities
    * Lista todas as atividades
    * Query params:
-   *  - moduleId: filtrar por mÃ³dulo (opcional)
+   *  - moduleId: filtrar por módulo (opcional)
    */
   @Get()
   @Roles(UserRole.ADMIN)
@@ -43,7 +43,7 @@ export class ActivitiesController {
 
   /**
    * GET /activities/without-permissions
-   * Lista atividades sem permissÃµes vinculadas
+   * Lista atividades sem permissões vinculadas
    */
   @Get("without-permissions")
   @Roles(UserRole.ADMIN)
@@ -53,7 +53,7 @@ export class ActivitiesController {
 
   /**
    * GET /activities/by-category/:category
-   * Lista atividades por categoria de permissÃ£o
+   * Lista atividades por categoria de permissão
    */
   @Get("by-category/:category")
   @Roles(UserRole.ADMIN)
@@ -63,7 +63,7 @@ export class ActivitiesController {
 
   /**
    * GET /activities/:id
-   * Busca uma atividade especÃ­fica
+   * Busca uma atividade específica
    */
   @Get(":id")
   @Roles(UserRole.ADMIN)
@@ -73,7 +73,7 @@ export class ActivitiesController {
 
   /**
    * POST /activities
-   * Cria uma nova atividade e vincula permissÃµes
+   * Cria uma nova atividade e vincula permissões
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -84,7 +84,7 @@ export class ActivitiesController {
 
   /**
    * PATCH /activities/:id
-   * Atualiza uma atividade (nome, mÃ³dulo, isMandatory)
+   * Atualiza uma atividade (nome, módulo, isMandatory)
    */
   @Patch(":id")
   @Roles(UserRole.ADMIN)
@@ -97,7 +97,7 @@ export class ActivitiesController {
 
   /**
    * PUT /activities/:id/permissions
-   * Atualiza as permissÃµes vinculadas (substitui todas)
+   * Atualiza as permissões vinculadas (substitui todas)
    */
   @Put(":id/permissions")
   @Roles(UserRole.ADMIN)
@@ -111,7 +111,7 @@ export class ActivitiesController {
   /**
    * DELETE /activities/:id
    * Remove uma atividade
-   * SÃ³ permite se nÃ£o houver usuÃ¡rios com acesso
+   * Só permite se não houver usuários com acesso
    */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)

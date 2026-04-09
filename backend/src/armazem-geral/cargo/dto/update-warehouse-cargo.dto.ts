@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsInt, IsNumber, IsNumberString, IsOptional, IsString, IsUUID, Length, Min } from "class-validator";
+import { IsArray, IsBoolean, IsDateString, IsInt, IsNumber, IsNumberString, IsOptional, IsString, IsUUID, Length, Min } from "class-validator";
 
 export class UpdateWarehouseCargoDto {
   @IsOptional()
@@ -67,4 +67,12 @@ export class UpdateWarehouseCargoDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsNumber()
+  cifValue?: number;
+
+  @IsOptional()
+  @IsArray()
+  documents?: any[];
 }

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   NotFoundException,
   ConflictException,
@@ -17,7 +17,7 @@ export class CompaniesService {
   constructor(
     private prisma: PrismaPostgresService,
     private readonly requirementRulesService: RequirementRulesService,
-  ) {}
+  ) { }
 
   async create(createCompaniesDTO: CreateCompanyDto) {
     const {
@@ -105,16 +105,16 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     // Construir filtros base
-    const where = this.buildWhereClause(search, status);
+    const where = this.buildWhereClause(search, status, query.supplierTypeName);
 
-    // Combinar filtro de status com exclusÃ£o de PENDING
+    // Combinar filtro de status com exclusão de PENDING
     let whereWithoutPending: Prisma.CompanyWhereInput;
 
     if (status) {
-      // Se jÃ¡ tem filtro de status, use-o diretamente (e garante que nÃ£o Ã© PENDING)
+      // Se já tem filtro de status, use-o diretamente (e garante que não é PENDING)
       whereWithoutPending = where;
     } else {
-      // Se nÃ£o tem filtro de status, apenas exclua PENDING
+      // Se não tem filtro de status, apenas exclua PENDING
       whereWithoutPending = {
         ...where,
         status: {
@@ -123,7 +123,7 @@ export class CompaniesService {
       };
     }
 
-    // Construir ordenaÃ§Ã£o
+    // Construir ordenação
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
 
     // Buscar dados, contagem total e contagem por status em paralelo
@@ -177,8 +177,8 @@ export class CompaniesService {
 
     const skip = (page - 1) * limit;
 
-    // ForÃ§a status ACTIVE
-    const where = this.buildWhereClause(search, CompanyStatus.ACTIVE);
+    // Força status ACTIVE
+    const where = this.buildWhereClause(search, CompanyStatus.ACTIVE, query.supplierTypeName);
 
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
 
@@ -246,7 +246,7 @@ export class CompaniesService {
       });
     } catch (error) {
       if (error.code === "P2025") {
-        throw new NotFoundException(`Empresa com ID ${id} nÃ£o encontrada`);
+        throw new NotFoundException(`Empresa com ID ${id} não encontrada`);
       }
       throw error;
     }
@@ -267,7 +267,7 @@ export class CompaniesService {
     });
 
     if (!company) {
-      throw new NotFoundException(`Empresa com ID ${companyId} nÃ£o encontrada`);
+      throw new NotFoundException(`Empresa com ID ${companyId} não encontrada`);
     }
 
     return this.prisma.$transaction(
@@ -293,8 +293,8 @@ export class CompaniesService {
   }
 
   /**
-   * Solicitar acesso: Atualiza empresa existente e usuÃ¡rio SUPPLIER
-   * Usado quando o fornecedor jÃ¡ foi cadastrado pelo Protheus e quer solicitar acesso
+   * Solicitar acesso: Atualiza empresa existente e usuário SUPPLIER
+   * Usado quando o fornecedor já foi cadastrado pelo Protheus e quer solicitar acesso
    */
   async requestAccess(companyId: string, requestAccessDto: RequestAccessDto) {
     const { company, user } = requestAccessDto;
@@ -310,10 +310,10 @@ export class CompaniesService {
     });
 
     if (!existingCompany) {
-      throw new NotFoundException("Empresa nÃ£o encontrada");
+      throw new NotFoundException("Empresa não encontrada");
     }
 
-    // Verifica se jÃ¡ existe outro usuÃ¡rio com este email em outra empresa
+    // Verifica se já existe outro usuário com este email em outra empresa
     const existingUserWithEmail = await this.prisma.user.findUnique({
       where: { email: user.email },
     });
@@ -322,13 +322,13 @@ export class CompaniesService {
       existingUserWithEmail &&
       existingUserWithEmail.companyId !== companyId
     ) {
-      throw new ConflictException("Email jÃ¡ cadastrado para outra empresa");
+      throw new ConflictException("Email já cadastrado para outra empresa");
     }
 
     // Hash da senha
     const hashedPassword = await bcrypt.hash(user.password, 10);
 
-    // Atualiza empresa e usuÃ¡rio em transaÃ§Ã£o
+    // Atualiza empresa e usuário em transação
     await this.prisma.$transaction(async (prisma) => {
       // 1. Atualiza dados da empresa
       await prisma.company.update({
@@ -346,7 +346,7 @@ export class CompaniesService {
           phone: company.phone,
           classification: company.classification,
           allocationRegime: company.allocationRegime,
-          status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovaÃ§Ã£o
+          status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovação
         },
       });
 
@@ -377,7 +377,7 @@ export class CompaniesService {
           })),
         });
       }
-      // 2. Verifica se jÃ¡ existe um usuÃ¡rio SUPPLIER para esta empresa
+      // 2. Verifica se já existe um usuário SUPPLIER para esta empresa
       await this.syncCompanyWorkforce(
         prisma,
         companyId,
@@ -388,7 +388,7 @@ export class CompaniesService {
       const supplierUser = existingCompany.users[0]; // Pega o primeiro SUPPLIER
 
       if (supplierUser) {
-        // UPDATE: Atualiza o usuÃ¡rio SUPPLIER existente
+        // UPDATE: Atualiza o usuário SUPPLIER existente
         await prisma.user.update({
           where: { id: supplierUser.id },
           data: {
@@ -398,7 +398,7 @@ export class CompaniesService {
           },
         });
 
-        // Verifica se o usuÃ¡rio jÃ¡ tem permissÃµes de Documentos
+        // Verifica se o usuário já tem permissões de Documentos
         const hasDocPermissions = await prisma.userModuleAccess.findFirst({
           where: {
             userId: supplierUser.id,
@@ -406,12 +406,12 @@ export class CompaniesService {
           },
         });
 
-        // Se nÃ£o tem permissÃµes, concede
+        // Se não tem permissões, concede
         if (!hasDocPermissions) {
           await this.grantSupplierPermissions(prisma, supplierUser.id);
         }
       } else {
-        // CREATE: NÃ£o deveria acontecer, mas cria se nÃ£o existir
+        // CREATE: Não deveria acontecer, mas cria se não existir
         const newUser = await prisma.user.create({
           data: {
             name: user.name,
@@ -422,7 +422,7 @@ export class CompaniesService {
           },
         });
 
-        // Concede permissÃµes de Documentos para novo usuÃ¡rio
+        // Concede permissões de Documentos para novo usuário
         await this.grantSupplierPermissions(prisma, newUser.id);
       }
     });
@@ -430,24 +430,24 @@ export class CompaniesService {
     return {
       success: true,
       message:
-        "SolicitaÃ§Ã£o de acesso enviada com sucesso. Aguardando aprovaÃ§Ã£o do administrador.",
+        "Solicitação de acesso enviada com sucesso. Aguardando aprovação do administrador.",
     };
   }
 
-  // ==================== MÃ‰TODOS PRIVADOS ====================
+  // ==================== MÉTODOS PRIVADOS ====================
 
   /**
-   * Concede permissÃµes padrÃ£o de SUPPLIER (MÃ³dulo Documentos + Atividade Anexar)
+   * Concede permissões padrão de SUPPLIER (Módulo Documentos + Atividade Anexar)
    */
   private async grantSupplierPermissions(tx: any, userId: string) {
-    // 1. Busca o mÃ³dulo "/documentos"
+    // 1. Busca o módulo "/documentos"
     const docModule = await tx.module.findFirst({
       where: { route: "/documentos" },
     });
 
     if (!docModule) {
       console.warn(
-        "[COMPANIES] MÃ³dulo /documentos nÃ£o encontrado. PermissÃµes nÃ£o concedidas.",
+        "[COMPANIES] Módulo /documentos não encontrado. Permissões não concedidas.",
       );
       return;
     }
@@ -461,10 +461,10 @@ export class CompaniesService {
     });
 
     if (!attachActivity) {
-      console.warn('[COMPANIES] Atividade "Anexar documento" nÃ£o encontrada.');
+      console.warn('[COMPANIES] Atividade "Anexar documento" não encontrada.');
     }
 
-    // 3. Cria acesso ao MÃ³dulo
+    // 3. Cria acesso ao Módulo
     const userModuleAccess = await tx.userModuleAccess.create({
       data: {
         userId,
@@ -580,8 +580,22 @@ export class CompaniesService {
   private buildWhereClause(
     search?: string,
     status?: string,
+    supplierTypeName?: string,
   ): Prisma.CompanyWhereInput {
     const where: Prisma.CompanyWhereInput = {};
+
+    if (supplierTypeName) {
+      where.supplierTypes = {
+        some: {
+          supplierType: {
+            name: {
+              equals: supplierTypeName,
+              mode: "insensitive",
+            },
+          },
+        },
+      };
+    }
 
     if (search) {
       const orConditions: any[] = [
@@ -590,7 +604,7 @@ export class CompaniesService {
         { city: { contains: search, mode: "insensitive" } },
       ];
 
-      // SÃ³ adiciona filtro de CNPJ se houver nÃºmeros no termo de busca
+      // Só adiciona filtro de CNPJ se houver números no termo de busca
       const cleanedSearch = search.replace(/\D/g, "");
       if (cleanedSearch.length > 0) {
         orConditions.push({ cnpj: { contains: cleanedSearch } });

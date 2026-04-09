@@ -138,7 +138,7 @@ export class ContainersPropriosService {
       where.OR = [
         { code: { contains: s, mode: "insensitive" } },
         { containerNumber: { contains: s, mode: "insensitive" } },
-        { supplier: { name: { contains: s, mode: "insensitive" } } },
+        { supplier: { fantasyName: { contains: s, mode: "insensitive" } } },
       ];
     }
 

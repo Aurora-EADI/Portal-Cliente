@@ -72,6 +72,8 @@ export class WarehouseGeneralCargoService {
         packagingType: dto.packagingType ?? null,
         volume: dto.volume ?? null,
         location,
+        cifValue: dto.cifValue ?? null,
+        documents: dto.documents ? (dto.documents as Prisma.InputJsonValue) : Prisma.DbNull,
       },
     });
 
@@ -190,7 +192,7 @@ export class WarehouseGeneralCargoService {
       },
     });
     if (!cargo || cargo.warehouseId !== warehouseId) {
-      throw new NotFoundException("Carga nÃ£o encontrada.");
+      throw new NotFoundException("Carga não encontrada.");
     }
     return cargo;
   }
@@ -201,7 +203,7 @@ export class WarehouseGeneralCargoService {
       where: { id },
     });
     if (!existing || existing.warehouseId !== warehouseId) {
-      throw new NotFoundException("Carga nÃ£o encontrada.");
+      throw new NotFoundException("Carga não encontrada.");
     }
 
     if (dto.containerId) {
@@ -210,7 +212,7 @@ export class WarehouseGeneralCargoService {
         select: { id: true, warehouseId: true },
       });
       if (!container || container.warehouseId !== warehouseId) {
-        throw new NotFoundException("Container nÃ£o encontrado.");
+        throw new NotFoundException("Container não encontrado.");
       }
     }
 
@@ -233,6 +235,8 @@ export class WarehouseGeneralCargoService {
         packagingType: dto.packagingType,
         volume: dto.volume,
         location: dto.location,
+        cifValue: dto.cifValue,
+        documents: dto.documents ? (dto.documents as Prisma.InputJsonValue) : undefined,
       },
     });
 
@@ -253,14 +257,14 @@ export class WarehouseGeneralCargoService {
       where: { id },
     });
     if (!existing || existing.warehouseId !== warehouseId) {
-      throw new NotFoundException("Carga nÃ£o encontrada.");
+      throw new NotFoundException("Carga não encontrada.");
     }
 
     try {
       await this.prisma.warehouseCargo.delete({ where: { id } });
     } catch {
       throw new BadRequestException(
-        "NÃ£o foi possÃ­vel remover a carga (verifique vÃ­nculos).",
+        "Não foi possível remover a carga (verifique vínculos).",
       );
     }
   }

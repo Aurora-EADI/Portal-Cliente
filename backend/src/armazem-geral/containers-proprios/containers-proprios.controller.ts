@@ -22,16 +22,12 @@ import { DispatchOwnedContainerDto } from "./dto/dispatch-owned-container.dto";
 import { ReturnOwnedContainerDto } from "./dto/return-owned-container.dto";
 import { UpdateContainerProprioDto } from "./dto/update-container-proprio.dto";
 import { ContainersPropriosService } from "./containers-proprios.service";
-import { ContainersAgSuppliersService } from "./suppliers/suppliers.service";
-import { CreateContainerAgSupplierDto } from "./suppliers/dto/create-supplier.dto";
-import { UpdateContainerAgSupplierDto } from "./suppliers/dto/update-supplier.dto";
 
 @Controller("armazem-geral/containers-proprios")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ContainersPropriosController {
   constructor(
     private readonly containersPropriosService: ContainersPropriosService,
-    private readonly suppliersService: ContainersAgSuppliersService,
   ) {}
 
   // ─── Rotas estáticas ANTES de qualquer :id ─────────────────────────
@@ -41,41 +37,6 @@ export class ContainersPropriosController {
     return this.containersPropriosService.generateNextCode();
   }
 
-  // ─── Suppliers (subrecurso estático, ANTES do :id) ──────────────────
-  @Get("suppliers")
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
-  findAllSuppliers() {
-    return this.suppliersService.findAll();
-  }
-
-  @Post("suppliers")
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
-  @HttpCode(HttpStatus.CREATED)
-  createSupplier(@Body() dto: CreateContainerAgSupplierDto) {
-    return this.suppliersService.create(dto);
-  }
-
-  @Get("suppliers/:id")
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
-  findOneSupplier(@Param("id", ParseUUIDPipe) id: string) {
-    return this.suppliersService.findOne(id);
-  }
-
-  @Patch("suppliers/:id")
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
-  updateSupplier(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateContainerAgSupplierDto,
-  ) {
-    return this.suppliersService.update(id, dto);
-  }
-
-  @Delete("suppliers/:id")
-  @Roles(UserRole.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  removeSupplier(@Param("id", ParseUUIDPipe) id: string) {
-    return this.suppliersService.remove(id);
-  }
 
   // ─── Containers Próprios ────────────────────────────────────────────
   @Post()

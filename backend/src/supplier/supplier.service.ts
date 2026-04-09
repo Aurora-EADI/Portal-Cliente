@@ -18,7 +18,7 @@ export class SupplierService {
     });
 
     if (!company) {
-      throw new NotFoundException("Empresa nÃ£o encontrada.");
+      throw new NotFoundException("Empresa não encontrada.");
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -48,7 +48,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier nÃ£o encontrado.");
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     return supplier;
@@ -60,7 +60,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier nÃ£o encontrado.");
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     const data: any = { ...dto };
@@ -81,7 +81,7 @@ export class SupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException("Supplier nÃ£o encontrado.");
+      throw new NotFoundException("Supplier não encontrado.");
     }
 
     return this.prisma.user.delete({

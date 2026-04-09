@@ -238,7 +238,9 @@ export function CargaGeralPage() {
             {item.customer?.name || item.customer?.corporateName || "---"}
           </span>
           <span className="text-[10px] text-gray-400 font-medium lowercase">
-            {item.documentNumber && !item.documentNumber.includes('## Error Type') ? (
+            {item.documents && item.documents.length > 0 ? (
+                item.documents.map(d => `${d.type === 'DI' ? 'DI' : 'NR'} ${d.number}`).join(', ')
+            ) : item.documentNumber && !item.documentNumber.includes('## Error Type') ? (
               `${item.documentType === 'DI' ? 'DI' : 'NR'} ${item.documentNumber}`
             ) : (
                 "SEM DOCUMENTO"

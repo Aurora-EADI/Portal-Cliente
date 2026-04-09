@@ -12,7 +12,6 @@ export const OWNED_CONTAINER_KEYS = {
   list: (params: OwnedContainerQueryParams) => [...OWNED_CONTAINER_KEYS.all, 'list', params] as const,
   detail: (id: string) => [...OWNED_CONTAINER_KEYS.all, 'detail', id] as const,
   nextCode: () => [...OWNED_CONTAINER_KEYS.all, 'next-code'] as const,
-  suppliers: ['owned-containers-suppliers'] as const,
 };
 
 export function useOwnedContainersList(params: OwnedContainerQueryParams) {
@@ -117,22 +116,3 @@ export function useReturnOwnedContainer() {
   });
 }
 
-// Supplier Hooks
-export function useOwnedContainerSuppliers() {
-  return useQuery({
-    queryKey: OWNED_CONTAINER_KEYS.suppliers,
-    queryFn: () => ownedContainersService.suppliers.findAll(),
-  });
-}
-
-export function useCreateOwnedContainerSupplier() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateContainerAgSupplierDto) =>
-      ownedContainersService.suppliers.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: OWNED_CONTAINER_KEYS.suppliers });
-    },
-  });
-}

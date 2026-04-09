@@ -27,7 +27,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions
-   * Lista todas as permissÃµes tÃ©cnicas
+   * Lista todas as permissões técnicas
    * Query params:
    *  - category: filtrar por categoria (opcional)
    */
@@ -39,7 +39,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/categories
-   * Lista todas as categorias Ãºnicas
+   * Lista todas as categorias únicas
    */
   @Get("categories")
   @Roles(UserRole.ADMIN)
@@ -49,7 +49,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/orphaned
-   * Lista permissÃµes nÃ£o vinculadas a atividades
+   * Lista permissões não vinculadas a atividades
    */
   @Get("orphaned")
   @Roles(UserRole.ADMIN)
@@ -59,7 +59,7 @@ export class PermissionsController {
 
   /**
    * GET /permissions/:id
-   * Busca uma permissÃ£o especÃ­fica
+   * Busca uma permissão específica
    */
   @Get(":id")
   @Roles(UserRole.ADMIN)
@@ -69,7 +69,7 @@ export class PermissionsController {
 
   /**
    * POST /permissions
-   * Cria uma nova permissÃ£o tÃ©cnica
+   * Cria uma nova permissão técnica
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -80,7 +80,7 @@ export class PermissionsController {
 
   /**
    * PATCH /permissions/:id
-   * Atualiza uma permissÃ£o existente
+   * Atualiza uma permissão existente
    */
   @Patch(":id")
   @Roles(UserRole.ADMIN)
@@ -93,8 +93,8 @@ export class PermissionsController {
 
   /**
    * DELETE /permissions/:id
-   * Remove uma permissÃ£o
-   * SÃ³ permite se nÃ£o houver atividades vinculadas
+   * Remove uma permissão
+   * Só permite se não houver atividades vinculadas
    */
   @Delete(":id")
   @HttpCode(HttpStatus.OK)

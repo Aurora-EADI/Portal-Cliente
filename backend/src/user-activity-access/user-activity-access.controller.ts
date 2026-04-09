@@ -29,7 +29,7 @@ export class UserActivityAccessController {
 
   /**
    * GET /user-activity-access/:userId/module/:moduleId
-   * Lista atividades do mÃ³dulo com status de acesso
+   * Lista atividades do módulo com status de acesso
    */
   @Get(":userId/module/:moduleId")
   @Roles(UserRole.ADMIN)
@@ -42,7 +42,7 @@ export class UserActivityAccessController {
 
   /**
    * GET /user-activity-access/stats
-   * EstatÃ­sticas de uso de atividades
+   * Estatísticas de uso de atividades
    * Query params: moduleId (opcional)
    */
   @Get("stats")
@@ -55,7 +55,7 @@ export class UserActivityAccessController {
 
   /**
    * PUT /user-activity-access/:userId/module/:moduleId/activity/:activityId
-   * Ativa/Desativa uma atividade especÃ­fica
+   * Ativa/Desativa uma atividade específica
    */
   @Put(":userId/module/:moduleId/activity/:activityId")
   @Roles(UserRole.ADMIN)
@@ -75,7 +75,7 @@ export class UserActivityAccessController {
 
   /**
    * POST /user-activity-access/:userId/module/:moduleId/bulk
-   * Configura mÃºltiplas atividades de uma vez
+   * Configura múltiplas atividades de uma vez
    */
   @Post(":userId/module/:moduleId/bulk")
   @HttpCode(HttpStatus.OK)
@@ -94,7 +94,7 @@ export class UserActivityAccessController {
 
   /**
    * DELETE /user-activity-access/:userId/module/:moduleId/activity/:activityId
-   * Remove exceÃ§Ã£o (volta ao padrÃ£o)
+   * Remove exceção (volta ao padrão)
    */
   @Delete(":userId/module/:moduleId/activity/:activityId")
   @HttpCode(HttpStatus.OK)
@@ -113,7 +113,7 @@ export class UserActivityAccessController {
 
   /**
    * POST /user-activity-access/:userId/module/:moduleId/reset
-   * Reseta todas as exceÃ§Ãµes do mÃ³dulo
+   * Reseta todas as exceções do módulo
    */
   @Post(":userId/module/:moduleId/reset")
   @HttpCode(HttpStatus.OK)
