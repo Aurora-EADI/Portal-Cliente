@@ -1,4 +1,4 @@
-﻿import {
+import {
   IsArray,
   IsDateString,
   IsEmail,
@@ -46,9 +46,12 @@ export class RequestAccessCompanyDto {
   })
   @IsString({ message: "CNPJ deve ser uma string" })
   @IsNotEmpty({ message: "CNPJ e obrigatorio" })
-  @Matches(/^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{14})$/, {
-    message: "CNPJ deve conter 14 digitos (com ou sem formatacao)",
-  })
+  @Matches(
+    /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
+    {
+      message: "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)",
+    },
+  )
   cnpj: string;
 
   @ApiProperty({

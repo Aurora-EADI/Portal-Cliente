@@ -246,8 +246,8 @@ export class AuthService {
     }
 
     // CENÁRIO 2: Criar nova empresa (comportamento original)
-    // Remove formatação do CNPJ para verificação (mantém apenas números)
-    const cnpjNumbers = company.cnpj.replace(/\D/g, "");
+    // Remove apenas pontuação do CNPJ, preservando letras (CNPJ alfanumérico - RFB 2026)
+    const cnpjClean = company.cnpj.replace(/[.\-\/]/g, '').toUpperCase();
 
     // Verifica se o email já existe
     const existingUser = await this.prisma.user.findUnique({
@@ -258,11 +258,12 @@ export class AuthService {
       throw new ConflictException("Email já cadastrado no sistema");
     }
 
-    // Verifica se o CNPJ já existe (busca pelo CNPJ sem formatação)
+    // Verifica se o CNPJ já existe
     const existingCompany = await this.prisma.company.findFirst({
       where: {
         cnpj: {
-          contains: cnpjNumbers,
+          equals: cnpjClean,
+          mode: 'insensitive',
         },
       },
     });
@@ -276,7 +277,7 @@ export class AuthService {
       // Cria a empresa com status PENDING
       const newCompany = await prisma.company.create({
         data: {
-          cnpj: cnpjNumbers, // Salva CNPJ sem formatação
+          cnpj: cnpjClean, // Salva CNPJ sem pontuação, mas preservando letras
           fantasyName: company.fantasyName,
           socialReason: company.socialReason,
           zipCode: company.zipCode,

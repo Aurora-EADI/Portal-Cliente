@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRegister } from "../../hooks/useAuth";
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
   SupplierTypeDto,
 } from "@/services/api";
 import { useMutation } from "@tanstack/react-query";
-import { formatCNPJ, formatCPF, formatPhoneBR } from "@/lib/utils";
+import { formatCNPJ, formatCPF, formatPhoneBR, unmaskCNPJ } from "@/lib/utils";
 import { AllocationRegime, CompanyClassification } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -202,13 +202,14 @@ export const Register: React.FC<{
     };
   }, [redirectTimeout]);
 
-  // Busca automática de CNPJ
+  // Busca automática de CNPJ (suporte ao formato alfanumérico)
   useEffect(() => {
-    const cnpjNumbers = cnpj.replace(/\D/g, "");
+    // Usa unmaskCNPJ para preservar letras (CNPJ alfanumérico - RFB 2026)
+    const cnpjClean = unmaskCNPJ(cnpj);
 
-    if (cnpjNumbers.length === 14) {
-      handleCnpjLookup(cnpjNumbers);
-    } else if (cnpjNumbers.length < 14) {
+    if (cnpjClean.length === 14) {
+      handleCnpjLookup(cnpjClean);
+    } else if (cnpjClean.length < 14) {
       // Limpa os dados se o CNPJ for alterado e ficar incompleto
       if (companyId) {
         setCompanyId(null);
@@ -674,7 +675,7 @@ export const Register: React.FC<{
                   {/* Mensagem informativa quando CNPJ está incompleto */}
                   {!foundCompany &&
                     !isLoadingCnpj &&
-                    cnpj.replace(/\D/g, "").length < 14 && (
+                    unmaskCNPJ(cnpj).length < 14 && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                         <div className="flex-shrink-0 mt-0.5">
                           <svg
@@ -792,7 +793,7 @@ export const Register: React.FC<{
                           maxLength={18}
                           disabled={isLoadingCnpj}
                           className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          placeholder="00.000.000/0000-00"
+                          placeholder="XX.XXX.XXX/XXXX-XX"
                         />
                         {isLoadingCnpj && (
                           <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -825,10 +826,10 @@ export const Register: React.FC<{
                           Empresa encontrada! Dados preenchidos automaticamente.
                         </p>
                       )}
-                      {cnpj.replace(/\D/g, "").length > 0 &&
-                        cnpj.replace(/\D/g, "").length < 14 && (
+                      {unmaskCNPJ(cnpj).length > 0 &&
+                        unmaskCNPJ(cnpj).length < 14 && (
                           <p className="text-xs text-gray-500 mt-2">
-                            Digite os 14 dígitos do CNPJ para busca automática
+                            Digite os 14 caracteres do CNPJ para busca automática
                           </p>
                         )}
                     </div>
@@ -1125,7 +1126,7 @@ export const Register: React.FC<{
                             Preencha todos os campos obrigatórios (*)
                           </p>
                         )}
-                      {!companyId && cnpj.replace(/\D/g, "").length === 14 && (
+                      {!companyId && unmaskCNPJ(cnpj).length === 14 && (
                         <p className="text-xs text-red-600">
                           Empresa não encontrada. Não é possível continuar.
                         </p>

@@ -14,7 +14,8 @@ export class ProtheusSupplierService {
     this.logger.log(`Iniciando criação de fornecedor: CNPJ ${dto.cnpj}`);
 
     // 1. VALIDAR UNICIDADE DE CNPJ
-    const cnpjLimpo = dto.cnpj.replace(/\D/g, ""); // Remove pontuação
+    // Remove apenas pontuação (pontos, barra, hífen), preservando letras (CNPJ alfanumérico)
+    const cnpjLimpo = dto.cnpj.replace(/[.\-\/]/g, '').toUpperCase();
     const companyExists = await this.prisma.company.findFirst({
       where: {
         cnpj: {

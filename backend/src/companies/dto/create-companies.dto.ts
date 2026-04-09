@@ -1,4 +1,4 @@
-﻿import {
+import {
   IsArray,
   IsDateString,
   IsEnum,
@@ -6,6 +6,7 @@
   IsOptional,
   IsString,
   Length,
+  Matches,
   ValidateNested,
 } from "class-validator";
 import { Transform, Type } from "class-transformer";
@@ -35,7 +36,10 @@ class WorkforceEmployeeInputDto {
 export class CreateCompanyDto {
   @IsString()
   @IsNotEmpty({ message: "CNPJ nao pode ser vazio" })
-  @Length(14, 14, { message: "CNPJ deve ter 14 caracteres (somente numeros)" })
+  @Matches(
+    /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
+    { message: "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)" },
+  )
   cnpj: string;
 
   @IsString()

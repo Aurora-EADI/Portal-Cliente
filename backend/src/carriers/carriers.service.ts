@@ -22,7 +22,8 @@ export class CarriersService {
   constructor(private readonly prisma: PrismaPostgresService) {}
 
   async create(dto: CreateCarrierDto) {
-    const cnpj = dto.cnpj ? dto.cnpj.replace(/\D/g, "") : undefined;
+    // Remove apenas pontuação do CNPJ, preservando letras (alfanumérico - RFB 2026)
+    const cnpj = dto.cnpj ? dto.cnpj.replace(/[.\-\/]/g, '').toUpperCase() : undefined;
 
     if (cnpj) {
       const existing = await this.prisma.carrier.findUnique({
@@ -68,7 +69,7 @@ export class CarriersService {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        { cnpj: { contains: search.replace(/\D/g, "") } },
+        { cnpj: { contains: search.replace(/[.\-\/]/g, ''), mode: 'insensitive' } },
       ];
     }
     if (active !== undefined) {
@@ -126,7 +127,8 @@ export class CarriersService {
       throw new NotFoundException("Transportadora não encontrada.");
     }
 
-    const cnpj = dto.cnpj ? dto.cnpj.replace(/\D/g, "") : undefined;
+    // Remove apenas pontuação do CNPJ, preservando letras (alfanumérico - RFB 2026)
+    const cnpj = dto.cnpj ? dto.cnpj.replace(/[.\-\/]/g, '').toUpperCase() : undefined;
 
     if (cnpj && cnpj !== existing.cnpj) {
       const dup = await this.prisma.carrier.findUnique({ where: { cnpj } });

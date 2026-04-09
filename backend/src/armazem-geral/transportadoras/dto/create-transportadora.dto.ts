@@ -10,8 +10,11 @@ export class CreateTransportadoraDto {
   @ApiProperty({ description: 'CNPJ da transportadora (opcional)', required: false })
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'O CNPJ deve estar no formato 00.000.000/0000-00',
-  })
+  @Matches(
+    /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
+    {
+      message: 'O CNPJ deve estar no formato XX.XXX.XXX/XXXX-00 (alfanumérico)',
+    },
+  )
   cnpj?: string;
 }

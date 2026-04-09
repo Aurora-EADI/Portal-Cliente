@@ -44,8 +44,8 @@ export const companiesService = {
 
   async findByCnpj(cnpj: string): Promise<Company | null> {
     try {
-      // Remove caracteres não numéricos antes de enviar
-      const cleanCnpj = cnpj.replace(/\D/g, '');
+      // Remove apenas pontuação (pontos, barra, hífen), preservando letras do CNPJ alfanumérico
+      const cleanCnpj = cnpj.replace(/[.\-\/]/g, '').toUpperCase();
       const response = await api.get(`/companies/cnpj/${cleanCnpj}`);
       return response.data;
     } catch (error: any) {

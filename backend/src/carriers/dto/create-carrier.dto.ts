@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Length,
+  Matches,
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
@@ -43,7 +44,10 @@ export class CreateCarrierDto {
 
   @IsOptional()
   @IsString()
-  @Length(14, 14)
+  @Matches(
+    /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
+    { message: 'CNPJ inválido. Use o formato XX.XXX.XXX/XXXX-00 (alfanumérico)' },
+  )
   cnpj?: string;
 
   @IsOptional()

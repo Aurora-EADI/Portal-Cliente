@@ -13,20 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Truck, Save, Loader2, X, Building2 } from "lucide-react";
 import { useCreateTransportadora } from "@/hooks/armazem-geral/useTransportadoras";
 import { toast } from "sonner";
+import { formatCNPJ, unmaskCNPJ } from "@/lib/utils";
 
 interface RegisterTransportadoraModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-function maskCnpj(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  return digits
-    .replace(/(\d{2})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1/$2")
-    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
-}
 
 export function RegisterTransportadoraModal({ isOpen, onClose }: RegisterTransportadoraModalProps) {
   const { mutateAsync: createTransportadora, isPending } = useCreateTransportadora();
@@ -38,8 +31,8 @@ export function RegisterTransportadoraModal({ isOpen, onClose }: RegisterTranspo
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = "O nome da transportadora é obrigatório.";
-    if (cnpj && cnpj.replace(/\D/g, "").length !== 14) {
-      e.cnpj = "CNPJ inválido. Informe os 14 dígitos.";
+    if (cnpj && unmaskCNPJ(cnpj).length !== 14) {
+      e.cnpj = "CNPJ inválido. Informe os 14 caracteres.";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -125,10 +118,10 @@ export function RegisterTransportadoraModal({ isOpen, onClose }: RegisterTranspo
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 w-4 h-4 transition-colors" />
                 <input
                   type="text"
-                  placeholder="00.000.000/0000-00"
+                  placeholder="XX.XXX.XXX/XXXX-XX"
                   value={cnpj}
                   onChange={(e) => {
-                    setCnpj(maskCnpj(e.target.value));
+                    setCnpj(formatCNPJ(e.target.value));
                     if (errors.cnpj) setErrors({ ...errors, cnpj: "" });
                   }}
                   className={`w-full pl-10 pr-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm font-mono ${

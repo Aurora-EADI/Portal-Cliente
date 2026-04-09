@@ -211,7 +211,8 @@ export class CompaniesService {
   }
 
   async findByCnpj(cnpj: string) {
-    const cleanCnpj = cnpj.replace(/\D/g, "");
+    // Remove apenas pontuação (pontos, barra, hífen), preservando letras (CNPJ alfanumérico)
+    const cleanCnpj = cnpj.replace(/[.\-\/]/g, '').toUpperCase();
 
     const company = await this.prisma.company.findFirst({
       where: {
@@ -604,10 +605,10 @@ export class CompaniesService {
         { city: { contains: search, mode: "insensitive" } },
       ];
 
-      // Só adiciona filtro de CNPJ se houver números no termo de busca
-      const cleanedSearch = search.replace(/\D/g, "");
+    // Só adiciona filtro de CNPJ se o termo de busca tiver caracteres alfanuméricos relevantes
+      const cleanedSearch = search.replace(/[.\-\/]/g, '').trim();
       if (cleanedSearch.length > 0) {
-        orConditions.push({ cnpj: { contains: cleanedSearch } });
+        orConditions.push({ cnpj: { contains: cleanedSearch, mode: 'insensitive' } });
       }
 
       where.OR = orConditions;

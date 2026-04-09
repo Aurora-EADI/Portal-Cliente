@@ -12,9 +12,12 @@ export class CreateSupplierFromProtheusDto {
   // ===== COMPANY DATA =====
 
   @IsNotEmpty({ message: "CNPJ é obrigatório" })
-  @Matches(/^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{14})$/, {
-    message: "CNPJ deve conter 14 dígitos (com ou sem formatação)",
-  })
+  @Matches(
+    /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
+    {
+      message: "CNPJ deve conter 14 caracteres alfanuméricos (com ou sem formatação)",
+    },
+  )
   cnpj: string;
 
   @IsNotEmpty({ message: "Nome Fantasia é obrigatório" })

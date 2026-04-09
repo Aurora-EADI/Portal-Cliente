@@ -187,23 +187,33 @@ export function parseNumberBR(value: string): number {
 
 
 /**
- * Remove todos os caracteres não numéricos de uma string
+ * Remove todos os caracteres não numéricos de uma string (para CPF, CEP, telefone, etc.)
  */
 export function unmask(value: string): string {
   return value.replace(/\D/g, '');
 }
 
 /**
- * Formata um CNPJ (00.000.000/0000-00)
+ * Remove apenas a pontuação de um CNPJ (pontos, barra, hífen),
+ * preservando letras e números (suporte ao CNPJ alfanumérico).
+ */
+export function unmaskCNPJ(value: string): string {
+  return value.replace(/[.\-\/]/g, '').toUpperCase();
+}
+
+/**
+ * Formata um CNPJ no padrão XX.XXX.XXX/XXXX-00
+ * Suporta o novo formato alfanumérico (Instrução Normativa RFB nº 2.229/2024)
+ * Os 8 primeiros caracteres (raiz) podem conter letras A-Z ou dígitos.
  */
 export function formatCNPJ(value: string): string {
-  const digits = unmask(value);
-  return digits
-    .slice(0, 14)
-    .replace(/^(\d{2})(\d)/, '$1.$2')
-    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d)/, '$1-$2');
+  // Remove apenas pontuação, preserva letras e números
+  const clean = unmaskCNPJ(value).slice(0, 14);
+  return clean
+    .replace(/^([A-Z0-9]{2})([A-Z0-9])/, '$1.$2')
+    .replace(/^([A-Z0-9]{2})\.([A-Z0-9]{3})([A-Z0-9])/, '$1.$2.$3')
+    .replace(/\.([A-Z0-9]{3})([A-Z0-9])/, '.$1/$2')
+    .replace(/([A-Z0-9]{4})(\d)/, '$1-$2');
 }
 
 /**
@@ -237,11 +247,15 @@ export function formatPhoneBR(value: string): string {
 
 /**
  * Formata um documento (CPF ou CNPJ) com base no tamanho
+ * Para CPF, remove caracteres não numéricos.
+ * Para CNPJ, preserva letras (suporte ao formato alfanumérico).
  */
 export function formatDocument(value: string): string {
+  // Tenta identificar se é CPF (apenas dígitos com até 11 chars) ou CNPJ
   const digits = unmask(value);
   if (digits.length <= 11) {
     return formatCPF(digits);
   }
-  return formatCNPJ(digits);
+  // Para CNPJ, usa unmaskCNPJ para preservar letras
+  return formatCNPJ(value);
 }
