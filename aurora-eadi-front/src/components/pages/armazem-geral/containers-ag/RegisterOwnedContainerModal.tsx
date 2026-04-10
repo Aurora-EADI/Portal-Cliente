@@ -59,7 +59,7 @@ export function RegisterOwnedContainerModal({
     avarias: [] as string[],
   });
 
-  const { data: suppliersData } = useSuppliersByType("Locação de equipamentos");
+  const { data: suppliersData } = useSuppliersByType("LOCACAO DE EQUIPAMENTOS");
   const suppliers = suppliersData?.data || [];
   const { data: nextCodeData, refetch: refetchNextCode } = useNextOwnedContainerCode(isOpen && !editingContainer);
   const { mutateAsync: createContainer, isPending: isCreating } = useCreateOwnedContainer();
