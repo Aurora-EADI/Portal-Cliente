@@ -7,19 +7,19 @@ import {
   IsArray,
   ValidateNested,
   Min,
-} from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
-import { TCOption, WarehouseReason } from '@prisma/client';
+} from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { Type, Transform } from "class-transformer";
+import { TCOption, WarehouseReason } from "@prisma/client";
 
 class CargoItemInput {
-  @ApiProperty({ example: 'HAWB123456' })
+  @ApiProperty({ example: "HAWB123456" })
   @IsString()
   @IsNotEmpty()
   @Transform(({ value }) => value?.toUpperCase())
   house: string;
 
-  @ApiProperty({ example: 'IMPORTADORA LTDA' })
+  @ApiProperty({ example: "IMPORTADORA LTDA" })
   @IsString()
   @Transform(({ value }) => value?.toUpperCase())
   importer: string;
@@ -29,8 +29,7 @@ class CargoItemInput {
   @IsString()
   dta?: string;
 
-
-  @ApiProperty({ enum: TCOption, example: 'P' })
+  @ApiProperty({ enum: TCOption, example: "P" })
   @IsEnum(TCOption)
   tc: TCOption;
 

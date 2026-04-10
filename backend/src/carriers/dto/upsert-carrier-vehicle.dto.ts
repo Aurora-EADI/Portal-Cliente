@@ -19,4 +19,3 @@ export class UpsertCarrierVehicleDto {
   @IsBoolean()
   active?: boolean;
 }
-

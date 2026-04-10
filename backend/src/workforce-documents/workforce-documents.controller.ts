@@ -104,10 +104,11 @@ export class WorkforceDocumentsController {
 
   @Get(":id/download")
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
-  @ApiOperation({ summary: "Obter URL de download de documento de colaborador" })
+  @ApiOperation({
+    summary: "Obter URL de download de documento de colaborador",
+  })
   async getDownloadUrl(@Param("id") id: string, @Request() req: { user: any }) {
     const url = await this.workforceDocumentsService.getFileUrl(id, req.user);
     return { url };
   }
 }
-

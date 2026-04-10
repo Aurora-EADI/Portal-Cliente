@@ -45,7 +45,7 @@ export class CreateCustomerDto {
   @IsString()
   state?: string;
 
-  @IsNotEmpty({ message: 'O documento (CNPJ/CPF) é obrigatório.' })
+  @IsNotEmpty({ message: "O documento (CNPJ/CPF) é obrigatório." })
   @IsString()
   document: string;
 }

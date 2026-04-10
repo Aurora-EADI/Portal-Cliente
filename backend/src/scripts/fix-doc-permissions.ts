@@ -3,7 +3,9 @@
 const prisma = new PrismaClient();
 
 async function fixDocPermissions(userEmail: string) {
-  console.log(`\nðŸ”§ Corrigindo permissões de Documentos para: ${userEmail}\n`);
+  console.log(
+    `\nðŸ”§ Corrigindo permissões de Documentos para: ${userEmail}\n`,
+  );
 
   // 1. Buscar usuário
   const user = await prisma.user.findUnique({
@@ -143,4 +145,3 @@ const userEmail = process.argv[2] || "admin@aurora.com.br";
 fixDocPermissions(userEmail)
   .catch(console.error)
   .finally(() => prisma.$disconnect());
-

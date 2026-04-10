@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaPostgresService } from '../../prisma/prisma.service';
-import { ArmazemGeralContextService } from '../armazem-geral-context.service';
-import { ArmazemGeralAuditService } from '../armazem-geral-audit.service';
-import { CreateConferenteDto } from './dto/create-conferente.dto';
-import { UpdateConferenteDto } from './dto/update-conferente.dto';
-import { AuditAction, Prisma } from '@prisma/client';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../../prisma/prisma.service";
+import { ArmazemGeralContextService } from "../armazem-geral-context.service";
+import { ArmazemGeralAuditService } from "../armazem-geral-audit.service";
+import { CreateConferenteDto } from "./dto/create-conferente.dto";
+import { UpdateConferenteDto } from "./dto/update-conferente.dto";
+import { AuditAction, Prisma } from "@prisma/client";
 
 @Injectable()
 export class ConferentesService {
@@ -26,7 +30,7 @@ export class ConferentesService {
       });
 
       await this.audit.log({
-        entityType: 'Conferente',
+        entityType: "Conferente",
         entityId: conferente.id,
         action: AuditAction.CREATE,
         after: conferente as unknown as Prisma.InputJsonValue,
@@ -34,14 +38,21 @@ export class ConferentesService {
 
       return conferente;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Matrícula ou CPF já cadastrado para este armazém.');
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException(
+          "Matrícula ou CPF já cadastrado para este armazém.",
+        );
       }
       throw error;
     }
   }
 
-  async findAll(params: { page?: number; limit?: number; search?: string } = {}) {
+  async findAll(
+    params: { page?: number; limit?: number; search?: string } = {},
+  ) {
     const warehouseId = await this.context.getWarehouseId();
     const { page = 1, limit = 10, search } = params;
     const skip = (page - 1) * limit;
@@ -50,9 +61,9 @@ export class ConferentesService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { matricula: { contains: search, mode: 'insensitive' } },
-        { cpf: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { matricula: { contains: search, mode: "insensitive" } },
+        { cpf: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -61,7 +72,7 @@ export class ConferentesService {
         where,
         skip,
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: { name: "asc" },
       }),
       this.prisma.conferente.count({ where }),
     ]);
@@ -88,7 +99,7 @@ export class ConferentesService {
     });
 
     if (!conferente || conferente.warehouseId !== warehouseId) {
-      throw new NotFoundException('Conferente não encontrado.');
+      throw new NotFoundException("Conferente não encontrado.");
     }
 
     return conferente;
@@ -105,7 +116,7 @@ export class ConferentesService {
       });
 
       await this.audit.log({
-        entityType: 'Conferente',
+        entityType: "Conferente",
         entityId: updated.id,
         action: AuditAction.UPDATE,
         before: existing as unknown as Prisma.InputJsonValue,
@@ -114,8 +125,13 @@ export class ConferentesService {
 
       return updated;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Matrícula ou CPF já cadastrado para este armazém.');
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException(
+          "Matrícula ou CPF já cadastrado para este armazém.",
+        );
       }
       throw error;
     }
@@ -130,12 +146,12 @@ export class ConferentesService {
     });
 
     await this.audit.log({
-      entityType: 'Conferente',
+      entityType: "Conferente",
       entityId: existing.id,
       action: AuditAction.DELETE,
       before: existing as unknown as Prisma.InputJsonValue,
     });
 
-    return { message: 'Conferente removido com sucesso.' };
+    return { message: "Conferente removido com sucesso." };
   }
 }

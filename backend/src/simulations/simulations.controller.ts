@@ -35,7 +35,10 @@ export class SimulationsController {
   @ApiOperation({ summary: "Criar nova simulação de custo" })
   @ApiResponse({ status: 201, description: "Simulação criada com sucesso" })
   @ApiResponse({ status: 400, description: "Dados inválidos" })
-  create(@Body() createSimulationDto: CreateSimulationDto, @Request() req: { user: { id: string; role: string; companyId?: string } }) {
+  create(
+    @Body() createSimulationDto: CreateSimulationDto,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
+  ) {
     return this.simulationsService.create(createSimulationDto, req.user.id);
   }
 

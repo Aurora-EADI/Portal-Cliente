@@ -1,57 +1,65 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsArray,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class UpdateProcessoDto {
-  @ApiPropertyOptional({ example: '01234/567-8' })
+  @ApiPropertyOptional({ example: "01234/567-8" })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   dta?: string;
 
-  @ApiPropertyOptional({ example: 'EMPRESA XYZ LTDA' })
+  @ApiPropertyOptional({ example: "EMPRESA XYZ LTDA" })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   empresa?: string;
 
-  @ApiPropertyOptional({ example: 'SANTOS' })
+  @ApiPropertyOptional({ example: "SANTOS" })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   porto?: string;
 
-  @ApiPropertyOptional({ example: 'MSC ANNA' })
+  @ApiPropertyOptional({ example: "MSC ANNA" })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   navio?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-20' })
+  @ApiPropertyOptional({ example: "2026-02-20" })
   @IsOptional()
   @IsDateString()
   ataDta?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-21' })
+  @ApiPropertyOptional({ example: "2026-02-21" })
   @IsOptional()
   @IsDateString()
   ataMao?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-22' })
+  @ApiPropertyOptional({ example: "2026-02-22" })
   @IsOptional()
   @IsDateString()
   ataEadi?: string;
 
-  @ApiPropertyOptional({ example: '2026-03-01' })
+  @ApiPropertyOptional({ example: "2026-03-01" })
   @IsOptional()
   @IsDateString()
   conclusao?: string;
 
-  @ApiPropertyOptional({ example: 'TRANSPORTADORA ABC' })
+  @ApiPropertyOptional({ example: "TRANSPORTADORA ABC" })
   @IsOptional()
   @IsString()
   transportador?: string;
 
-  @ApiPropertyOptional({ example: 'COMISSARIA DEF' })
+  @ApiPropertyOptional({ example: "COMISSARIA DEF" })
   @IsOptional()
   @IsString()
   comissaria?: string;
@@ -74,7 +82,7 @@ export class UpdateProcessoDto {
   @Min(0)
   cifTotal?: number;
 
-  @ApiPropertyOptional({ example: ['MSCUBR123456789'], type: [String] })
+  @ApiPropertyOptional({ example: ["MSCUBR123456789"], type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

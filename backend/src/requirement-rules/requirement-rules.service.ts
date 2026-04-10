@@ -23,7 +23,7 @@ type WorkforceStatus = "ACTIVE" | "INACTIVE";
 
 @Injectable()
 export class RequirementRulesService {
-  constructor(private readonly prisma: PrismaPostgresService) { }
+  constructor(private readonly prisma: PrismaPostgresService) {}
 
   private readonly defaultSupplierTypes = [
     "TRANSPORTADOR",
@@ -346,33 +346,39 @@ export class RequirementRulesService {
 
     const where: Prisma.CompanyEmployeeWhereInput = {
       ...(status ? { status } : {}),
-      ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
-      ...(query.onlyPending ? {
-        documents: {
-          some: {
-            status: "PENDING",
-            isLatest: true
-          }
-        }
-      } : {}),
-      ...(search
+      ...(scopeCompanyId
+        ? { companyId: scopeCompanyId }
+        : companyId
+          ? { companyId }
+          : {}),
+      ...(query.onlyPending
         ? {
-          OR: [
-            { fullName: { contains: search, mode: "insensitive" } },
-            { position: { contains: search, mode: "insensitive" } },
-            {
-              company: {
-                OR: [
-                  { fantasyName: { contains: search, mode: "insensitive" } },
-                  { socialReason: { contains: search, mode: "insensitive" } },
-                ],
+            documents: {
+              some: {
+                status: "PENDING",
+                isLatest: true,
               },
             },
-            ...(cleanSearch
-              ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
-              : []),
-          ],
-        }
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { fullName: { contains: search, mode: "insensitive" } },
+              { position: { contains: search, mode: "insensitive" } },
+              {
+                company: {
+                  OR: [
+                    { fantasyName: { contains: search, mode: "insensitive" } },
+                    { socialReason: { contains: search, mode: "insensitive" } },
+                  ],
+                },
+              },
+              ...(cleanSearch
+                ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
+                : []),
+            ],
+          }
         : {}),
     };
 
@@ -405,26 +411,42 @@ export class RequirementRulesService {
       // Extra queries for status counts
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
-          status: "ACTIVE"
-        }
+          ...(scopeCompanyId
+            ? { companyId: scopeCompanyId }
+            : companyId
+              ? { companyId }
+              : {}),
+          status: "ACTIVE",
+        },
       }),
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
-          status: "INACTIVE"
-        }
+          ...(scopeCompanyId
+            ? { companyId: scopeCompanyId }
+            : companyId
+              ? { companyId }
+              : {}),
+          status: "INACTIVE",
+        },
       }),
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
-          documents: { some: { status: "PENDING", isLatest: true } }
-        }
+          ...(scopeCompanyId
+            ? { companyId: scopeCompanyId }
+            : companyId
+              ? { companyId }
+              : {}),
+          documents: { some: { status: "PENDING", isLatest: true } },
+        },
       }),
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId ? { companyId: scopeCompanyId } : companyId ? { companyId } : {}),
-        }
+          ...(scopeCompanyId
+            ? { companyId: scopeCompanyId }
+            : companyId
+              ? { companyId }
+              : {}),
+        },
       }),
     ]);
 
@@ -508,7 +530,9 @@ export class RequirementRulesService {
           throw new NotFoundException("Terceiro nao encontrado");
         }
         if (existing.companyId !== scopeCompanyId) {
-          throw new ForbiddenException("Acesso negado a terceiro de outra empresa");
+          throw new ForbiddenException(
+            "Acesso negado a terceiro de outra empresa",
+          );
         }
       }
 
@@ -526,7 +550,10 @@ export class RequirementRulesService {
         },
       } as any);
     } catch (error: any) {
-      if (error instanceof ForbiddenException || error instanceof NotFoundException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new NotFoundException("Terceiro nao encontrado");
@@ -570,7 +597,10 @@ export class RequirementRulesService {
       throw new NotFoundException(`Empresa com ID ${companyId} nao encontrada`);
     }
 
-    const uniqueItemsMap = new Map<number, { documentTypeId: number; isRequired: boolean }>();
+    const uniqueItemsMap = new Map<
+      number,
+      { documentTypeId: number; isRequired: boolean }
+    >();
     for (const item of dto.requirements) {
       uniqueItemsMap.set(item.documentTypeId, {
         documentTypeId: item.documentTypeId,
@@ -617,12 +647,12 @@ export class RequirementRulesService {
       await tx.workforceDocumentRequirement.updateMany({
         where: incomingIds.length
           ? {
-            companyId,
-            documentTypeId: { notIn: incomingIds },
-          }
+              companyId,
+              documentTypeId: { notIn: incomingIds },
+            }
           : {
-            companyId,
-          },
+              companyId,
+            },
         data: {
           active: false,
           isRequired: false,
@@ -649,7 +679,10 @@ export class RequirementRulesService {
   }
 
   async updateGlobalWorkforceRequirements(dto: UpdateWorkforceRequirementsDto) {
-    const uniqueItemsMap = new Map<number, { documentTypeId: number; isRequired: boolean }>();
+    const uniqueItemsMap = new Map<
+      number,
+      { documentTypeId: number; isRequired: boolean }
+    >();
     for (const item of dto.requirements) {
       uniqueItemsMap.set(item.documentTypeId, {
         documentTypeId: item.documentTypeId,
@@ -692,8 +725,8 @@ export class RequirementRulesService {
       await tx.globalWorkforceDocumentRequirement.updateMany({
         where: incomingIds.length
           ? {
-            documentTypeId: { notIn: incomingIds },
-          }
+              documentTypeId: { notIn: incomingIds },
+            }
           : {},
         data: {
           active: false,
@@ -709,7 +742,13 @@ export class RequirementRulesService {
     sortBy: string,
     sortOrder: "asc" | "desc",
   ): Prisma.CompanyEmployeeOrderByWithRelationInput {
-    const validFields = ["createdAt", "fullName", "position", "hiredAt", "status"];
+    const validFields = [
+      "createdAt",
+      "fullName",
+      "position",
+      "hiredAt",
+      "status",
+    ];
     const field = validFields.includes(sortBy) ? sortBy : "createdAt";
     return { [field]: sortOrder };
   }
@@ -760,9 +799,9 @@ export class RequirementRulesService {
       ) {
         allowedSupplierTypeIds = value
           ? value
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean)
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
           : [];
         continue;
       }
@@ -770,9 +809,9 @@ export class RequirementRulesService {
       if (normalizedToken.includes("tipos de fornecedor")) {
         allowedSupplierTypeNames = value
           ? value
-            .split(",")
-            .map((item) => this.normalizeTextLoose(item))
-            .filter(Boolean)
+              .split(",")
+              .map((item) => this.normalizeTextLoose(item))
+              .filter(Boolean)
           : [];
       }
     }
@@ -792,13 +831,14 @@ export class RequirementRulesService {
     companySupplierTypeNames: string[],
   ) {
     const parsed = this.parseDocumentApplicability(description);
-    const normalizedCompanySupplierTypeNames = companySupplierTypeNames.map((name) =>
-      this.normalizeTextLoose(name),
+    const normalizedCompanySupplierTypeNames = companySupplierTypeNames.map(
+      (name) => this.normalizeTextLoose(name),
     );
 
     if (
       parsed.allowedClassifications.length > 0 &&
-      (!companyClassification || !parsed.allowedClassifications.includes(companyClassification))
+      (!companyClassification ||
+        !parsed.allowedClassifications.includes(companyClassification))
     ) {
       return false;
     }
@@ -871,28 +911,28 @@ export class RequirementRulesService {
     const supplierTypeIds = company.supplierTypes.map(
       (cst) => cst.supplierTypeId,
     );
-    const supplierTypeNames = company.supplierTypes.map((cst) =>
-      cst.supplierType?.name?.trim().toUpperCase(),
-    ).filter((name): name is string => Boolean(name));
+    const supplierTypeNames = company.supplierTypes
+      .map((cst) => cst.supplierType?.name?.trim().toUpperCase())
+      .filter((name): name is string => Boolean(name));
 
     const classification = company.classification;
     const [rules, overrides] = await Promise.all([
       supplierTypeIds.length > 0 && classification
         ? this.prisma.documentRequirementRule.findMany({
-          where: {
-            active: true,
-            companyClassification: classification,
-            allocationRegime: company.allocationRegime,
-            supplierTypeId: { in: supplierTypeIds },
-          },
-          include: {
-            items: {
-              include: {
-                documentType: true,
+            where: {
+              active: true,
+              companyClassification: classification,
+              allocationRegime: company.allocationRegime,
+              supplierTypeId: { in: supplierTypeIds },
+            },
+            include: {
+              items: {
+                include: {
+                  documentType: true,
+                },
               },
             },
-          },
-        })
+          })
         : Promise.resolve([] as any[]),
       this.prisma.companyDocumentRequirement.findMany({
         where: { companyId },
@@ -979,4 +1019,3 @@ export class RequirementRulesService {
       );
   }
 }
-

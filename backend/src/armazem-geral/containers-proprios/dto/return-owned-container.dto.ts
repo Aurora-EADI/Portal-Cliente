@@ -10,4 +10,3 @@ export class ReturnOwnedContainerDto {
   @Length(1, 200)
   notes?: string;
 }
-

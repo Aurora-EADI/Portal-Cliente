@@ -66,7 +66,10 @@ export class WorkforceDocumentsService {
       throw new BadRequestException("Arquivo nao informado");
     }
 
-    const employee = await this.getEmployeeWithScope(dto.companyEmployeeId, user);
+    const employee = await this.getEmployeeWithScope(
+      dto.companyEmployeeId,
+      user,
+    );
     const timestamp = Date.now();
     const fileName = `workforce/${employee.companyId}/${employee.id}/${timestamp}-${file.originalname}`;
 
@@ -114,7 +117,9 @@ export class WorkforceDocumentsService {
           dateExpiration: dto.dateExpiration
             ? new Date(dto.dateExpiration)
             : undefined,
-          documentTypeId: dto.documentTypeId ? Number(dto.documentTypeId) : null,
+          documentTypeId: dto.documentTypeId
+            ? Number(dto.documentTypeId)
+            : null,
           isLatest: true,
         },
         include: {
@@ -247,4 +252,3 @@ export class WorkforceDocumentsService {
     );
   }
 }
-

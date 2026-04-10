@@ -87,4 +87,3 @@ export class CustomerController {
     return this.customerService.remove(id);
   }
 }
-

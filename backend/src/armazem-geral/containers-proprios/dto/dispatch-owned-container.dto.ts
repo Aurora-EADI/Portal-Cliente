@@ -26,4 +26,3 @@ export class DispatchOwnedContainerDto {
   @IsString({ each: true })
   avarias?: string[];
 }
-

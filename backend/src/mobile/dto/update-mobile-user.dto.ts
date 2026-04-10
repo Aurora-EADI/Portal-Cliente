@@ -1,4 +1,10 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 import { UserMobileRole } from "./create-mobile-user.dto";
 
 export class UpdateMobileUserDto {

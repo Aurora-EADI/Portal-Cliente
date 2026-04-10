@@ -14,4 +14,3 @@ export interface TypeConferenciaCarga {
   concluido: "S" | "N";
   usuarioCadastro: string | null;
 }
-

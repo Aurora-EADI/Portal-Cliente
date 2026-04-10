@@ -1,10 +1,5 @@
 import { Type } from "class-transformer";
-import {
-  IsArray,
-  IsBoolean,
-  IsInt,
-  ValidateNested,
-} from "class-validator";
+import { IsArray, IsBoolean, IsInt, ValidateNested } from "class-validator";
 
 class WorkforceRequirementItemDto {
   @Type(() => Number)

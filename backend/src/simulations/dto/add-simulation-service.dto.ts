@@ -21,4 +21,3 @@ export class AddSimulationServiceDto {
   @IsString()
   customReason?: string; // Obrigatório se costType = CUSTOM
 }
-

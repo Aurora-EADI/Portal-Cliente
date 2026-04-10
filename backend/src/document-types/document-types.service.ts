@@ -38,9 +38,10 @@ export class DocumentTypesService {
       );
     }
 
-    const requirementsCount = await this.prisma.companyDocumentRequirement.count({
-      where: { documentTypeId: id },
-    });
+    const requirementsCount =
+      await this.prisma.companyDocumentRequirement.count({
+        where: { documentTypeId: id },
+      });
 
     if (requirementsCount > 0) {
       throw new BadRequestException(
@@ -61,5 +62,3 @@ export class DocumentTypesService {
     return this.prisma.documentType.delete({ where: { id } });
   }
 }
-
-

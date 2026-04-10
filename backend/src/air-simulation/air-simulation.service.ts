@@ -238,7 +238,9 @@ export class AirSimulationsService {
 
     if (simulation) {
       if (simulation.versions.length === 0) {
-        throw new NotFoundException("Nenhuma versão ativa encontrada para esta simulação");
+        throw new NotFoundException(
+          "Nenhuma versão ativa encontrada para esta simulação",
+        );
       }
       return this.findOneVersion(simulation.versions[0].id);
     }
@@ -251,14 +253,14 @@ export class AirSimulationsService {
     const version = await this.prisma.airSimulationVersion.findUnique({
       where: { id: versionId },
       include: {
-        simulation: { 
-          include: { 
+        simulation: {
+          include: {
             customer: true,
             versions: {
               orderBy: { version: "desc" },
-              include: { user: { select: { id: true, name: true } } }
-            }
-          } 
+              include: { user: { select: { id: true, name: true } } },
+            },
+          },
         },
         user: { select: { id: true, name: true, email: true } },
         services: true,
@@ -386,13 +388,15 @@ export class AirSimulationsService {
   // ========== RECÃLCULOS E TOTAIS ==========
 
   async update(id: string, dto: UpdateAirSimulationDto) {
-    const version = await this.prisma.airSimulationVersion.findUnique({ where: { id } });
+    const version = await this.prisma.airSimulationVersion.findUnique({
+      where: { id },
+    });
     if (!version) throw new NotFoundException("Versão não encontrada");
 
     if ((dto as any).status === SimulationStatus.APPROVED) {
       if (!version.isCurrentVersion) {
         throw new BadRequestException(
-          'Apenas a versão mais atual pode ser aprovada.',
+          "Apenas a versão mais atual pode ser aprovada.",
         );
       }
     }
@@ -407,16 +411,23 @@ export class AirSimulationsService {
       updateData.cifBrl = new Prisma.Decimal(cif * rate);
     }
 
-    await this.prisma.airSimulationVersion.update({ where: { id }, data: updateData });
-    
+    await this.prisma.airSimulationVersion.update({
+      where: { id },
+      data: updateData,
+    });
+
     // Explicitly update periods if they are in the DTO (since they were removed by destructuring)
     if (dto.auroraPeriods !== undefined || dto.vinciPeriods !== undefined) {
       await this.prisma.airSimulationVersion.update({
         where: { id },
         data: {
-          ...(dto.auroraPeriods !== undefined && { auroraPeriods: dto.auroraPeriods }),
-          ...(dto.vinciPeriods !== undefined && { vinciPeriods: dto.vinciPeriods }),
-        }
+          ...(dto.auroraPeriods !== undefined && {
+            auroraPeriods: dto.auroraPeriods,
+          }),
+          ...(dto.vinciPeriods !== undefined && {
+            vinciPeriods: dto.vinciPeriods,
+          }),
+        },
       });
     }
 
@@ -441,13 +452,13 @@ export class AirSimulationsService {
     );
 
     const excludedServicesTotal = version.services.reduce((sum, s) => {
-      const name = s.serviceName || '';
+      const name = s.serviceName || "";
       const normalized = name
         .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
       const isExcluded =
-        normalized.includes('transporte') && normalized.includes('dta');
+        normalized.includes("transporte") && normalized.includes("dta");
 
       return isExcluded ? sum + Number(s.appliedCost) : sum;
     }, 0);
@@ -476,7 +487,10 @@ export class AirSimulationsService {
   }
 
   private async recalculateAllServices(versionId: string) {
-    const version = await this.prisma.airSimulationVersion.findUnique({ where: { id: versionId }, include: { services: true } });
+    const version = await this.prisma.airSimulationVersion.findUnique({
+      where: { id: versionId },
+      include: { services: true },
+    });
     if (!version) return;
 
     for (const s of version.services) {
@@ -484,21 +498,30 @@ export class AirSimulationsService {
       if (s.costType !== ServiceCostType.DEFAULT) continue;
 
       try {
-        const nc = this.calculationService.calculateServiceCost(s.calculationType as any, Number(s.originalCost), {
-          cifBrl: Number(version.cifBrl), 
-          weightKg: version.weightKg ? Number(version.weightKg) : undefined, 
-          volumeM3: version.volumeM3 ? Number(version.volumeM3) : undefined 
-        });
-        
+        const nc = this.calculationService.calculateServiceCost(
+          s.calculationType as any,
+          Number(s.originalCost),
+          {
+            cifBrl: Number(version.cifBrl),
+            weightKg: version.weightKg ? Number(version.weightKg) : undefined,
+            volumeM3: version.volumeM3 ? Number(version.volumeM3) : undefined,
+          },
+        );
+
         if (Number(s.appliedCost) !== nc) {
-          await this.prisma.airSimulationService.update({ where: { id: s.id }, data: { appliedCost: new Prisma.Decimal(nc) } });
+          await this.prisma.airSimulationService.update({
+            where: { id: s.id },
+            data: { appliedCost: new Prisma.Decimal(nc) },
+          });
         }
       } catch (error) {
         // Ignora erros de cálculo se dados obrigatórios estiverem faltando (ex: peso ainda não preenchido)
-        console.warn(`Erro ao recalcular serviço ${s.serviceName}:`, error.message);
+        console.warn(
+          `Erro ao recalcular serviço ${s.serviceName}:`,
+          error.message,
+        );
       }
     }
     await this.recalculateTotals(versionId);
   }
 }
-

@@ -51,4 +51,3 @@ export class UserQueryDto {
   @IsEnum(CompanyStatus)
   companyStatus?: CompanyStatus; // Filtrar por status da empresa
 }
-

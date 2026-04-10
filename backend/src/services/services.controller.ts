@@ -34,7 +34,10 @@ export class ServicesController {
   @ApiOperation({ summary: "Criar novo serviço" })
   @ApiResponse({ status: 201, description: "Serviço criado com sucesso" })
   @ApiResponse({ status: 400, description: "Dados inválidos" })
-  create(@Body() createServiceDto: CreateServiceDto, @Request() req: { user: any }) {
+  create(
+    @Body() createServiceDto: CreateServiceDto,
+    @Request() req: { user: any },
+  ) {
     return this.servicesService.create(createServiceDto, req.user.userId);
   }
 
@@ -107,4 +110,3 @@ export class ServicesController {
     return this.servicesService.hardDelete(id);
   }
 }
-

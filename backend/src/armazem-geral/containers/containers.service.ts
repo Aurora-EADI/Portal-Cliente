@@ -26,7 +26,7 @@ export class ContainersService {
     private readonly prisma: PrismaPostgresService,
     private readonly context: ArmazemGeralContextService,
     private readonly audit: ArmazemGeralAuditService,
-  ) { }
+  ) {}
 
   private async generateNumber(
     warehouseId: string,
@@ -85,7 +85,10 @@ export class ContainersService {
       });
 
       if (!existing) {
-        const entryNumber = await this.generateNumber(warehouseId, "entryNumber");
+        const entryNumber = await this.generateNumber(
+          warehouseId,
+          "entryNumber",
+        );
 
         const created = await tx.operationalContainer.create({
           data: {
@@ -459,7 +462,9 @@ export class ContainersService {
     };
 
     // Remove undefined fields
-    Object.keys(data).forEach((key) => data[key] === undefined && delete data[key]);
+    Object.keys(data).forEach(
+      (key) => data[key] === undefined && delete data[key],
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.operationalContainer.update({

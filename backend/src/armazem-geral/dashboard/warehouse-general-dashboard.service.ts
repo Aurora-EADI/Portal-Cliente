@@ -162,7 +162,8 @@ export class WarehouseGeneralDashboardService {
       totalExitsMonth,
       totalTransshipmentsMonth,
       totalContainersInPatio: patioOrigin + patioOwned,
-      totalContainersWithDamageInPatio: originDamaged.length + ownedDamaged.length,
+      totalContainersWithDamageInPatio:
+        originDamaged.length + ownedDamaged.length,
     };
   }
 
@@ -182,7 +183,9 @@ export class WarehouseGeneralDashboardService {
       take: limit,
     });
 
-    const customerIds = grouped.map((g) => g.customerId).filter(Boolean) as string[];
+    const customerIds = grouped
+      .map((g) => g.customerId)
+      .filter(Boolean) as string[];
     const customers = await this.prisma.customer.findMany({
       where: { id: { in: customerIds } },
       select: { id: true, name: true },
@@ -192,7 +195,7 @@ export class WarehouseGeneralDashboardService {
 
     return grouped.map((g) => ({
       customerId: g.customerId,
-      customerName: g.customerId ? nameById.get(g.customerId) ?? "—" : "—",
+      customerName: g.customerId ? (nameById.get(g.customerId) ?? "—") : "—",
       total: g._count.id,
     }));
   }
@@ -293,7 +296,9 @@ export class WarehouseGeneralDashboardService {
       order by 1 asc
     `);
 
-    const byKey = new Map(rows.map((r) => [monthKey(new Date(r.month)), r.total]));
+    const byKey = new Map(
+      rows.map((r) => [monthKey(new Date(r.month)), r.total]),
+    );
 
     const series = [];
     for (let i = 0; i < months; i++) {
@@ -336,7 +341,9 @@ export class WarehouseGeneralDashboardService {
       days,
       data: rows.map((r) => {
         const freeTimeDate = r.freeTimeDate as Date;
-        const diffDays = Math.ceil((freeTimeDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+        const diffDays = Math.ceil(
+          (freeTimeDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+        );
 
         return {
           id: r.id,

@@ -160,7 +160,9 @@ export class MobileInspectionsService {
             },
           },
         },
-        fotos: { select: { id: true, url: true, fileName: true, itemId: true } },
+        fotos: {
+          select: { id: true, url: true, fileName: true, itemId: true },
+        },
       },
     });
   }
@@ -180,7 +182,9 @@ export class MobileInspectionsService {
       const updated = await tx.inspectionMobile.update({
         where: { id },
         data: {
-          ...(dto.inspectionStatus && { inspectionStatus: dto.inspectionStatus }),
+          ...(dto.inspectionStatus && {
+            inspectionStatus: dto.inspectionStatus,
+          }),
           ...(dto.assinatura !== undefined && { assinatura: dto.assinatura }),
           ...(dto.gpsLat !== undefined && { gpsLat: dto.gpsLat }),
           ...(dto.gpsLng !== undefined && { gpsLng: dto.gpsLng }),
@@ -217,8 +221,12 @@ export class MobileInspectionsService {
               await tx.inspectionItemMobile.update({
                 where: { id: side.itens[i].id },
                 data: {
-                  ...(itemDto.status !== undefined && { status: itemDto.status }),
-                  ...(itemDto.avarias !== undefined && { avarias: itemDto.avarias }),
+                  ...(itemDto.status !== undefined && {
+                    status: itemDto.status,
+                  }),
+                  ...(itemDto.avarias !== undefined && {
+                    avarias: itemDto.avarias,
+                  }),
                   ...(itemDto.observacao !== undefined && {
                     observacao: itemDto.observacao,
                   }),

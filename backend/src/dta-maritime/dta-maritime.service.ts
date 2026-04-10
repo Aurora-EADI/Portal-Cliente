@@ -3,19 +3,22 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { PrismaPostgresService } from '../prisma/prisma.service';
-import { CreateContainerDto, CreateProcessoDto } from './dto/create-processo.dto';
-import { UpdateContainerDto } from './dto/update-container.dto';
-import { UpdateProcessoDto } from './dto/update-processo.dto';
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../prisma/prisma.service";
+import {
+  CreateContainerDto,
+  CreateProcessoDto,
+} from "./dto/create-processo.dto";
+import { UpdateContainerDto } from "./dto/update-container.dto";
+import { UpdateProcessoDto } from "./dto/update-processo.dto";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function sanitizeBl(value: string): string {
   return value
     .trim()
-    .replace(/["',/;]/g, '')
-    .replace(/\s+/g, '');
+    .replace(/["',/;]/g, "")
+    .replace(/\s+/g, "");
 }
 
 function prepareBls(raw: string[], context: string): string[] {
@@ -40,10 +43,10 @@ export class DtaMaritimeService {
     const where = search
       ? {
           OR: [
-            { dta: { contains: search, mode: 'insensitive' as const } },
-            { empresa: { contains: search, mode: 'insensitive' as const } },
-            { porto: { contains: search, mode: 'insensitive' as const } },
-            { navio: { contains: search, mode: 'insensitive' as const } },
+            { dta: { contains: search, mode: "insensitive" as const } },
+            { empresa: { contains: search, mode: "insensitive" as const } },
+            { porto: { contains: search, mode: "insensitive" as const } },
+            { navio: { contains: search, mode: "insensitive" as const } },
           ],
         }
       : {};
@@ -53,7 +56,7 @@ export class DtaMaritimeService {
       include: {
         _count: { select: { containers: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -61,13 +64,13 @@ export class DtaMaritimeService {
     const processo = await this.prisma.processoImportacao.findUnique({
       where: { id },
       include: {
-        bls: { orderBy: { createdAt: 'asc' } },
-        containers: { orderBy: { createdAt: 'asc' } },
+        bls: { orderBy: { createdAt: "asc" } },
+        containers: { orderBy: { createdAt: "asc" } },
       },
     });
 
     if (!processo) {
-      throw new NotFoundException('Processo de importação não encontrado');
+      throw new NotFoundException("Processo de importação não encontrado");
     }
 
     return processo;
@@ -84,11 +87,11 @@ export class DtaMaritimeService {
     const numbers = dto.containers.map((c) => c.number.trim().toUpperCase());
     if (new Set(numbers).size !== numbers.length) {
       throw new BadRequestException(
-        'Existem números de container duplicados no mesmo processo',
+        "Existem números de container duplicados no mesmo processo",
       );
     }
 
-    const bls = prepareBls(dto.bls, 'DTA');
+    const bls = prepareBls(dto.bls, "DTA");
 
     return this.prisma.processoImportacao.create({
       data: {
@@ -114,8 +117,8 @@ export class DtaMaritimeService {
         },
       },
       include: {
-        bls: { orderBy: { createdAt: 'asc' } },
-        containers: { orderBy: { createdAt: 'asc' } },
+        bls: { orderBy: { createdAt: "asc" } },
+        containers: { orderBy: { createdAt: "asc" } },
       },
     });
   }
@@ -136,7 +139,7 @@ export class DtaMaritimeService {
 
     return this.prisma.$transaction(async (tx) => {
       if (rawBls !== undefined) {
-        const bls = prepareBls(rawBls, 'DTA');
+        const bls = prepareBls(rawBls, "DTA");
         await tx.billOfLading.deleteMany({ where: { processoId: id } });
         await tx.billOfLading.createMany({
           data: bls.map((numero) => ({ processoId: id, numero })),
@@ -147,14 +150,34 @@ export class DtaMaritimeService {
         where: { id },
         data: {
           ...rest,
-          ataDta: rest.ataDta !== undefined ? (rest.ataDta ? new Date(rest.ataDta) : null) : undefined,
-          ataMao: rest.ataMao !== undefined ? (rest.ataMao ? new Date(rest.ataMao) : null) : undefined,
-          ataEadi: rest.ataEadi !== undefined ? (rest.ataEadi ? new Date(rest.ataEadi) : null) : undefined,
-          conclusao: rest.conclusao !== undefined ? (rest.conclusao ? new Date(rest.conclusao) : null) : undefined,
+          ataDta:
+            rest.ataDta !== undefined
+              ? rest.ataDta
+                ? new Date(rest.ataDta)
+                : null
+              : undefined,
+          ataMao:
+            rest.ataMao !== undefined
+              ? rest.ataMao
+                ? new Date(rest.ataMao)
+                : null
+              : undefined,
+          ataEadi:
+            rest.ataEadi !== undefined
+              ? rest.ataEadi
+                ? new Date(rest.ataEadi)
+                : null
+              : undefined,
+          conclusao:
+            rest.conclusao !== undefined
+              ? rest.conclusao
+                ? new Date(rest.conclusao)
+                : null
+              : undefined,
         },
         include: {
-          bls: { orderBy: { createdAt: 'asc' } },
-          containers: { orderBy: { createdAt: 'asc' } },
+          bls: { orderBy: { createdAt: "asc" } },
+          containers: { orderBy: { createdAt: "asc" } },
         },
       });
     });
@@ -189,7 +212,7 @@ export class DtaMaritimeService {
   async updateContainer(id: string, dto: UpdateContainerDto) {
     const container = await this.prisma.container.findUnique({ where: { id } });
     if (!container) {
-      throw new NotFoundException('Container não encontrado');
+      throw new NotFoundException("Container não encontrado");
     }
 
     const newNumber = dto.number
@@ -199,7 +222,10 @@ export class DtaMaritimeService {
     if (newNumber !== container.number) {
       const conflict = await this.prisma.container.findUnique({
         where: {
-          processoId_number: { processoId: container.processoId, number: newNumber },
+          processoId_number: {
+            processoId: container.processoId,
+            number: newNumber,
+          },
         },
       });
       if (conflict) {
@@ -221,7 +247,7 @@ export class DtaMaritimeService {
   async deleteContainer(id: string) {
     const container = await this.prisma.container.findUnique({ where: { id } });
     if (!container) {
-      throw new NotFoundException('Container não encontrado');
+      throw new NotFoundException("Container não encontrado");
     }
     await this.prisma.container.delete({ where: { id } });
   }
@@ -233,7 +259,7 @@ export class DtaMaritimeService {
 
     const sanitized = sanitizeBl(numero);
     if (!sanitized) {
-      throw new BadRequestException('Número de BL inválido após sanitização');
+      throw new BadRequestException("Número de BL inválido após sanitização");
     }
 
     const existing = await this.prisma.billOfLading.findUnique({
@@ -253,7 +279,7 @@ export class DtaMaritimeService {
   async deleteBl(id: string) {
     const bl = await this.prisma.billOfLading.findUnique({ where: { id } });
     if (!bl) {
-      throw new NotFoundException('BL não encontrado');
+      throw new NotFoundException("BL não encontrado");
     }
     await this.prisma.billOfLading.delete({ where: { id } });
   }

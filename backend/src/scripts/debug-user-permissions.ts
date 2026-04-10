@@ -131,4 +131,3 @@ const userEmail = process.argv[2] || "admin@example.com";
 debugUserPermissions(userEmail)
   .catch(console.error)
   .finally(() => prisma.$disconnect());
-

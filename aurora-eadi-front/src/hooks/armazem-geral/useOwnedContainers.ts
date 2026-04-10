@@ -4,7 +4,6 @@ import {
   OwnedContainerQueryParams,
   CreateOwnedContainerDto,
   UpdateOwnedContainerDto,
-  CreateContainerAgSupplierDto,
 } from '@/types/armazem-geral';
 
 export const OWNED_CONTAINER_KEYS = {

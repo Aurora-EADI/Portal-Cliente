@@ -58,7 +58,10 @@ export class CarriersController {
 
   @Patch(":id")
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
-  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateCarrierDto) {
+  update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCarrierDto,
+  ) {
     return this.carriersService.update(id, dto);
   }
 
@@ -87,4 +90,3 @@ export class CarriersController {
     return this.carriersService.remove(id);
   }
 }
-

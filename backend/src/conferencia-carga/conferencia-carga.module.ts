@@ -7,4 +7,3 @@ import { ConferenciaCargaService } from "./conferencia-carga.service";
   providers: [ConferenciaCargaService],
 })
 export class ConferenciaCargaModule {}
-

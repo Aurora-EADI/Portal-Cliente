@@ -55,4 +55,3 @@ export class ModulesController {
     await this.modulesService.remove(id);
   }
 }
-

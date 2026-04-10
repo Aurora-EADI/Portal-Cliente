@@ -23,7 +23,9 @@ export class CarriersService {
 
   async create(dto: CreateCarrierDto) {
     // Remove apenas pontuação do CNPJ, preservando letras (alfanumérico - RFB 2026)
-    const cnpj = dto.cnpj ? dto.cnpj.replace(/[.\-\/]/g, '').toUpperCase() : undefined;
+    const cnpj = dto.cnpj
+      ? dto.cnpj.replace(/[.\-\/]/g, "").toUpperCase()
+      : undefined;
 
     if (cnpj) {
       const existing = await this.prisma.carrier.findUnique({
@@ -69,7 +71,12 @@ export class CarriersService {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        { cnpj: { contains: search.replace(/[.\-\/]/g, ''), mode: 'insensitive' } },
+        {
+          cnpj: {
+            contains: search.replace(/[.\-\/]/g, ""),
+            mode: "insensitive",
+          },
+        },
       ];
     }
     if (active !== undefined) {
@@ -128,7 +135,9 @@ export class CarriersService {
     }
 
     // Remove apenas pontuação do CNPJ, preservando letras (alfanumérico - RFB 2026)
-    const cnpj = dto.cnpj ? dto.cnpj.replace(/[.\-\/]/g, '').toUpperCase() : undefined;
+    const cnpj = dto.cnpj
+      ? dto.cnpj.replace(/[.\-\/]/g, "").toUpperCase()
+      : undefined;
 
     if (cnpj && cnpj !== existing.cnpj) {
       const dup = await this.prisma.carrier.findUnique({ where: { cnpj } });

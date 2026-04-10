@@ -8,4 +8,3 @@ export class UpdateSimulationDto extends PartialType(CreateSimulationDto) {
   @IsEnum(SimulationStatus)
   status?: SimulationStatus;
 }
-

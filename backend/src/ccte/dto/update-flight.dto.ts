@@ -4,9 +4,9 @@ import {
   IsOptional,
   IsDateString,
   Matches,
-} from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+} from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 
 export class UpdateFlightDto {
   @ApiProperty({ required: false })
@@ -24,7 +24,7 @@ export class UpdateFlightDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d{2}:\d{2}$/, {
-    message: 'arrivalTime deve estar no formato HH:mm',
+    message: "arrivalTime deve estar no formato HH:mm",
   })
   arrivalTime?: string;
 
@@ -39,11 +39,11 @@ export class UpdateFlightDto {
   termoEntrada?: string;
 
   @ApiProperty({
-    description: 'Justificativa obrigatoria para edicao dos dados do voo',
+    description: "Justificativa obrigatoria para edicao dos dados do voo",
   })
   @IsString()
   @IsNotEmpty({
-    message: 'A justificativa e obrigatoria para realizar alteracoes',
+    message: "A justificativa e obrigatoria para realizar alteracoes",
   })
   reason: string;
 }

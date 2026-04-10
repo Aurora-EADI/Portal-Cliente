@@ -1,5 +1,11 @@
 import { AuditAction } from "@prisma/client";
-import { IsEnum, IsNumberString, IsOptional, IsString, IsUUID } from "class-validator";
+import {
+  IsEnum,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from "class-validator";
 
 export class WarehouseGeneralAuditQueryDto {
   @IsOptional()

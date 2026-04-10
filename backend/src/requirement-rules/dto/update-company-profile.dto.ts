@@ -9,10 +9,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
-import {
-  AllocationRegime,
-  CompanyClassification,
-} from "@prisma/client";
+import { AllocationRegime, CompanyClassification } from "@prisma/client";
 
 export class UpdateCompanyProfileDto {
   @IsEnum(CompanyClassification)
@@ -55,4 +52,3 @@ export class UpdateCompanyWorkforceDto {
   @Type(() => WorkforceEmployeeDto)
   employees: WorkforceEmployeeDto[];
 }
-

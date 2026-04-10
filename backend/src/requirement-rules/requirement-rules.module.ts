@@ -10,4 +10,3 @@ import { RequirementRulesController } from "./requirement-rules.controller";
   exports: [RequirementRulesService],
 })
 export class RequirementRulesModule {}
-

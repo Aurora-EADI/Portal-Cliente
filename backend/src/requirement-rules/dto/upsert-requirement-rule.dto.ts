@@ -7,10 +7,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
-import {
-  AllocationRegime,
-  CompanyClassification,
-} from "@prisma/client";
+import { AllocationRegime, CompanyClassification } from "@prisma/client";
 
 class RuleDocumentItemDto {
   @Type(() => Number)
@@ -40,5 +37,3 @@ export class UpsertRequirementRuleDto {
   @IsBoolean()
   active: boolean;
 }
-
-

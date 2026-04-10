@@ -79,8 +79,13 @@ export class RequirementRulesController {
   @Get("companies/:companyId/workforce")
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
   getCompanyWorkforce(@Param("companyId") companyId: string, @Req() req: any) {
-    if (req.user.role === UserRole.SUPPLIER && req.user.companyId !== companyId) {
-      throw new ForbiddenException("Acesso negado a mao de obra de outra empresa");
+    if (
+      req.user.role === UserRole.SUPPLIER &&
+      req.user.companyId !== companyId
+    ) {
+      throw new ForbiddenException(
+        "Acesso negado a mao de obra de outra empresa",
+      );
     }
     return this.requirementRulesService.getCompanyWorkforce(companyId);
   }
@@ -92,8 +97,13 @@ export class RequirementRulesController {
     @Body() dto: UpdateCompanyWorkforceDto,
     @Req() req: any,
   ) {
-    if (req.user.role === UserRole.SUPPLIER && req.user.companyId !== companyId) {
-      throw new ForbiddenException("Acesso negado a mao de obra de outra empresa");
+    if (
+      req.user.role === UserRole.SUPPLIER &&
+      req.user.companyId !== companyId
+    ) {
+      throw new ForbiddenException(
+        "Acesso negado a mao de obra de outra empresa",
+      );
     }
     return this.requirementRulesService.updateCompanyWorkforce(companyId, dto);
   }
@@ -104,7 +114,8 @@ export class RequirementRulesController {
     if (req.user.role === UserRole.SUPPLIER && !req.user.companyId) {
       throw new ForbiddenException("Fornecedor sem empresa associada");
     }
-    const scopeCompanyId = req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
+    const scopeCompanyId =
+      req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
     return this.requirementRulesService.listWorkforce(query, scopeCompanyId);
   }
 
@@ -114,7 +125,8 @@ export class RequirementRulesController {
     if (req.user.role === UserRole.SUPPLIER && !req.user.companyId) {
       throw new ForbiddenException("Fornecedor sem empresa associada");
     }
-    const scopeCompanyId = req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
+    const scopeCompanyId =
+      req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
     return this.requirementRulesService.getWorkforceById(id, scopeCompanyId);
   }
 
@@ -128,15 +140,28 @@ export class RequirementRulesController {
     if (req.user.role === UserRole.SUPPLIER && !req.user.companyId) {
       throw new ForbiddenException("Fornecedor sem empresa associada");
     }
-    const scopeCompanyId = req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
-    return this.requirementRulesService.updateWorkforceStatus(id, dto.status, scopeCompanyId);
+    const scopeCompanyId =
+      req.user.role === UserRole.SUPPLIER ? req.user.companyId : undefined;
+    return this.requirementRulesService.updateWorkforceStatus(
+      id,
+      dto.status,
+      scopeCompanyId,
+    );
   }
 
   @Get("companies/:companyId/workforce-requirements")
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.SUPPLIER)
-  getWorkforceRequirements(@Param("companyId") companyId: string, @Req() req: any) {
-    if (req.user.role === UserRole.SUPPLIER && req.user.companyId !== companyId) {
-      throw new ForbiddenException("Acesso negado aos requisitos de outra empresa");
+  getWorkforceRequirements(
+    @Param("companyId") companyId: string,
+    @Req() req: any,
+  ) {
+    if (
+      req.user.role === UserRole.SUPPLIER &&
+      req.user.companyId !== companyId
+    ) {
+      throw new ForbiddenException(
+        "Acesso negado aos requisitos de outra empresa",
+      );
     }
     return this.requirementRulesService.getWorkforceRequirements(companyId);
   }
@@ -147,7 +172,10 @@ export class RequirementRulesController {
     @Param("companyId") companyId: string,
     @Body() dto: UpdateWorkforceRequirementsDto,
   ) {
-    return this.requirementRulesService.updateWorkforceRequirements(companyId, dto);
+    return this.requirementRulesService.updateWorkforceRequirements(
+      companyId,
+      dto,
+    );
   }
 
   @Get("workforce-requirements/global")
@@ -164,4 +192,3 @@ export class RequirementRulesController {
     return this.requirementRulesService.updateGlobalWorkforceRequirements(dto);
   }
 }
-

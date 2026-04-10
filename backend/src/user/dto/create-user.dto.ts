@@ -33,4 +33,3 @@ export class CreateUserDto {
   @IsOptional()
   position?: string;
 }
-

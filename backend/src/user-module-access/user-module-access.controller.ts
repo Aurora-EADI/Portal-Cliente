@@ -105,4 +105,3 @@ export class UserModuleAccessController {
     return this.userModuleAccessService.removeModuleAccess(userId, moduleId);
   }
 }
-

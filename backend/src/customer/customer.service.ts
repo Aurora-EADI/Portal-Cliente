@@ -155,9 +155,7 @@ export class CustomerService {
       });
 
       if (existingByDocument) {
-        throw new ConflictException(
-          "Já existe um cliente com este documento.",
-        );
+        throw new ConflictException("Já existe um cliente com este documento.");
       }
     }
 

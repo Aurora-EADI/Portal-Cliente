@@ -33,4 +33,3 @@ export class LoginDto {
   @IsNotEmpty({ message: "Tipo de acesso é obrigatório" })
   role: UserRole;
 }
-

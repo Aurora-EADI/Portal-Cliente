@@ -1,7 +1,4 @@
-import {
-  AuditAction,
-  Prisma,
-} from "@prisma/client";
+import { AuditAction, Prisma } from "@prisma/client";
 import {
   BadRequestException,
   Injectable,
@@ -33,7 +30,7 @@ export class WarehouseGeneralCargoService {
   async create(dto: CreateWarehouseCargoDto) {
     const warehouseId = await this.context.getWarehouseId();
 
-    let containerId: string | null = dto.containerId ?? null;
+    const containerId: string | null = dto.containerId ?? null;
     let entryDate = dto.entryDate ? new Date(dto.entryDate) : null;
     let exitDate = dto.exitDate ? new Date(dto.exitDate) : null;
     let location = dto.location ?? null;
@@ -41,12 +38,18 @@ export class WarehouseGeneralCargoService {
     if (containerId) {
       const container = await this.prisma.operationalContainer.findUnique({
         where: { id: containerId },
-        select: { id: true, warehouseId: true, entryDate: true, exitDate: true, location: true },
+        select: {
+          id: true,
+          warehouseId: true,
+          entryDate: true,
+          exitDate: true,
+          location: true,
+        },
       });
       if (!container || container.warehouseId !== warehouseId) {
         throw new NotFoundException("Container não encontrado.");
       }
-      
+
       // Default dates and location from container if not provided
       if (!entryDate && container.entryDate) entryDate = container.entryDate;
       if (!exitDate && container.exitDate) exitDate = container.exitDate;
@@ -73,7 +76,9 @@ export class WarehouseGeneralCargoService {
         volume: dto.volume ?? null,
         location,
         cifValue: dto.cifValue ?? null,
-        documents: dto.documents ? (dto.documents as Prisma.InputJsonValue) : Prisma.DbNull,
+        documents: dto.documents
+          ? (dto.documents as Prisma.InputJsonValue)
+          : Prisma.DbNull,
       },
     });
 
@@ -89,7 +94,14 @@ export class WarehouseGeneralCargoService {
 
   async findAll(params: FindAllParams = {}) {
     const warehouseId = await this.context.getWarehouseId();
-    const { page = 1, limit = 20, search, containerIds, ownedContainerIds, activeOnly } = params;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      containerIds,
+      ownedContainerIds,
+      activeOnly,
+    } = params;
     const skip = (page - 1) * limit;
 
     const parsedContainerIds = parseIdList(containerIds);
@@ -106,7 +118,10 @@ export class WarehouseGeneralCargoService {
       });
     }
 
-    if ((parsedContainerIds?.length ?? 0) > 0 || (parsedOwnedContainerIds?.length ?? 0) > 0) {
+    if (
+      (parsedContainerIds?.length ?? 0) > 0 ||
+      (parsedOwnedContainerIds?.length ?? 0) > 0
+    ) {
       const or: Prisma.WarehouseCargoWhereInput[] = [];
       if ((parsedContainerIds?.length ?? 0) > 0) {
         or.push({ containerId: { in: parsedContainerIds! } });
@@ -122,9 +137,7 @@ export class WarehouseGeneralCargoService {
     }
 
     const where: Prisma.WarehouseCargoWhereInput =
-      and.length > 0
-        ? { warehouseId, AND: and }
-        : { warehouseId };
+      and.length > 0 ? { warehouseId, AND: and } : { warehouseId };
 
     const [data, total] = await Promise.all([
       this.prisma.warehouseCargo.findMany({
@@ -134,10 +147,20 @@ export class WarehouseGeneralCargoService {
         orderBy: { createdAt: "desc" },
         include: {
           container: {
-            select: { id: true, containerNumber: true, status: true, originalSeal: true },
+            select: {
+              id: true,
+              containerNumber: true,
+              status: true,
+              originalSeal: true,
+            },
           },
           ownedContainer: {
-            select: { id: true, code: true, containerNumber: true, status: true },
+            select: {
+              id: true,
+              code: true,
+              containerNumber: true,
+              status: true,
+            },
           },
           customer: {
             select: { id: true, name: true, corporateName: true },
@@ -174,7 +197,12 @@ export class WarehouseGeneralCargoService {
       where: { id },
       include: {
         container: {
-          select: { id: true, containerNumber: true, status: true, originalSeal: true },
+          select: {
+            id: true,
+            containerNumber: true,
+            status: true,
+            originalSeal: true,
+          },
         },
         ownedContainer: {
           select: { id: true, code: true, containerNumber: true, status: true },
@@ -236,7 +264,9 @@ export class WarehouseGeneralCargoService {
         volume: dto.volume,
         location: dto.location,
         cifValue: dto.cifValue,
-        documents: dto.documents ? (dto.documents as Prisma.InputJsonValue) : undefined,
+        documents: dto.documents
+          ? (dto.documents as Prisma.InputJsonValue)
+          : undefined,
       },
     });
 

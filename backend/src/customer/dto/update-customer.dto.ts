@@ -54,4 +54,3 @@ export class UpdateCustomerDto {
   @IsEnum(CustomerStatus, { message: "Status inválido." })
   status?: CustomerStatus;
 }
-

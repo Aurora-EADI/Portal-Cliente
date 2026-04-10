@@ -10,4 +10,3 @@ export class UpdateAirSimulationDto extends PartialType(
   @IsEnum(SimulationStatus)
   status?: SimulationStatus;
 }
-

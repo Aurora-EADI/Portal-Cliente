@@ -25,7 +25,9 @@ import { WarehouseGeneralTransshipmentsService } from "./warehouse-general-trans
 @Controller("armazem-geral/transshipments")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class WarehouseGeneralTransshipmentsController {
-  constructor(private readonly service: WarehouseGeneralTransshipmentsService) {}
+  constructor(
+    private readonly service: WarehouseGeneralTransshipmentsService,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)

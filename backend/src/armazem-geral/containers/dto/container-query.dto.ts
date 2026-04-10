@@ -1,5 +1,12 @@
 import { OperationalContainerStatus } from "@prisma/client";
-import { IsArray, IsEnum, IsNumberString, IsOptional, IsString, IsUUID } from "class-validator";
+import {
+  IsArray,
+  IsEnum,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from "class-validator";
 import { Transform } from "class-transformer";
 
 export class ContainerQueryDto {

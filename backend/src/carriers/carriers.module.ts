@@ -10,4 +10,3 @@ import { CarriersService } from "./carriers.service";
   exports: [CarriersService],
 })
 export class CarriersModule {}
-

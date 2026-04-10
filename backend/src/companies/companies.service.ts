@@ -17,7 +17,7 @@ export class CompaniesService {
   constructor(
     private prisma: PrismaPostgresService,
     private readonly requirementRulesService: RequirementRulesService,
-  ) { }
+  ) {}
 
   async create(createCompaniesDTO: CreateCompanyDto) {
     const {
@@ -178,7 +178,11 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     // Força status ACTIVE
-    const where = this.buildWhereClause(search, CompanyStatus.ACTIVE, query.supplierTypeName);
+    const where = this.buildWhereClause(
+      search,
+      CompanyStatus.ACTIVE,
+      query.supplierTypeName,
+    );
 
     const orderBy = this.buildOrderBy(sortBy, sortOrder);
 
@@ -212,7 +216,7 @@ export class CompaniesService {
 
   async findByCnpj(cnpj: string) {
     // Remove apenas pontuação (pontos, barra, hífen), preservando letras (CNPJ alfanumérico)
-    const cleanCnpj = cnpj.replace(/[.\-\/]/g, '').toUpperCase();
+    const cleanCnpj = cnpj.replace(/[.\-\/]/g, "").toUpperCase();
 
     const company = await this.prisma.company.findFirst({
       where: {
@@ -605,10 +609,12 @@ export class CompaniesService {
         { city: { contains: search, mode: "insensitive" } },
       ];
 
-    // Só adiciona filtro de CNPJ se o termo de busca tiver caracteres alfanuméricos relevantes
-      const cleanedSearch = search.replace(/[.\-\/]/g, '').trim();
+      // Só adiciona filtro de CNPJ se o termo de busca tiver caracteres alfanuméricos relevantes
+      const cleanedSearch = search.replace(/[.\-\/]/g, "").trim();
       if (cleanedSearch.length > 0) {
-        orConditions.push({ cnpj: { contains: cleanedSearch, mode: 'insensitive' } });
+        orConditions.push({
+          cnpj: { contains: cleanedSearch, mode: "insensitive" },
+        });
       }
 
       where.OR = orConditions;
@@ -669,6 +675,3 @@ export class CompaniesService {
     };
   }
 }
-
-
-

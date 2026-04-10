@@ -11,5 +11,5 @@ export interface TypeContainer {
   beneficiario: string;
   motorista: string;
   tempo_p: number | null;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: "low" | "medium" | "high" | "urgent";
 }

@@ -15,7 +15,8 @@ export class CreateSupplierFromProtheusDto {
   @Matches(
     /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
     {
-      message: "CNPJ deve conter 14 caracteres alfanuméricos (com ou sem formatação)",
+      message:
+        "CNPJ deve conter 14 caracteres alfanuméricos (com ou sem formatação)",
     },
   )
   cnpj: string;

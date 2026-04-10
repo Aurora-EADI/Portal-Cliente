@@ -31,7 +31,7 @@ export class ServicesService {
 
   async findAll(includeInactive = false, modal?: ServiceModal) {
     const where: any = includeInactive ? {} : { isActive: true };
-    
+
     // Filtro por modal
     if (modal) {
       where.modal = {

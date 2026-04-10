@@ -643,25 +643,23 @@ export class EstoqueService {
         dtFim || null,
       ]);
     } catch (error: any) {
-      const isTimeout = error?.message?.includes('Timeout');
+      const isTimeout = error?.message?.includes("Timeout");
 
       this.logger.error(
-        `Estoque query failed${isTimeout ? ' (timeout)' : ''}: ${error?.message}`,
+        `Estoque query failed${isTimeout ? " (timeout)" : ""}: ${error?.message}`,
       );
 
       if (isTimeout) {
         throw new HttpException(
-          'A consulta demorou muito para responder. Tente reduzir o período ou adicionar filtros.',
+          "A consulta demorou muito para responder. Tente reduzir o período ou adicionar filtros.",
           HttpStatus.GATEWAY_TIMEOUT,
         );
       }
 
       throw new HttpException(
-        'Erro ao consultar dados de estoque. Tente novamente.',
+        "Erro ao consultar dados de estoque. Tente novamente.",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 }
-
-

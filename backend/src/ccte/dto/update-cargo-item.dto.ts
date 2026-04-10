@@ -5,10 +5,10 @@ import {
   IsEnum,
   IsBoolean,
   Min,
-} from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
-import { TCOption, CargoItemStatus, WarehouseReason } from '@prisma/client';
+} from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { Type, Transform } from "class-transformer";
+import { TCOption, CargoItemStatus, WarehouseReason } from "@prisma/client";
 
 export class UpdateCargoItemDto {
   @ApiProperty({ required: false })
@@ -27,7 +27,6 @@ export class UpdateCargoItemDto {
   @IsOptional()
   @IsString()
   dta?: string;
-
 
   @ApiProperty({ required: false, enum: TCOption })
   @IsOptional()

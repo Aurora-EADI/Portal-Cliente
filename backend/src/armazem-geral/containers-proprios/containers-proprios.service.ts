@@ -3,7 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditAction, DamageSeverity, DamageStatus, WarehouseOwnedContainerStatus } from "@prisma/client";
+import {
+  AuditAction,
+  DamageSeverity,
+  DamageStatus,
+  WarehouseOwnedContainerStatus,
+} from "@prisma/client";
 import { PrismaPostgresService } from "../../prisma/prisma.service";
 import { ArmazemGeralAuditService } from "../armazem-geral-audit.service";
 import { ArmazemGeralContextService } from "../armazem-geral-context.service";
@@ -44,7 +49,7 @@ export class ContainersPropriosService {
       orderBy: {
         code: "desc",
       },
-      select: { code: true }
+      select: { code: true },
     });
 
     let nextSequence = 1;
@@ -65,7 +70,7 @@ export class ContainersPropriosService {
 
   async create(dto: CreateContainerProprioDto, performedByUserId?: string) {
     const warehouseId = await this.context.getWarehouseId();
-    
+
     let code = dto.code?.trim().toUpperCase();
     if (!code) {
       const next = await this.generateNextCode();
@@ -77,7 +82,9 @@ export class ContainersPropriosService {
     });
 
     if (existing) {
-      throw new ConflictException(`Já existe um container com o código ${code} neste armazém.`);
+      throw new ConflictException(
+        `Já existe um container com o código ${code} neste armazém.`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -96,7 +103,7 @@ export class ContainersPropriosService {
         include: {
           supplier: true,
           holderCustomer: { select: { id: true, name: true, document: true } },
-        }
+        },
       });
 
       // Handle Damages (Avarias)
@@ -163,12 +170,12 @@ export class ContainersPropriosService {
         take: limit,
         orderBy: { updatedAt: "desc" },
         include: {
-           supplier: true,
-           holderCustomer: { select: { id: true, name: true, document: true } },
-           damages: {
-             where: { status: DamageStatus.OPEN }
-           }
-        }
+          supplier: true,
+          holderCustomer: { select: { id: true, name: true, document: true } },
+          damages: {
+            where: { status: DamageStatus.OPEN },
+          },
+        },
       }),
       this.prisma.warehouseOwnedContainer.count({ where }),
     ]);
@@ -192,9 +199,9 @@ export class ContainersPropriosService {
         supplier: true,
         holderCustomer: { select: { id: true, name: true, document: true } },
         damages: {
-          where: { status: DamageStatus.OPEN }
-        }
-      }
+          where: { status: DamageStatus.OPEN },
+        },
+      },
     });
 
     if (!container || container.warehouseId !== warehouseId) {
@@ -217,7 +224,9 @@ export class ContainersPropriosService {
     }
 
     if (container.status === WarehouseOwnedContainerStatus.WITH_CUSTOMER) {
-      throw new ConflictException("Container já está marcado como WITH_CUSTOMER.");
+      throw new ConflictException(
+        "Container já está marcado como WITH_CUSTOMER.",
+      );
     }
 
     const customer = await this.prisma.customer.findUnique({
@@ -260,7 +269,10 @@ export class ContainersPropriosService {
         entityType: "WarehouseOwnedContainer",
         entityId: updated.id,
         action: AuditAction.STATUS_CHANGE,
-        before: { status: container.status, holderCustomerId: container.holderCustomerId },
+        before: {
+          status: container.status,
+          holderCustomerId: container.holderCustomerId,
+        },
         after: {
           status: updated.status,
           holderCustomerId: updated.holderCustomerId,
@@ -289,7 +301,9 @@ export class ContainersPropriosService {
     }
 
     if (container.status !== WarehouseOwnedContainerStatus.WITH_CUSTOMER) {
-      throw new ConflictException("Somente é possível devolver quando status for WITH_CUSTOMER.");
+      throw new ConflictException(
+        "Somente é possível devolver quando status for WITH_CUSTOMER.",
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -298,7 +312,9 @@ export class ContainersPropriosService {
         data: {
           status: WarehouseOwnedContainerStatus.AVAILABLE,
           holderCustomerId: null,
-          location: dto.location ? dto.location.trim().toUpperCase() : undefined,
+          location: dto.location
+            ? dto.location.trim().toUpperCase()
+            : undefined,
         },
         include: {
           supplier: true,
@@ -329,7 +345,11 @@ export class ContainersPropriosService {
     });
   }
 
-  async update(id: string, dto: UpdateContainerProprioDto, performedByUserId?: string) {
+  async update(
+    id: string,
+    dto: UpdateContainerProprioDto,
+    performedByUserId?: string,
+  ) {
     const warehouseId = await this.context.getWarehouseId();
     const container = await this.findOne(id);
 
@@ -349,7 +369,7 @@ export class ContainersPropriosService {
         include: {
           supplier: true,
           holderCustomer: { select: { id: true, name: true, document: true } },
-        }
+        },
       });
 
       // Sync Damages (Avarias)
@@ -375,7 +395,10 @@ export class ContainersPropriosService {
       await this.audit.log({
         entityType: "WarehouseOwnedContainer",
         entityId: updated.id,
-        action: container.status !== updated.status ? AuditAction.STATUS_CHANGE : AuditAction.UPDATE,
+        action:
+          container.status !== updated.status
+            ? AuditAction.STATUS_CHANGE
+            : AuditAction.UPDATE,
         before: container as any,
         after: updated as any,
         performedByUserId,
@@ -390,7 +413,7 @@ export class ContainersPropriosService {
 
     return this.prisma.$transaction(async (tx) => {
       await tx.warehouseDamage.deleteMany({
-        where: { ownedContainerId: id }
+        where: { ownedContainerId: id },
       });
 
       const deleted = await tx.warehouseOwnedContainer.delete({

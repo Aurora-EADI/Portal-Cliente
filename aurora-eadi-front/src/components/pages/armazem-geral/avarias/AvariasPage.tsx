@@ -14,7 +14,10 @@ export function AvariasPage() {
       />
 
       <div className="flex items-center justify-between">
-        <SearchBar placeholder="Buscar avaria ou referência..." />
+        <SearchBar 
+          placeholder="Buscar avaria ou referência..." 
+          onSearch={() => {}} 
+        />
         <Button variant="destructive">
           <AlertTriangle className="mr-2 h-4 w-4" /> Registrar Avaria
         </Button>

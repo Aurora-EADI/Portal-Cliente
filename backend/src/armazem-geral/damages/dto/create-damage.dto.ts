@@ -1,5 +1,12 @@
 import { DamageSeverity } from "@prisma/client";
-import { IsArray, IsEnum, IsOptional, IsString, IsUUID, Length } from "class-validator";
+import {
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+} from "class-validator";
 
 export class CreateDamageDto {
   @IsEnum(DamageSeverity)

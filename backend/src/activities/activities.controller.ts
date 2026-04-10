@@ -120,4 +120,3 @@ export class ActivitiesController {
     return this.activitiesService.remove(id);
   }
 }
-

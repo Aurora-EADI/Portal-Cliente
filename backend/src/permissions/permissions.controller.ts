@@ -103,4 +103,3 @@ export class PermissionsController {
     return this.permissionsService.remove(id);
   }
 }
-

@@ -93,5 +93,3 @@ export class SupplierService {
     return this.requirementRulesService.getEffectiveRequirementsByUser(userId);
   }
 }
-
-

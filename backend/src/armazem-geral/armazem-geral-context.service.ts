@@ -32,4 +32,3 @@ export class ArmazemGeralContextService {
     return warehouse.id;
   }
 }
-

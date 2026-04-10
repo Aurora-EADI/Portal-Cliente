@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { KanbanService } from './kanban.service';
-import { KanbanController } from './kanban.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common";
+import { KanbanService } from "./kanban.service";
+import { KanbanController } from "./kanban.controller";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
   imports: [PrismaModule],

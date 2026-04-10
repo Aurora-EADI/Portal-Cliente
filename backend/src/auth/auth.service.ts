@@ -247,7 +247,7 @@ export class AuthService {
 
     // CENÁRIO 2: Criar nova empresa (comportamento original)
     // Remove apenas pontuação do CNPJ, preservando letras (CNPJ alfanumérico - RFB 2026)
-    const cnpjClean = company.cnpj.replace(/[.\-\/]/g, '').toUpperCase();
+    const cnpjClean = company.cnpj.replace(/[.\-\/]/g, "").toUpperCase();
 
     // Verifica se o email já existe
     const existingUser = await this.prisma.user.findUnique({
@@ -263,7 +263,7 @@ export class AuthService {
       where: {
         cnpj: {
           equals: cnpjClean,
-          mode: 'insensitive',
+          mode: "insensitive",
         },
       },
     });
@@ -288,8 +288,8 @@ export class AuthService {
           city: company.city,
           state: company.state,
           phone: company.phone,
-            classification: company.classification,
-            allocationRegime: company.allocationRegime,
+          classification: company.classification,
+          allocationRegime: company.allocationRegime,
           status: "PENDING_ACTIVE", // Aguardando aprovação do admin
         },
       });

@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
@@ -10,67 +10,67 @@ import {
   Min,
   ArrayMinSize,
   ValidateNested,
-} from 'class-validator';
+} from "class-validator";
 
 export class CreateContainerDto {
-  @ApiProperty({ example: 'MSCU1234567' })
+  @ApiProperty({ example: "MSCU1234567" })
   @IsString()
   @IsNotEmpty()
   number: string;
 
-  @ApiProperty({ example: '40HC' })
+  @ApiProperty({ example: "40HC" })
   @IsString()
   @IsNotEmpty()
   tipo: string;
 }
 
 export class CreateProcessoDto {
-  @ApiProperty({ example: '01234/567-8' })
+  @ApiProperty({ example: "01234/567-8" })
   @IsString()
   @IsNotEmpty()
   dta: string;
 
-  @ApiProperty({ example: 'EMPRESA XYZ LTDA' })
+  @ApiProperty({ example: "EMPRESA XYZ LTDA" })
   @IsString()
   @IsNotEmpty()
   empresa: string;
 
-  @ApiProperty({ example: 'Chibatão' })
+  @ApiProperty({ example: "Chibatão" })
   @IsString()
   @IsNotEmpty()
   porto: string;
 
-  @ApiProperty({ example: 'MSC ANNA' })
+  @ApiProperty({ example: "MSC ANNA" })
   @IsString()
   @IsNotEmpty()
   navio: string;
 
-  @ApiPropertyOptional({ example: '2026-02-20' })
+  @ApiPropertyOptional({ example: "2026-02-20" })
   @IsOptional()
   @IsDateString()
   ataDta?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-21' })
+  @ApiPropertyOptional({ example: "2026-02-21" })
   @IsOptional()
   @IsDateString()
   ataMao?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-22' })
+  @ApiPropertyOptional({ example: "2026-02-22" })
   @IsOptional()
   @IsDateString()
   ataEadi?: string;
 
-  @ApiPropertyOptional({ example: '2026-03-01' })
+  @ApiPropertyOptional({ example: "2026-03-01" })
   @IsOptional()
   @IsDateString()
   conclusao?: string;
 
-  @ApiPropertyOptional({ example: 'TRANSPORTADORA ABC' })
+  @ApiPropertyOptional({ example: "TRANSPORTADORA ABC" })
   @IsOptional()
   @IsString()
   transportador?: string;
 
-  @ApiPropertyOptional({ example: 'COMISSARIA DEF' })
+  @ApiPropertyOptional({ example: "COMISSARIA DEF" })
   @IsOptional()
   @IsString()
   comissaria?: string;
@@ -93,7 +93,10 @@ export class CreateProcessoDto {
   @Min(0)
   cifTotal?: number;
 
-  @ApiProperty({ example: ['MSCUBR123456789', 'MSCUBR987654321'], type: [String] })
+  @ApiProperty({
+    example: ["MSCUBR123456789", "MSCUBR987654321"],
+    type: [String],
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })

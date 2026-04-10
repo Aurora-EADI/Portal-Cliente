@@ -4,7 +4,6 @@ import { ArmazemGeralContextModule } from "../armazem-geral-context.module";
 import { ContainersPropriosController } from "./containers-proprios.controller";
 import { ContainersPropriosService } from "./containers-proprios.service";
 
-
 @Module({
   imports: [PrismaModule, ArmazemGeralContextModule],
   controllers: [ContainersPropriosController],

@@ -51,4 +51,3 @@ export class DocumentTypesController {
     return this.documentTypesService.remove(+id);
   }
 }
-

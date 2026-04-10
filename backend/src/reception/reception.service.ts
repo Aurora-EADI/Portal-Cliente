@@ -1,7 +1,7 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { CreateContactDto } from './dto/create-contact.dto';
-import { UpdateContactDto } from './dto/update-contact.dto';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { CreateContactDto } from "./dto/create-contact.dto";
+import { UpdateContactDto } from "./dto/update-contact.dto";
 
 @Injectable()
 export class ReceptionService {
@@ -16,18 +16,24 @@ export class ReceptionService {
     });
   }
 
-  async findAll(filters?: { name?: string; department?: string; position?: string; page?: number; limit?: number }) {
-    this.logger.log('Listando contatos de recepção com filtros e paginação');
+  async findAll(filters?: {
+    name?: string;
+    department?: string;
+    position?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    this.logger.log("Listando contatos de recepção com filtros e paginação");
     const where: any = { active: true };
 
     if (filters?.name) {
-      where.name = { contains: filters.name, mode: 'insensitive' };
+      where.name = { contains: filters.name, mode: "insensitive" };
     }
     if (filters?.department) {
-      where.department = { contains: filters.department, mode: 'insensitive' };
+      where.department = { contains: filters.department, mode: "insensitive" };
     }
     if (filters?.position) {
-      where.position = { contains: filters.position, mode: 'insensitive' };
+      where.position = { contains: filters.position, mode: "insensitive" };
     }
 
     const page = filters?.page ? Number(filters.page) : 1;
@@ -39,7 +45,7 @@ export class ReceptionService {
         where,
         skip,
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: { name: "asc" },
       }),
       this.prisma.receptionContact.count({ where }),
     ]);

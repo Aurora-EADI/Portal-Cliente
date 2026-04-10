@@ -1,4 +1,10 @@
-﻿import { IsString, IsOptional, IsBoolean, IsEnum, IsNotEmpty } from "class-validator";
+﻿import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+} from "class-validator";
 import { ServiceCalculationType, ServiceModal } from "@prisma/client";
 
 export class CreateServiceDto {
@@ -15,7 +21,7 @@ export class CreateServiceDto {
   @IsOptional()
   @IsString()
   category?: string; // Ex: "Operacional", "Logística"
-  
+
   @IsEnum(ServiceModal)
   @IsNotEmpty()
   modal: ServiceModal;
@@ -40,4 +46,3 @@ export class CreateServiceDto {
   @IsBoolean()
   hasLcl?: boolean;
 }
-

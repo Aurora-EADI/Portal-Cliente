@@ -238,7 +238,11 @@ export class WarehouseGeneralTransshipmentsService {
     return result.updatedTransshipment;
   }
 
-  async update(id: string, dto: UpdateTransshipmentDto, performedByUserId: string) {
+  async update(
+    id: string,
+    dto: UpdateTransshipmentDto,
+    performedByUserId: string,
+  ) {
     const warehouseId = await this.context.getWarehouseId();
 
     const existing = await this.prisma.warehouseTransshipment.findUnique({
@@ -249,7 +253,9 @@ export class WarehouseGeneralTransshipmentsService {
     }
 
     if (existing.status !== TransshipmentStatus.PENDING) {
-      throw new ConflictException("Apenas transbordos pendentes podem ser editados.");
+      throw new ConflictException(
+        "Apenas transbordos pendentes podem ser editados.",
+      );
     }
 
     const updated = await this.prisma.warehouseTransshipment.update({
@@ -257,12 +263,24 @@ export class WarehouseGeneralTransshipmentsService {
       data: {
         newSeal: dto.newSeal !== undefined ? dto.newSeal : undefined,
         reason: dto.reason !== undefined ? dto.reason : undefined,
-        destinationContainerId: dto.destinationContainerId !== undefined ? dto.destinationContainerId : undefined,
-        destinationContainerNumber: dto.destinationContainerNumber !== undefined ? dto.destinationContainerNumber : undefined,
-        responsibleName: dto.responsibleName !== undefined ? dto.responsibleName : undefined,
-        responsibleMatricula: dto.responsibleMatricula !== undefined ? dto.responsibleMatricula : undefined,
-        responsibleCpf: dto.responsibleCpf !== undefined ? dto.responsibleCpf : undefined,
-        observations: dto.observations !== undefined ? dto.observations : undefined,
+        destinationContainerId:
+          dto.destinationContainerId !== undefined
+            ? dto.destinationContainerId
+            : undefined,
+        destinationContainerNumber:
+          dto.destinationContainerNumber !== undefined
+            ? dto.destinationContainerNumber
+            : undefined,
+        responsibleName:
+          dto.responsibleName !== undefined ? dto.responsibleName : undefined,
+        responsibleMatricula:
+          dto.responsibleMatricula !== undefined
+            ? dto.responsibleMatricula
+            : undefined,
+        responsibleCpf:
+          dto.responsibleCpf !== undefined ? dto.responsibleCpf : undefined,
+        observations:
+          dto.observations !== undefined ? dto.observations : undefined,
       },
     });
 
@@ -295,7 +313,9 @@ export class WarehouseGeneralTransshipmentsService {
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          container: { select: { id: true, containerNumber: true, status: true } },
+          container: {
+            select: { id: true, containerNumber: true, status: true },
+          },
           cargo: { select: { id: true, description: true } },
         },
       }),
@@ -322,7 +342,9 @@ export class WarehouseGeneralTransshipmentsService {
     const item = await this.prisma.warehouseTransshipment.findUnique({
       where: { id },
       include: {
-        container: { select: { id: true, containerNumber: true, status: true } },
+        container: {
+          select: { id: true, containerNumber: true, status: true },
+        },
         cargo: { select: { id: true, description: true } },
       },
     });

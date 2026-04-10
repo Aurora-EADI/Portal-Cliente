@@ -157,7 +157,8 @@ export class UsersService {
 
     // Calculate pagination metadata
     const effectiveLimit = limit || total;
-    const totalPages = effectiveLimit > 0 ? Math.ceil(total / effectiveLimit) : 1;
+    const totalPages =
+      effectiveLimit > 0 ? Math.ceil(total / effectiveLimit) : 1;
     const hasNext = limit ? page < totalPages : false;
     const hasPrev = limit ? page > 1 : false;
 
@@ -488,4 +489,3 @@ export class UsersService {
     };
   }
 }
-

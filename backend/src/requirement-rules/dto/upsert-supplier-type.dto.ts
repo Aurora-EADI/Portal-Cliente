@@ -13,4 +13,3 @@ export class UpsertSupplierTypeDto {
   @IsBoolean()
   active?: boolean;
 }
-

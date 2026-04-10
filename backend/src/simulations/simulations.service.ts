@@ -202,7 +202,8 @@ export class SimulationsService {
           discount: new Prisma.Decimal(createNewVersionDto.discount || 0),
           hasStripping: createNewVersionDto.hasStripping || false,
           hasLcl: createNewVersionDto.hasLcl || false,
-          auroraPeriods: createNewVersionDto.auroraPeriods ?? baseVersion.auroraPeriods,
+          auroraPeriods:
+            createNewVersionDto.auroraPeriods ?? baseVersion.auroraPeriods,
           minBillingValue: new Prisma.Decimal(
             createNewVersionDto.minBillingValue || 5500,
           ),
@@ -360,12 +361,13 @@ export class SimulationsService {
           },
         })) || [],
       // Include version history list
-      versions: simulation.versions?.map((v: any) => ({
-        id: v.id,
-        version: v.version,
-        isCurrentVersion: v.isCurrentVersion,
-        createdAt: v.createdAt,
-      })) || [],
+      versions:
+        simulation.versions?.map((v: any) => ({
+          id: v.id,
+          version: v.version,
+          isCurrentVersion: v.isCurrentVersion,
+          createdAt: v.createdAt,
+        })) || [],
     };
   }
 
@@ -429,7 +431,7 @@ export class SimulationsService {
       if (updateSimulationDto.status === SimulationStatus.APPROVED) {
         if (!version.isCurrentVersion) {
           throw new BadRequestException(
-            'Apenas a versão mais atual pode ser aprovada.',
+            "Apenas a versão mais atual pode ser aprovada.",
           );
         }
       }
@@ -660,13 +662,13 @@ export class SimulationsService {
     );
 
     const eligibleServicesTotal = effectiveServices.reduce((sum, s) => {
-      const name = s.serviceName || '';
+      const name = s.serviceName || "";
       const normalized = name
         .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
       const isExcluded =
-        normalized.includes('transporte') && normalized.includes('dta');
+        normalized.includes("transporte") && normalized.includes("dta");
 
       return isExcluded ? sum : sum + Number(s.appliedCost);
     }, 0);
@@ -729,4 +731,3 @@ export class SimulationsService {
     await this.recalculateTotals(versionId);
   }
 }
-

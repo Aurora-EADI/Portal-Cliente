@@ -11,7 +11,8 @@ export class MinioService implements OnModuleInit {
   // Public client used only to generate presigned URLs with browser-reachable host.
   private publicMinioClient!: Minio.Client;
 
-  private readonly bucketName: string = process.env.MINIO_BUCKET_NAME || "documents";
+  private readonly bucketName: string =
+    process.env.MINIO_BUCKET_NAME || "documents";
 
   constructor() {}
 

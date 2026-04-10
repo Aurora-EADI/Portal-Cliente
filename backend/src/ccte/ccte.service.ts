@@ -2,22 +2,22 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaPostgresService } from '../prisma/prisma.service';
-import { CreateFlightDto } from './dto/create-flight.dto';
-import { UpdateFlightDto } from './dto/update-flight.dto';
-import { CreateCargoItemsDto } from './dto/create-cargo-items.dto';
-import { UpdateCargoItemDto } from './dto/update-cargo-item.dto';
-import { RevertFlightDto } from './dto/revert-flight.dto';
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../prisma/prisma.service";
+import { CreateFlightDto } from "./dto/create-flight.dto";
+import { UpdateFlightDto } from "./dto/update-flight.dto";
+import { CreateCargoItemsDto } from "./dto/create-cargo-items.dto";
+import { UpdateCargoItemDto } from "./dto/update-cargo-item.dto";
+import { RevertFlightDto } from "./dto/revert-flight.dto";
 import {
   FlightStatus,
   CargoItemStatus,
   FlightHistoryType,
-} from '@prisma/client';
+} from "@prisma/client";
 
 @Injectable()
 export class CcteService {
-  constructor(private readonly prisma: PrismaPostgresService) { }
+  constructor(private readonly prisma: PrismaPostgresService) {}
 
   // ========== FLIGHTS ==========
 
@@ -31,21 +31,21 @@ export class CcteService {
     if (search) {
       const term = search.toUpperCase();
       where.OR = [
-        { flightCode: { contains: term, mode: 'insensitive' } },
-        { aircraftName: { contains: term, mode: 'insensitive' } },
+        { flightCode: { contains: term, mode: "insensitive" } },
+        { aircraftName: { contains: term, mode: "insensitive" } },
         {
           cargoItems: {
             some: {
               OR: [
-                { house: { contains: term, mode: 'insensitive' } },
-                { importer: { contains: term, mode: 'insensitive' } },
-                { dta: { contains: term, mode: 'insensitive' } },
-                { responsible: { contains: term, mode: 'insensitive' } },
+                { house: { contains: term, mode: "insensitive" } },
+                { importer: { contains: term, mode: "insensitive" } },
+                { dta: { contains: term, mode: "insensitive" } },
+                { responsible: { contains: term, mode: "insensitive" } },
               ],
             },
           },
         },
-        { termoEntrada: { contains: term, mode: 'insensitive' } },
+        { termoEntrada: { contains: term, mode: "insensitive" } },
       ];
     }
 
@@ -55,12 +55,14 @@ export class CcteService {
         _count: { select: { cargoItems: true } },
         cargoItems: { select: { dta: true } },
       },
-      orderBy: { arrivalDate: 'desc' },
+      orderBy: { arrivalDate: "desc" },
     });
 
     return flights.map(({ cargoItems, ...flight }) => ({
       ...flight,
-      dtaFilledCount: cargoItems.filter((item) => item.dta && item.dta.trim() !== '').length,
+      dtaFilledCount: cargoItems.filter(
+        (item) => item.dta && item.dta.trim() !== "",
+      ).length,
     }));
   }
 
@@ -68,13 +70,13 @@ export class CcteService {
     const flight = await this.prisma.flight.findUnique({
       where: { id },
       include: {
-        cargoItems: { orderBy: { house: 'asc' } },
-        history: { orderBy: { createdAt: 'desc' } },
+        cargoItems: { orderBy: { house: "asc" } },
+        history: { orderBy: { createdAt: "desc" } },
       },
     });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     return flight;
@@ -84,7 +86,7 @@ export class CcteService {
     return this.prisma.flight.create({
       data: {
         aircraftName: dto.aircraftName,
-        arrivalDate: new Date(dto.arrivalDate + 'T00:00:00'),
+        arrivalDate: new Date(dto.arrivalDate + "T00:00:00"),
         arrivalTime: dto.arrivalTime,
         flightCode: dto.flightCode,
         termoEntrada: dto.termoEntrada,
@@ -97,12 +99,12 @@ export class CcteService {
     const flight = await this.prisma.flight.findUnique({ where: { id } });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     if (flight.status === FlightStatus.SENT) {
       throw new BadRequestException(
-        'Nao e possivel editar um voo com status ENVIADO',
+        "Nao e possivel editar um voo com status ENVIADO",
       );
     }
 
@@ -110,29 +112,32 @@ export class CcteService {
     const updateData: any = {};
 
     if (dto.aircraftName && dto.aircraftName !== flight.aircraftName) {
-      changedFields.push('Nome do Aviao');
+      changedFields.push("Nome do Aviao");
       updateData.aircraftName = dto.aircraftName;
     }
     if (dto.flightCode && dto.flightCode !== flight.flightCode) {
-      changedFields.push('Codigo do Voo');
+      changedFields.push("Codigo do Voo");
       updateData.flightCode = dto.flightCode;
     }
     if (dto.arrivalDate) {
-      const newDate = new Date(dto.arrivalDate + 'T00:00:00');
+      const newDate = new Date(dto.arrivalDate + "T00:00:00");
       if (newDate.getTime() !== flight.arrivalDate.getTime()) {
-        changedFields.push('Data de Chegada');
+        changedFields.push("Data de Chegada");
         updateData.arrivalDate = newDate;
       }
     }
-    if (dto.termoEntrada !== undefined && dto.termoEntrada !== flight.termoEntrada) {
-      changedFields.push('Termo de Entrada');
+    if (
+      dto.termoEntrada !== undefined &&
+      dto.termoEntrada !== flight.termoEntrada
+    ) {
+      changedFields.push("Termo de Entrada");
       updateData.termoEntrada = dto.termoEntrada;
     }
 
     const changes =
       changedFields.length > 0
-        ? `Campos alterados: ${changedFields.join(', ')}`
-        : 'Nenhum campo alterado';
+        ? `Campos alterados: ${changedFields.join(", ")}`
+        : "Nenhum campo alterado";
 
     return this.prisma.$transaction(async (tx) => {
       await tx.flightHistory.create({
@@ -148,8 +153,8 @@ export class CcteService {
         where: { id },
         data: updateData,
         include: {
-          cargoItems: { orderBy: { house: 'asc' } },
-          history: { orderBy: { createdAt: 'desc' } },
+          cargoItems: { orderBy: { house: "asc" } },
+          history: { orderBy: { createdAt: "desc" } },
         },
       });
     });
@@ -159,12 +164,12 @@ export class CcteService {
     const flight = await this.prisma.flight.findUnique({ where: { id } });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     await this.prisma.flight.delete({ where: { id } });
 
-    return { message: 'Voo excluido com sucesso' };
+    return { message: "Voo excluido com sucesso" };
   }
 
   async markFlightSent(id: string) {
@@ -174,21 +179,21 @@ export class CcteService {
     });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     if (flight.status === FlightStatus.SENT) {
-      throw new BadRequestException('Este voo ja esta marcado como ENVIADO');
+      throw new BadRequestException("Este voo ja esta marcado como ENVIADO");
     }
 
     if (flight.cargoItems.length === 0) {
       throw new BadRequestException(
-        'O voo deve ter pelo menos 1 carga para ser marcado como enviado',
+        "O voo deve ter pelo menos 1 carga para ser marcado como enviado",
       );
     }
 
     const itemsWithoutDta = flight.cargoItems.filter(
-      (item) => !item.dta || item.dta.trim() === '',
+      (item) => !item.dta || item.dta.trim() === "",
     );
 
     if (itemsWithoutDta.length > 0) {
@@ -210,8 +215,8 @@ export class CcteService {
         where: { id },
         data: { status: FlightStatus.SENT },
         include: {
-          cargoItems: { orderBy: { house: 'asc' } },
-          history: { orderBy: { createdAt: 'desc' } },
+          cargoItems: { orderBy: { house: "asc" } },
+          history: { orderBy: { createdAt: "desc" } },
         },
       });
     });
@@ -224,12 +229,12 @@ export class CcteService {
     });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     if (flight.status !== FlightStatus.SENT) {
       throw new BadRequestException(
-        'Apenas voos com status ENVIADO podem ser revertidos',
+        "Apenas voos com status ENVIADO podem ser revertidos",
       );
     }
 
@@ -238,14 +243,14 @@ export class CcteService {
         data: {
           flightId: id,
           type: FlightHistoryType.REVERT,
-          changes: 'Voo revertido de ENVIADO para PENDENTE',
+          changes: "Voo revertido de ENVIADO para PENDENTE",
           reason: dto.reason,
         },
       });
 
       for (const item of flight.cargoItems) {
         const newStatus =
-          item.dta && item.dta.trim() !== ''
+          item.dta && item.dta.trim() !== ""
             ? CargoItemStatus.DTA_REGISTRADA
             : CargoItemStatus.EM_ANALISE;
 
@@ -259,8 +264,8 @@ export class CcteService {
         where: { id },
         data: { status: FlightStatus.PENDING },
         include: {
-          cargoItems: { orderBy: { house: 'asc' } },
-          history: { orderBy: { createdAt: 'desc' } },
+          cargoItems: { orderBy: { house: "asc" } },
+          history: { orderBy: { createdAt: "desc" } },
         },
       });
     });
@@ -270,12 +275,12 @@ export class CcteService {
     const flight = await this.prisma.flight.findUnique({ where: { id } });
 
     if (!flight) {
-      throw new NotFoundException('Voo nao encontrado');
+      throw new NotFoundException("Voo nao encontrado");
     }
 
     return this.prisma.flightHistory.findMany({
       where: { flightId: id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -283,15 +288,18 @@ export class CcteService {
 
   async createCargoItems(flightId: string, dto: CreateCargoItemsDto) {
     const items = dto.items.map((item) => {
-      if (item.tc === 'A' && (!item.observations || item.observations.trim() === '')) {
+      if (
+        item.tc === "A" &&
+        (!item.observations || item.observations.trim() === "")
+      ) {
         throw new BadRequestException(
           `Observacoes sao obrigatorias quando o TC nao e P (Patio). Item House: ${item.house}`,
         );
       }
 
-      const dtaValue = item.dta?.trim() || '';
+      const dtaValue = item.dta?.trim() || "";
       const status =
-        dtaValue !== ''
+        dtaValue !== ""
           ? CargoItemStatus.DTA_REGISTRADA
           : CargoItemStatus.EM_ANALISE;
 
@@ -301,10 +309,11 @@ export class CcteService {
         importer: item.importer,
         dta: dtaValue,
         tc: item.tc,
-        warehouseReason: item.tc === 'A' ? item.warehouseReason ?? null : null,
+        warehouseReason:
+          item.tc === "A" ? (item.warehouseReason ?? null) : null,
         status,
-        responsible: item.responsible || '',
-        observations: item.observations || '',
+        responsible: item.responsible || "",
+        observations: item.observations || "",
         sent: false,
       };
     });
@@ -313,7 +322,7 @@ export class CcteService {
 
     return this.prisma.cargoItem.findMany({
       where: { flightId },
-      orderBy: { house: 'asc' },
+      orderBy: { house: "asc" },
     });
   }
 
@@ -324,30 +333,27 @@ export class CcteService {
     });
 
     if (!item) {
-      throw new NotFoundException('Carga nao encontrada');
+      throw new NotFoundException("Carga nao encontrada");
     }
 
     if (item.flight.status === FlightStatus.SENT) {
       throw new BadRequestException(
-        'Nao e possivel editar cargas de um voo ENVIADO',
+        "Nao e possivel editar cargas de um voo ENVIADO",
       );
     }
 
     if (item.sent && dto.sent !== false) {
       throw new BadRequestException(
-        'Nao e possivel editar uma carga ja enviada',
+        "Nao e possivel editar uma carga ja enviada",
       );
     }
 
     const effectiveTc = dto.tc ?? item.tc;
     const effectiveObs = dto.observations ?? item.observations;
 
-    if (
-      effectiveTc === 'A' &&
-      (!effectiveObs || effectiveObs.trim() === '')
-    ) {
+    if (effectiveTc === "A" && (!effectiveObs || effectiveObs.trim() === "")) {
       throw new BadRequestException(
-        'Observacoes sao obrigatorias quando o TC nao e P (Patio)',
+        "Observacoes sao obrigatorias quando o TC nao e P (Patio)",
       );
     }
 
@@ -356,8 +362,9 @@ export class CcteService {
     if (dto.house !== undefined) updateData.house = dto.house;
     if (dto.importer !== undefined) updateData.importer = dto.importer;
     if (dto.tc !== undefined) updateData.tc = dto.tc;
-    if (dto.warehouseReason !== undefined) updateData.warehouseReason = dto.warehouseReason;
-    if (dto.tc === 'P') updateData.warehouseReason = null;
+    if (dto.warehouseReason !== undefined)
+      updateData.warehouseReason = dto.warehouseReason;
+    if (dto.tc === "P") updateData.warehouseReason = null;
     if (dto.responsible !== undefined) updateData.responsible = dto.responsible;
     if (dto.observations !== undefined)
       updateData.observations = dto.observations;
@@ -366,7 +373,7 @@ export class CcteService {
     if (dto.dta !== undefined) {
       updateData.dta = dto.dta;
       const dtaTrimmed = dto.dta.trim();
-      if (dtaTrimmed !== '') {
+      if (dtaTrimmed !== "") {
         updateData.status = CargoItemStatus.DTA_REGISTRADA;
       } else {
         updateData.status = CargoItemStatus.EM_ANALISE;
@@ -390,18 +397,18 @@ export class CcteService {
     });
 
     if (!item) {
-      throw new NotFoundException('Carga nao encontrada');
+      throw new NotFoundException("Carga nao encontrada");
     }
 
     if (item.flight.status === FlightStatus.SENT) {
       throw new BadRequestException(
-        'Nao e possivel excluir cargas de um voo ENVIADO',
+        "Nao e possivel excluir cargas de um voo ENVIADO",
       );
     }
 
     await this.prisma.cargoItem.delete({ where: { id } });
 
-    return { message: 'Carga excluida com sucesso' };
+    return { message: "Carga excluida com sucesso" };
   }
 
   async sendCargoItem(id: string) {
@@ -411,23 +418,21 @@ export class CcteService {
     });
 
     if (!item) {
-      throw new NotFoundException('Carga nao encontrada');
+      throw new NotFoundException("Carga nao encontrada");
     }
 
     if (item.flight.status === FlightStatus.SENT) {
-      throw new BadRequestException(
-        'O voo ja esta marcado como ENVIADO',
-      );
+      throw new BadRequestException("O voo ja esta marcado como ENVIADO");
     }
 
-    if (!item.dta || item.dta.trim() === '') {
+    if (!item.dta || item.dta.trim() === "") {
       throw new BadRequestException(
-        'A carga deve ter DTA preenchido para ser enviada',
+        "A carga deve ter DTA preenchido para ser enviada",
       );
     }
 
     if (item.sent) {
-      throw new BadRequestException('Esta carga ja foi enviada');
+      throw new BadRequestException("Esta carga ja foi enviada");
     }
 
     return this.prisma.cargoItem.update({

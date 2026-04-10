@@ -69,7 +69,9 @@ export class AirCalculationService {
    */
   private calculatePercentageCif(rate: number, cifBrl?: number): number {
     if (rate < 0) {
-      throw new BadRequestException("Taxa percentual deve ser maior ou igual a zero");
+      throw new BadRequestException(
+        "Taxa percentual deve ser maior ou igual a zero",
+      );
     }
 
     if (cifBrl === undefined || cifBrl === null) {
@@ -124,12 +126,16 @@ export class AirCalculationService {
     volumeM3?: number,
   ): number {
     if (rate < 0) {
-      throw new BadRequestException("Taxa por tonelada/mÂ³ deve ser maior ou igual a zero");
+      throw new BadRequestException(
+        "Taxa por tonelada/mÂ³ deve ser maior ou igual a zero",
+      );
     }
 
     // O Peso continua sendo obrigatório
     if (weightKg === undefined || weightKg === null || weightKg <= 0) {
-      throw new BadRequestException("Peso em KG é obrigatório e deve ser maior que zero");
+      throw new BadRequestException(
+        "Peso em KG é obrigatório e deve ser maior que zero",
+      );
     }
 
     // TRATAMENTO PARA VOLUME OPCIONAL:
@@ -235,4 +241,3 @@ export class AirCalculationService {
     }
   }
 }
-

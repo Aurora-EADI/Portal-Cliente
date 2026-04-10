@@ -37,7 +37,6 @@ export class ContainersPropriosController {
     return this.containersPropriosService.generateNextCode();
   }
 
-
   // ─── Containers Próprios ────────────────────────────────────────────
   @Post()
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
@@ -61,7 +60,8 @@ export class ContainersPropriosController {
   ) {
     let ids: string[] | undefined = undefined;
     if (customerIds) {
-      ids = typeof customerIds === "string" ? customerIds.split(",") : customerIds;
+      ids =
+        typeof customerIds === "string" ? customerIds.split(",") : customerIds;
     }
 
     return this.containersPropriosService.findAll({

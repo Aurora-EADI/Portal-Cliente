@@ -12,13 +12,13 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
-import {
-  AllocationRegime,
-  CompanyClassification,
-} from "@prisma/client";
+import { AllocationRegime, CompanyClassification } from "@prisma/client";
 
 class WorkforceEmployeeInputDto {
-  @ApiProperty({ description: "Nome completo do colaborador", example: "Joao Silva" })
+  @ApiProperty({
+    description: "Nome completo do colaborador",
+    example: "Joao Silva",
+  })
   @IsString()
   @IsNotEmpty({ message: "Nome completo e obrigatorio" })
   fullName: string;
@@ -49,7 +49,8 @@ export class RequestAccessCompanyDto {
   @Matches(
     /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
     {
-      message: "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)",
+      message:
+        "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)",
     },
   )
   cnpj: string;
@@ -195,4 +196,3 @@ export class RequestAccessDto {
   @IsNotEmpty({ message: "Dados do usuario sao obrigatorios" })
   user: RequestAccessUserDto;
 }
-

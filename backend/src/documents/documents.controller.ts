@@ -37,7 +37,7 @@ import { UserRole } from "@prisma/client";
 @Controller("documents")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) { }
+  constructor(private readonly documentsService: DocumentsService) {}
 
   @Post("upload")
   @ApiOperation({ summary: "Fazer upload de um documento" })
@@ -48,7 +48,8 @@ export class DocumentsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
-    @Request() req: { user: { id: string; role: UserRole; companyId?: string } },
+    @Request()
+    req: { user: { id: string; role: UserRole; companyId?: string } },
   ) {
     return this.documentsService.uploadDocument(file, dto, req.user);
   }
@@ -108,7 +109,10 @@ export class DocumentsController {
   ) {
     // Admin e Employee podem ver todos os documentos atrasados (geral)
     // Usuário comum só pode ver documentos da sua própria empresa
-    if (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.EMPLOYEE) {
+    if (
+      req.user.role !== UserRole.ADMIN &&
+      req.user.role !== UserRole.EMPLOYEE
+    ) {
       // Se não for admin, força o filtro pela empresa do usuário
       query.companyId = req.user.companyId;
     }
@@ -138,7 +142,8 @@ export class DocumentsController {
   async downloadFile(
     @Param("id") id: string,
     @Res() res: Response,
-    @Request() req: { user: { id: string; role: UserRole; companyId?: string } },
+    @Request()
+    req: { user: { id: string; role: UserRole; companyId?: string } },
   ) {
     // Obtém stream do arquivo via MinIO (acesso interno)
     const { stream, filename, contentType, size } =
@@ -153,4 +158,3 @@ export class DocumentsController {
     stream.pipe(res);
   }
 }
-

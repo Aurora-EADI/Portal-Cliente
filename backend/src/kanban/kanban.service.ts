@@ -1,29 +1,29 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { SqlServerService } from '../prisma/sqlserver.service';
-import { TypeContainer } from './type/Container.type';
+import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { SqlServerService } from "../prisma/sqlserver.service";
+import { TypeContainer } from "./type/Container.type";
 
 @Injectable()
 export class KanbanService {
-    constructor(private sqlServer: SqlServerService) { }
+  constructor(private sqlServer: SqlServerService) {}
 
-    private checkSqlServerConnection() {
-        if (!this.sqlServer.isConnected()) {
-            throw new HttpException(
-                'SQL Server (Siaum) not available. Kanban data is currently unavailable.',
-                HttpStatus.SERVICE_UNAVAILABLE,
-            );
-        }
+  private checkSqlServerConnection() {
+    if (!this.sqlServer.isConnected()) {
+      throw new HttpException(
+        "SQL Server (Siaum) not available. Kanban data is currently unavailable.",
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
+  }
 
-    async findAll(
-        dtInicio: Date = new Date('2025-12-11T00:00:00'),
-        dtFinal: Date = new Date(),
-        flagTipo = 0,
-        codTransp = 0,
-    ): Promise<TypeContainer[]> {
-        this.checkSqlServerConnection();
+  async findAll(
+    dtInicio: Date = new Date("2025-12-11T00:00:00"),
+    dtFinal: Date = new Date(),
+    flagTipo = 0,
+    codTransp = 0,
+  ): Promise<TypeContainer[]> {
+    this.checkSqlServerConnection();
 
-        const query = `
+    const query = `
 DECLARE 
     @dt_inicio  DATETIME = @param1,
     @dt_final   DATETIME = @param2,
@@ -148,11 +148,11 @@ ORDER BY
     b.entrada;
 `;
 
-        return this.sqlServer.query<TypeContainer>(query, [
-            dtInicio,
-            dtFinal,
-            flagTipo,
-            codTransp,
-        ]);
-    }
+    return this.sqlServer.query<TypeContainer>(query, [
+      dtInicio,
+      dtFinal,
+      flagTipo,
+      codTransp,
+    ]);
+  }
 }

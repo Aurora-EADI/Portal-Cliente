@@ -10,10 +10,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Transform, Type } from "class-transformer";
-import {
-  AllocationRegime,
-  CompanyClassification,
-} from "@prisma/client";
+import { AllocationRegime, CompanyClassification } from "@prisma/client";
 
 class WorkforceEmployeeInputDto {
   @IsString()
@@ -38,7 +35,10 @@ export class CreateCompanyDto {
   @IsNotEmpty({ message: "CNPJ nao pode ser vazio" })
   @Matches(
     /^([A-Z0-9]{2}\.?[A-Z0-9]{3}\.?[A-Z0-9]{3}\/?[0-9]{4}-?[0-9]{2}|[A-Z0-9]{12}[0-9]{2})$/i,
-    { message: "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)" },
+    {
+      message:
+        "CNPJ deve conter 14 caracteres alfanumericos (com ou sem formatacao)",
+    },
   )
   cnpj: string;
 
@@ -106,4 +106,3 @@ export class CreateCompanyDto {
   @Type(() => WorkforceEmployeeInputDto)
   workforceEmployees?: WorkforceEmployeeInputDto[];
 }
-

@@ -1,4 +1,16 @@
-import { IsArray, IsBoolean, IsDateString, IsInt, IsNumber, IsNumberString, IsOptional, IsString, IsUUID, Length, Min } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsInt,
+  IsNumber,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Min,
+} from "class-validator";
 
 export class CreateWarehouseCargoDto {
   @IsString()
