@@ -214,9 +214,9 @@ export function DocumentTypesManager({ scope = 'COMPANY' }: DocumentTypesManager
             setIsCreating(false);
             loadTypes();
             toast.success('Tipo de documento criado com sucesso!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao criar:', error);
-            toast.error('Erro ao criar tipo de documento.');
+            toast.error(error.message || 'Erro ao criar tipo de documento.');
         }
     };
 

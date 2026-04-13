@@ -1,4 +1,4 @@
-﻿import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException } from "@nestjs/common";
 import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
 
@@ -6,8 +6,17 @@ import { Prisma } from "@prisma/client";
 export class DocumentTypesService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: Prisma.DocumentTypeCreateInput) {
-    return this.prisma.documentType.create({ data });
+  async create(data: Prisma.DocumentTypeCreateInput) {
+    try {
+      return await this.prisma.documentType.create({ data });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new BadRequestException('Já existe um tipo de documento com este nome.');
+        }
+      }
+      throw error;
+    }
   }
 
   findAll() {
