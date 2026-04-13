@@ -46,7 +46,7 @@ export class DocumentTypesController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   remove(@Param("id") id: string) {
     return this.documentTypesService.remove(+id);
   }
