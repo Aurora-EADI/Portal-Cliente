@@ -108,7 +108,7 @@ model Document {
 
 model DocumentType {
   id                         Int                          @id @default(autoincrement())
-  name                       String                       @unique
+  name                       String
   description                String?
   active                     Boolean                      @default(true)
   createdAt                  DateTime                     @default(now())
