@@ -1,4 +1,4 @@
-import { Ship, Plane, History as HistoryIcon, Wrench, Calculator, KanbanSquare } from 'lucide-react';
+import { Ship, Plane, History as HistoryIcon, Wrench, Calculator, KanbanSquare, BarChart2 } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
@@ -10,7 +10,7 @@ export const comercialNavigation: NavigationContext = {
         {
             label: 'Kanban Cotações',
             icon: KanbanSquare,
-            path: '/simulacoes/propostas',
+            path: '/comercial/kanban',
         },
         {
             label: 'Cotações',
@@ -18,6 +18,11 @@ export const comercialNavigation: NavigationContext = {
             path: '/simulacoes',
             isGroup: true,
             children: [
+                {
+                    label: 'Dashboard',
+                    icon: BarChart2,
+                    path: '/comercial/dashboard',
+                },
                 {
                     label: 'Cotação Marítima',
                     icon: Ship,
@@ -28,12 +33,17 @@ export const comercialNavigation: NavigationContext = {
                     icon: Plane,
                     path: '/aereo/simulador',
                 },
+                {
+                    label: 'Lista de Cotações Marítimas',
+                    icon: HistoryIcon,
+                    path: '/comercial/history',
+                },
+                {
+                    label: 'Lista de Cotações Aéreas',
+                    icon: HistoryIcon,
+                    path: '/aereo/history',
+                },
             ],
-        },
-        {
-            label: 'Lista de Cotações Marítimas',
-            icon: HistoryIcon,
-            path: '/comercial/history',
         },
         {
             label: 'Serviços',

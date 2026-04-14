@@ -40,6 +40,8 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/dta/maritimo', label: 'Processos Marítimos', icon: 'Ship', parentPath: '/dta', isModuleRoot: false },
 
   // Comercial
+  { path: '/comercial/kanban', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/comercial/dashboard', label: 'Dashboard', icon: 'BarChart2', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/history', label: 'Lista de Cotações Marítimas', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
   { path: '/simulacoes/propostas', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },

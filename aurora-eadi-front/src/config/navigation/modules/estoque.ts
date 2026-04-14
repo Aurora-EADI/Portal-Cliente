@@ -1,4 +1,4 @@
-import { Package, LayoutDashboard, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, BarChart2 } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
@@ -8,28 +8,20 @@ export const estoqueNavigation: NavigationContext = {
     items: [
         HOME_ITEM,
         {
-            label: 'Estoque',
-            icon: Package,
+            label: 'Relatórios',
+            icon: BarChart2,
             path: '/estoque',
             isGroup: true,
             children: [
                 {
-                    label: 'Relatórios',
-                    icon: BarChart2,
-                    path: '/estoque',
-                    isGroup: true,
-                    children: [
-                        {
-                            label: 'Histórico Lote',
-                            icon: LayoutDashboard,
-                            path: '/estoque/historico-lote',
-                        },
-                        {
-                            label: 'Inventário Simplificado',
-                            icon: LayoutDashboard,
-                            path: '/estoque/inventario-simplificado',
-                        },
-                    ],
+                    label: 'Histórico Lote',
+                    icon: LayoutDashboard,
+                    path: '/estoque/historico-lote',
+                },
+                {
+                    label: 'Inventário Simplificado',
+                    icon: LayoutDashboard,
+                    path: '/estoque/inventario-simplificado',
                 },
             ],
         },

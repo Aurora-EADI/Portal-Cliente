@@ -5,6 +5,7 @@ import { HOME_ITEM } from '../shared';
 
 export const fornecedorNavigation: NavigationContext = {
     basePath: '/fornecedor',
+    staticOnly: true,
     items: [
         HOME_ITEM,
         {
