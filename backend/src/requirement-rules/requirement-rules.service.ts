@@ -330,6 +330,34 @@ export class RequirementRulesService {
     });
   }
 
+  private async getEffectiveWorkforceRequiredTypeIds(companyId?: string) {
+    const globalRequirements =
+      await this.prisma.globalWorkforceDocumentRequirement.findMany({
+        where: { active: true, isRequired: true },
+        select: { documentTypeId: true },
+      });
+
+    if (!companyId) {
+      return globalRequirements.map((item) => item.documentTypeId);
+    }
+
+    const companyRequirements = await this.prisma.workforceDocumentRequirement.findMany({
+      where: {
+        companyId,
+        active: true,
+        isRequired: true,
+      },
+      select: { documentTypeId: true },
+    });
+
+    return Array.from(
+      new Set([
+        ...globalRequirements.map((item) => item.documentTypeId),
+        ...companyRequirements.map((item) => item.documentTypeId),
+      ]),
+    );
+  }
+
   async listWorkforce(query: WorkforceQueryDto, scopeCompanyId?: string) {
     const {
       page = 1,
@@ -344,42 +372,73 @@ export class RequirementRulesService {
     const skip = (page - 1) * limit;
     const cleanSearch = search?.replace(/\D/g, "");
 
-    const where: Prisma.CompanyEmployeeWhereInput = {
+    const effectiveCompanyId = scopeCompanyId ?? companyId;
+    const requiredTypeIds = await this.getEffectiveWorkforceRequiredTypeIds(
+      effectiveCompanyId,
+    );
+
+    const pendingOrRejectedCondition = {
+      documents: {
+        some: {
+          isLatest: true,
+          status: { in: ["PENDING", "REJECTED"] as any[] },
+        },
+      },
+    };
+
+    const missingConditions = requiredTypeIds.map((id) => ({
+      documents: {
+        none: {
+          documentTypeId: id,
+          isLatest: true,
+          status: "APPROVED" as any,
+        },
+      },
+    }));
+
+    const hasPendingFilterConditions = [
+      pendingOrRejectedCondition,
+      ...missingConditions,
+    ];
+
+    const baseWhere: Prisma.CompanyEmployeeWhereInput = {
       ...(status ? { status } : {}),
       ...(scopeCompanyId
         ? { companyId: scopeCompanyId }
         : companyId
           ? { companyId }
           : {}),
-      ...(query.onlyPending
-        ? {
-            documents: {
-              some: {
-                status: "PENDING",
-                isLatest: true,
-              },
+    };
+
+    const andConditions: Prisma.CompanyEmployeeWhereInput[] = [];
+
+    if (query.onlyPending) {
+      andConditions.push({ OR: hasPendingFilterConditions });
+    }
+
+    if (search) {
+      andConditions.push({
+        OR: [
+          { fullName: { contains: search, mode: "insensitive" } },
+          { position: { contains: search, mode: "insensitive" } },
+          {
+            company: {
+              OR: [
+                { fantasyName: { contains: search, mode: "insensitive" } },
+                { socialReason: { contains: search, mode: "insensitive" } },
+              ],
             },
-          }
-        : {}),
-      ...(search
-        ? {
-            OR: [
-              { fullName: { contains: search, mode: "insensitive" } },
-              { position: { contains: search, mode: "insensitive" } },
-              {
-                company: {
-                  OR: [
-                    { fantasyName: { contains: search, mode: "insensitive" } },
-                    { socialReason: { contains: search, mode: "insensitive" } },
-                  ],
-                },
-              },
-              ...(cleanSearch
-                ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
-                : []),
-            ],
-          }
-        : {}),
+          },
+          ...(cleanSearch
+            ? [{ cpf: { contains: cleanSearch } as Prisma.StringFilter }]
+            : []),
+        ],
+      });
+    }
+
+    const where: Prisma.CompanyEmployeeWhereInput = {
+      ...baseWhere,
+      ...(andConditions.length > 0 ? { AND: andConditions } : {}),
     };
 
     const orderBy = this.buildWorkforceOrderBy(sortBy, sortOrder);
@@ -397,10 +456,12 @@ export class RequirementRulesService {
           },
           documents: {
             where: {
-              status: "PENDING",
               isLatest: true,
             },
-            take: 1,
+            select: {
+              documentTypeId: true,
+              status: true,
+            },
           },
         },
         orderBy,
@@ -411,42 +472,24 @@ export class RequirementRulesService {
       // Extra queries for status counts
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId
-            ? { companyId: scopeCompanyId }
-            : companyId
-              ? { companyId }
-              : {}),
+          ...baseWhere,
           status: "ACTIVE",
         },
       }),
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId
-            ? { companyId: scopeCompanyId }
-            : companyId
-              ? { companyId }
-              : {}),
+          ...baseWhere,
           status: "INACTIVE",
         },
       }),
       this.prisma.companyEmployee.count({
         where: {
-          ...(scopeCompanyId
-            ? { companyId: scopeCompanyId }
-            : companyId
-              ? { companyId }
-              : {}),
-          documents: { some: { status: "PENDING", isLatest: true } },
+          ...baseWhere,
+          ...(hasPendingFilterConditions.length > 0 ? { OR: hasPendingFilterConditions } : {}),
         },
       }),
       this.prisma.companyEmployee.count({
-        where: {
-          ...(scopeCompanyId
-            ? { companyId: scopeCompanyId }
-            : companyId
-              ? { companyId }
-              : {}),
-        },
+        where: baseWhere,
       }),
     ]);
 
@@ -462,16 +505,25 @@ export class RequirementRulesService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: (employees as any[]).map((employee) => ({
-        id: employee.id,
-        fullName: employee.fullName,
-        cpf: employee.cpf,
-        position: employee.position,
-        hiredAt: employee.hiredAt,
-        status: employee.status,
-        company: employee.company,
-        hasPendingDocuments: employee.documents?.length > 0,
-      })),
+      data: (employees as any[]).map((employee) => {
+        const hasPendingOrRejected = employee.documents?.some(
+          (d: any) => d.status === "PENDING" || d.status === "REJECTED"
+        );
+        const hasMissing = requiredTypeIds.some(
+          (reqId) => !employee.documents?.some((d: any) => d.documentTypeId === reqId && d.status === "APPROVED")
+        );
+
+        return {
+          id: employee.id,
+          fullName: employee.fullName,
+          cpf: employee.cpf,
+          position: employee.position,
+          hiredAt: employee.hiredAt,
+          status: employee.status,
+          company: employee.company,
+          hasPendingDocuments: hasPendingOrRejected || hasMissing,
+        };
+      }),
       pagination: {
         page,
         limit,

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Download, Loader2, UploadCloud, X } from 'lucide-react';
+import { Download, Loader2, X, CheckCircle, AlertCircle } from 'lucide-react';
+
 import { useQuery } from '@tanstack/react-query';
 import { useAuthContext } from '@/context/AuthContext';
 import { useUpdateWorkforceEmployee, useUpdateWorkforceStatus, useWorkforceDetails } from '@/hooks/useWorkforce';
@@ -7,6 +8,7 @@ import { useUploadWorkforceDocument, useWorkforceDocuments, useWorkforceMissingD
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ActionButton } from '@/components/ui/ActionButton';
+import { DocumentsPanel } from '@/components/pages/documentos/shared/DocumentsPanel';
 import { RejectionReasonModal } from '@/components/pages/documentos/modals/RejectionReasonModal';
 import { DocumentStatus, EmployeeStatus, UserRole } from '@/types';
 import { formatCNPJ, formatCPF, formatDateBR } from '@/lib/utils';
@@ -112,7 +114,8 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
 
   const { mutateAsync: updateDocumentStatus, isPending: isUpdatingStatus } = useUpdateWorkforceDocumentStatus();
 
-  const [activeTab, setActiveTab] = useState<'info' | 'documents'>('info');
+  const isSupplier = currentUser?.role === UserRole.SUPPLIER;
+  const [activeTab, setActiveTab] = useState<'info' | 'documents'>(isSupplier ? 'documents' : 'info');
   const [isEditingData, setIsEditingData] = useState(false);
   const [editFullName, setEditFullName] = useState('');
   const [editCpf, setEditCpf] = useState('');
@@ -123,6 +126,7 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
   const [dateIssue, setDateIssue] = useState('');
   const [dateExpiration, setDateExpiration] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [approvingDoc, setApprovingDoc] = useState<any | null>(null);
   const [rejectingDoc, setRejectingDoc] = useState<any | null>(null);
   const canUploadDocuments = currentUser?.role === UserRole.SUPPLIER;
@@ -137,12 +141,27 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
       })),
     [workforceDocumentTypes],
   );
+
   const selectedPeriodicity: DocumentPeriodicity = useMemo(
     () =>
       documentTypeOptions.find((item) => item.id === Number(selectedTypeId))?.periodicity ||
       'Sem periodicidade',
     [documentTypeOptions, selectedTypeId],
   );
+
+  const pendingRequirements = useMemo(() => {
+    if (!workforceDocumentTypes.length) return [];
+    
+    return workforceDocumentTypes
+      .filter(type => {
+        const hasValidDoc = documents.some(
+          d => d.documentTypeId === type.id && d.status !== DocumentStatus.REJECTED
+        );
+        return !hasValidDoc;
+      })
+      .slice(0, 6);
+  }, [workforceDocumentTypes, documents]);
+
   const requiresExpiration = selectedPeriodicity !== 'Sem periodicidade';
 
   const toggleStatus = async () => {
@@ -180,6 +199,7 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
     setDateIssue('');
     setDateExpiration('');
     setFile(null);
+    setFileInputKey((current) => current + 1);
   };
 
   const handleSelectMissing = (item: { documentTypeId: number; documentType: { name: string } }) => {
@@ -463,219 +483,115 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
                 </div>
               </>
             ) : (
-              <div className="space-y-5">
-                {canUploadDocuments && missing.length > 0 && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-orange-800 mb-2">Documentos pendentes</p>
-                    <div className="flex flex-wrap gap-2">
-                      {missing.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleSelectMissing(item)}
-                          className="px-3 py-1.5 rounded-md border border-orange-300 bg-white text-orange-800 text-xs font-medium hover:bg-orange-100"
-                        >
-                          {item.documentType.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {canUploadDocuments && (
-                  <form onSubmit={handleUpload} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <UploadCloud className="text-primary-600" size={20} />
-                      Novo Envio
-                    </h2>
-
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div className="md:col-span-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
-                          <select
-                            value={selectedTypeId}
-                            onChange={(event) => {
-                              const id = event.target.value;
-                              setSelectedTypeId(id);
-                              if (id) {
-                                const selected = documentTypeOptions.find((item) => item.id === Number(id));
-                                if (selected) setDocName(selected.name);
-                              } else {
-                                setDateExpiration('');
-                              }
-                            }}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none bg-white"
-                            disabled={isUploading}
-                          >
-                            <option value="">Outro / Nao listado</option>
-                            {documentTypeOptions.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="md:col-span-8">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Documento</label>
-                          <input
-                            type="text"
-                            value={docName}
-                            onChange={(event) => setDocName(event.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                            required
-                            disabled={isUploading}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Data Emissao</label>
-                          <input
-                            type="date"
-                            value={dateIssue}
-                            onChange={(event) => setDateIssue(event.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                            disabled={isUploading}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Data Validade</label>
-                          <input
-                            type="date"
-                            value={dateExpiration}
-                            required={requiresExpiration}
-                            readOnly
-                            disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            {requiresExpiration
-                              ? `Validade calculada automaticamente (${selectedPeriodicity.toLowerCase()}).`
-                              : 'Sem periodicidade: validade nao se aplica.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                        <div className="md:col-span-10">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Arquivo (PDF, JPG, PNG)</label>
-                          <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(event) => setFile(event.target.files?.[0] || null)}
-                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-                            required
-                            disabled={isUploading}
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <button
-                            type="submit"
-                            disabled={isUploading || !file}
-                            className="w-full py-2 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-200/50 flex items-center justify-center"
-                          >
-                            {isUploading ? <Loader2 className="animate-spin" size={18} /> : 'Enviar'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-                )}
-
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Documento</th>
-                        <th className="px-3 py-2 text-left">Envio</th>
-                        <th className="px-3 py-2 text-left">Validade</th>
-                        <th className="px-3 py-2 text-left">Prazo</th>
-                        <th className="px-3 py-2 text-right">Acoes</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {isLoadingDocuments ? (
-                        <tr>
-                          <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
-                            <Loader2 className="animate-spin mx-auto" />
-                          </td>
-                        </tr>
-                      ) : documents.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
-                            Nenhum documento enviado para este colaborador.
-                          </td>
-                        </tr>
-                      ) : (
-                        documents.map((doc) => (
-                          <tr key={doc.id}>
-                            <td className="px-3 py-2">
-                              <p className="font-medium text-gray-900">{doc.name}</p>
-                              {doc.documentType?.name && (
-                                <p className="text-xs text-gray-500">{doc.documentType.name}</p>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-gray-600">{formatDateBR(doc.uploadedAt)}</td>
-                            <td className="px-3 py-2 text-gray-600">{formatDateBR(doc.dateExpiration)}</td>
-                            <td className="px-3 py-2">
-                              <div className="flex flex-col gap-1">
-                                {(() => {
-                                  const { variant, text } = getDocumentStatusInfo(doc.status, doc.dateExpiration);
-                                  return (
-                                    <Badge variant={variant}>
-                                      {text}
-                                    </Badge>
-                                  );
-                                })()}
-                                {doc.status === DocumentStatus.REJECTED && doc.rejectionReason && (
-                                  <p className="text-[10px] text-red-600 font-medium">{doc.rejectionReason}</p>
-                                )}
+              <DocumentsPanel
+                title="Meus Documentos"
+                description="Envie e acompanhe o status dos documentos do colaborador."
+                pendingItems={pendingRequirements.map((type) => ({
+                  id: String(type.id),
+                  name: type.name,
+                  onSelect: () => {
+                    setSelectedTypeId(String(type.id));
+                    setDocName(type.name);
+                  },
+                }))}
+                pendingDescription="Este colaborador possui documentos obrigatórios pendentes de envio. Regularize a situação para evitar bloqueios."
+                canUpload={canUploadDocuments}
+                documentTypes={documentTypeOptions}
+                selectedTypeId={selectedTypeId}
+                onSelectedTypeIdChange={(id) => {
+                  setSelectedTypeId(id);
+                  if (id) {
+                    const selected = documentTypeOptions.find((item) => item.id === Number(id));
+                    if (selected) setDocName(selected.name);
+                  } else {
+                    setDateExpiration('');
+                  }
+                }}
+                docName={docName}
+                onDocNameChange={setDocName}
+                dateIssue={dateIssue}
+                onDateIssueChange={setDateIssue}
+                dateExpiration={dateExpiration}
+                requiresExpiration={requiresExpiration}
+                expirationHint={
+                  requiresExpiration
+                    ? `Validade calculada automaticamente (${selectedPeriodicity.toLowerCase()}).`
+                    : undefined
+                }
+                file={file}
+                fileInputKey={fileInputKey}
+                onFileChange={setFile}
+                onSubmit={handleUpload}
+                isUploading={isUploading}
+                documents={documents}
+                isLoadingDocuments={isLoadingDocuments}
+                emptyMessage="Nenhum documento enviado para este colaborador."
+                getDocumentTitle={(doc) => doc.documentType?.name || doc.name}
+                getDocumentSubtitle={(doc) => (doc.documentType?.name ? doc.name : undefined)}
+                renderStatusContent={
+                  canModerate
+                    ? (doc) => (
+                        <div className="flex flex-col gap-1 items-start">
+                          {(() => {
+                            const { variant, text } = getDocumentStatusInfo(
+                              doc.status,
+                              doc.dateExpiration,
+                            );
+                            return <Badge variant={variant}>{text}</Badge>;
+                          })()}
+                          {doc.status === DocumentStatus.REJECTED && doc.rejectionReason && (
+                            <div className="group relative flex items-center gap-1 text-red-600 cursor-help mt-1">
+                              <AlertCircle size={14} />
+                              <span className="text-xs font-medium">Ver Motivo</span>
+                              <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-white rounded-lg shadow-xl border border-red-100 text-xs text-gray-700 hidden group-hover:block z-50">
+                                <strong>Motivo:</strong> {doc.rejectionReason}
                               </div>
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {canModerate && doc.status === DocumentStatus.PENDING && (
-                                  <>
-                                    <ActionButton
-                                      type="button"
-                                      onClick={() => setRejectingDoc(doc)}
-                                      disabled={isUpdatingStatus}
-                                      variant="danger"
-                                      size="sm"
-                                    >
-                                      Reprovar
-                                    </ActionButton>
-                                    <ActionButton
-                                      type="button"
-                                      onClick={() => setApprovingDoc(doc)}
-                                      disabled={isUpdatingStatus}
-                                      variant="success"
-                                      size="sm"
-                                    >
-                                      Aprovar
-                                    </ActionButton>
-                                  </>
-                                )}
-                                <ActionButton
-                                  type="button"
-                                  onClick={() => handleDownload(doc.id)}
-                                  variant="subtle"
-                                  size="sm"
-                                  icon={<Download size={14} />}
-                                >
-                                  Baixar
-                                </ActionButton>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    : undefined
+                }
+                renderHistoryActions={
+                  canModerate
+                    ? (doc) => (
+                        <div className="flex items-center justify-start gap-2">
+                          {doc.status === DocumentStatus.PENDING && (
+                            <>
+                              <ActionButton
+                                type="button"
+                                onClick={() => setRejectingDoc(doc)}
+                                disabled={isUpdatingStatus}
+                                variant="danger"
+                                size="sm"
+                              >
+                                Reprovar
+                              </ActionButton>
+                              <ActionButton
+                                type="button"
+                                onClick={() => setApprovingDoc(doc)}
+                                disabled={isUpdatingStatus}
+                                variant="success"
+                                size="sm"
+                              >
+                                Aprovar
+                              </ActionButton>
+                            </>
+                          )}
+                          <ActionButton
+                            type="button"
+                            onClick={() => handleDownload(doc.id)}
+                            variant="subtle"
+                            size="sm"
+                            icon={<Download size={14} />}
+                          >
+                            Baixar
+                          </ActionButton>
+                        </div>
+                      )
+                    : undefined
+                }
+              />
             )}
           </div>
         )}

@@ -71,7 +71,7 @@ export class UserModuleAccessService {
 
       // Mapeia atividades com status de acesso
       const activities = module.activities.map((activity) => {
-        const activityAccess = access?.activityAccess.find(
+        const activityAccess = access?.activityAccess?.find(
           (aa) => aa.activityId === activity.id,
         );
 
@@ -92,7 +92,9 @@ export class UserModuleAccessService {
           name: activity.name,
           isMandatory: activity.isMandatory,
           isActive: isEnabled ? isActive : false, // Se módulo desabilitado, todas atividades ficam inativas
-          permissions: activity.permissions.map((ap) => ap.permission.key),
+          permissions: activity.permissions
+            .map((ap) => ap.permission?.key)
+            .filter((key): key is string => !!key),
         };
       });
 

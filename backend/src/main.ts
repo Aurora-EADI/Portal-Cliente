@@ -40,7 +40,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api/docs", app, document);
 
-  const port = process.env.PORT || 3333;
+  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 3333);
 
   // IMPORTANTE: Ouvir em 0.0.0.0 para funcionar no Docker
   await app.listen(port, "0.0.0.0");

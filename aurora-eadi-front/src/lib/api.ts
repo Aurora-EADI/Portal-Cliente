@@ -3,10 +3,11 @@ import {
   refreshAccessTokenWithRetry,
   clearAllAuthData,
 } from '@/services/auth/token.service';
+import { backendApiUrl } from '@/lib/backendApi';
 
 // Instância principal do axios — withCredentials envia cookies automaticamente
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333/api',
+  baseURL: backendApiUrl,
   withCredentials: true, // browser envia cookies httpOnly em todas as requisições
   headers: {
     'Content-Type': 'application/json',

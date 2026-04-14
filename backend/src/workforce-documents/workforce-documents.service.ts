@@ -57,6 +57,37 @@ export class WorkforceDocumentsService {
     return employee;
   }
 
+  private async getEffectiveRequiredTypeIds(companyId: string) {
+    const [companyRequirements, globalRequirements] = await Promise.all([
+      this.prisma.workforceDocumentRequirement.findMany({
+        where: {
+          companyId,
+          active: true,
+          isRequired: true,
+        },
+        select: {
+          documentTypeId: true,
+        },
+      }),
+      this.prisma.globalWorkforceDocumentRequirement.findMany({
+        where: {
+          active: true,
+          isRequired: true,
+        },
+        select: {
+          documentTypeId: true,
+        },
+      }),
+    ]);
+
+    const mergedIds = new Set<number>([
+      ...globalRequirements.map((item) => item.documentTypeId),
+      ...companyRequirements.map((item) => item.documentTypeId),
+    ]);
+
+    return Array.from(mergedIds);
+  }
+
   async uploadDocument(
     file: Express.Multer.File,
     dto: UploadWorkforceDocumentDto,
@@ -214,18 +245,18 @@ export class WorkforceDocumentsService {
 
   async getMissingRequirements(employeeId: string, user: AuthUser) {
     const employee = await this.getEmployeeWithScope(employeeId, user);
+    const requiredTypeIds = await this.getEffectiveRequiredTypeIds(
+      employee.companyId,
+    );
 
     const [requirements, documents] = await Promise.all([
-      this.prisma.globalWorkforceDocumentRequirement.findMany({
+      this.prisma.documentType.findMany({
         where: {
+          id: { in: requiredTypeIds },
           active: true,
-          isRequired: true,
-        },
-        include: {
-          documentType: true,
         },
         orderBy: {
-          documentType: { name: "asc" },
+          name: "asc",
         },
       }),
       this.prisma.workforceDocument.findMany({
@@ -247,8 +278,15 @@ export class WorkforceDocumentsService {
         .filter((id): id is number => id !== null),
     );
 
-    return requirements.filter(
-      (req) => !existingTypeIds.has(req.documentTypeId),
-    );
+    return requirements
+      .filter((documentType) => !existingTypeIds.has(documentType.id))
+      .map((documentType) => ({
+        id: `${employee.companyId}:${documentType.id}`,
+        companyId: employee.companyId,
+        documentTypeId: documentType.id,
+        isRequired: true,
+        active: true,
+        documentType,
+      }));
   }
 }
