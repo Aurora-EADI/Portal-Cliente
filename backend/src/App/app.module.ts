@@ -30,6 +30,7 @@ import { CcteModule } from '../ccte/ccte.module';
 import { ConferenciaCargaModule } from '../conferencia-carga/conferencia-carga.module';
 import { ReceptionModule } from '../reception/reception.module';
 import { MobileModule } from '../mobile/mobile.module';
+import { VisitantesModule } from '../visitantes/visitantes.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { MobileModule } from '../mobile/mobile.module';
     ConferenciaCargaModule,
     ReceptionModule,
     MobileModule,
+    VisitantesModule,
   ],
 })
 export class AppModule { }

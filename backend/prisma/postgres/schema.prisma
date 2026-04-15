@@ -1323,3 +1323,38 @@ model WarehouseAuditLog {
   @@map("warehouse_audit_logs")
 }
 
+// ============================================================
+// AGENDA DE VISITANTES
+// ============================================================
+
+enum VisitanteStatus {
+  AGENDADO
+  PRESENTE
+  NAO_COMPARECEU
+}
+
+model PreRegistroVisitante {
+  id              String          @id @default(uuid())
+  nome            String
+  name            String?
+  cpf             String
+  rg              String?
+  telefone        String?
+  motivo          String?
+  horarioPrevisto String?
+  status          VisitanteStatus @default(AGENDADO)
+  endereco        String?
+  bairro          String?
+  numero          String?
+  cep             String?
+  cidade          String?
+  estado          String?
+  funcao          String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([horarioPrevisto])
+  @@map("pre_registro_visitantes")
+}
+

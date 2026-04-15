@@ -90,6 +90,10 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Dashboard
   { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
   { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
+
+  // Recepção
+  { path: '/recepcao/contatos', label: 'Lista de Ramais', icon: 'Users', parentPath: '/recepcao', isModuleRoot: false },
+  { path: '/recepcao/agenda', label: 'Agenda de Visitantes', icon: 'CalendarDays', parentPath: '/recepcao', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====
