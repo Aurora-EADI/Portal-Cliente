@@ -1,12 +1,12 @@
 "use client"
 
 import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell'
-import { ClienteSelectionPage } from '@/components/pages/clientes/ClienteSelectionPage'
+import { CustomerList } from '@/components/pages/clientes/listaClientes/CustomerList'
 
 export default function ClientePage() {
   return (
     <ModuleRouteShell>
-      <ClienteSelectionPage />
+      <CustomerList />
     </ModuleRouteShell>
   )
 }

@@ -1,13 +1,10 @@
 import {
   Package,
-  Home as HomeIcon,
   ArrowRightLeft,
   Truck,
   Box,
   ClipboardList,
   FileBarChart,
-  ShieldCheck,
-  Building2,
   UserCircle,
   LayoutGrid,
   ArrowDownUp,
@@ -22,6 +19,52 @@ export const armazemGeralNavigation: NavigationContext = {
   staticOnly: true,
   items: [
     HOME_ITEM,
+    {
+      label: 'Controle',
+      icon: ClipboardList,
+      path: '/armazem-geral/relatorios',
+      isGroup: true,
+      children: [
+        {
+          label: 'Conferentes',
+          icon: UserCircle,
+          path: '/armazem-geral/conferentes',
+        },
+        {
+          label: 'Pátio',
+          icon: LayoutGrid,
+          path: '/armazem-geral/patio',
+        },
+        {
+          label: 'Relatórios',
+          icon: ClipboardList,
+          path: '/armazem-geral/relatorios',
+          isGroup: true,
+          children: [
+            {
+              label: 'Entrada e Saída',
+              icon: ArrowDownUp,
+              path: '/armazem-geral/relatorios/movimentacao',
+            },
+            {
+              label: 'Posição de Pátio',
+              icon: LayoutGrid,
+              path: '/armazem-geral/relatorios/patio',
+            },
+            {
+              label: 'Visão Geral',
+              icon: BarChart3,
+              path: '/armazem-geral/relatorios/dashboard',
+            },
+          ]
+        },
+        {
+          label: 'Transportadoras',
+          icon: Truck,
+          path: '/armazem-geral/transportadoras',
+        },
+      ]
+    },
     {
       label: 'Dashboard',
       icon: FileBarChart,
@@ -63,57 +106,6 @@ export const armazemGeralNavigation: NavigationContext = {
         },
       ]
     },
-    {
-      label: 'Controle',
-      icon: ClipboardList,
-      path: '/armazem-geral/relatorios',
-      isGroup: true,
-      children: [
-        {
-          label: 'Auditoria',
-          icon: ShieldCheck,
-          path: '/armazem-geral/auditoria',
-        },
-        {
-          label: 'Conferentes',
-          icon: UserCircle,
-          path: '/armazem-geral/conferentes',
-        },
-        {
-          label: 'Pátio',
-          icon: LayoutGrid,
-          path: '/armazem-geral/patio',
-        },
-        {
-          label: 'Relatórios',
-          icon: ClipboardList,
-          path: '/armazem-geral/relatorios',
-          isGroup: true,
-          children: [
-            {
-              label: 'Visão Geral',
-              icon: BarChart3,
-              path: '/armazem-geral/relatorios/dashboard',
-            },
-            {
-              label: 'Entrada e Saída',
-              icon: ArrowDownUp,
-              path: '/armazem-geral/relatorios/movimentacao',
-            },
-            {
-              label: 'Posição de Pátio',
-              icon: LayoutGrid,
-              path: '/armazem-geral/relatorios/patio',
-            },
-          ]
-        },
-        {
-          label: 'Transportadoras',
-          icon: Truck,
-          path: '/armazem-geral/transportadoras',
-        },
-      ]
-    }
   ],
   allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

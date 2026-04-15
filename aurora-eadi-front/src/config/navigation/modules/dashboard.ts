@@ -5,6 +5,7 @@ import { HOME_ITEM } from '../shared';
 
 export const dashboardNavigation: NavigationContext = {
     basePath: '/dashboard',
+    staticOnly: true,
     items: [
         HOME_ITEM,
         {
@@ -14,12 +15,12 @@ export const dashboardNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
-                    label: 'Kanban Containers',
+                    label: 'Transito no Recinto',
                     icon: Kanban,
                     path: '/dashboard/kanban',
                 },
                 {
-                    label: 'Conferencia de Carga',
+                    label: 'Conferência de Carga',
                     icon: ClipboardList,
                     path: '/dashboard/conferencia-de-carga',
                 },

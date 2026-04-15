@@ -20,12 +20,12 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/documentos', label: 'Documentos', icon: 'FileText', isModuleRoot: true },
   { path: '/faturamento', label: 'Faturamento', icon: 'CreditCard', isModuleRoot: true },
   { path: '/fornecedor', label: 'Fornecedor', icon: 'Truck', isModuleRoot: true },
-  { path: '/permissoes', label: 'Permissões', icon: 'Shield', isModuleRoot: true },
+  { path: '/permissoes', label: 'Módulo de Configurador', icon: 'Shield', isModuleRoot: true },
   { path: '/comercial', label: 'Comercial', icon: 'ShoppingCart', isModuleRoot: true },
   { path: '/aereo', label: 'Aéreo', icon: 'Briefcase', isModuleRoot: true },
-  { path: '/servicos', label: 'Serviços', icon: 'Wrench', isModuleRoot: true },
+  { path: '/servicos', label: 'Gestão de Serviços', icon: 'Wrench', isModuleRoot: true },
   { path: '/simulacoes', label: 'Cotações', icon: 'BarChart3', isModuleRoot: true },
-  { path: '/cliente', label: 'Cliente', icon: 'Users', isModuleRoot: true },
+  { path: '/cliente', label: 'Gestão de Clientes', icon: 'Users', isModuleRoot: true },
   { path: '/dta', label: 'DTA', icon: 'Package', isModuleRoot: true },
   { path: '/estoque', label: 'Estoque', icon: 'Package', isModuleRoot: true },
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
@@ -41,9 +41,9 @@ export const SUB_ROUTES: RouteDefinition[] = [
 
   // Comercial
   { path: '/comercial/kanban', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/comercial', isModuleRoot: false },
-  { path: '/comercial/dashboard', label: 'Dashboard', icon: 'BarChart2', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/comercial/dashboard', label: 'Dashboard Cotações', icon: 'BarChart2', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
-  { path: '/comercial/history', label: 'Lista de Cotações Marítimas', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/comercial/history', label: 'Gestão de Cotação Marítima', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
   { path: '/simulacoes/propostas', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Faturamento
@@ -55,11 +55,11 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/estoque/inventario-simplificado', label: 'Inventário Simplificado', icon: 'LayoutDashboard', parentPath: '/estoque', isModuleRoot: false },
 
   // Fornecedor
-  { path: '/fornecedor/lista', label: 'Lista de Fornecedores', icon: 'List', parentPath: '/fornecedor', isModuleRoot: false },
+  { path: '/fornecedor/lista', label: 'Fornecedor', icon: 'List', parentPath: '/fornecedor', isModuleRoot: false },
 
   // Aéreo
   { path: '/aereo/simulador', label: 'Simulador Aéreo', icon: 'Plane', parentPath: '/aereo', isModuleRoot: false },
-  { path: '/aereo/history', label: 'Lista de Cotações Aéreas', icon: 'FileText', parentPath: '/aereo', isModuleRoot: false },
+  { path: '/aereo/history', label: 'Gestão de Cotação Aérea', icon: 'FileText', parentPath: '/aereo', isModuleRoot: false },
 
   // Serviços
   { path: '/servicos/lista', label: 'Lista de Serviços', icon: 'Wrench', parentPath: '/servicos', isModuleRoot: false },
@@ -69,18 +69,18 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/cliente/lista', label: 'Lista de Clientes', icon: 'Users', parentPath: '/cliente', isModuleRoot: false },
 
   // Documentos
-  { path: '/documentos/gestao', label: 'Gestão Documentos', icon: 'Shield', parentPath: '/documentos', isModuleRoot: false },
-  { path: '/documentos/empresa', label: 'Anexar Documentos', icon: 'Upload', parentPath: '/documentos', isModuleRoot: false },
-  { path: '/documentos/cadastrar', label: 'Documentos Exigidos', icon: 'FilePlus', parentPath: '/documentos', isModuleRoot: false },
-  { path: '/documentos/colaboradores', label: 'Colaboradores', icon: 'Users', parentPath: '/documentos', isModuleRoot: false },
-  { path: '/documentos/cadastrar-colaboradores', label: 'Docs Exigidos Colaboradores', icon: 'UserPlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/gestao', label: 'Documentos x Fornecedor', icon: 'Shield', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/empresa', label: 'Anexar documentos', icon: 'Upload', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar', label: 'Tipos de Documentos', icon: 'FilePlus', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/colaboradores', label: 'Gestão de Colaboradores', icon: 'Users', parentPath: '/documentos', isModuleRoot: false },
+  { path: '/documentos/cadastrar-colaboradores', label: 'Documentos x Colaborador', icon: 'UserPlus', parentPath: '/documentos', isModuleRoot: false },
 
   // Permissões
-  { path: '/permissoes/catalogo', label: 'Catálogo Técnico', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/atividades', label: 'Atividades e Vínculos', icon: 'Layers', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/usuario', label: 'Usuário', icon: 'Users', parentPath: '/permissoes', isModuleRoot: false },
+  { path: '/permissoes/catalogo', label: 'Gestão de Funcionalidade', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
+  { path: '/permissoes/atividades', label: 'Módulo x Funcionalidade', icon: 'Layers', parentPath: '/permissoes', isModuleRoot: false },
+  { path: '/permissoes/usuario', label: 'Gestão de Usuário', icon: 'Users', parentPath: '/permissoes', isModuleRoot: false },
   { path: '/permissoes/usuario-mobile', label: 'Usuário Mobile', icon: 'Smartphone', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/gestao', label: 'Gestão de Permissões', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
+  { path: '/permissoes/gestao', label: 'Gestão de Perfis', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
 
   // Simulações
   { path: '/simulacoes/dashboard', label: 'Dashboard de Cotações', icon: 'BarChart2', parentPath: '/simulacoes', isModuleRoot: false },
@@ -90,8 +90,22 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/simulacoes/historico-aereo', label: 'Histórico Aéreo', icon: 'FileSearch', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Dashboard
-  { path: '/dashboard/kanban', label: 'Kanban Containers', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
-  { path: '/dashboard/conferencia-de-carga', label: 'Conferencia de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
+  { path: '/dashboard/kanban', label: 'Transito no Recinto', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
+  { path: '/dashboard/conferencia-de-carga', label: 'Conferência de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
+
+  // Armazém Geral
+  { path: '/armazem-geral/dashboard', label: 'Dashboard', icon: 'FileBarChart', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/carga-geral', label: 'Carga Geral', icon: 'Box', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers', label: 'Containers', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers-ag', label: 'Containers AG', icon: 'Package', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/transbordos', label: 'Transbordos', icon: 'ArrowRightLeft', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/conferentes', label: 'Conferentes', icon: 'UserCircle', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/patio', label: 'Pátio', icon: 'LayoutGrid', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios', label: 'Relatórios', icon: 'ClipboardList', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/movimentacao', label: 'Entrada e Saída', icon: 'ArrowDownUp', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/patio', label: 'Posição de Pátio', icon: 'LayoutGrid', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/dashboard', label: 'Visão Geral', icon: 'BarChart3', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/transportadoras', label: 'Transportadoras', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====

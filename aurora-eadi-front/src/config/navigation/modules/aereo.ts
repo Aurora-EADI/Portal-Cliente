@@ -1,17 +1,13 @@
-import { Plane, Ship, History as HistoryIcon, Wrench, Calculator, KanbanSquare } from 'lucide-react';
+import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
-import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
+import { HOME_ITEM } from '../shared';
 
 export const aereoNavigation: NavigationContext = {
     basePath: '/aereo',
+    staticOnly: true,
     items: [
         HOME_ITEM,
-        {
-            label: 'Kanban Cotações',
-            icon: KanbanSquare,
-            path: '/simulacoes/propostas',
-        },
         {
             label: 'Cotações',
             icon: Calculator,
@@ -19,28 +15,32 @@ export const aereoNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
-                    label: 'Cotação Marítima',
-                    icon: Ship,
-                    path: '/comercial/simulador',
+                    label: 'Dashboard Cotações',
+                    icon: BarChart2,
+                    path: '/comercial/dashboard',
                 },
                 {
-                    label: 'Cotação Aérea',
-                    icon: Plane,
-                    path: '/aereo/simulador',
+                    label: 'Gestão de Cotação Aérea',
+                    icon: HistoryIcon,
+                    path: '/aereo/history',
+                },
+                {
+                    label: 'Gestão de Cotação Marítima',
+                    icon: HistoryIcon,
+                    path: '/comercial/history',
                 },
             ],
         },
         {
-            label: 'Lista de Cotações Aéreas',
-            icon: HistoryIcon,
-            path: '/aereo/history',
+            label: 'Gestão de Clientes',
+            icon: Users,
+            path: '/cliente',
         },
         {
-            label: 'Serviços',
+            label: 'Gestão de Serviços',
             icon: Wrench,
             path: '/servicos',
         },
-        CLIENTE_ITEM,
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

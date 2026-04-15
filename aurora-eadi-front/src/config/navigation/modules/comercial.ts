@@ -1,17 +1,13 @@
-import { Ship, Plane, History as HistoryIcon, Wrench, Calculator, KanbanSquare, BarChart2 } from 'lucide-react';
+import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
-import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
+import { HOME_ITEM } from '../shared';
 
 export const comercialNavigation: NavigationContext = {
     basePath: '/comercial',
+    staticOnly: true,
     items: [
         HOME_ITEM,
-        {
-            label: 'Kanban Cotações',
-            icon: KanbanSquare,
-            path: '/comercial/kanban',
-        },
         {
             label: 'Cotações',
             icon: Calculator,
@@ -19,39 +15,32 @@ export const comercialNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
-                    label: 'Dashboard',
+                    label: 'Dashboard Cotações',
                     icon: BarChart2,
                     path: '/comercial/dashboard',
                 },
                 {
-                    label: 'Cotação Marítima',
-                    icon: Ship,
-                    path: '/comercial/simulador',
-                },
-                {
-                    label: 'Cotação Aérea',
-                    icon: Plane,
-                    path: '/aereo/simulador',
-                },
-                {
-                    label: 'Lista de Cotações Marítimas',
-                    icon: HistoryIcon,
-                    path: '/comercial/history',
-                },
-                {
-                    label: 'Lista de Cotações Aéreas',
+                    label: 'Gestão de Cotação Aérea',
                     icon: HistoryIcon,
                     path: '/aereo/history',
+                },
+                {
+                    label: 'Gestão de Cotação Marítima',
+                    icon: HistoryIcon,
+                    path: '/comercial/history',
                 },
             ],
         },
         {
-            label: 'Serviços',
+            label: 'Gestão de Clientes',
+            icon: Users,
+            path: '/cliente',
+        },
+        {
+            label: 'Gestão de Serviços',
             icon: Wrench,
             path: '/servicos',
         },
-        // Adicionando clientes ao Comercial como solicitado
-        CLIENTE_ITEM,
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

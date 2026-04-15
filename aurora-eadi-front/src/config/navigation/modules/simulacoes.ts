@@ -1,17 +1,13 @@
-import { Calculator, Ship, Plane, Wrench, BarChart2, ClipboardList, FileSearch, KanbanSquare } from 'lucide-react';
+import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
-import { HOME_ITEM, CLIENTE_ITEM } from '../shared';
+import { HOME_ITEM } from '../shared';
 
 export const simulacoesNavigation: NavigationContext = {
     basePath: '/simulacoes',
+    staticOnly: true,
     items: [
         HOME_ITEM,
-        {
-            label: 'Kanban Cotações',
-            icon: KanbanSquare,
-            path: '/simulacoes/propostas',
-        },
         {
             label: 'Cotações',
             icon: Calculator,
@@ -19,38 +15,32 @@ export const simulacoesNavigation: NavigationContext = {
             isGroup: true,
             children: [
                 {
-                    label: 'Dashboard',
+                    label: 'Dashboard Cotações',
                     icon: BarChart2,
-                    path: '/simulacoes/dashboard',
+                    path: '/comercial/dashboard',
                 },
                 {
-                    label: 'Cotação Marítima',
-                    icon: Ship,
-                    path: '/simulacoes/maritimo',
+                    label: 'Gestão de Cotação Aérea',
+                    icon: HistoryIcon,
+                    path: '/aereo/history',
                 },
                 {
-                    label: 'Histórico Marítimo',
-                    icon: ClipboardList,
-                    path: '/simulacoes/historico-maritimo',
-                },
-                {
-                    label: 'Cotação Aérea',
-                    icon: Plane,
-                    path: '/simulacoes/aereo',
-                },
-                {
-                    label: 'Histórico Aéreo',
-                    icon: FileSearch,
-                    path: '/simulacoes/historico-aereo',
+                    label: 'Gestão de Cotação Marítima',
+                    icon: HistoryIcon,
+                    path: '/comercial/history',
                 },
             ],
         },
         {
-            label: 'Serviços',
+            label: 'Gestão de Clientes',
+            icon: Users,
+            path: '/cliente',
+        },
+        {
+            label: 'Gestão de Serviços',
             icon: Wrench,
             path: '/servicos',
         },
-        CLIENTE_ITEM,
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],
 };

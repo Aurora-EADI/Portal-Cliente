@@ -1,21 +1,45 @@
-import { Wrench, Plus } from 'lucide-react';
+import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
 
 export const servicosNavigation: NavigationContext = {
     basePath: '/servicos',
+    staticOnly: true,
     items: [
         HOME_ITEM,
         {
-            label: 'Lista de Serviços',
-            icon: Wrench,
-            path: '/servicos/lista',
+            label: 'Cotações',
+            icon: Calculator,
+            path: '/simulacoes',
+            isGroup: true,
+            children: [
+                {
+                    label: 'Dashboard Cotações',
+                    icon: BarChart2,
+                    path: '/comercial/dashboard',
+                },
+                {
+                    label: 'Gestão de Cotação Aérea',
+                    icon: HistoryIcon,
+                    path: '/aereo/history',
+                },
+                {
+                    label: 'Gestão de Cotação Marítima',
+                    icon: HistoryIcon,
+                    path: '/comercial/history',
+                },
+            ],
         },
         {
-            label: 'Cadastrar Serviço',
-            icon: Plus,
-            path: '/servicos/cadastro',
+            label: 'Gestão de Clientes',
+            icon: Users,
+            path: '/cliente',
+        },
+        {
+            label: 'Gestão de Serviços',
+            icon: Wrench,
+            path: '/servicos',
         },
     ],
     allowedRoles: [UserRole.ADMIN, UserRole.EMPLOYEE],

@@ -67,8 +67,15 @@ export function setDynamicNavigationContexts(contexts: NavigationContext[]): voi
  * Busca contexto de navegação: primeiro dinâmico, fallback para estático.
  */
 function findNavigationContext(currentPath: string): NavigationContext | undefined {
+    // 0. Prioridade Máxima: Busca contexto estático marcado como staticOnly
+    // Se o módulo deve ser apenas estático, não permitimos que o banco sobrescreva.
+    let context = allNavigationContexts.find((ctx) => 
+        (currentPath === ctx.basePath || currentPath.startsWith(ctx.basePath + '/')) && ctx.staticOnly
+    );
+    if (context) return context;
+
     // 1. Tenta busca exata no mapa dinâmico
-    let context = dynamicNavigationMap.get(currentPath);
+    context = dynamicNavigationMap.get(currentPath);
     if (context) return context;
 
     // 2. Tenta busca por prefixo no dinâmico

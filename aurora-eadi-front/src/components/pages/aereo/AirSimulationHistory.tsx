@@ -101,7 +101,7 @@ export function AirSimulationHistory() {
                     </p>
                 </div>
                 <Button
-                    onClick={() => router.push('/aereo')}
+                    onClick={() => router.push('/aereo/simulador')}
                     className="bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-200 transition-all hover:scale-105"
                 >
                     <Plus className="w-4 h-4 mr-2" />

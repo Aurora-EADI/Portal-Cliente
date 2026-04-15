@@ -1,42 +1,43 @@
-import { Shield, FileText, ListChecks, UserPlus, ShieldCheck } from 'lucide-react';
+import { Settings, Database, Layers, Users, ShieldCheck, LayoutGrid } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
 
 export const permissoesNavigation: NavigationContext = {
     basePath: '/permissoes',
+    staticOnly: true,
     items: [
         HOME_ITEM,
         {
-            label: 'Permissões',
-            icon: Shield,
+            label: 'Configurações',
+            icon: Settings,
             path: '/permissoes',
             isGroup: true,
             children: [
                 {
-                    label: 'Módulos',
-                    icon: FileText,
-                    path: '/permissoes',
-                },
-                {
-                    label: 'Catalogo técnico ',
-                    icon: FileText,
+                    label: 'Gestão de Funcionalidade',
+                    icon: Database,
                     path: '/permissoes/catalogo',
                 },
                 {
-                    label: 'Atividades e Vinculos',
-                    icon: ListChecks,
-                    path: '/permissoes/atividades',
+                    label: 'Gestão de Módulos',
+                    icon: LayoutGrid,
+                    path: '/permissoes',
                 },
                 {
-                    label: 'Usuário',
-                    icon: UserPlus,
+                    label: 'Gestão de Perfis',
+                    icon: ShieldCheck,
+                    path: '/permissoes/gestao',
+                },
+                {
+                    label: 'Gestão de Usuário',
+                    icon: Users,
                     path: '/permissoes/usuario',
                 },
                 {
-                    label: 'Gestão de Permissões',
-                    icon: ShieldCheck,
-                    path: '/permissoes/gestao',
+                    label: 'Módulo x Funcionalidade',
+                    icon: Layers,
+                    path: '/permissoes/atividades',
                 },
             ],
         },
