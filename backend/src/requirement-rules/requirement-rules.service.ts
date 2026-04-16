@@ -394,41 +394,7 @@ export class RequirementRulesService {
     return resultMap;
   }
 
-  private async getRequirementsMapForCompanies(companyIds: string[]) {
-    const globalRequirements =
-      await this.prisma.globalWorkforceDocumentRequirement.findMany({
-        where: { active: true, isRequired: true },
-        select: { documentTypeId: true },
-      });
 
-    const globalTypeIds = globalRequirements.map((r) => r.documentTypeId);
-    const resultMap = new Map<string, number[]>();
-
-    if (companyIds.length === 0) return resultMap;
-
-    const companyRequirements = await this.prisma.workforceDocumentRequirement.findMany({
-      where: {
-        companyId: { in: companyIds },
-        active: true,
-        isRequired: true,
-      },
-      select: { companyId: true, documentTypeId: true },
-    });
-
-    for (const companyId of companyIds) {
-      resultMap.set(companyId, [...globalTypeIds]);
-    }
-
-    for (const req of companyRequirements) {
-      const current = resultMap.get(req.companyId) || [];
-      if (!current.includes(req.documentTypeId)) {
-        current.push(req.documentTypeId);
-      }
-      resultMap.set(req.companyId, current);
-    }
-
-    return resultMap;
-  }
 
   async listWorkforce(query: WorkforceQueryDto, scopeCompanyId?: string) {
     const {
@@ -468,7 +434,25 @@ export class RequirementRulesService {
       },
     }));
 
-    const const today = new Date(); const expiringSoonThreshold = new Date(); expiringSoonThreshold.setDate(today.getDate() + 7); const expiredOrExpiringCondition = { documents: { some: { isLatest: true, status: "APPROVED", dateExpiration: { lte: expiringSoonThreshold } } } }; const hasPendingFilterConditions = [ pendingOrRejectedCondition, expiredOrExpiringCondition, ...missingConditions ];
+    const today = new Date();
+    const expiringSoonThreshold = new Date();
+    expiringSoonThreshold.setDate(today.getDate() + 7);
+
+    const expiredOrExpiringCondition = {
+      documents: {
+        some: {
+          isLatest: true,
+          status: "APPROVED" as any,
+          dateExpiration: { lte: expiringSoonThreshold },
+        },
+      },
+    };
+
+    const hasPendingFilterConditions: any[] = [
+      pendingOrRejectedCondition,
+      expiredOrExpiringCondition,
+      ...missingConditions,
+    ];
 
     const baseWhere: Prisma.CompanyEmployeeWhereInput = {
       ...(status ? { status } : {}),
@@ -482,7 +466,7 @@ export class RequirementRulesService {
     const andConditions: Prisma.CompanyEmployeeWhereInput[] = [];
 
     if (query.onlyPending) {
-      andConditions.push({ OR: hasPendingFilterConditions });
+      andConditions.push({ OR: hasPendingFilterConditions as any });
     }
 
     if (search) {
@@ -554,7 +538,7 @@ export class RequirementRulesService {
       this.prisma.companyEmployee.count({
         where: {
           ...baseWhere,
-          ...(hasPendingFilterConditions.length > 0 ? { OR: hasPendingFilterConditions } : {}),
+          ...(hasPendingFilterConditions.length > 0 ? { OR: hasPendingFilterConditions as any } : {}),
         },
       }),
       this.prisma.companyEmployee.count({
