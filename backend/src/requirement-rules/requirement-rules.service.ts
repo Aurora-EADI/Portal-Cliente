@@ -358,6 +358,78 @@ export class RequirementRulesService {
     );
   }
 
+  private async getRequirementsMapForCompanies(companyIds: string[]) {
+    const globalRequirements =
+      await this.prisma.globalWorkforceDocumentRequirement.findMany({
+        where: { active: true, isRequired: true },
+        select: { documentTypeId: true },
+      });
+
+    const globalTypeIds = globalRequirements.map((r) => r.documentTypeId);
+    const resultMap = new Map<string, number[]>();
+
+    if (companyIds.length === 0) return resultMap;
+
+    const companyRequirements = await this.prisma.workforceDocumentRequirement.findMany({
+      where: {
+        companyId: { in: companyIds },
+        active: true,
+        isRequired: true,
+      },
+      select: { companyId: true, documentTypeId: true },
+    });
+
+    for (const companyId of companyIds) {
+      resultMap.set(companyId, [...globalTypeIds]);
+    }
+
+    for (const req of companyRequirements) {
+      const current = resultMap.get(req.companyId) || [];
+      if (!current.includes(req.documentTypeId)) {
+        current.push(req.documentTypeId);
+      }
+      resultMap.set(req.companyId, current);
+    }
+
+    return resultMap;
+  }
+
+  private async getRequirementsMapForCompanies(companyIds: string[]) {
+    const globalRequirements =
+      await this.prisma.globalWorkforceDocumentRequirement.findMany({
+        where: { active: true, isRequired: true },
+        select: { documentTypeId: true },
+      });
+
+    const globalTypeIds = globalRequirements.map((r) => r.documentTypeId);
+    const resultMap = new Map<string, number[]>();
+
+    if (companyIds.length === 0) return resultMap;
+
+    const companyRequirements = await this.prisma.workforceDocumentRequirement.findMany({
+      where: {
+        companyId: { in: companyIds },
+        active: true,
+        isRequired: true,
+      },
+      select: { companyId: true, documentTypeId: true },
+    });
+
+    for (const companyId of companyIds) {
+      resultMap.set(companyId, [...globalTypeIds]);
+    }
+
+    for (const req of companyRequirements) {
+      const current = resultMap.get(req.companyId) || [];
+      if (!current.includes(req.documentTypeId)) {
+        current.push(req.documentTypeId);
+      }
+      resultMap.set(req.companyId, current);
+    }
+
+    return resultMap;
+  }
+
   async listWorkforce(query: WorkforceQueryDto, scopeCompanyId?: string) {
     const {
       page = 1,
@@ -396,10 +468,7 @@ export class RequirementRulesService {
       },
     }));
 
-    const hasPendingFilterConditions = [
-      pendingOrRejectedCondition,
-      ...missingConditions,
-    ];
+    const const today = new Date(); const expiringSoonThreshold = new Date(); expiringSoonThreshold.setDate(today.getDate() + 7); const expiredOrExpiringCondition = { documents: { some: { isLatest: true, status: "APPROVED", dateExpiration: { lte: expiringSoonThreshold } } } }; const hasPendingFilterConditions = [ pendingOrRejectedCondition, expiredOrExpiringCondition, ...missingConditions ];
 
     const baseWhere: Prisma.CompanyEmployeeWhereInput = {
       ...(status ? { status } : {}),
@@ -460,7 +529,7 @@ export class RequirementRulesService {
             },
             select: {
               documentTypeId: true,
-              status: true,
+              status:true, dateExpiration: true,
             },
           },
         },
@@ -502,15 +571,34 @@ export class RequirementRulesService {
       totalAll,
     ] = results as [any[], number, number, number, number, number];
 
+    const companyIdsInResult = [...new Set(employees.map((e) => e.companyId))];
+    const requirementsMap =
+      await this.getRequirementsMapForCompanies(companyIdsInResult);
+
     const totalPages = Math.ceil(total / limit);
 
     return {
       data: (employees as any[]).map((employee) => {
+        const employeeRequirements =
+          requirementsMap.get(employee.companyId) || requiredTypeIds;
+
         const hasPendingOrRejected = employee.documents?.some(
-          (d: any) => d.status === "PENDING" || d.status === "REJECTED"
+          (d: any) => d.status === "PENDING" || d.status === "REJECTED",
         );
-        const hasMissing = requiredTypeIds.some(
-          (reqId) => !employee.documents?.some((d: any) => d.documentTypeId === reqId && d.status === "APPROVED")
+
+        const hasExpiredOrExpiring = employee.documents?.some((d: any) => {
+          if (d.status !== "APPROVED" || !d.dateExpiration) return false;
+          const expiration = new Date(d.dateExpiration);
+          const expiringSoonThreshold = new Date();
+          expiringSoonThreshold.setDate(new Date().getDate() + 7);
+          return expiration <= expiringSoonThreshold;
+        });
+
+        const hasMissing = employeeRequirements.some(
+          (reqId) =>
+            !employee.documents?.some(
+              (d: any) => d.documentTypeId === reqId && d.status === "APPROVED",
+            ),
         );
 
         return {
@@ -521,7 +609,8 @@ export class RequirementRulesService {
           hiredAt: employee.hiredAt,
           status: employee.status,
           company: employee.company,
-          hasPendingDocuments: hasPendingOrRejected || hasMissing,
+          hasPendingDocuments:
+            hasPendingOrRejected || hasExpiredOrExpiring || hasMissing,
         };
       }),
       pagination: {
@@ -1071,3 +1160,5 @@ export class RequirementRulesService {
       );
   }
 }
+
+

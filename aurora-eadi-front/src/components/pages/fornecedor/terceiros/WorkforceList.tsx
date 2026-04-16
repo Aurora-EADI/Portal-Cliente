@@ -91,32 +91,10 @@ export function WorkforceList({
 
   const workforce = data?.data || [];
   const pagination = data?.pagination;
-  const missingRequirementsQueries = useQueries({
-    queries: workforce.map((item) => ({
-      queryKey: ["workforce-documents", "missing", item.id],
-      queryFn: async () =>
-        workforceDocumentService.listMissingByEmployee(item.id),
-      enabled: !!item.id,
-    })),
-  });
-
-  const derivedPendingByEmployeeId = useMemo(() => {
-    const map = new Map<string, boolean>();
-
-    workforce.forEach((item, index) => {
-      const missingRequirements = missingRequirementsQueries[index]?.data || [];
-      map.set(
-        item.id,
-        Boolean(item.hasPendingDocuments) || missingRequirements.length > 0,
-      );
-    });
-
-    return map;
-  }, [workforce, missingRequirementsQueries]);
 
   const hasVisiblePendingDocuments = useMemo(
-    () => workforce.some((item) => derivedPendingByEmployeeId.get(item.id)),
-    [derivedPendingByEmployeeId, workforce],
+    () => workforce.some((item) => item.hasPendingDocuments),
+    [workforce],
   );
 
   const columns: Column<WorkforceListItemDto>[] = useMemo(() => {
@@ -161,9 +139,7 @@ export function WorkforceList({
         key: "docStatus",
         header: "Status Documental",
         render: (item) => {
-          const hasPendingDocuments =
-            derivedPendingByEmployeeId.get(item.id) ??
-            Boolean(item.hasPendingDocuments);
+          const hasPendingDocuments = Boolean(item.hasPendingDocuments);
 
           return (
             <span
@@ -212,7 +188,7 @@ export function WorkforceList({
     }
 
     return baseColumns;
-  }, [derivedPendingByEmployeeId, hideCompanyColumn]);
+  }, [hideCompanyColumn]);
 
   const onSearch = (value: string) => {
     setSearch(value);

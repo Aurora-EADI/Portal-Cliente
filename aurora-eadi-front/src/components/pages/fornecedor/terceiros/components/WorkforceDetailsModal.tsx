@@ -149,19 +149,6 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
     [documentTypeOptions, selectedTypeId],
   );
 
-  const pendingRequirements = useMemo(() => {
-    if (!workforceDocumentTypes.length) return [];
-    
-    return workforceDocumentTypes
-      .filter(type => {
-        const hasValidDoc = documents.some(
-          d => d.documentTypeId === type.id && d.status !== DocumentStatus.REJECTED
-        );
-        return !hasValidDoc;
-      })
-      .slice(0, 6);
-  }, [workforceDocumentTypes, documents]);
-
   const requiresExpiration = selectedPeriodicity !== 'Sem periodicidade';
 
   const toggleStatus = async () => {
@@ -486,13 +473,10 @@ export function WorkforceDetailsModal({ workforceId, onClose }: WorkforceDetails
               <DocumentsPanel
                 title="Meus Documentos"
                 description="Envie e acompanhe o status dos documentos do colaborador."
-                pendingItems={pendingRequirements.map((type) => ({
-                  id: String(type.id),
-                  name: type.name,
-                  onSelect: () => {
-                    setSelectedTypeId(String(type.id));
-                    setDocName(type.name);
-                  },
+                pendingItems={missing.map((item) => ({
+                  id: String(item.documentTypeId),
+                  name: item.documentType.name,
+                  onSelect: () => handleSelectMissing(item),
                 }))}
                 pendingDescription="Este colaborador possui documentos obrigatórios pendentes de envio. Regularize a situação para evitar bloqueios."
                 canUpload={canUploadDocuments}
