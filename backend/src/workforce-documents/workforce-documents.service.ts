@@ -44,15 +44,6 @@ export class WorkforceDocumentsService {
       );
     }
 
-    if (
-      user.role === UserRole.EMPLOYEE &&
-      user.companyId &&
-      user.companyId !== employee.companyId
-    ) {
-      throw new ForbiddenException(
-        "Voce nao tem permissao para acessar colaborador de outra empresa",
-      );
-    }
 
     return employee;
   }
@@ -199,7 +190,7 @@ export class WorkforceDocumentsService {
     }
 
     if (
-      (user.role === UserRole.SUPPLIER || user.role === UserRole.EMPLOYEE) &&
+      user.role === UserRole.SUPPLIER &&
       user.companyId &&
       user.companyId !== existing.companyId
     ) {
@@ -231,7 +222,7 @@ export class WorkforceDocumentsService {
     }
 
     if (
-      (user.role === UserRole.SUPPLIER || user.role === UserRole.EMPLOYEE) &&
+      user.role === UserRole.SUPPLIER &&
       user.companyId &&
       user.companyId !== document.companyId
     ) {
