@@ -36,7 +36,7 @@ import { UserRole } from "@prisma/client-postgres";
 @Controller("documents")
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(private readonly documentsService: DocumentsService) { }
 
   @Post("upload")
   @ApiOperation({ summary: "Fazer upload de um documento" })
@@ -47,10 +47,9 @@ export class DocumentsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: UserRole; companyId?: string } },
   ) {
-    // Tente req.user.id ao invés de req.user.userId
-    return this.documentsService.uploadDocument(file, dto, req.user.id);
+    return this.documentsService.uploadDocument(file, dto, req.user);
   }
 
   @Get()
@@ -77,7 +76,7 @@ export class DocumentsController {
   async findByCompany(
     @Param("companyId") companyId: string,
     @Query("latestOnly") latestOnly: string = "false",
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     // 1. Verifica permissão: Admin pode ver tudo, Supplier só vê sua própria empresa
     if (req.user.role !== UserRole.ADMIN && req.user.companyId !== companyId) {
@@ -100,7 +99,7 @@ export class DocumentsController {
   })
   async findOverdueDocuments(
     @Query() query: OverdueDocumentsQueryDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     // Admin pode ver todos os documentos atrasados (geral)
     // Usuário comum só pode ver documentos da sua própria empresa
@@ -131,10 +130,14 @@ export class DocumentsController {
     description: "Download do documento via streaming",
   })
   @ApiResponse({ status: 404, description: "Documento não encontrado" })
-  async downloadFile(@Param("id") id: string, @Res() res: Response) {
+  async downloadFile(
+    @Param("id") id: string,
+    @Res() res: Response,
+    @Request() req: { user: { id: string; role: UserRole; companyId?: string } },
+  ) {
     // Obtém stream do arquivo via MinIO (acesso interno)
     const { stream, filename, contentType, size } =
-      await this.documentsService.getFileStream(id);
+      await this.documentsService.getFileStream(id, req.user);
 
     // Define headers para download
     res.setHeader("Content-Type", contentType);

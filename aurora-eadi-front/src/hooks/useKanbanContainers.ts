@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ContainerCard, ContainerStatus, KanbanColumn } from "@/types";
 import {
@@ -25,7 +26,7 @@ interface UseKanbanContainersOptions {
 export function useKanbanContainers(options: UseKanbanContainersOptions = {}) {
   const { filters, refetchInterval = 60000, enabled = true } = options;
 
-  const query = useQuery({
+  const query = useQuery<ContainerCard[], Error>({
     queryKey: KANBAN_QUERY_KEYS.containers(filters),
     queryFn: () => getKanbanContainers(filters),
     refetchInterval,
@@ -33,40 +34,44 @@ export function useKanbanContainers(options: UseKanbanContainersOptions = {}) {
     staleTime: 30000,
   });
 
-  // Deriva as colunas do Kanban a partir dos containers
-  const columns: KanbanColumn[] = query.data
-    ? [
-        {
-          id: ContainerStatus.FULL,
-          title: "Container Cheio",
-          color: "bg-blue-500",
-          containers: query.data.filter((c) => c.status === ContainerStatus.FULL),
-        },
-        {
-          id: ContainerStatus.IN_PROCESS,
-          title: "Em Processo",
-          color: "bg-amber-500",
-          containers: query.data.filter(
-            (c) => c.status === ContainerStatus.IN_PROCESS
-          ),
-        },
-        {
-          id: ContainerStatus.EMPTY,
-          title: "Containers Vazios",
-          color: "bg-green-500",
-          containers: query.data.filter((c) => c.status === ContainerStatus.EMPTY),
-        },
-      ]
-    : [];
+  // Deriva as colunas do Kanban a partir dos containers com useMemo para estabilidade
+  const columns: KanbanColumn[] = useMemo(() => {
+    if (!query.data) return [];
 
-  // Extrai listas únicas para filtros
-  const companies = query.data
-    ? getUniqueCompaniesFromContainers(query.data)
-    : [];
+    return [
+      {
+        id: ContainerStatus.FULL,
+        title: "Container Cheio",
+        color: "bg-blue-500",
+        containers: query.data.filter((c) => c.status === ContainerStatus.FULL),
+      },
+      {
+        id: ContainerStatus.IN_PROCESS,
+        title: "Em Processo",
+        color: "bg-amber-500",
+        containers: query.data.filter(
+          (c) => c.status === ContainerStatus.IN_PROCESS
+        ),
+      },
+      {
+        id: ContainerStatus.EMPTY,
+        title: "Containers Vazios",
+        color: "bg-green-500",
+        containers: query.data.filter((c) => c.status === ContainerStatus.EMPTY),
+      },
+    ];
+  }, [query.data]);
 
-  const carriers = query.data
-    ? getUniqueCarriersFromContainers(query.data)
-    : [];
+  // Extrai listas únicas para filtros com useMemo
+  const companies = useMemo(() =>
+    query.data ? getUniqueCompaniesFromContainers(query.data) : [],
+    [query.data]
+  );
+
+  const carriers = useMemo(() =>
+    query.data ? getUniqueCarriersFromContainers(query.data) : [],
+    [query.data]
+  );
 
   return {
     containers: query.data ?? [],
@@ -74,6 +79,7 @@ export function useKanbanContainers(options: UseKanbanContainersOptions = {}) {
     companies,
     carriers,
     isLoading: query.isLoading,
+    isPending: query.isPending, // V5 compatibility
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,

@@ -18,7 +18,7 @@ export class ServiceCostsController {
   constructor(private readonly serviceCostsService: ServiceCostsService) {}
 
   @Post()
-  create(@Body() createServiceCostDto: CreateServiceCostDto, @Request() req) {
+  create(@Body() createServiceCostDto: CreateServiceCostDto, @Request() req: { user: { id: string; role: string; companyId?: string } }) {
     return this.serviceCostsService.create(createServiceCostDto, req.user.id);
   }
 

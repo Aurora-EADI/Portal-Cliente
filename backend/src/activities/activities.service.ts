@@ -122,7 +122,7 @@ export class ActivitiesService {
    * Cria uma nova atividade e vincula permissões
    */
   async create(createActivityDto: CreateActivityDto) {
-    const { name, moduleId, isMandatory, permissionIds } = createActivityDto;
+    const { name, moduleId, isMandatory, permissionIds, route, label, icon, sortOrder } = createActivityDto;
 
     // Verifica se o módulo existe
     const module = await this.prisma.module.findUnique({
@@ -172,6 +172,10 @@ export class ActivitiesService {
         name,
         moduleId,
         isMandatory: isMandatory ?? false,
+        route: route || undefined,
+        label: label || undefined,
+        icon: icon || undefined,
+        sortOrder: sortOrder ?? 0,
         permissions: {
           create: permissionIds.map((permissionId) => ({
             permissionId,
@@ -213,7 +217,7 @@ export class ActivitiesService {
     // Verifica se a atividade existe
     await this.findOne(id);
 
-    const { name, moduleId, isMandatory } = updateActivityDto;
+    const { name, moduleId, isMandatory, route, label, icon, sortOrder } = updateActivityDto as any;
 
     // Se está alterando nome ou módulo, verifica constraint unique
     if (name || moduleId) {
@@ -263,6 +267,10 @@ export class ActivitiesService {
         name: name || undefined,
         moduleId: moduleId || undefined,
         isMandatory: isMandatory !== undefined ? isMandatory : undefined,
+        route: route !== undefined ? (route || null) : undefined,
+        label: label !== undefined ? (label || null) : undefined,
+        icon: icon !== undefined ? (icon || null) : undefined,
+        sortOrder: sortOrder !== undefined ? sortOrder : undefined,
       },
       include: {
         module: {

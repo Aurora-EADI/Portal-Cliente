@@ -37,7 +37,7 @@ export class AirSimulationsController {
   @ApiResponse({ status: 400, description: "Dados inválidos" })
   create(
     @Body() createAirSimulationDto: CreateAirSimulationDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     return this.airSimulationsService.create(
       createAirSimulationDto,
@@ -53,7 +53,7 @@ export class AirSimulationsController {
   @ApiResponse({ status: 404, description: "Simulação base não encontrada" })
   createNewVersion(
     @Body() createNewVersionDto: CreateAirNewVersionDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     return this.airSimulationsService.createNewVersion(
       createNewVersionDto,

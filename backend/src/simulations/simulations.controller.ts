@@ -35,7 +35,7 @@ export class SimulationsController {
   @ApiOperation({ summary: "Criar nova simulação de custo" })
   @ApiResponse({ status: 201, description: "Simulação criada com sucesso" })
   @ApiResponse({ status: 400, description: "Dados inválidos" })
-  create(@Body() createSimulationDto: CreateSimulationDto, @Request() req) {
+  create(@Body() createSimulationDto: CreateSimulationDto, @Request() req: { user: { id: string; role: string; companyId?: string } }) {
     return this.simulationsService.create(createSimulationDto, req.user.id);
   }
 
@@ -45,7 +45,7 @@ export class SimulationsController {
   @ApiResponse({ status: 404, description: "Simulação base não encontrada" })
   createNewVersion(
     @Body() createNewVersionDto: CreateNewVersionDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     return this.simulationsService.createNewVersion(
       createNewVersionDto,
@@ -114,7 +114,7 @@ export class SimulationsController {
   addService(
     @Param("id") id: string,
     @Body() addSimulationServiceDto: AddSimulationServiceDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
   ) {
     return this.simulationsService.addService(
       id,

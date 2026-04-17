@@ -1,0 +1,152 @@
+services:
+
+  # MinIO Service (Object Storage)
+  minio:
+    image: minio/minio:latest
+    container_name: minio-homolog
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data_homolog:/data
+    command: server /data --console-address ":9001"
+    restart: always
+    networks:
+      - aurora-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # SQL Server Proxy (bridge to host SQL Server)
+  sql-proxy:
+    image: alpine/socat:latest
+    container_name: sql-server-proxy-homolog
+    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:host.docker.internal:1433"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - aurora-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "1433" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Backend Service (NestJS)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: portal-aurora-backend-homolog
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/postgres/schema.prisma &&
+             node dist/seed/seed.js &&
+             node dist/src/main.js"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      PROTHEUS_API_KEY: ${PROTHEUS_API_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env.homolog
+    volumes:
+      - ./backend/prisma:/app/prisma # Needed for migration command
+    # NO PORTS EXPOSED to host
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`homologacao.auroraeadi.com.br`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=5000"
+    networks:
+      - aurora-network
+    depends_on:
+      minio:
+        condition: service_healthy
+      sql-proxy:
+        condition: service_started
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api', r => process.exit(r.statusCode < 500 ? 0 : 1))" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Service (Next.js)
+  frontend:
+    build:
+      context: ./aurora-eadi-front
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL}
+    container_name: portal-aurora-frontend-homolog
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_TELEMETRY_DISABLED: 1
+    env_file:
+      - .env.homolog
+    # NO PORTS EXPOSED to host
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`homologacao.auroraeadi.com.br`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    networks:
+      - aurora-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik-homolog
+    ports:
+      - "80:80"
+      # - "443:443" # Uncomment if using HTTPS
+      - "8080:8080" # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/traefik/traefik.homolog.yml:/etc/traefik/traefik.yml:ro
+    restart: always
+    networks:
+      - aurora-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  aurora-network:
+    driver: bridge
+
+volumes:
+  minio_data_homolog:

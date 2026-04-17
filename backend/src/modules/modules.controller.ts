@@ -16,7 +16,6 @@ import { CreateModuleDto } from "./dto/create-module.dto";
 import { UpdateModuleDto } from "./dto/update-module.dto";
 import { Roles } from "../common/decorators/roles.decorator";
 import { UserRole } from "@prisma/client-postgres";
-
 @Controller("modules")
 @UseGuards(JwtAuthGuard)
 export class ModulesController {
