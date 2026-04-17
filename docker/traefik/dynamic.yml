@@ -24,16 +24,16 @@ http:
         - redirect-to-https
       service: noop@internal
 
-    # Rotas HTTPS (porta 443) - para acesso via domínio
+    # Rotas HTTPS (porta 443) - para acesso via domínio e IP
     frontend-router:
-      rule: "Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)"
+      rule: "Host(`172.20.210.84`) || Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)"
       service: frontend-service
       entryPoints:
         - websecure
       tls: {}
 
     backend-router:
-      rule: "(Host(`api.portal.local`) || Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)) && PathPrefix(`/api`)"
+      rule: "(Host(`172.20.210.84`) || Host(`api.portal.local`) || Host(`portal.local`) || Host(`portal.auroraeadi.com.br`)) && PathPrefix(`/api`)"
       service: backend-service
       entryPoints:
         - websecure
