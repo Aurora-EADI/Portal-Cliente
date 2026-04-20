@@ -6,17 +6,36 @@ interface PaginationProps {
     total: number;
     limit: number;
     onPageChange: (page: number) => void;
-    className?: string; // Permitir customização de estilo se necessário
+    onLimitChange?: (limit: number) => void;
+    limitOptions?: number[];
+    className?: string;
 }
 
-export function Pagination({ page, total, limit, onPageChange, className = '' }: PaginationProps) {
+export function Pagination({ page, total, limit, onPageChange, onLimitChange, limitOptions = [10, 20, 50, 100], className = '' }: PaginationProps) {
     const totalPages = Math.ceil(total / limit);
 
-    if (totalPages <= 1) return null;
+    if (total === 0) return null;
 
     return (
         <div className={`flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm ${className}`}>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+                {onLimitChange && (
+                    <div className="flex items-center gap-2">
+                        <span>Exibir</span>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                onLimitChange(Number(e.target.value));
+                                onPageChange(1);
+                            }}
+                            className="px-2 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                            {limitOptions.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <span>
                     Mostrando <span className="font-medium">{((page - 1) * limit) + 1}</span> a{' '}
                     <span className="font-medium">{Math.min(page * limit, total)}</span> de{' '}

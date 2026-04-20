@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,6 +83,7 @@ const SidebarItem = React.memo(function SidebarItem({
 export const Sidebar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { currentUser, logoutUser } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -92,13 +93,32 @@ export const Sidebar: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    const [baseUrl, query] = path.split('?');
+    if (pathname !== baseUrl) return false;
+
+    if (query) {
+      const params = new URLSearchParams(query);
+      for (const [key, value] of params.entries()) {
+        if (searchParams.get(key) !== value) return false;
+      }
+      return true;
+    }
+
+    // Default case for paths without query params
+    // Special case for CCTE: if status=SENT is present, the base /ccte item is not active
+    if (baseUrl === '/ccte' && searchParams.get('status') === 'SENT') {
+      return false;
+    }
+
+    return true;
+  };
 
   const isGroupActive = (item: NavItem): boolean => {
-    if (item.children) {
-      return item.children.some(child => isActive(child.path));
-    }
-    return false;
+    if (!item.children) return false;
+    return item.children.some(child =>
+      isActive(child.path) || isGroupActive(child)
+    );
   };
 
   const toggleGroup = (label: string) => {
@@ -197,7 +217,7 @@ export const Sidebar: React.FC = () => {
           {navigationItems.map((item) => {
             const Icon = item.icon;
             const hasChildren = item.children && item.children.length > 0;
-            const isExpanded = expandedGroups[item.label] ?? isGroupActive(item);
+            const isExpanded = isGroupActive(item) || (expandedGroups[item.label] ?? false);
 
             if (hasChildren) {
               return (
@@ -226,6 +246,52 @@ export const Sidebar: React.FC = () => {
                     <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
                       {item.children?.map((child) => {
                         const ChildIcon = child.icon;
+                        const childHasChildren = child.children && child.children.length > 0;
+                        const childIsExpanded = isGroupActive(child) || (expandedGroups[child.label] ?? false);
+
+                        if (childHasChildren) {
+                          // Sub-grupo de segundo nível (ex: "Relatórios")
+                          return (
+                            <div key={child.label}>
+                              <SidebarItem
+                                label={child.label}
+                                icon={<ChildIcon size={16} />}
+                                active={isGroupActive(child)}
+                                collapsed={collapsed}
+                                hasChildren={true}
+                                isExpanded={childIsExpanded}
+                                isChild={true}
+                                onClick={() => toggleGroup(child.label)}
+                              />
+                              {childIsExpanded && (
+                                <div className="mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                                  {child.children?.map((grandChild) => {
+                                    const GrandChildIcon = grandChild.icon;
+                                    return (
+                                      <button
+                                        key={grandChild.path}
+                                        onClick={() => router.push(grandChild.path)}
+                                        className={`
+                                          w-full flex items-center gap-3 pl-16 pr-3 py-2 rounded-lg
+                                          transition-all duration-200 text-xs font-medium
+                                          ${isActive(grandChild.path)
+                                            ? 'bg-primary-500/10 text-white border border-primary-500/20'
+                                            : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
+                                          }
+                                        `}
+                                      >
+                                        <GrandChildIcon size={14} />
+                                        <span className="truncate">{grandChild.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Item simples filho
                         return (
                           <SidebarItem
                             key={child.path}

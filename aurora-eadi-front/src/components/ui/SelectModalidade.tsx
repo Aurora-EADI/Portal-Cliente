@@ -16,7 +16,7 @@ interface SelectModalidadeProps {
   options?: string[];
 }
 
-const DEFAULT_OPTIONS = ["MARÍTIMA", "AÉREA"];
+const DEFAULT_OPTIONS = ["MAR", "AER", "ROD"];
 
 export function SelectModalidadeMulti({
   value = [],

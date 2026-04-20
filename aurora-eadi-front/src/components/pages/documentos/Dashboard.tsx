@@ -1,20 +1,22 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthContext } from '../../../context/AuthContext';
 import { useActiveCompanies, useUpdateCompanyStatus } from '../../../hooks/useSuppliers';
 import { useDocuments, useUpdateDocumentStatus } from '../../../hooks/useDocuments';
 import { Badge } from '../../ui/Badge';
+import { ActionButton } from '../../ui/ActionButton';
 import { DocumentStatus, Document, CompanyStatus, Company } from '../../../types';
-import { documentService, documentTypeService, companyRequirementService } from '../../../services/api';
+import { documentService, companyRequirementService, documentTypeService, requirementRulesService } from '../../../services/api';
 import { Search, Eye, Check, X, FileText, Download, Building2, AlertCircle, AlertTriangle, CheckCircle2, ShieldCheck, ChevronLeft, ChevronRight, Loader2, Clock, Calendar } from 'lucide-react';
-import { formatDateBR, getValidityStatus } from '@/lib/utils';
+import { formatDateBR, getValidityStatus, formatCNPJ } from '@/lib/utils';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Pagination } from '../../ui/Pagination';
 import { DocumentsHistoryModal } from './modals/DocumentsHistoryModal';
 import { RejectionReasonModal } from './modals/RejectionReasonModal';
 import { CompanyDetailsModal } from './modals/CompanyDetailsModal';
 import { toast } from 'sonner';
+import { filterDocumentTypesByScope } from '@/lib/documentTypeScope';
 
 export function AdminDashboard() {
   const { currentUser } = useAuthContext();
@@ -56,22 +58,51 @@ export function AdminDashboard() {
 
   // Requirements State (modal Detalhes)
   const [documentTypes, setDocumentTypes] = useState<{ id: number; name: string }[]>([]);
-  const [companyRequirements, setCompanyRequirements] = useState<Set<number>>(new Set());
+  const [companyRequiredDocuments, setCompanyRequiredDocuments] = useState<{ documentTypeId: number; documentType: { id: number; name: string }; isRequired: boolean }[]>([]);
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
 
   // Requirements State (modal Documentos)
   const [modalDocRequirements, setModalDocRequirements] = useState<{ documentTypeId: number; documentType: { id: number; name: string }; isRequired: boolean }[]>([]);
   const [isLoadingModalReqs, setIsLoadingModalReqs] = useState(false);
 
+  const normalizeRequirements = (reqs: any[]) => {
+    const requiredOnly = reqs.filter((r) => r?.isRequired);
+    const uniqueByType = new Map<number, { documentTypeId: number; documentType: { id: number; name: string }; isRequired: boolean }>();
+
+    requiredOnly.forEach((r) => {
+      const id = Number(r.documentTypeId);
+      if (!id) return;
+      uniqueByType.set(id, {
+        documentTypeId: id,
+        isRequired: true,
+        documentType: r.documentType || { id, name: 'Desconhecido' },
+      });
+    });
+
+    return Array.from(uniqueByType.values()).sort((a, b) =>
+      a.documentType.name.localeCompare(b.documentType.name, 'pt-BR'),
+    );
+  };
+
+  const [allDocumentTypes, setAllDocumentTypes] = useState<{ id: number; name: string }[]>([]);
+  const [workforceRequiredDocuments, setWorkforceRequiredDocuments] = useState<{ documentTypeId: number; documentType: { id: number; name: string }; isRequired: boolean }[]>([]);
+  const [isLoadingWorkforceRequirements, setIsLoadingWorkforceRequirements] = useState(false);
+
+  const handleCompanyTabChange = (tab: 'info' | 'requirements' | 'workforceRequirements') => {
+    if (tab === 'requirements' && viewingCompany?.id) {
+      loadRequirements(String(viewingCompany.id));
+    }
+    if (tab === 'workforceRequirements' && viewingCompany?.id) {
+      loadWorkforceRequirements(String(viewingCompany.id));
+    }
+  };
+
   const loadRequirements = async (companyId: string) => {
     try {
       setIsLoadingRequirements(true);
-      const [types, reqs] = await Promise.all([
-        documentTypeService.getAll(),
-        companyRequirementService.getRequirements(companyId)
-      ]);
-      setDocumentTypes(types);
-      setCompanyRequirements(new Set(reqs.filter(r => r.isRequired).map(r => r.documentTypeId)));
+      const reqs = await companyRequirementService.getRequirements(companyId);
+      const normalized = normalizeRequirements(reqs);
+      setCompanyRequiredDocuments(normalized);
     } catch (error) {
       console.error('Erro ao carregar requisitos:', error);
       toast.error('Erro ao carregar requisitos.');
@@ -87,19 +118,82 @@ export function AdminDashboard() {
     }
   }, [selectedSupplierId]);
 
+  useEffect(() => {
+    loadAllDocumentTypes();
+  }, []);
+
+  const loadAllDocumentTypes = async () => {
+    try {
+      const types = await documentTypeService.getAll();
+      const workforceTypes = filterDocumentTypesByScope(types, 'WORKFORCE');
+      setAllDocumentTypes(
+        workforceTypes
+          .filter((type) => type.active)
+          .map((type) => ({ id: type.id, name: type.name })),
+      );
+    } catch (error) {
+      console.error('Erro ao carregar tipos de documento:', error);
+      toast.error('Erro ao carregar tipos de documento.');
+    }
+  };
+
+  useEffect(() => {
+    if (viewingCompany?.id) {
+      loadRequirements(String(viewingCompany.id));
+      loadWorkforceRequirements(String(viewingCompany.id));
+      return;
+    }
+    setCompanyRequiredDocuments([]);
+    setWorkforceRequiredDocuments([]);
+  }, [viewingCompany?.id]);
+
+  const loadWorkforceRequirements = async (companyId: string) => {
+    try {
+      setIsLoadingWorkforceRequirements(true);
+      const reqs = await requirementRulesService.getWorkforceRequirements(companyId);
+      const normalized = reqs
+        .filter((item) => item.active && item.isRequired)
+        .map((item) => ({
+          documentTypeId: item.documentTypeId,
+          documentType: { id: item.documentType.id, name: item.documentType.name },
+          isRequired: item.isRequired,
+        }));
+      setWorkforceRequiredDocuments(normalized);
+    } catch (error) {
+      console.error('Erro ao carregar requisitos de colaboradores:', error);
+      toast.error('Erro ao carregar documentos exigidos de colaboradores.');
+    } finally {
+      setIsLoadingWorkforceRequirements(false);
+    }
+  };
+
+  const handleSaveWorkforceRequirements = async (requirements: { documentTypeId: number; isRequired: boolean }[]) => {
+    if (!viewingCompany?.id) return;
+
+    try {
+      await requirementRulesService.updateWorkforceRequirements(String(viewingCompany.id), requirements);
+      await loadWorkforceRequirements(String(viewingCompany.id));
+      toast.success('Documentos exigidos de colaboradores atualizados.');
+    } catch (error) {
+      console.error('Erro ao salvar requisitos de colaboradores:', error);
+      toast.error('Erro ao salvar documentos exigidos de colaboradores.');
+    }
+  };
+
   const loadModalRequirements = async (companyId: string) => {
     try {
       setIsLoadingModalReqs(true);
-      const [types, reqs] = await Promise.all([
+      const [reqs, allTypes] = await Promise.all([
+        companyRequirementService.getRequirements(companyId),
         documentTypeService.getAll(),
-        companyRequirementService.getRequirements(companyId)
       ]);
-      setDocumentTypes(types); // ← Salvar tipos de documentos no estado
-      const reqsWithType = reqs.filter(r => r.isRequired).map(r => ({
-        ...r,
-        documentType: types.find(t => t.id === r.documentTypeId) || { id: r.documentTypeId, name: 'Desconhecido' }
-      }));
-      setModalDocRequirements(reqsWithType);
+      const normalized = normalizeRequirements(reqs);
+      setModalDocRequirements(normalized);
+      setDocumentTypes(
+        filterDocumentTypesByScope(allTypes, 'COMPANY')
+          .filter((type) => type.active)
+          .map((type) => ({ id: type.id, name: type.name })),
+      );
     } catch (error) {
       console.error('Erro ao carregar requisitos do modal:', error);
     } finally {
@@ -114,25 +208,6 @@ export function AdminDashboard() {
       );
       return !hasApprovedDoc;
     });
-  };
-
-  const toggleRequirement = async (typeId: number) => {
-    if (!viewingCompany) return;
-    const isRequired = !companyRequirements.has(typeId);
-    const newSet = new Set(companyRequirements);
-    if (isRequired) newSet.add(typeId);
-    else newSet.delete(typeId);
-
-    setCompanyRequirements(newSet);
-
-    try {
-      await companyRequirementService.updateRequirements(String(viewingCompany.id), [{ documentTypeId: typeId, isRequired }]);
-      toast.success('Requisito atualizado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao atualizar requisito:', error);
-      toast.error('Erro ao atualizar requisito.');
-      loadRequirements(String(viewingCompany.id));
-    }
   };
 
   // Rejection State
@@ -214,16 +289,10 @@ export function AdminDashboard() {
     }
   };
 
-  const handleCompanyTabChange = (tab: 'info' | 'requirements') => {
-    if (tab === 'requirements' && viewingCompany && documentTypes.length === 0) {
-      loadRequirements(String(viewingCompany.id));
-    }
-  };
-
   const handleDownload = async (docId: string) => {
     try {
-      const url = await documentService.getDownloadUrl(docId);
-      window.open(url, '_blank');
+      await documentService.download(docId);
+      toast.success('Download iniciado!');
     } catch (error: any) {
       console.error('Erro ao fazer download:', error);
       const message = error.message || 'Erro ao fazer download do documento';
@@ -284,7 +353,7 @@ export function AdminDashboard() {
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium text-gray-900 truncate">{company.fantasyName}</div>
-                          <div className="text-xs text-gray-500">{company.cnpj}</div>
+                          <div className="text-xs text-gray-500">{formatCNPJ(company.cnpj)}</div>
                         </div>
                       </div>
                     </td>
@@ -318,22 +387,20 @@ export function AdminDashboard() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
+                      <ActionButton
                         onClick={() => setSelectedSupplierId(String(company.id))}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+                        icon={<FileText size={16} />}
                       >
-                        <FileText size={16} />
                         Documentos
-                      </button>
+                      </ActionButton>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
+                      <ActionButton
                         onClick={() => setViewingCompany(company)}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm"
+                        icon={<Eye size={16} />}
                       >
-                        <Eye size={16} />
                         Detalhes
-                      </button>
+                      </ActionButton>
                     </td>
                   </tr>
                 );
@@ -380,11 +447,13 @@ export function AdminDashboard() {
         open={!!viewingCompany}
         onOpenChange={(open) => !open && setViewingCompany(null)}
         company={viewingCompany}
-        documentTypes={documentTypes}
-        companyRequirements={companyRequirements}
+        requirements={companyRequiredDocuments}
+        workforceRequirements={workforceRequiredDocuments}
+        allDocumentTypes={allDocumentTypes}
         isLoadingRequirements={isLoadingRequirements}
-        onRequirementToggle={toggleRequirement}
+        isLoadingWorkforceRequirements={isLoadingWorkforceRequirements}
         onTabChange={handleCompanyTabChange}
+        onSaveWorkforceRequirements={handleSaveWorkforceRequirements}
       />
 
       {/* ConfirmDialog para Aprovar Documento */}
@@ -415,3 +484,5 @@ export function AdminDashboard() {
     </div>
   );
 };
+
+

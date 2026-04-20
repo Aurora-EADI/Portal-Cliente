@@ -7,7 +7,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Search, X, Calendar } from "lucide-react";
-import { CustomButton } from "@/components/ui/CustomButton";
 import { ExportExcelButton } from "./ExportExcelButton";
 import { TypeBillingCutOff } from "@/services/faturamento/types/TypeBillingCutOff";
 import { FiltersProps } from '../Dashboard';
@@ -241,13 +240,15 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                     {filters.dt_entrada_inicio && filters.dt_entrada_fim && " até "}
                     {filters.dt_entrada_fim && formatDateDisplay(filters.dt_entrada_fim)}
                   </span>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={clearDateRange}
-                    className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                    className="h-6 w-6 text-blue-600 hover:text-blue-800 hover:bg-transparent flex-shrink-0"
                     title="Limpar período"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -269,12 +270,14 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
                     className="pl-10 pr-10"
                   />
                   {searchTerm && (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={clearSearch}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-transparent"
                     >
                       <X className="w-4 h-4" />
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -334,13 +337,10 @@ export function FaturamentoFilters({ filters, setFilters, onFetch, clientes = []
               </PermissionRouteGuard>
             </div>
 
-            <CustomButton
-
-              icon={<Search className="w-4 h-4" />}
-              onClick={onFetch}
-            >
+            <Button onClick={onFetch}>
+              <Search className="w-4 h-4" />
               Buscar Dados
-            </CustomButton>
+            </Button>
 
           </div>
         </CardContent>

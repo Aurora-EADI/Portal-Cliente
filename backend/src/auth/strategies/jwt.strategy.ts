@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaPostgresService as  PrismaService } from '../../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { PrismaPostgresService as PrismaService } from "../../prisma/prisma.service";
+import { ConfigService } from "@nestjs/config";
+import { Request } from "express";
 
 export interface JwtPayload {
   sub: string; // ID do usuário (subject)
@@ -18,9 +19,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     config: ConfigService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        // Primeiro: lê do cookie httpOnly (browser)
+        (req: Request) => req?.cookies?.access_token ?? null,
+        // Fallback: Authorization: Bearer <token> (Swagger / mobile / APIs externas)
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
+      passReqToCallback: false,
       ignoreExpiration: false,
-      secretOrKey: config.getOrThrow<string>('JWT_SECRET'),
+      secretOrKey: config.getOrThrow<string>("JWT_SECRET"),
     });
   }
 
@@ -33,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Se o usuário não existir, token é inválido
     if (!user) {
-      throw new UnauthorizedException('Usuário não encontrado');
+      throw new UnauthorizedException("Usuário não encontrado");
     }
 
     // Retorna o usuário (sem a senha por segurança)

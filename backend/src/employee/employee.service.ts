@@ -1,9 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../user/user.service';
-import { CreateEmployeeDto } from './dto/create-employee.dto';
-import { UpdateEmployeeDto } from './dto/update-employee.dto';
-import { UserRole } from '@prisma/client-postgres';
+﻿import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { UsersService } from "../user/user.service";
+import { CreateEmployeeDto } from "./dto/create-employee.dto";
+import { UpdateEmployeeDto } from "./dto/update-employee.dto";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class EmployeesService {
@@ -12,7 +12,7 @@ export class EmployeesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   async create(dto: CreateEmployeeDto) {
     this.logger.log(`Criando funcionário: ${JSON.stringify(dto)}`);
@@ -25,7 +25,7 @@ export class EmployeesService {
   }
 
   async findAll() {
-    this.logger.log('Listando todos os funcionários');
+    this.logger.log("Listando todos os funcionários");
     return this.prisma.user.findMany({
       where: { role: UserRole.EMPLOYEE },
     });
@@ -40,7 +40,7 @@ export class EmployeesService {
     if (!employee) {
       this.logger.warn(`Funcionário não encontrado: ${id}`);
       throw new HttpException(
-        'Esse funcionário não existe.',
+        "Esse funcionário não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -59,7 +59,7 @@ export class EmployeesService {
     if (!exists) {
       this.logger.warn(`Tentativa de atualizar funcionário inexistente: ${id}`);
       throw new HttpException(
-        'Esse funcionário não existe.',
+        "Esse funcionário não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -79,7 +79,7 @@ export class EmployeesService {
     if (!exists) {
       this.logger.warn(`Tentativa de remover funcionário inexistente: ${id}`);
       throw new HttpException(
-        'Esse funcionário não existe.',
+        "Esse funcionário não existe.",
         HttpStatus.NOT_FOUND,
       );
     }

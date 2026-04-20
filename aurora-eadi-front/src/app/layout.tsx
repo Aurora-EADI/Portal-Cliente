@@ -2,8 +2,14 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata = {
-  title: "Aurora EADI",
-  description: "Descrição da app",
+  title: {
+    default: 'Aurora EADI',
+    template: '%s | EADI'
+  },
+  description: 'Portal - Aurora EADI',
+  icons: {
+    icon: '/favicon-Aurora.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

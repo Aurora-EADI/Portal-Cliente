@@ -5,6 +5,7 @@ import { ArrowLeft, Building2, User as UserIcon, CheckCircle, Lock } from 'lucid
 import { useRouter } from 'next/navigation';
 import { useRegister } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { formatCNPJ, formatPhoneBR } from '@/lib/utils';
 
 export function RegisterCompanies() {
   const router = useRouter();
@@ -32,10 +33,23 @@ export function RegisterCompanies() {
   const [state, setState] = useState('');
   const [phone, setPhone] = useState('');
 
+  const validateStep1 = () => {
+    return !!(userName && userEmail && password && confirmPassword && password === confirmPassword);
+  };
+
+  const validateStep2 = () => {
+    return !!(cnpj && fantasyName && socialReason && cep && address && number && neighborhood && city && state && phone);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       toast.error("As senhas não conferem.");
+      return;
+    }
+
+    if (!validateStep2()) {
+      toast.error('Preencha todos os campos obrigatórios (*).');
       return;
     }
 
@@ -179,9 +193,12 @@ export function RegisterCompanies() {
                 </div>
 
                 <div className="flex justify-end pt-4">
+                  {!validateStep1() && (
+                    <p className="text-xs text-amber-600 mr-3 self-center">Preencha todos os campos obrigatórios (*).</p>
+                  )}
                   <button
                     type="button"
-                    disabled={!password || password !== confirmPassword || !userEmail || !userName}
+                    disabled={!validateStep1()}
                     onClick={() => setStep(2)}
                     className="px-6 py-2 bg-primary-700 text-white rounded-lg hover:bg-primary-800 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
@@ -201,14 +218,15 @@ export function RegisterCompanies() {
                       CNPJ
                       <span className="text-red-500 ml-1">*</span>
                     </label>
-                    <input
-                      required
-                      value={cnpj}
-                      onChange={e => setCnpj(e.target.value)}
-                      type="text"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                      placeholder="00.000.000/0000-00"
-                    />
+                      <input
+                        required
+                        value={cnpj}
+                        onChange={e => setCnpj(formatCNPJ(e.target.value))}
+                        type="text"
+                        maxLength={18}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        placeholder="XX.XXX.XXX/XXXX-XX"
+                      />
                   </div>
 
                   <div>
@@ -264,7 +282,7 @@ export function RegisterCompanies() {
                     <input
                       required
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
+                      onChange={e => setPhone(formatPhoneBR(e.target.value))}
                       type="tel"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                       placeholder="(00) 00000-0000"
@@ -369,10 +387,13 @@ export function RegisterCompanies() {
                   >
                     Voltar
                   </button>
+                  {!validateStep2() && (
+                    <p className="text-xs text-amber-600 self-center">Preencha todos os campos obrigatórios (*).</p>
+                  )}
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isLoading}
+                    disabled={isLoading || !validateStep2()}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isLoading ? (

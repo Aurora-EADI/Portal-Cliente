@@ -1,18 +1,19 @@
 # =========================
 # Build stage
 # =========================
-FROM node:20-bullseye-slim AS builder
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
 # CA e ferramentas
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  wget && \
+  rm -rf /var/lib/apt/lists/*
 
+# Proxy args (opcional)
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -21,42 +22,57 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-# Configurar npm ANTES
-RUN npm config set registry https://registry.npmmirror.com \
- && npm config set maxsockets 3 \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false
+# Configuração npm
+RUN npm config set registry https://registry.npmjs.org \
+  && npm config set strict-ssl false \
+  && npm config set fetch-retries 3 \
+  && npm config set fetch-retry-mintimeout 5000 \
+  && npm config set fetch-retry-maxtimeout 30000 \
+  && npm config set fetch-timeout 120000 \
+  && npm config set maxsockets 3
 
-COPY package*.json ./
+# Necessário para downloads do Prisma engine via proxy com cert auto-assinado
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
-# Instalar com retry manual
-RUN npm ci || npm ci || npm ci
+# Copiar manifests
+COPY package.json package-lock.json ./
 
+# Instalar dependências (NODE_OPTIONS limita heap para evitar OOM kill durante build paralelo)
+RUN --mount=type=cache,target=/root/.npm NODE_OPTIONS="--max-old-space-size=512" npm ci
+
+# Copiar código
 COPY . .
 
-RUN npx prisma generate --schema=prisma/postgres/schema.prisma
+# Prisma (cache mount evita re-download dos binários do engine a cada build)
+RUN --mount=type=cache,target=/root/.cache/prisma \
+    npx prisma generate --schema=prisma/postgres/schema.prisma
+
+# Build
 RUN npm run build
+
+# Build seed em CommonJS para execução direta com node
 RUN npx tsc prisma/postgres/seed.ts \
   --esModuleInterop \
-  --module nodenext \
+  --module commonjs \
+  --moduleResolution node \
+  --target ES2017 \
+  --skipLibCheck \
   --outDir dist/seed
 
 # =========================
 # Production stage
 # =========================
-FROM node:20-bullseye-slim AS production
+FROM node:18-bullseye-slim AS production
 
 WORKDIR /app
 
+# Dependências runtime
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    openssl \
-    ca-certificates \
-    curl && \
-    rm -rf /var/lib/apt/lists/*
+  apt-get install -y --no-install-recommends \
+  openssl \
+  ca-certificates \
+  curl && \
+  rm -rf /var/lib/apt/lists/*
 
 # OpenSSL legacy (SQL Server 2008 R2)
 RUN cat > /etc/ssl/openssl_legacy.cnf << 'EOL'
@@ -86,6 +102,7 @@ EOL
 
 ENV OPENSSL_CONF=/etc/ssl/openssl_legacy.cnf
 
+# Proxy args (opcional)
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -94,17 +111,9 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-COPY package*.json ./
-
-RUN npm config set registry https://registry.npmmirror.com \
- && npm config set maxsockets 3 \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false \
- && (npm ci --omit=dev || npm ci --omit=dev || npm ci --omit=dev)
-
+# Copiar apenas runtime
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
@@ -114,4 +123,5 @@ ENV NODE_ENV=production
 
 EXPOSE 5000
 
+# Inicia a aplicação (prisma db push é executado no pipeline antes do deploy)
 CMD ["node", "dist/src/main.js"]

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Body,
@@ -12,16 +12,16 @@ import {
   ParseUUIDPipe,
   Logger,
   Query,
-} from '@nestjs/common';
-import { CustomerService } from './customer.service';
-import { CreateCustomerDto } from './dto/create-customer.dto';
-import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole, CustomerStatus } from '@prisma/client-postgres';
+} from "@nestjs/common";
+import { CustomerService } from "./customer.service";
+import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole, CustomerStatus } from "@prisma/client";
 
-@Controller('customers')
+@Controller("customers")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CustomerController {
   private readonly logger = new Logger(CustomerController.name);
@@ -29,7 +29,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateCustomerDto) {
     this.logger.log(`Criando cliente: ${dto.name}`);
@@ -37,14 +37,14 @@ export class CustomerController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-    @Query('status') status?: CustomerStatus,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("status") status?: CustomerStatus,
   ) {
-    this.logger.log('Listando todos os clientes');
+    this.logger.log("Listando todos os clientes");
     return this.customerService.findAll({
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -53,36 +53,36 @@ export class CustomerController {
     });
   }
 
-  @Get(':id')
-  @Roles(UserRole.ADMIN)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @Get(":id")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  findOne(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Buscando cliente ID: ${id}`);
     return this.customerService.findOne(id);
   }
 
-  @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Patch(":id")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: UpdateCustomerDto,
   ) {
     this.logger.log(`Atualizando cliente ID: ${id}`);
     return this.customerService.update(id, dto);
   }
 
-  @Patch(':id/status')
+  @Patch(":id/status")
   @Roles(UserRole.ADMIN)
   updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body('status') status: CustomerStatus,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body("status") status: CustomerStatus,
   ) {
     this.logger.log(`Atualizando status do cliente ID: ${id} para ${status}`);
     return this.customerService.updateStatus(id, status);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @Roles(UserRole.ADMIN)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  remove(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Removendo cliente ID: ${id}`);
     return this.customerService.remove(id);
   }

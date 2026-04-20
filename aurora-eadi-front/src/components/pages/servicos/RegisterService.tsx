@@ -1,30 +1,53 @@
 "use client"
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useCreateService, useCreateServiceCost } from '@/hooks/useServices';
-import { CreateServiceDto, ServiceCalculationType } from '@/types';
-import { Loader2, ArrowLeft, Save } from 'lucide-react';
+import { CreateServiceDto, ServiceCalculationType, ServiceModal } from '@/types';
+import { Loader2, ArrowLeft, Save, Plane, Ship, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
+import { formatNumberBR, parseNumberBR } from '@/lib/utils';
 
 const calculationTypeLabels: Record<ServiceCalculationType, string> = {
     [ServiceCalculationType.FIXED]: 'Valor Fixo (R$)',
     [ServiceCalculationType.PERCENTAGE_CIF]: 'Percentual sobre CIF (%)',
     [ServiceCalculationType.PER_CONTAINER]: 'Valor por Container (R$)',
-    [ServiceCalculationType.PER_TONNE]: 'Valor por Tonelada (R$)',
+    [ServiceCalculationType.PER_TONNE]: 'Ton ou M³ (R$)',
+    [ServiceCalculationType.PER_KG]: 'Por Quilo (R$)',
+};
+
+// type ServiceModal = 'AIR' | 'MARITIME' | 'BOTH'; // Removido por conflito com enum importado
+
+const modalLabels: Record<ServiceModal, { label: string; icon: React.ReactNode; color: string }> = {
+    AIR: { 
+        label: 'Aéreo', 
+        icon: <Plane size={16} />,
+        color: 'bg-blue-50 text-blue-700 border-blue-200'
+    },
+    MARITIME: { 
+        label: 'Marítimo', 
+        icon: <Ship size={16} />,
+        color: 'bg-cyan-50 text-cyan-700 border-cyan-200'
+    },
+    BOTH: { 
+        label: 'Ambos', 
+        icon: <Globe size={16} />,
+        color: 'bg-purple-50 text-purple-700 border-purple-200'
+    },
 };
 
 interface FormData {
     name: string;
     description: string;
     calculationType: ServiceCalculationType;
+    modal: ServiceModal; // ⚠️ NOVO CAMPO
     isActive: boolean;
     initialCost: string;
     hasStripping: boolean;
+    hasLcl: boolean;
 }
 
 export function RegisterService() {
-    const router = useRouter();
     const { mutateAsync: createService, isPending: isCreatingService } = useCreateService();
     const { mutateAsync: createServiceCost, isPending: isCreatingCost } = useCreateServiceCost();
 
@@ -34,15 +57,21 @@ export function RegisterService() {
         name: '',
         description: '',
         calculationType: ServiceCalculationType.FIXED,
+        modal: ServiceModal.AIR, // ⚠️ PADRÃO AÉREO
         isActive: true,
         initialCost: '',
         hasStripping: false,
+        hasLcl: false,
     });
 
     const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
+
+        if (name === 'initialCost') {
+            return; // Tratado separadamente
+        }
 
         if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
@@ -53,6 +82,31 @@ export function RegisterService() {
 
         if (errors[name as keyof FormData]) {
             setErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+    };
+
+    const handleInitialCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        // Remove pontos digitados pelo usuário
+        value = value.replace(/\./g, '');
+        // Permite apenas números e vírgula
+        value = value.replace(/[^0-9,]/g, '');
+        // Garante apenas uma vírgula
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+
+        setFormData(prev => ({ ...prev, initialCost: value }));
+        if (errors.initialCost) {
+            setErrors(prev => ({ ...prev, initialCost: undefined }));
+        }
+    };
+
+    const handleInitialCostBlur = () => {
+        if (formData.initialCost) {
+            const parsed = parseNumberBR(formData.initialCost);
+            setFormData(prev => ({ ...prev, initialCost: formatNumberBR(parsed) }));
         }
     };
 
@@ -69,10 +123,14 @@ export function RegisterService() {
             newErrors.calculationType = 'O tipo de cálculo é obrigatório';
         }
 
+        if (!formData.modal) {
+            newErrors.modal = 'O modal é obrigatório';
+        }
+
         if (!formData.initialCost.trim()) {
             newErrors.initialCost = 'O valor TX/VALOR é obrigatório';
         } else {
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             if (isNaN(costValue) || costValue < 0) {
                 newErrors.initialCost = 'Informe um valor válido';
             }
@@ -90,7 +148,6 @@ export function RegisterService() {
         }
 
         try {
-            // Gerar código automaticamente baseado no nome
             const code = formData.name
                 .toUpperCase()
                 .normalize('NFD')
@@ -104,24 +161,36 @@ export function RegisterService() {
                 name: formData.name,
                 description: formData.description || undefined,
                 calculationType: formData.calculationType,
+                modal: formData.modal, // ⚠️ INCLUIR MODAL
                 isActive: formData.isActive,
                 hasStripping: formData.hasStripping,
+                ...(formData.hasLcl ? { hasLcl: true } : {}),
             };
 
-            // Criar o serviço
             const newService = await createService(serviceData);
 
-            // Criar o custo inicial
-            const costValue = parseFloat(formData.initialCost.replace(',', '.'));
+            const costValue = parseNumberBR(formData.initialCost);
             await createServiceCost({
                 serviceId: newService.id,
                 cost: costValue,
                 reason: 'Valor inicial do serviço',
             });
 
-            router.push('/servicos');
+            toast.success('Serviço cadastrado com sucesso!');
+            setFormData({
+                name: '',
+                description: '',
+                calculationType: ServiceCalculationType.FIXED,
+                modal: ServiceModal.AIR,
+                isActive: true,
+                initialCost: '',
+                hasStripping: false,
+                hasLcl: false,
+            });
+            setErrors({});
         } catch (error) {
             console.error('Erro ao criar serviço:', error);
+            toast.error('Erro ao cadastrar serviço. Tente novamente.');
         }
     };
 
@@ -182,13 +251,36 @@ export function RegisterService() {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'
-                                    }`}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                                 placeholder="Ex: Armazenagem, Desembaraço Aduaneiro"
                             />
                             {errors.name && (
                                 <p className="mt-1 text-sm text-red-500">{errors.name}</p>
                             )}
+                        </div>
+
+                        {/* ⚠️ NOVO CAMPO: Modal */}
+                        <div>
+                            <label htmlFor="modal" className="block text-sm font-medium text-gray-700 mb-1">
+                                Modalidade <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="modal"
+                                name="modal"
+                                value={formData.modal}
+                                onChange={handleChange}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.modal ? 'border-red-500' : 'border-gray-300'}`}
+                            >
+                                <option value={ServiceModal.AIR}>✈️ Aéreo</option>
+                                <option value={ServiceModal.MARITIME}>🚢 Marítimo</option>
+                                <option value={ServiceModal.BOTH}>🌍 Ambos (Aéreo + Marítimo)</option>
+                            </select>
+                            {errors.modal && (
+                                <p className="mt-1 text-sm text-red-500">{errors.modal}</p>
+                            )}
+                            <p className="mt-1 text-xs text-gray-500">
+                                Define em quais simuladores este serviço aparecerá
+                            </p>
                         </div>
 
                         {/* Tipo de Cálculo */}
@@ -201,8 +293,7 @@ export function RegisterService() {
                                 name="calculationType"
                                 value={formData.calculationType}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.calculationType ? 'border-red-500' : 'border-gray-300'
-                                    }`}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.calculationType ? 'border-red-500' : 'border-gray-300'}`}
                             >
                                 {Object.entries(calculationTypeLabels).map(([value, label]) => (
                                     <option key={value} value={value}>
@@ -216,7 +307,7 @@ export function RegisterService() {
                         </div>
 
                         {/* TX / VALOR */}
-                        <div>
+                        <div className="md:col-span-2">
                             <label htmlFor="initialCost" className="block text-sm font-medium text-gray-700 mb-1">
                                 {getCostLabel()} <span className="text-red-500">*</span>
                             </label>
@@ -225,9 +316,9 @@ export function RegisterService() {
                                 id="initialCost"
                                 name="initialCost"
                                 value={formData.initialCost}
-                                onChange={handleChange}
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.initialCost ? 'border-red-500' : 'border-gray-300'
-                                    }`}
+                                onChange={handleInitialCostChange}
+                                onBlur={handleInitialCostBlur}
+                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.initialCost ? 'border-red-500' : 'border-gray-300'}`}
                                 placeholder={getCostPlaceholder()}
                             />
                             {errors.initialCost && (
@@ -254,7 +345,7 @@ export function RegisterService() {
                             />
                         </div>
 
-                        {/* Status Ativo e Desova */}
+                        {/* Checkboxes */}
                         <div className="md:col-span-2 flex flex-col gap-4">
                             <label className="flex items-center gap-3 cursor-pointer">
                                 <input
@@ -288,6 +379,24 @@ export function RegisterService() {
                                     </span>
                                     <span className="text-xs text-gray-500">
                                         Se marcado, este serviço só aparecerá em simulações que tenham desova
+                                    </span>
+                                </div>
+                            </label>
+
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="hasLcl"
+                                    checked={formData.hasLcl}
+                                    onChange={handleChange}
+                                    className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        Carga Solta (LCL)?
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Se marcado, este serviço só aparecerá em simulações que tenham carga solta (LCL)
                                     </span>
                                 </div>
                             </label>

@@ -1,14 +1,19 @@
 # =========================
 # Build stage
 # =========================
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
 
-# Certificados CA e ferramentas de rede
-RUN apk add --no-cache ca-certificates curl wget
+# Certificados e ferramentas
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Proxy args
+# Proxy args (opcional)
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
@@ -17,73 +22,62 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-# Configurar npm ANTES de copiar package.json
-RUN npm config set registry https://registry.npmmirror.com \
- && npm config set maxsockets 3 \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false
+# Configuração npm
+RUN npm config set registry https://registry.npmjs.org \
+    && npm config set strict-ssl false \
+    && npm config set fetch-retries 3 \
+    && npm config set fetch-retry-mintimeout 5000 \
+    && npm config set fetch-retry-maxtimeout 30000 \
+    && npm config set fetch-timeout 120000 \
+    && npm config set maxsockets 3
+
+# Necessário para downloads via proxy com cert auto-assinado
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 # Copiar manifests
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
-# Instalar dependências com retry manual
-RUN npm ci || npm ci || npm ci
+# Instalar dependências (NODE_OPTIONS limita heap para evitar OOM kill durante build paralelo)
+RUN NODE_OPTIONS="--max-old-space-size=512" npm ci
 
-# Copiar código
+# Diagnóstico: verificar se next foi instalado (sem quebrar o build)
+RUN echo "=== Pacotes em node_modules ===" && ls node_modules | wc -l; \
+    echo "=== next em node_modules/.bin ===" && ls -la node_modules/.bin/next 2>&1; \
+    echo "=== next package ===" && ls node_modules/next/package.json 2>&1; \
+    ls node_modules/.bin/next || (echo "ERRO: next nao foi instalado!" && exit 1)
+
+# Copiar código fonte
 COPY . .
 
+# Build args
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_API_KEY
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-<<<<<<< HEAD
-=======
-ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 
-# Desabilitar telemetria do Next.js
->>>>>>> develop
+# Environment variables
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Build do Next
 RUN npm run build
 
 # =========================
 # Production stage
 # =========================
-FROM node:18-alpine AS production
+FROM node:18-bullseye-slim AS production
 
 WORKDIR /app
-
-RUN apk add --no-cache ca-certificates curl
-
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
-ARG NO_PROXY
-
-ENV HTTP_PROXY=${HTTP_PROXY}
-ENV HTTPS_PROXY=${HTTPS_PROXY}
-ENV NO_PROXY=${NO_PROXY}
-
-COPY package*.json ./
-
-RUN npm config set registry https://registry.npmmirror.com \
- && npm config set maxsockets 3 \
- && npm config set fetch-retries 10 \
- && npm config set fetch-retry-mintimeout 30000 \
- && npm config set fetch-retry-maxtimeout 180000 \
- && npm config set fetch-timeout 900000 \
- && npm config set strict-ssl false \
- && (npm ci --omit=dev || npm ci --omit=dev || npm ci --omit=dev)
-
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Standalone: copia apenas o bundle otimizado (~30-50MB vs ~500MB)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

@@ -1,6 +1,11 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as sql from 'mssql';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as sql from "mssql";
 
 @Injectable()
 export class SqlServerService implements OnModuleInit, OnModuleDestroy {
@@ -12,12 +17,16 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     try {
-      this.logger.log('Tentando conectar ao SQL Server...');
+      this.logger.log("Tentando conectar ao SQL Server...");
 
-      const connectionString = this.configService.get<string>('DATABASE_URL_SQLSERVER');
+      const connectionString = this.configService.get<string>(
+        "DATABASE_URL_SQLSERVER",
+      );
 
       if (!connectionString) {
-        this.logger.warn('DATABASE_URL_SQLSERVER não configurado - SQL Server desabilitado');
+        this.logger.warn(
+          "DATABASE_URL_SQLSERVER não configurado - SQL Server desabilitado",
+        );
         this.connected = false;
         return;
       }
@@ -27,9 +36,11 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
 
       const maskedConfig = {
         ...config,
-        password: '****',
+        password: "****",
       };
-      this.logger.log(`Conectando em: ${config.server}:${config.port} / ${config.database}`);
+      this.logger.log(
+        `Conectando em: ${config.server}:${config.port} / ${config.database}`,
+      );
 
       // Criar pool de conexões com configurações de TLS para SQL Server legacy
       this.pool = await new sql.ConnectionPool({
@@ -41,8 +52,8 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
           enableArithAbort: true,
           // Configurações de criptografia granulares
           cryptoCredentialsDetails: {
-            minVersion: 'TLSv1' as any, // Suporta TLS 1.0+ para SQL Server 2008 R2
-            ciphers: 'DEFAULT@SECLEVEL=0', // Permite cifras legacy
+            minVersion: "TLSv1" as any, // Suporta TLS 1.0+ para SQL Server 2008 R2
+            ciphers: "DEFAULT@SECLEVEL=0", // Permite cifras legacy
           },
         },
         pool: {
@@ -51,18 +62,26 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
           idleTimeoutMillis: 30000,
         },
         connectionTimeout: 15000,
-        requestTimeout: 30000,
+        requestTimeout: 90000,
       }).connect();
 
       this.connected = true;
-      this.logger.log('SQL Server connected successfully');
+      this.logger.log("SQL Server connected successfully");
     } catch (error) {
-      this.logger.warn('SQL Server connection failed - running without legacy database integration');
-      this.logger.error(`Error details: ${JSON.stringify({
-        message: error.message,
-        code: error.code,
-        name: error.name,
-      }, null, 2)}`);
+      this.logger.warn(
+        "SQL Server connection failed - running without legacy database integration",
+      );
+      this.logger.error(
+        `Error details: ${JSON.stringify(
+          {
+            message: error.message,
+            code: error.code,
+            name: error.name,
+          },
+          null,
+          2,
+        )}`,
+      );
       this.connected = false;
       this.pool = null;
     }
@@ -72,9 +91,9 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
     if (this.pool) {
       try {
         await this.pool.close();
-        this.logger.log('SQL Server connection pool closed');
+        this.logger.log("SQL Server connection pool closed");
       } catch (error) {
-        this.logger.error('Error closing SQL Server pool:', error);
+        this.logger.error("Error closing SQL Server pool:", error);
       }
     }
   }
@@ -91,7 +110,7 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
    */
   async query<T = any>(query: string, params?: any[]): Promise<T[]> {
     if (!this.isConnected() || !this.pool) {
-      throw new Error('SQL Server not connected');
+      throw new Error("SQL Server not connected");
     }
 
     try {
@@ -103,9 +122,9 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
           // Detectar tipo do parâmetro
           if (param === null || param === undefined) {
             request.input(`param${index + 1}`, sql.NVarChar, param);
-          } else if (typeof param === 'string') {
+          } else if (typeof param === "string") {
             request.input(`param${index + 1}`, sql.NVarChar, param);
-          } else if (typeof param === 'number') {
+          } else if (typeof param === "number") {
             request.input(`param${index + 1}`, sql.Int, param);
           } else if (param instanceof Date) {
             request.input(`param${index + 1}`, sql.DateTime, param);
@@ -118,7 +137,7 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
       const result = await request.query(query);
       return result.recordset as T[];
     } catch (error) {
-      this.logger.error('Error executing SQL Server query:', {
+      this.logger.error("Error executing SQL Server query:", {
         message: error.message,
         query: query.substring(0, 200),
       });
@@ -132,9 +151,12 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
    * @param params Objeto com os parâmetros nomeados
    * @returns Resultado da execução
    */
-  async executeProcedure<T = any>(procedureName: string, params?: Record<string, any>): Promise<T[]> {
+  async executeProcedure<T = any>(
+    procedureName: string,
+    params?: Record<string, any>,
+  ): Promise<T[]> {
     if (!this.isConnected() || !this.pool) {
-      throw new Error('SQL Server not connected');
+      throw new Error("SQL Server not connected");
     }
 
     try {
@@ -145,9 +167,9 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
         Object.entries(params).forEach(([key, value]) => {
           if (value === null || value === undefined) {
             request.input(key, sql.NVarChar, value);
-          } else if (typeof value === 'string') {
+          } else if (typeof value === "string") {
             request.input(key, sql.NVarChar, value);
-          } else if (typeof value === 'number') {
+          } else if (typeof value === "number") {
             request.input(key, sql.Int, value);
           } else if (value instanceof Date) {
             request.input(key, sql.DateTime, value);
@@ -160,7 +182,7 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
       const result = await request.execute(procedureName);
       return result.recordset as T[];
     } catch (error) {
-      this.logger.error('Error executing SQL Server procedure:', {
+      this.logger.error("Error executing SQL Server procedure:", {
         message: error.message,
         procedure: procedureName,
       });
@@ -176,21 +198,21 @@ export class SqlServerService implements OnModuleInit, OnModuleDestroy {
     const match = connectionString.match(urlPattern);
 
     if (!match) {
-      throw new Error('Invalid SQL Server connection string format');
+      throw new Error("Invalid SQL Server connection string format");
     }
 
     const [, server, port, paramsString] = match;
-    const params = new URLSearchParams(paramsString.replace(/;/g, '&'));
+    const params = new URLSearchParams(paramsString.replace(/;/g, "&"));
 
     return {
       server,
       port: parseInt(port, 10),
-      database: params.get('database') || '',
-      user: params.get('user') || '',
-      password: params.get('password') || '',
+      database: params.get("database") || "",
+      user: params.get("user") || "",
+      password: params.get("password") || "",
       options: {
-        encrypt: params.get('encrypt') === 'true',
-        trustServerCertificate: params.get('trustServerCertificate') === 'true',
+        encrypt: params.get("encrypt") === "true",
+        trustServerCertificate: params.get("trustServerCertificate") === "true",
         enableArithAbort: true,
       },
     };

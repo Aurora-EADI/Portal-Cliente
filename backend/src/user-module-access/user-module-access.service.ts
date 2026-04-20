@@ -2,10 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../prisma/prisma.service';
-import { ToggleModuleDto } from './dto/toggle-module.dto';
-import { BulkAssignModulesDto } from './dto/bulk-assign-modules.dto';
+} from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { ToggleModuleDto } from "./dto/toggle-module.dto";
+import { BulkAssignModulesDto } from "./dto/bulk-assign-modules.dto";
 
 @Injectable()
 export class UserModuleAccessService {
@@ -24,7 +24,7 @@ export class UserModuleAccessService {
         name: true,
         email: true,
         role: true,
-        companyId: true
+        companyId: true,
       },
     });
 
@@ -35,7 +35,7 @@ export class UserModuleAccessService {
     // Busca todos os módulos ativos
     const allModules = await this.prisma.module.findMany({
       where: { active: true },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       include: {
         activities: {
           include: {
@@ -45,6 +45,9 @@ export class UserModuleAccessService {
               },
             },
           },
+        },
+        sharedItems: {
+          orderBy: { sortOrder: "asc" },
         },
       },
     });
@@ -68,7 +71,7 @@ export class UserModuleAccessService {
 
       // Mapeia atividades com status de acesso
       const activities = module.activities.map((activity) => {
-        const activityAccess = access?.activityAccess.find(
+        const activityAccess = access?.activityAccess?.find(
           (aa) => aa.activityId === activity.id,
         );
 
@@ -89,7 +92,9 @@ export class UserModuleAccessService {
           name: activity.name,
           isMandatory: activity.isMandatory,
           isActive: isEnabled ? isActive : false, // Se módulo desabilitado, todas atividades ficam inativas
-          permissions: activity.permissions.map((ap) => ap.permission.key),
+          permissions: activity.permissions
+            .map((ap) => ap.permission?.key)
+            .filter((key): key is string => !!key),
         };
       });
 
@@ -104,6 +109,7 @@ export class UserModuleAccessService {
         activities,
         totalActivities: activities.length,
         activeActivities: activities.filter((a) => a.isActive).length,
+        sharedItems: module.sharedItems || [],
       };
     });
 
@@ -223,7 +229,7 @@ export class UserModuleAccessService {
     }
 
     return {
-      message: `Módulo "${module.name}" ${isEnabled ? 'habilitado' : 'desabilitado'} para ${user.name}`,
+      message: `Módulo "${module.name}" ${isEnabled ? "habilitado" : "desabilitado"} para ${user.name}`,
       userModuleAccess: {
         id: userModuleAccess.id,
         userId: userModuleAccess.userId,
@@ -267,7 +273,7 @@ export class UserModuleAccessService {
       const foundIds = modules.map((m) => m.id);
       const missingIds = moduleIds.filter((id) => !foundIds.includes(id));
       throw new NotFoundException(
-        `Módulos não encontrados ou inativos: ${missingIds.join(', ')}`,
+        `Módulos não encontrados ou inativos: ${missingIds.join(", ")}`,
       );
     }
 
@@ -335,7 +341,7 @@ export class UserModuleAccessService {
     );
 
     return {
-      message: `${moduleIds.length} módulo(s) ${isEnabled ? 'habilitados' : 'desabilitados'} para ${user.name}`,
+      message: `${moduleIds.length} módulo(s) ${isEnabled ? "habilitados" : "desabilitados"} para ${user.name}`,
       results,
     };
   }
@@ -406,7 +412,7 @@ export class UserModuleAccessService {
         },
         activities: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
     });
 
     return modules.map((module) => ({
@@ -445,7 +451,7 @@ export class UserModuleAccessService {
 
     if (module.activities.length === 0) {
       return {
-        message: 'Nenhuma atividade obrigatória para sincronizar',
+        message: "Nenhuma atividade obrigatória para sincronizar",
         synced: 0,
       };
     }

@@ -1,11 +1,11 @@
-import { IsEnum, IsString, IsOptional } from 'class-validator';
-  import { DocumentStatus } from '@prisma/client-postgres';
+﻿import { IsEnum, IsString, IsOptional } from "class-validator";
+import { DocumentStatus } from "@prisma/client";
 
-  export class UpdateStatusDto {
-    @IsEnum(DocumentStatus)
-    status: DocumentStatus;
+export class UpdateStatusDto {
+  @IsEnum(DocumentStatus)
+  status: DocumentStatus;
 
-    @IsString()
-    @IsOptional()
-    rejectionReason?: string;
-  }
+  @IsString()
+  @IsOptional()
+  rejectionReason?: string;
+}

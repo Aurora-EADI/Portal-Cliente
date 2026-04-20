@@ -24,6 +24,7 @@ import type { Company } from "@/types/company";
 import { UserRole } from "@/types/auth";
 import { EditUserModal } from './EditUserModal';
 import { Pagination } from '@/components/ui/Pagination';
+import { SearchBar } from '@/components/ui/DataTable';
 
 export function UserRegistryPage() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -40,7 +41,10 @@ export function UserRegistryPage() {
   // Pagination states
   const [page, setPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
+
+  // Search state
+  const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState<CreateUserDto>({
     name: "",
@@ -58,10 +62,10 @@ export function UserRegistryPage() {
     }
   }, [formData.role]);
 
-  // Carrega usuários (excluindo SUPPLIERS) quando a página muda
+  // Carrega usuários quando a página, busca ou limit muda
   useEffect(() => {
     fetchData();
-  }, [page]);
+  }, [page, search, limit]);
 
   const fetchData = async () => {
     try {
@@ -74,6 +78,7 @@ export function UserRegistryPage() {
           roles: `${UserRole.ADMIN},${UserRole.EMPLOYEE}`,
           page,
           limit,
+          search: search || undefined,
         }),
         companiesService.findActive({ limit: 100 }), // Busca todas as empresas ativas
       ]);
@@ -102,6 +107,16 @@ export function UserRegistryPage() {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -281,6 +296,14 @@ export function UserRegistryPage() {
         </button>
       </div>
 
+      {/* Search */}
+      <SearchBar
+        placeholder="Buscar por nome, e-mail ou cargo..."
+        onSearch={handleSearch}
+        onClear={() => handleSearch('')}
+        showClearButton={!!search}
+      />
+
       {/* Add User Form */}
       {isAdding && (
         <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 animate-in slide-in-from-top duration-300">
@@ -304,11 +327,11 @@ export function UserRegistryPage() {
                   <input
                     type="text"
                     required
-                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    placeholder="Ex: João da Silva"
+                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed uppercase"
+                    placeholder="Ex: JOÃO DA SILVA"
                     value={formData.name}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({ ...formData, name: e.target.value.toUpperCase() })
                     }
                     disabled={isSaving}
                   />
@@ -453,7 +476,13 @@ export function UserRegistryPage() {
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={
+                  isSaving ||
+                  !formData.name.trim() ||
+                  !formData.email.trim() ||
+                  !formData.password.trim() ||
+                  ((formData.role === UserRole.EMPLOYEE || formData.role === UserRole.SUPPLIER) && !formData.companyId)
+                }
                 className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 font-medium flex items-center shadow-lg transform hover:translate-y-[-1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {isSaving ? (
@@ -521,13 +550,14 @@ export function UserRegistryPage() {
       )}
 
       {/* Pagination */}
-      {totalUsers > limit && (
+      {totalUsers > 0 && (
         <div className="mt-4">
           <Pagination
             page={page}
             total={totalUsers}
             limit={limit}
             onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
           />
         </div>
       )}

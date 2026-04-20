@@ -5,20 +5,18 @@ import { User, UserPermissionsResult } from '../types';
 import { useRouter } from "next/navigation";
 import Cookies from 'js-cookie';
 import { api } from '@/lib/api';
-import { isTokenExpired } from '@/lib/jwt-helper';
 import {
-  getAccessToken,
-  getRefreshToken,
-  saveTokens,
+  saveTokenExpiry,
+  isSessionExpired,
   clearAllAuthData,
-  refreshAccessToken,
+  refreshAccessTokenWithRetry,
   logout as logoutService,
 } from '@/services/auth/token.service';
 
 interface AuthContextType {
   currentUser: User | null;
   userPermissions: UserPermissionsResult | null;
-  loginUser: (user: User, accessToken: string, refreshToken: string) => Promise<void>;
+  loginUser: (user: User, expiresAt: string) => Promise<void>;
   logoutUser: () => Promise<void>;
   isLoading: boolean;
   refreshPermissions: () => Promise<void>;
@@ -34,8 +32,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // 🚀 OTIMIZAÇÃO: Inicializa sempre com null para evitar erro de hidratação
-  // SSR e cliente começam com mesmo estado
+  // Inicializa sempre com null para evitar erro de hidratação SSR
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userPermissions, setUserPermissions] = useState<UserPermissionsResult | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -46,30 +43,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const saved = localStorage.getItem(AUTH_SESSION_KEY);
         const savedPermissions = localStorage.getItem(PERMISSIONS_KEY);
-        const accessToken = getAccessToken();
-        const refreshToken = getRefreshToken();
 
-        // Não tem dados de usuário, finaliza
+        console.log('[AUTH] isSessionExpired:', isSessionExpired());
+        console.log('[AUTH] token_expires_at:', sessionStorage.getItem('token_expires_at'));
+        console.log('[AUTH] auth_session no localStorage:', !!saved);
+
+        // Sem dados de usuário no localStorage — tenta fallback via cookie
         if (!saved) {
-          // Tenta fallback de cookie
           const cookieData = Cookies.get(AUTH_SESSION_KEY);
-          if (cookieData && accessToken) {
-            const user = JSON.parse(cookieData);
-            localStorage.setItem(AUTH_SESSION_KEY, cookieData);
-
-            // Valida token antes de usar
-            if (!isTokenExpired(accessToken)) {
+          if (cookieData) {
+            // Tenta renovar sessão via cookie httpOnly refresh_token (com retry)
+            const success = await refreshAccessTokenWithRetry(2);
+            if (success) {
+              const user = JSON.parse(cookieData);
+              localStorage.setItem(AUTH_SESSION_KEY, cookieData);
               setCurrentUser(user);
               await fetchUserPermissions(user.id);
             } else {
-              // Token expirado, tenta renovar
-              const newToken = await refreshAccessToken();
-              if (newToken) {
-                setCurrentUser(user);
-                await fetchUserPermissions(user.id);
-              } else {
-                clearAllAuthData();
-              }
+              console.log('[AUTH] refresh falhou (sem auth_session) — limpando dados');
+              clearAllAuthData();
             }
           }
           setIsLoading(false);
@@ -78,28 +70,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         const user = JSON.parse(saved);
 
-        // Tem usuário salvo, valida tokens
-        if (!accessToken || !refreshToken) {
-          // Não tem tokens, limpa tudo
-          console.log('[AUTH CONTEXT] Usuário sem tokens válidos, limpando dados');
-          clearAllAuthData();
-          setCurrentUser(null);
-          setUserPermissions(null);
-          setIsLoading(false);
-          return;
-        }
-
-        // Verifica se access token está expirado
-        if (isTokenExpired(accessToken)) {
-          console.log('[AUTH CONTEXT] Access token expirado, tentando renovar...');
-
-          // Tenta renovar usando refresh token
+        // Verifica se a sessão expirou com base no expires_at armazenado
+        // (também é true quando sessionStorage está vazio, ex: nova aba)
+        if (isSessionExpired()) {
+          console.log('[AUTH] sessão expirada ou sem expires_at — tentando refresh com retry...');
+          // Tenta renovar via cookie httpOnly refresh_token (com retry para erros transitórios)
           try {
-            const newToken = await refreshAccessToken();
+            const success = await refreshAccessTokenWithRetry(2);
 
-            if (newToken) {
-              console.log('[AUTH CONTEXT] Token renovado com sucesso');
-              // Token renovado, continua com o login
+            console.log('[AUTH] refresh resultado:', success ? 'sucesso' : 'falhou');
+
+            if (success) {
               setCurrentUser(user);
 
               if (savedPermissions) {
@@ -108,21 +89,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 await fetchUserPermissions(user.id);
               }
             } else {
-              // Renovação falhou, limpa tudo
-              console.log('[AUTH CONTEXT] Renovação falhou, limpando dados');
+              console.log('[AUTH] refresh falhou após tentativas — limpando dados');
               clearAllAuthData();
               setCurrentUser(null);
               setUserPermissions(null);
             }
-          } catch (error) {
-            console.error('[AUTH CONTEXT] Erro ao renovar token:', error);
+          } catch {
             clearAllAuthData();
             setCurrentUser(null);
             setUserPermissions(null);
           }
         } else {
-          // Token válido, continua normalmente
-          console.log('[AUTH CONTEXT] Token válido, carregando usuário');
+          // Sessão válida — carrega usuário e permissões
           setCurrentUser(user);
 
           if (savedPermissions) {
@@ -131,8 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await fetchUserPermissions(user.id);
           }
         }
-      } catch (error) {
-        console.error('[AUTH CONTEXT] Erro ao carregar dados de autenticação:', error);
+      } catch {
         clearAllAuthData();
         setCurrentUser(null);
         setUserPermissions(null);
@@ -152,8 +129,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setUserPermissions(permissions);
       localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(permissions));
-    } catch (error) {
-      console.error('Erro ao buscar permissões:', error);
+    } catch {
+      // Silencioso — permissões serão obtidas na próxima chamada
     }
   };
 
@@ -163,49 +140,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const loginUser = async (user: User, accessToken: string, refreshToken: string) => {
+  /**
+   * Chamado após login bem-sucedido
+   * Recebe dados do usuário e o expires_at retornado pelo backend
+   */
+  const loginUser = async (user: User, expiresAt: string) => {
     setCurrentUser(user);
     try {
       const userData = JSON.stringify(user);
 
-      // Salva tokens usando o token service
-      saveTokens(accessToken, refreshToken);
+      // Salva expiração do access token (cookies httpOnly são gerenciados pelo backend)
+      saveTokenExpiry(expiresAt);
 
       // Salva dados do usuário no localStorage
       localStorage.setItem(AUTH_SESSION_KEY, userData);
 
-      // Salva no Cookie (para o Middleware do Next.js ter acesso)
+      // Salva no Cookie para o Middleware do Next.js ter acesso (não contém tokens)
       Cookies.set(AUTH_SESSION_KEY, userData, {
         expires: 7, // 7 dias
         path: '/',
         sameSite: 'lax',
-        secure: false, // false para funcionar em localhost
+        secure: process.env.NODE_ENV === 'production',
       });
 
       // Busca permissões do backend após login
       await fetchUserPermissions(user.id);
-
-      console.log('[AUTH CONTEXT] Login realizado com sucesso');
-    } catch (error) {
-      console.error('[AUTH CONTEXT] Erro ao salvar sessão:', error);
+    } catch {
+      // Erro ao salvar sessão — não é crítico para o fluxo
     }
   };
 
   const logoutUser = async () => {
     try {
-      // Revoga refresh token no backend
+      // Backend limpa os cookies httpOnly via Set-Cookie
       await logoutService();
-
-      console.log('[AUTH CONTEXT] Logout realizado com sucesso');
-    } catch (error) {
-      console.error('[AUTH CONTEXT] Erro ao fazer logout:', error);
+    } catch {
       // Continua mesmo se falhar (limpa dados locais)
     } finally {
       // Limpa o estado
       setCurrentUser(null);
       setUserPermissions(null);
 
-      // Limpa os dados de autenticação (tokens, cookies, localStorage)
+      // Limpa os dados de autenticação locais
       clearAllAuthData();
 
       // Limpa todos os caches do React Query
@@ -222,15 +198,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const userData = JSON.stringify(user);
       localStorage.setItem(AUTH_SESSION_KEY, userData);
 
-      // Atualiza o Cookie (para o Middleware do Next.js ter acesso)
+      // Atualiza o Cookie para o Middleware do Next.js
       Cookies.set(AUTH_SESSION_KEY, userData, {
         expires: 7, // 7 dias
         path: '/',
         sameSite: 'lax',
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
       });
-    } catch (error) {
-      console.error('[AUTH CONTEXT] Erro ao atualizar usuário local:', error);
+    } catch {
+      // Erro ao atualizar usuário local — não é crítico
     }
   };
 

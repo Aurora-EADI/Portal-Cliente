@@ -1,9 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../user/user.service';
-import { CreateAdminDto } from './dto/create-admin.dto';
-import { UpdateAdminDto } from './dto/update.admin.dto';
-import { UserRole } from '@prisma/client-postgres';
+﻿import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import { UsersService } from "../user/user.service";
+import { CreateAdminDto } from "./dto/create-admin.dto";
+import { UpdateAdminDto } from "./dto/update.admin.dto";
+import { UserRole } from "@prisma/client";
 
 @Injectable()
 export class AdminService {
@@ -12,7 +12,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   async create(dto: CreateAdminDto) {
     this.logger.log(`Criando administrador: ${JSON.stringify(dto)}`);
@@ -25,7 +25,7 @@ export class AdminService {
   }
 
   async findAll() {
-    this.logger.log('Listando todos os administradores');
+    this.logger.log("Listando todos os administradores");
     return this.prisma.user.findMany({
       where: { role: UserRole.ADMIN },
     });
@@ -40,7 +40,7 @@ export class AdminService {
     if (!admin) {
       this.logger.warn(`Administrador não encontrado: ${id}`);
       throw new HttpException(
-        'Esse administrador não existe.',
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -61,7 +61,7 @@ export class AdminService {
         `Tentativa de atualizar administrador inexistente: ${id}`,
       );
       throw new HttpException(
-        'Esse administrador não existe.',
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -81,7 +81,7 @@ export class AdminService {
     if (!exists) {
       this.logger.warn(`Tentativa de remover administrador inexistente: ${id}`);
       throw new HttpException(
-        'Esse administrador não existe.',
+        "Esse administrador não existe.",
         HttpStatus.NOT_FOUND,
       );
     }

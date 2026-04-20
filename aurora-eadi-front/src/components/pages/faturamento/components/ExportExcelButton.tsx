@@ -5,6 +5,12 @@ import * as XLSX from "xlsx";
 import { FaturamentoDetalhado } from "@/services/faturamento/types/type_faturamentoDetalhado";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  formatDateForFilename,
+  formatCellValue,
+  applyNumericFormatAuto,
+  applyAutoWidth,
+} from "@/lib/exportExcel";
 
 interface ColumnConfig {
   id: string;
@@ -29,42 +35,7 @@ export function ExportExcelButton({
 }: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Funções auxiliares (mantidas)
-  const isDate = (value: unknown): value is Date =>
-    value instanceof Date && !isNaN(value.getTime());
-
-  const parseLocalDate = (dateString: string): string => {
-    if (!dateString || !dateString.includes("-")) return dateString;
-
-    const parts = dateString.split("T")[0].split("-");
-    if (parts.length !== 3) return dateString;
-
-    const [year, month, day] = parts;
-    if (!year || !month || !day) return dateString;
-
-    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
-  };
-
-  const formatDateForFilename = (dateString: string): string => {
-    if (!dateString) return "";
-
-    const datePart = dateString.split("T")[0];
-    const parts = datePart.split("-");
-    if (parts.length !== 3) {
-      console.warn("Formato de data inválido:", dateString);
-      return "";
-    }
-
-    const [year, month, day] = parts;
-    if (!year || !month || !day) {
-      console.warn("Data incompleta:", dateString);
-      return "";
-    }
-
-    return `${day.padStart(2, "0")}${month.padStart(2, "0")}${year}`;
-  };
-
-  // Função principal agora inclui um delay
+  // Função principal
   const exportToExcel = async () => {
     if (!data || data.length === 0) {
       toast.error("Não há dados para exportar.");
@@ -81,42 +52,17 @@ export function ExportExcelButton({
       await new Promise(resolve => setTimeout(resolve, 10));
 
       // 3. Início do trabalho pesado (Geração da Planilha)
-      // Se houver colunas visíveis especificadas, filtrar apenas essas colunas
       const formatted = data.map((item) => {
-        const row: Record<string, any> = {};
+        const row: Record<string, string | number> = {};
 
-        // Se visibleColumns foi fornecido, exportar apenas colunas visíveis
         if (visibleColumns && visibleColumns.length > 0) {
           visibleColumns.forEach((col) => {
             const key = col.id as keyof FaturamentoDetalhado;
-            const val = item[key];
-
-            if (isDate(val)) {
-              row[col.label] = val.toLocaleDateString("pt-BR");
-            } else if (
-              typeof val === "string" &&
-              val.includes("-") &&
-              !isNaN(Date.parse(val))
-            ) {
-              row[col.label] = parseLocalDate(val);
-            } else {
-              row[col.label] = val ?? "";
-            }
+            row[col.label] = formatCellValue(item[key], col.id);
           });
         } else {
-          // Caso contrário, exportar todas as colunas (comportamento padrão)
           Object.entries(item).forEach(([key, val]) => {
-            if (isDate(val)) {
-              row[key] = val.toLocaleDateString("pt-BR");
-            } else if (
-              typeof val === "string" &&
-              val.includes("-") &&
-              !isNaN(Date.parse(val))
-            ) {
-              row[key] = parseLocalDate(val);
-            } else {
-              row[key] = val ?? "";
-            }
+            row[key] = formatCellValue(val, key);
           });
         }
 
@@ -125,15 +71,8 @@ export function ExportExcelButton({
 
       const worksheet = XLSX.utils.json_to_sheet(formatted);
 
-      worksheet["!cols"] = Object.keys(formatted[0] || {}).map((col) => ({
-        wch: Math.min(
-          Math.max(
-            col.length,
-            ...formatted.map((row) => String(row[col] || "").length)
-          ) + 2,
-          50
-        ),
-      }));
+      applyNumericFormatAuto(worksheet);
+      applyAutoWidth(worksheet, formatted);
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Faturamento");

@@ -11,7 +11,7 @@ export const useDocuments = (user: User | null) => {
     queryKey: [...DOCS_KEY, user?.id],
     queryFn: async () => {
       if (!user) return [];
-      if (user.role === 'ADMIN') {
+      if (user.role === 'ADMIN' || user.role === 'EMPLOYEE') {
         return await documentService.getAll();
       } else if (user.companyId) {
         return await documentService.getByCompany(String(user.companyId));

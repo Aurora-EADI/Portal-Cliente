@@ -1,5 +1,5 @@
-import { IsString, IsOptional } from 'class-validator';
-import { CreateSimulationDto } from './create-simulation.dto';
+import { IsString, IsOptional } from "class-validator";
+import { CreateSimulationDto } from "./create-simulation.dto";
 
 export class CreateNewVersionDto extends CreateSimulationDto {
   @IsString()

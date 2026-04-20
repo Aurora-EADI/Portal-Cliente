@@ -30,6 +30,18 @@ export interface ActivityAccess {
     isMandatory: boolean;
     isActive: boolean;
     permissions: string[];
+    route?: string;
+    label?: string;
+    icon?: string;
+    sortOrder?: number;
+}
+
+export interface ModuleSharedItem {
+    id: number;
+    targetRoute: string;
+    label: string;
+    icon?: string;
+    sortOrder: number;
 }
 
 export interface ModuleAccess {
@@ -43,6 +55,7 @@ export interface ModuleAccess {
     activeActivities: number;
     route?: string;
     icon?: string;
+    sharedItems?: ModuleSharedItem[];
 }
 
 export interface UserModulesAccessStatus {

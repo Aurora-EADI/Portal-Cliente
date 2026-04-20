@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Put,
@@ -10,16 +10,17 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client-postgres';
-import { UserModuleAccessService } from './user-module-access.service';
-import { ToggleModuleDto } from './dto/toggle-module.dto';
-import { BulkAssignModulesDto } from './dto/bulk-assign-modules.dto';
+} from "@nestjs/common";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client";
+import { UserModuleAccessService } from "./user-module-access.service";
+import { ToggleModuleDto } from "./dto/toggle-module.dto";
+import { BulkAssignModulesDto } from "./dto/bulk-assign-modules.dto";
 
-@Controller('user-module-access')
-@UseGuards(JwtAuthGuard)
+@Controller("user-module-access")
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserModuleAccessController {
   constructor(
     private readonly userModuleAccessService: UserModuleAccessService,
@@ -30,8 +31,8 @@ export class UserModuleAccessController {
    * Lista todos os módulos com status de acesso do usuário
    * DIFERENTE de GET /users/:id/modules (que só lista os que têm acesso)
    */
-  @Get(':userId')
-  async getUserModulesWithAccessStatus(@Param('userId') userId: string) {
+  @Get(":userId")
+  async getUserModulesWithAccessStatus(@Param("userId") userId: string) {
     return this.userModuleAccessService.getUserModulesWithAccessStatus(userId);
   }
 
@@ -39,7 +40,7 @@ export class UserModuleAccessController {
    * GET /user-module-access/stats/modules
    * Estatísticas de uso dos módulos
    */
-  @Get('stats/modules')
+  @Get("stats/modules")
   @Roles(UserRole.ADMIN)
   async getModuleUsageStats() {
     return this.userModuleAccessService.getModuleUsageStats();
@@ -49,11 +50,11 @@ export class UserModuleAccessController {
    * PUT /user-module-access/:userId/toggle/:moduleId
    * Ativa/Desativa um módulo para o usuário
    */
-  @Put(':userId/toggle/:moduleId')
+  @Put(":userId/toggle/:moduleId")
   @Roles(UserRole.ADMIN)
   async toggleModule(
-    @Param('userId') userId: string,
-    @Param('moduleId', ParseIntPipe) moduleId: number,
+    @Param("userId") userId: string,
+    @Param("moduleId", ParseIntPipe) moduleId: number,
     @Body() toggleDto: ToggleModuleDto,
   ) {
     return this.userModuleAccessService.toggleModule(
@@ -67,11 +68,11 @@ export class UserModuleAccessController {
    * POST /user-module-access/:userId/bulk
    * Atribui múltiplos módulos de uma vez
    */
-  @Post(':userId/bulk')
+  @Post(":userId/bulk")
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN)
   async assignMultipleModules(
-    @Param('userId') userId: string,
+    @Param("userId") userId: string,
     @Body() bulkDto: BulkAssignModulesDto,
   ) {
     return this.userModuleAccessService.assignMultipleModules(userId, bulkDto);
@@ -81,10 +82,12 @@ export class UserModuleAccessController {
    * POST /user-module-access/sync/:moduleId
    * Sincroniza atividades obrigatórias
    */
-  @Post('sync/:moduleId')
+  @Post("sync/:moduleId")
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN)
-  async syncMandatoryActivities(@Param('moduleId', ParseIntPipe) moduleId: number) {
+  async syncMandatoryActivities(
+    @Param("moduleId", ParseIntPipe) moduleId: number,
+  ) {
     return this.userModuleAccessService.syncMandatoryActivities(moduleId);
   }
 
@@ -92,12 +95,12 @@ export class UserModuleAccessController {
    * DELETE /user-module-access/:userId/remove/:moduleId
    * Remove completamente o acesso a um módulo
    */
-  @Delete(':userId/remove/:moduleId')
+  @Delete(":userId/remove/:moduleId")
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.ADMIN)
   async removeModuleAccess(
-    @Param('userId') userId: string,
-    @Param('moduleId', ParseIntPipe) moduleId: number,
+    @Param("userId") userId: string,
+    @Param("moduleId", ParseIntPipe) moduleId: number,
   ) {
     return this.userModuleAccessService.removeModuleAccess(userId, moduleId);
   }

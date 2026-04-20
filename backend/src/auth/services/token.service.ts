@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaPostgresService as PrismaService } from '../../prisma/prisma.service';
-import { TokenType } from '@prisma/client-postgres';
-import * as crypto from 'crypto';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaPostgresService as PrismaService } from "../../prisma/prisma.service";
+import { TokenType } from "@prisma/client";
+import * as crypto from "crypto";
 
 /**
  * Interface para o payload do JWT
@@ -12,7 +12,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   companyId?: string;
-  type?: 'access' | 'refresh';
+  type?: "access" | "refresh";
   exp?: number; // Timestamp de expiração (adicionado pelo JWT)
   iat?: number; // Timestamp de emissão (adicionado pelo JWT)
 }
@@ -32,14 +32,14 @@ export interface TokenSecurityMetadata {
 @Injectable()
 export class TokenService {
   // Constantes de configuração
-  private readonly ACCESS_TOKEN_EXPIRY = '1h'; // 1 hora - tempo padrão para access tokens
-  private readonly REFRESH_TOKEN_EXPIRY = '7d'; // 7 dias - tempo padrão para refresh tokens
+  private readonly ACCESS_TOKEN_EXPIRY = "1h"; // 1 hora - tempo padrão para access tokens
+  private readonly REFRESH_TOKEN_EXPIRY = "7d"; // 7 dias - tempo padrão para refresh tokens
   private readonly REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-  ) { }
+  ) {}
 
   /**
    * Gera um par de tokens (access + refresh) para um usuário
@@ -83,7 +83,7 @@ export class TokenService {
       email,
       role,
       companyId,
-      type: 'access',
+      type: "access",
     };
 
     return this.jwtService.sign(payload, {
@@ -103,8 +103,8 @@ export class TokenService {
     const payload: JwtPayload = {
       sub: userId,
       email,
-      role: '', // Não incluímos role/companyId no refresh por segurança
-      type: 'refresh',
+      role: "", // Não incluímos role/companyId no refresh por segurança
+      type: "refresh",
     };
 
     // Gera o JWT
@@ -132,7 +132,7 @@ export class TokenService {
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.REFRESH_TOKEN_EXPIRY_MS);
 
-    console.log('[TOKEN SERVICE] Salvando refresh token:', {
+    console.log("[TOKEN SERVICE] Salvando refresh token:", {
       userId,
       expiresAt,
       ipAddress: metadata?.ipAddress,
@@ -149,7 +149,7 @@ export class TokenService {
       },
     });
 
-    console.log('[TOKEN SERVICE] Refresh token salvo com sucesso');
+    console.log("[TOKEN SERVICE] Refresh token salvo com sucesso");
   }
 
   /**
@@ -160,16 +160,15 @@ export class TokenService {
       // Verifica assinatura e expiração do JWT
       const payload = this.jwtService.verify(refreshToken) as JwtPayload;
 
-      console.log('[TOKEN SERVICE] Refresh token decodificado:', {
+      console.log("[TOKEN SERVICE] Refresh token decodificado:", {
         sub: payload.sub,
         type: payload.type,
-        exp: payload.exp ? new Date(payload.exp * 1000) : 'N/A',
+        exp: payload.exp ? new Date(payload.exp * 1000) : "N/A",
       });
 
       // Valida tipo do token
-      if (payload.type !== 'refresh') {
-        console.error('[TOKEN SERVICE] Token com tipo incorreto:', payload.type);
-        throw new Error('Token inválido: tipo incorreto');
+      if (payload.type !== "refresh") {
+        throw new UnauthorizedException("Token inválido: tipo incorreto");
       }
 
       // Verifica se o token existe e está válido no banco
@@ -187,18 +186,20 @@ export class TokenService {
       });
 
       if (!tokenRecord) {
-        console.error('[TOKEN SERVICE] Token não encontrado no banco para userId:', payload.sub);
-        throw new Error('Token inválido ou revogado');
+        throw new UnauthorizedException("Token inválido ou revogado");
       }
 
-      console.log('[TOKEN SERVICE] Token válido, encontrado no banco');
+      console.log("[TOKEN SERVICE] Token válido, encontrado no banco");
 
       // Atualiza última utilização
       await this.updateTokenLastUsed(tokenRecord.id);
 
       return payload;
     } catch (error: any) {
-      console.error('[TOKEN SERVICE] Erro ao validar refresh token:', error.message);
+      console.error(
+        "[TOKEN SERVICE] Erro ao validar refresh token:",
+        error.message,
+      );
       throw error;
     }
   }
@@ -208,7 +209,7 @@ export class TokenService {
    */
   async refreshAccessToken(
     refreshToken: string,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ access_token: string }> {
     // Valida o refresh token
     const payload = await this.validateRefreshToken(refreshToken);
 
@@ -218,7 +219,7 @@ export class TokenService {
     });
 
     if (!user) {
-      throw new Error('Usuário não encontrado');
+      throw new UnauthorizedException("Usuário não encontrado");
     }
 
     // Gera novo access token com dados atualizados
@@ -229,7 +230,7 @@ export class TokenService {
       user.companyId ?? undefined, // Converte null para undefined
     );
 
-    return { accessToken };
+    return { access_token: accessToken };
   }
 
   /**
@@ -324,7 +325,7 @@ export class TokenService {
         expiresAt: true,
       },
       orderBy: {
-        lastUsedAt: 'desc',
+        lastUsedAt: "desc",
       },
     });
   }
@@ -344,7 +345,7 @@ export class TokenService {
    * Nunca armazenamos o token original no banco
    */
   private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
 
   /**

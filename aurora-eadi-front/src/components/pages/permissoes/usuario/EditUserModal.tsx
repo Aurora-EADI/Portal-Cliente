@@ -10,7 +10,9 @@ import {
   AlertCircle,
   Edit,
   X,
+  Loader2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Types - Ajuste conforme seus tipos reais da API
 enum UserRole {
@@ -157,14 +159,15 @@ export function EditUserModal({
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleClose}
             disabled={isSaving}
-            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Fechar modal"
           >
-            <X className="w-6 h-6" />
-          </button>
+            <X className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Error Alert dentro do Modal */}
@@ -175,13 +178,15 @@ export function EditUserModal({
               <h3 className="text-sm font-medium text-red-800">Erro na validação</h3>
               <p className="text-sm text-red-700 mt-1">{error}</p>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onClearError}
-              className="ml-2 text-red-400 hover:text-red-600 transition-colors"
+              className="ml-2 h-6 w-6 text-red-400 hover:text-red-600 hover:bg-transparent"
               aria-label="Fechar alerta"
             >
-              ×
-            </button>
+              <X className="w-4 h-4" />
+            </Button>
           </div>
         )}
 
@@ -353,30 +358,30 @@ export function EditUserModal({
 
           {/* Footer Buttons */}
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-            <button
+            <Button
+              variant="outline"
               onClick={handleClose}
               disabled={isSaving}
-              className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-6 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium flex items-center shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="bg-primary-600 hover:bg-primary-700 shadow-lg"
             >
               {isSaving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Salvando...
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
+                  <Check className="w-4 h-4" />
                   Salvar Alterações
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -1,0 +1,158 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+  Query,
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
+import { AirSimulationsService } from "./air-simulation.service";
+import { CreateAirSimulationDto } from "./dto/create-air-simulation.dto";
+import { UpdateAirSimulationDto } from "./dto/update-air-simulation.dto";
+import { CreateAirNewVersionDto } from "./dto/create-air-new-version.dto";
+import { AddAirSimulationServiceDto } from "./dto/add-air-simulation-service.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+
+@ApiTags("Simulações Aéreas")
+@ApiBearerAuth()
+@Controller("air-simulations")
+@UseGuards(JwtAuthGuard)
+export class AirSimulationsController {
+  constructor(private readonly airSimulationsService: AirSimulationsService) {}
+
+  @Post()
+  @ApiOperation({ summary: "Criar nova simulação de custo aéreo" })
+  @ApiResponse({ status: 201, description: "Simulação criada com sucesso" })
+  @ApiResponse({ status: 400, description: "Dados inválidos" })
+  create(
+    @Body() createAirSimulationDto: CreateAirSimulationDto,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
+  ) {
+    return this.airSimulationsService.create(
+      createAirSimulationDto,
+      req.user.id,
+    );
+  }
+
+  @Post("new-version")
+  @ApiOperation({
+    summary: "Criar nova versão de uma simulação aérea existente",
+  })
+  @ApiResponse({ status: 201, description: "Nova versão criada com sucesso" })
+  @ApiResponse({ status: 404, description: "Simulação base não encontrada" })
+  createNewVersion(
+    @Body() createNewVersionDto: CreateAirNewVersionDto,
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
+  ) {
+    return this.airSimulationsService.createNewVersion(
+      createNewVersionDto,
+      req.user.id,
+    );
+  }
+
+  @Get()
+  @ApiOperation({ summary: "Listar todas as simulações aéreas" })
+  @ApiQuery({
+    name: "customerId",
+    required: false,
+    description: "Filtrar por cliente",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Lista de simulações retornada com sucesso",
+  })
+  findAll(@Query("customerId") customerId?: string) {
+    return this.airSimulationsService.findAll(customerId);
+  }
+
+  @Get("version-history/:simulationNumber")
+  @ApiOperation({
+    summary: "Obter histórico de versões de uma simulação aérea",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Histórico de versões retornado com sucesso",
+  })
+  getVersionHistory(@Param("simulationNumber") simulationNumber: string) {
+    return this.airSimulationsService.getVersionHistory(simulationNumber);
+  }
+
+  @Get(":id")
+  @ApiOperation({ summary: "Obter detalhes de uma simulação aérea específica" })
+  @ApiResponse({ status: 200, description: "Simulação encontrada" })
+  @ApiResponse({ status: 404, description: "Simulação não encontrada" })
+  findOne(@Param("id") id: string) {
+    return this.airSimulationsService.findOne(id);
+  }
+
+  @Patch(":id")
+  @ApiOperation({ summary: "Atualizar dados de uma simulação aérea" })
+  @ApiResponse({ status: 200, description: "Simulação atualizada com sucesso" })
+  @ApiResponse({ status: 404, description: "Simulação não encontrada" })
+  update(
+    @Param("id") id: string,
+    @Body() updateAirSimulationDto: UpdateAirSimulationDto,
+  ) {
+    return this.airSimulationsService.update(id, updateAirSimulationDto);
+  }
+
+  @Delete(":id")
+  @ApiOperation({ summary: "Deletar uma simulação aérea" })
+  @ApiResponse({ status: 200, description: "Simulação deletada com sucesso" })
+  @ApiResponse({ status: 404, description: "Simulação não encontrada" })
+  remove(@Param("id") id: string) {
+    return this.airSimulationsService.remove(id);
+  }
+
+  // ========== GERENCIAMENTO DE SERVIÇOS ==========
+
+  @Post(":id/services")
+  @ApiOperation({ summary: "Adicionar serviço a uma simulação aérea" })
+  @ApiResponse({ status: 201, description: "Serviço adicionado com sucesso" })
+  @ApiResponse({ status: 404, description: "Simulação não encontrada" })
+  addService(
+    @Param("id") id: string,
+    @Body() addAirSimulationServiceDto: AddAirSimulationServiceDto,
+    // Removido o @Request() se não for usar o ID do usuário para mais nada aqui
+  ) {
+    return this.airSimulationsService.addService(
+      id,
+      addAirSimulationServiceDto,
+    );
+  }
+
+  @Get(":id/services")
+  @ApiOperation({ summary: "Listar todos os serviços de uma simulação aérea" })
+  @ApiResponse({
+    status: 200,
+    description: "Lista de serviços retornada com sucesso",
+  })
+  getServices(@Param("id") id: string) {
+    return this.airSimulationsService.getServices(id);
+  }
+
+  @Delete(":id/services/:serviceId")
+  @ApiOperation({ summary: "Remover serviço de uma simulação aérea" })
+  @ApiResponse({ status: 200, description: "Serviço removido com sucesso" })
+  @ApiResponse({
+    status: 404,
+    description: "Serviço ou simulação não encontrados",
+  })
+  removeService(
+    @Param("id") id: string,
+    @Param("serviceId") serviceId: string,
+  ) {
+    return this.airSimulationsService.removeService(id, serviceId);
+  }
+}

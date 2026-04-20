@@ -1,4 +1,4 @@
-import { IsOptional, IsEmail, MinLength } from 'class-validator';
+import { IsOptional, IsEmail, MinLength } from "class-validator";
 
 export class UpdateAdminDto {
   @IsOptional()

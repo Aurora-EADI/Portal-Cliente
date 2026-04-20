@@ -15,6 +15,10 @@ export interface Activity {
     userAccessCount?: number;
     description?: string;
     isActive?: boolean;
+    route?: string;
+    label?: string;
+    icon?: string;
+    sortOrder?: number;
 }
 
 export interface ActivityDetail extends Activity {
@@ -36,12 +40,20 @@ export interface CreateActivityDto {
     moduleId: number;
     isMandatory?: boolean;
     permissionIds: number[];
+    route?: string;
+    label?: string;
+    icon?: string;
+    sortOrder?: number;
 }
 
 export interface UpdateActivityDto {
     name?: string;
     moduleId?: number;
     isMandatory?: boolean;
+    route?: string;
+    label?: string;
+    icon?: string;
+    sortOrder?: number;
 }
 
 export interface UpdateActivityPermissionsDto {

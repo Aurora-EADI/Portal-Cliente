@@ -1,12 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Plus, Trash2, Package, Truck, FileText, Users, BarChart3, Settings,
-  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail, 
+import {
+  Plus, Trash2, Edit, Package, Truck, FileText, Users, BarChart3, Settings,
+  ShoppingCart, CreditCard, Briefcase, Calendar, MessageSquare, Mail,
   Bell, Shield, LayoutDashboard, Layers, Wrench, Database, AlertCircle, X, Activity
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { EditModuleModal } from "./gestao/EditModuleModal";
+import { MODULE_ROUTES, SUB_ROUTES } from "@/config/routes/registry";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { Module as ModuleType, UpdateModuleDto, ModuleSubPage } from "@/types/module";
+
+interface AvailableRoute {
+  path: string;
+  label: string;
+  icon: string;
+  parentPath?: string;
+}
 
 // Mapa de ícones disponíveis
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -37,7 +50,11 @@ interface Module {
   description: string;
   route?: string;
   icon?: string;
+  active?: boolean;
   activities?: Activity[];
+  _count?: {
+    userAccess: number;
+  };
 }
 
 interface ModuleFormData {
@@ -60,8 +77,22 @@ export function PermissoesDashboard() {
     route: "",
     icon: "Package",
   });
+  const [createSubPages, setCreateSubPages] = useState<ModuleSubPage[]>([]);
 
-  // Carrega módulos do backend
+  // Modal de edição
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<ModuleType | null>(null);
+  const [moduleError, setModuleError] = useState<string | null>(null);
+
+  // Dialog de confirmação de deleção
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+
+  // Rotas disponíveis do registry local (fonte única de verdade)
+  const availableRoutes: AvailableRoute[] = MODULE_ROUTES;
+  const availableSubRoutes: AvailableRoute[] = SUB_ROUTES;
+
+  // Carrega módulos
   useEffect(() => {
     fetchModules();
   }, []);
@@ -89,18 +120,8 @@ export function PermissoesDashboard() {
       return;
     }
 
-    if (!formData.route.trim()) {
-      setError('A rota do módulo é obrigatória');
-      return;
-    }
-
-    if (!formData.route.startsWith('/')) {
-      setError('A rota deve começar com "/" (ex: /faturamento)');
-      return;
-    }
-
-    if (!/^\/[a-z0-9-]+$/.test(formData.route)) {
-      setError('A rota deve conter apenas letras minúsculas, números e hífens após a "/" inicial');
+    if (!formData.route) {
+      setError('A rota do módulo é obrigatória. Selecione uma rota disponível.');
       return;
     }
 
@@ -113,10 +134,12 @@ export function PermissoesDashboard() {
         description: formData.description.trim(),
         route: formData.route.trim(),
         icon: formData.icon,
+        subPages: createSubPages.length > 0 ? createSubPages : undefined,
       });
 
       setModules((prev) => [...prev, response.data]);
       setFormData({ name: "", description: "", route: "", icon: "Package" });
+      setCreateSubPages([]);
       setIsAdding(false);
     } catch (err: any) {
       console.error('Erro ao criar módulo:', err);
@@ -131,11 +154,17 @@ export function PermissoesDashboard() {
     }
   };
 
-  // Deleta módulo
-  const handleDelete = async (moduleId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este módulo? Esta ação não pode ser desfeita.')) {
-      return;
-    }
+  // Abre o dialog de confirmação de deleção
+  const handleDeleteClick = (module: Module) => {
+    setModuleToDelete(module);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirma e deleta o módulo
+  const handleConfirmDelete = async () => {
+    if (!moduleToDelete) return;
+
+    const moduleId = moduleToDelete.id;
 
     try {
       setDeletingId(moduleId);
@@ -147,6 +176,8 @@ export function PermissoesDashboard() {
       setError(err.response?.data?.message || 'Erro ao excluir módulo. Verifique se não há dependências.');
     } finally {
       setDeletingId(null);
+      setDeleteDialogOpen(false);
+      setModuleToDelete(null);
     }
   };
 
@@ -154,6 +185,49 @@ export function PermissoesDashboard() {
     setFormData({ name: "", description: "", route: "", icon: "Package" });
     setIsAdding(false);
     setError(null);
+  };
+
+  // Abre o modal de edição
+  const handleEditModule = (module: Module) => {
+    // Converte o módulo local para o tipo esperado pelo modal
+    const moduleForEdit: ModuleType = {
+      ...module,
+      id: Number(module.id),
+      activities: module.activities?.map((a) => ({
+        ...a,
+        id: Number(a.id),
+        permissions: a.permissions.map((p) => ({
+          permission: {
+            id: Number(p.permission.id),
+            key: p.permission.key,
+            description: p.permission.description,
+            category: "",
+          },
+        })),
+      })),
+    };
+    setSelectedModule(moduleForEdit);
+    setModuleError(null);
+    setEditModalOpen(true);
+  };
+
+  // Salva as alterações do módulo
+  const handleSaveModule = async (id: number, data: UpdateModuleDto) => {
+    try {
+      await api.patch(`/modules/${id}`, data);
+      // Recarrega todos os módulos para garantir dados atualizados
+      await fetchModules();
+      setEditModalOpen(false);
+      setSelectedModule(null);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message;
+      if (Array.isArray(errorMessage)) {
+        setModuleError(errorMessage.join(", "));
+      } else {
+        setModuleError(errorMessage || "Erro ao salvar módulo. Tente novamente.");
+      }
+      throw err;
+    }
   };
 
   // Helper para renderizar o ícone dinamicamente
@@ -174,41 +248,49 @@ export function PermissoesDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Error Alert */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
-          <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-red-800">Erro</h3>
-            <p className="text-sm text-red-700 mt-1">{error}</p>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header Fixo */}
+      <div className="flex-shrink-0 space-y-4 pb-4">
+        {/* Error Alert */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-red-800">Erro</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setError(null)}
+              className="ml-auto h-7 w-7 text-red-400 hover:text-red-600 hover:bg-transparent"
+              aria-label="Fechar alerta"
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-400 hover:text-red-600 transition-colors"
-            aria-label="Fechar alerta"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Módulos</h1>
-          <p className="text-gray-500 mt-1">Gerencie os macro-módulos e permissões do sistema</p>
-        </div>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-all shadow-sm hover:shadow text-sm font-medium"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Módulo
-          </button>
         )}
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Módulos</h1>
+            <p className="text-gray-500 mt-1">Gerencie os macro-módulos e permissões do sistema</p>
+          </div>
+          {!isAdding && (
+            <Button
+              onClick={() => setIsAdding(true)}
+              className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Novo Módulo
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Conteúdo Scrollável */}
+      <div className="flex-1 overflow-auto space-y-6 pb-6">
 
       {/* Form */}
       {isAdding && (
@@ -259,51 +341,91 @@ export function PermissoesDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Rota do Módulo <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="/faturamento"
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                        formData.route && !formData.route.startsWith('/')
-                          ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                          : formData.route && /^\/[a-z0-9-]+$/.test(formData.route)
-                          ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
-                          : 'border-gray-300 focus:ring-orange-500 focus:border-transparent'
-                      }`}
-                      value={formData.route}
-                      onChange={(e) =>
-                        setFormData({ ...formData, route: e.target.value.toLowerCase() })
-                      }
-                      disabled={isSaving}
-                      maxLength={50}
-                    />
-                    {formData.route && /^\/[a-z0-9-]+$/.test(formData.route) && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500">
-                        ✓
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-2 bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-xs text-blue-800 font-medium mb-1 flex items-center">
-                      <AlertCircle className="w-3 h-3 mr-1" />
-                      Formato obrigatório da rota:
-                    </p>
-                    <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
-                      <li>
-                        Deve <strong>começar com "/"</strong> (ex: <code className="bg-blue-100 px-1 rounded">/faturamento</code>)
-                      </li>
-                      <li>
-                        Apenas <strong>letras minúsculas</strong>, <strong>números</strong> e <strong>hífens</strong>
-                      </li>
-                      <li>
-                        Sem espaços, acentos ou caracteres especiais
-                      </li>
-                      <li>
-                        Exemplos válidos: <code className="bg-blue-100 px-1 rounded">/permissoes</code>, <code className="bg-blue-100 px-1 rounded">/gestao-usuarios</code>
-                      </li>
-                    </ul>
-                  </div>
+                  <select
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                      formData.route
+                        ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
+                        : 'border-gray-300 focus:ring-orange-500 focus:border-transparent'
+                    }`}
+                    value={formData.route}
+                    onChange={(e) => {
+                      setFormData({ ...formData, route: e.target.value });
+                      setCreateSubPages([]);
+                    }}
+                    disabled={isSaving}
+                  >
+                    <option value="">Selecione uma rota...</option>
+                    {availableRoutes.map((route) => (
+                      <option key={route.path} value={route.path}>
+                        {route.label} ({route.path})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selecione a página do sistema que este módulo representa.
+                  </p>
                 </div>
+
+                {/* Sub-páginas do Sidebar */}
+                {formData.route && availableSubRoutes.filter((r) => r.parentPath === formData.route).length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sub-páginas no Sidebar
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Selecione quais páginas devem aparecer no menu lateral deste módulo.
+                    </p>
+                    <div className="space-y-2">
+                      {availableSubRoutes
+                        .filter((r) => r.parentPath === formData.route)
+                        .map((route) => {
+                          const isSelected = createSubPages.some(
+                            (sp) => sp.targetRoute === route.path
+                          );
+                          return (
+                            <label
+                              key={route.path}
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-300 bg-white'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    setCreateSubPages(createSubPages.filter((sp) => sp.targetRoute !== route.path));
+                                  } else {
+                                    setCreateSubPages([
+                                      ...createSubPages,
+                                      {
+                                        targetRoute: route.path,
+                                        label: route.label,
+                                        icon: route.icon,
+                                        sortOrder: createSubPages.length,
+                                      },
+                                    ]);
+                                  }
+                                }}
+                                disabled={isSaving}
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-800">
+                                  {route.label}
+                                </span>
+                                <span className="text-xs text-gray-400 ml-2">
+                                  {route.path}
+                                </span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -340,32 +462,31 @@ export function PermissoesDashboard() {
             </div>
 
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSaving}
+                className="text-gray-700"
               >
                 Cancelar
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={handleSubmit}
-                className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 disabled={isSaving}
+                className="bg-gray-900 hover:bg-gray-800"
               >
                 {isSaving ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     Salvando...
                   </>
                 ) : (
                   <>
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-4 h-4" />
                     Salvar Módulo
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -377,25 +498,38 @@ export function PermissoesDashboard() {
           {modules.map((module) => (
             <div
               key={module.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all p-5 flex flex-col justify-between group"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all p-5 flex flex-col group min-h-[200px]"
             >
-              <div>
+              <div className="flex-grow">
                 <div className="flex justify-between items-start mb-3">
                   <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                     {renderIcon(module.icon)}
                   </div>
-                  <button
-                    onClick={() => handleDelete(module.id)}
-                    className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Excluir módulo"
-                    disabled={deletingId === module.id}
-                  >
-                    {deletingId === module.id ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditModule(module)}
+                      className="h-7 w-7 text-gray-400 hover:text-blue-500 hover:bg-blue-50"
+                      title="Editar módulo"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(module)}
+                      disabled={deletingId === module.id}
+                      className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      title="Excluir módulo"
+                    >
+                      {deletingId === module.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <h3 className="font-bold text-lg text-gray-900 mb-1">
                   {module.name}
@@ -421,11 +555,18 @@ export function PermissoesDashboard() {
                   </div>
                 )}
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                {/* <span title={module.id}>ID: {module.id.slice(0, 8)}...</span> */}
-                <span className="bg-green-100 px-2 py-1 rounded text-green-700 font-medium">
-                  Ativo
-                </span>
+              <div className="mt-auto pt-4">
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-end text-xs text-gray-400">
+                  {module.active !== false ? (
+                    <span className="bg-green-100 px-2 py-1 rounded text-green-700 font-medium">
+                      Ativo
+                    </span>
+                  ) : (
+                    <span className="bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">
+                      Inativo
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -444,15 +585,76 @@ export function PermissoesDashboard() {
           <p className="text-gray-500 mt-1 mb-4">
             Comece criando a estrutura do seu sistema.
           </p>
-          <button
+          <Button
             onClick={() => setIsAdding(true)}
-            className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors shadow-sm text-sm font-medium"
+            className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Criar Primeiro Módulo
-          </button>
+          </Button>
         </div>
       )}
+      </div>
+
+      {/* Modal de Edição de Módulo */}
+      <EditModuleModal
+        isOpen={editModalOpen}
+        module={selectedModule}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedModule(null);
+        }}
+        onSave={handleSaveModule}
+        error={moduleError}
+        onClearError={() => setModuleError(null)}
+        availableRoutes={availableRoutes}
+        availableSubRoutes={availableSubRoutes}
+      />
+
+      {/* Dialog de Confirmação de Deleção */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeleteDialogOpen(false);
+            setModuleToDelete(null);
+          }
+        }}
+        title="Excluir Módulo"
+        description={(() => {
+          const activitiesCount = moduleToDelete?.activities?.length || 0;
+          const userAccessCount = moduleToDelete?._count?.userAccess || 0;
+          const hasDependencies = activitiesCount > 0 || userAccessCount > 0;
+
+          if (hasDependencies) {
+            const parts = [];
+            if (activitiesCount > 0) {
+              parts.push(`${activitiesCount} atividade(s)`);
+            }
+            if (userAccessCount > 0) {
+              parts.push(`${userAccessCount} acesso(s) de usuário(s)`);
+            }
+            return `O módulo "${moduleToDelete?.name}" possui ${parts.join(' e ')} vinculado(s) e não pode ser excluído. Remova as dependências primeiro ou desative o módulo.`;
+          }
+          return `Tem certeza que deseja excluir o módulo "${moduleToDelete?.name}"? Esta ação não pode ser desfeita.`;
+        })()}
+        confirmText={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies ? "Entendi" : "Excluir";
+        })()}
+        cancelText="Cancelar"
+        variant={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies ? "default" : "destructive";
+        })()}
+        onConfirm={(() => {
+          const hasDependencies = (moduleToDelete?.activities?.length || 0) > 0 || (moduleToDelete?._count?.userAccess || 0) > 0;
+          return hasDependencies
+            ? () => { setDeleteDialogOpen(false); setModuleToDelete(null); }
+            : handleConfirmDelete;
+        })()}
+        isLoading={!!deletingId}
+      />
     </div>
   );
 }

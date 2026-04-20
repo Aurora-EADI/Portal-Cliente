@@ -1,9 +1,11 @@
-import { PrismaClient } from '@prisma/client-postgres';
+﻿import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function fixDocPermissions(userEmail: string) {
-  console.log(`\n🔧 Corrigindo permissões de Documentos para: ${userEmail}\n`);
+  console.log(
+    `\nðŸ”§ Corrigindo permissões de Documentos para: ${userEmail}\n`,
+  );
 
   // 1. Buscar usuário
   const user = await prisma.user.findUnique({
@@ -11,7 +13,7 @@ async function fixDocPermissions(userEmail: string) {
   });
 
   if (!user) {
-    console.error(`❌ Usuário não encontrado: ${userEmail}`);
+    console.error(`âŒ Usuário não encontrado: ${userEmail}`);
     return;
   }
 
@@ -19,14 +21,14 @@ async function fixDocPermissions(userEmail: string) {
 
   // 2. Buscar módulo Documentos
   const docModule = await prisma.module.findFirst({
-    where: { route: '/documentos' },
+    where: { route: "/documentos" },
     include: {
       activities: true,
     },
   });
 
   if (!docModule) {
-    console.error('❌ Módulo /documentos não encontrado');
+    console.error("âŒ Módulo /documentos não encontrado");
     return;
   }
 
@@ -43,7 +45,7 @@ async function fixDocPermissions(userEmail: string) {
   });
 
   if (!userModuleAccess) {
-    console.log('📝 Criando acesso ao módulo...');
+    console.log("ðŸ“ Criando acesso ao módulo...");
     userModuleAccess = await prisma.userModuleAccess.create({
       data: {
         userId: user.id,
@@ -59,15 +61,15 @@ async function fixDocPermissions(userEmail: string) {
         where: { id: userModuleAccess.id },
         data: { isEnabled: true },
       });
-      console.log('✅ Módulo habilitado\n');
+      console.log("✅ Módulo habilitado\n");
     } else {
-      console.log('');
+      console.log("");
     }
   }
 
   // 4. Sincronizar atividades obrigatórias
-  console.log('📋 Sincronizando atividades obrigatórias...');
-  const mandatoryActivities = docModule.activities.filter(a => a.isMandatory);
+  console.log("ðŸ“‹ Sincronizando atividades obrigatórias...");
+  const mandatoryActivities = docModule.activities.filter((a) => a.isMandatory);
 
   for (const activity of mandatoryActivities) {
     const existing = await prisma.userActivityAccess.findFirst({
@@ -87,13 +89,15 @@ async function fixDocPermissions(userEmail: string) {
       });
       console.log(`   ✅ Atividade obrigatória criada: ${activity.name}`);
     } else {
-      console.log(`   ⏭️  Atividade obrigatória já existe: ${activity.name}`);
+      console.log(`   â­ï¸  Atividade obrigatória já existe: ${activity.name}`);
     }
   }
 
   // 5. Habilitar atividade "Visualizar Dashboard Documentos" (DOC_VIEW)
-  console.log('\n🎯 Habilitando atividade DOC_VIEW...');
-  const docViewActivity = docModule.activities.find(a => a.name === 'Visualizar Dashboard Documentos');
+  console.log("\nðŸŽ¯ Habilitando atividade DOC_VIEW...");
+  const docViewActivity = docModule.activities.find(
+    (a) => a.name === "Visualizar Dashboard Documentos",
+  );
 
   if (docViewActivity) {
     const existing = await prisma.userActivityAccess.findFirst({
@@ -111,7 +115,7 @@ async function fixDocPermissions(userEmail: string) {
         });
         console.log(`   ✅ Atividade DOC_VIEW atualizada para habilitada`);
       } else {
-        console.log(`   ⏭️  Atividade DOC_VIEW já está habilitada`);
+        console.log(`   â­ï¸  Atividade DOC_VIEW já está habilitada`);
       }
     } else {
       await prisma.userActivityAccess.create({
@@ -124,15 +128,19 @@ async function fixDocPermissions(userEmail: string) {
       console.log(`   ✅ Atividade DOC_VIEW criada e habilitada`);
     }
   } else {
-    console.log('   ⚠️  Atividade "Visualizar Dashboard Documentos" não encontrada');
+    console.log(
+      '   âš ï¸  Atividade "Visualizar Dashboard Documentos" não encontrada',
+    );
   }
 
-  console.log('\n✅ Correção concluída!\n');
-  console.log('🔄 Limpe o cache do navegador (sessionStorage) e faça login novamente.\n');
+  console.log("\n✅ Correção concluída!\n");
+  console.log(
+    "ðŸ”„ Limpe o cache do navegador (sessionStorage) e faça login novamente.\n",
+  );
 }
 
 // Executar correção
-const userEmail = process.argv[2] || 'admin@aurora.com.br';
+const userEmail = process.argv[2] || "admin@aurora.com.br";
 
 fixDocPermissions(userEmail)
   .catch(console.error)

@@ -28,7 +28,10 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
+  ShieldCheck,
+  UserCog,
 } from "lucide-react";
+import { UserRole } from "@/types";
 
 import { usersService } from "@/services/users/users.service";
 import { modulesService } from "@/services/modules/modules.service";
@@ -47,6 +50,25 @@ interface LocalPermissionState {
   moduleEnabled: Record<number, boolean>;
   activityEnabled: Record<number, boolean>;
 }
+
+// ==================== ROLE CARDS CONFIG ====================
+
+const ROLE_CARDS = [
+  {
+    role: UserRole.ADMIN,
+    label: 'Administradores',
+    icon: ShieldCheck,
+    bgColor: 'bg-purple-100',
+    textColor: 'text-purple-600',
+  },
+  {
+    role: UserRole.EMPLOYEE,
+    label: 'Colaboradores',
+    icon: UserCog,
+    bgColor: 'bg-blue-100',
+    textColor: 'text-blue-600',
+  },
+];
 
 // ==================== ICON MAP ====================
 
@@ -86,10 +108,11 @@ export function PermissionManagerPage() {
   // Busca/filtro de usuários
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userSearchInput, setUserSearchInput] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
 
   // Paginação de usuários
   const [userPage, setUserPage] = useState(1);
-  const userLimit = 5;
+  const [userLimit, setUserLimit] = useState(10);
 
   // Busca/filtro de módulos
   const [searchTerm, setSearchTerm] = useState("");
@@ -291,9 +314,35 @@ export function PermissionManagerPage() {
     return <IconComponent className="w-5 h-5" />;
   };
 
+  // Contagem de usuários por role
+  const roleCounts = useMemo(() => {
+    const counts: Record<UserRole, number> = {
+      [UserRole.ADMIN]: 0,
+      [UserRole.EMPLOYEE]: 0,
+      [UserRole.SUPPLIER]: 0,
+    };
+    users.forEach(user => {
+      if (counts[user.role] !== undefined) {
+        counts[user.role]++;
+      }
+    });
+    return counts;
+  }, [users]);
+
   // Filtro e paginação de usuários
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
+      // Apenas ADMIN e EMPLOYEE
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.EMPLOYEE) {
+        return false;
+      }
+
+      // Filtro por role (cards)
+      if (roleFilter && user.role !== roleFilter) {
+        return false;
+      }
+
+      // Filtro por busca
       const searchLower = userSearchTerm.toLowerCase();
       return (
         user.name.toLowerCase().includes(searchLower) ||
@@ -301,7 +350,7 @@ export function PermissionManagerPage() {
         user.role.toLowerCase().includes(searchLower)
       );
     });
-  }, [users, userSearchTerm]);
+  }, [users, userSearchTerm, roleFilter]);
 
   const paginatedUsers = useMemo(() => {
     const startIndex = (userPage - 1) * userLimit;
@@ -315,8 +364,22 @@ export function PermissionManagerPage() {
     setUserPage(1);
   };
 
+  const handleRoleCardClick = (role: UserRole) => {
+    if (roleFilter === role) {
+      setRoleFilter("");
+    } else {
+      setRoleFilter(role);
+    }
+    setUserPage(1);
+  };
+
   const handleUserPageChange = (newPage: number) => {
     setUserPage(newPage);
+  };
+
+  const handleUserLimitChange = (newLimit: number) => {
+    setUserLimit(newLimit);
+    setUserPage(1);
   };
 
   const handleUserSelect = (userId: string) => {
@@ -388,6 +451,40 @@ export function PermissionManagerPage() {
         </div>
       </div>
 
+      {/* Role Filter Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {ROLE_CARDS.map((card) => {
+          const count = roleCounts[card.role] || 0;
+          const isActive = roleFilter === card.role;
+          const Icon = card.icon;
+
+          return (
+            <button
+              key={card.role}
+              onClick={() => handleRoleCardClick(card.role)}
+              className={`bg-white p-6 rounded-xl border shadow-sm flex items-center gap-4 transition-all hover:shadow-md ${
+                isActive
+                  ? 'border-primary-500 ring-2 ring-primary-200'
+                  : 'border-gray-200'
+              }`}
+            >
+              <div className={`p-3 ${card.bgColor} ${card.textColor} rounded-lg`}>
+                <Icon size={20} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm text-gray-500">{card.label}</p>
+                <p className="text-xl font-bold text-gray-900">{count}</p>
+              </div>
+              {isActive && (
+                <div className="ml-auto">
+                  <CheckCircle2 size={20} className="text-primary-600" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {/* User Selection Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200 bg-gray-50">
@@ -419,12 +516,13 @@ export function PermissionManagerPage() {
             >
               Buscar
             </button>
-            {userSearchTerm && (
+            {(userSearchTerm || roleFilter) && (
               <button
                 type="button"
                 onClick={() => {
                   setUserSearchTerm('');
                   setUserSearchInput('');
+                  setRoleFilter('');
                   setUserPage(1);
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
@@ -512,12 +610,13 @@ export function PermissionManagerPage() {
         </table>
 
         {/* Pagination */}
-        {filteredUsers.length > userLimit && (
+        {filteredUsers.length > 0 && (
           <Pagination
             page={userPage}
             total={filteredUsers.length}
             limit={userLimit}
             onPageChange={handleUserPageChange}
+            onLimitChange={handleUserLimitChange}
             className="rounded-b-xl border-t rounded-t-none"
           />
         )}

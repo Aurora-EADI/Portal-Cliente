@@ -1,13 +1,13 @@
-import {
+﻿import {
   Injectable,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
-} from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { UserRole } from '@prisma/client-postgres';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { UserRole } from "@prisma/client";
 
-export const ROLES_KEY = 'roles';
+export const ROLES_KEY = "roles";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -33,7 +33,7 @@ export class RolesGuard implements CanActivate {
 
     if (!hasRole) {
       throw new ForbiddenException(
-        'Você não tem permissão para acessar este recurso',
+        "Você não tem permissão para acessar este recurso",
       );
     }
 

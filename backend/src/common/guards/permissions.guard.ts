@@ -1,7 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { PrismaPostgresService } from '../../prisma/prisma.service';
-import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { PrismaPostgresService } from "../../prisma/prisma.service";
+import { PERMISSIONS_KEY } from "../decorators/permissions.decorator";
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -27,7 +32,7 @@ export class PermissionsGuard implements CanActivate {
     const user = request.user;
 
     if (!user || !user.id) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw new ForbiddenException("Usuário não autenticado");
     }
 
     // Busca as permissões do usuário
@@ -40,7 +45,7 @@ export class PermissionsGuard implements CanActivate {
 
     if (!hasAllPermissions) {
       throw new ForbiddenException(
-        `Você não tem permissão para acessar este recurso. Permissões necessárias: ${requiredPermissions.join(', ')}`,
+        `Você não tem permissão para acessar este recurso. Permissões necessárias: ${requiredPermissions.join(", ")}`,
       );
     }
 

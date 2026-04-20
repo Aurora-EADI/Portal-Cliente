@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaPostgresService } from '../prisma/prisma.service';
-import { CreateServiceCostDto } from './dto/create-service-cost.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaPostgresService } from "../prisma/prisma.service";
+import { CreateServiceCostDto } from "./dto/create-service-cost.dto";
 
 @Injectable()
 export class ServiceCostsService {
@@ -13,7 +17,9 @@ export class ServiceCostsService {
     });
 
     if (!service) {
-      throw new NotFoundException(`Serviço com ID ${createServiceCostDto.serviceId} não encontrado`);
+      throw new NotFoundException(
+        `Serviço com ID ${createServiceCostDto.serviceId} não encontrado`,
+      );
     }
 
     // Se não informar validFrom, usa data atual
@@ -78,7 +84,7 @@ export class ServiceCostsService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -102,7 +108,7 @@ export class ServiceCostsService {
           },
         },
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { validFrom: "desc" },
     });
   }
 
@@ -110,10 +116,7 @@ export class ServiceCostsService {
     const cost = await this.prisma.serviceCost.findFirst({
       where: {
         serviceId,
-        OR: [
-          { validUntil: null },
-          { validUntil: { gte: new Date() } },
-        ],
+        OR: [{ validUntil: null }, { validUntil: { gte: new Date() } }],
       },
       include: {
         service: {
@@ -123,11 +126,13 @@ export class ServiceCostsService {
           },
         },
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { validFrom: "desc" },
     });
 
     if (!cost) {
-      throw new NotFoundException(`Nenhum custo vigente encontrado para o serviço ${serviceId}`);
+      throw new NotFoundException(
+        `Nenhum custo vigente encontrado para o serviço ${serviceId}`,
+      );
     }
 
     return cost;
@@ -138,10 +143,7 @@ export class ServiceCostsService {
       where: {
         serviceId,
         validFrom: { lte: date },
-        OR: [
-          { validUntil: null },
-          { validUntil: { gte: date } },
-        ],
+        OR: [{ validUntil: null }, { validUntil: { gte: date } }],
       },
       include: {
         service: {
@@ -151,11 +153,13 @@ export class ServiceCostsService {
           },
         },
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { validFrom: "desc" },
     });
 
     if (!cost) {
-      throw new NotFoundException(`Nenhum custo encontrado para o serviço ${serviceId} na data ${date.toISOString()}`);
+      throw new NotFoundException(
+        `Nenhum custo encontrado para o serviço ${serviceId} na data ${date.toISOString()}`,
+      );
     }
 
     return cost;

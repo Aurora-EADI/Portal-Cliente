@@ -1,22 +1,12 @@
 "use client"
 
-import { Layout } from '@/components/layout/Layout'
-import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard'
-import { Header } from '@/components/layout/Header'
+import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell'
 import { CustomerList } from '@/components/pages/clientes/listaClientes/CustomerList'
 
-export default function CreateCustomer () {
+export default function ClientePage() {
   return (
-    // <PermissionRouteGuard
-    //   moduleRoute="/cliente"
-    //   requiredPermissions={['']}
-    // >
-      <div className="h-screen flex flex-col overflow-hidden">
-        <Header />
-        <Layout>
-          <CustomerList />
-        </Layout>
-      </div>
-    // </PermissionRouteGuard>
+    <ModuleRouteShell>
+      <CustomerList />
+    </ModuleRouteShell>
   )
 }

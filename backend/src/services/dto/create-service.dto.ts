@@ -1,5 +1,11 @@
-import { IsString, IsOptional, IsBoolean, IsEnum } from 'class-validator';
-import { ServiceCalculationType } from '@prisma/client-postgres';
+﻿import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+} from "class-validator";
+import { ServiceCalculationType, ServiceModal } from "@prisma/client";
 
 export class CreateServiceDto {
   @IsString()
@@ -16,6 +22,10 @@ export class CreateServiceDto {
   @IsString()
   category?: string; // Ex: "Operacional", "Logística"
 
+  @IsEnum(ServiceModal)
+  @IsNotEmpty()
+  modal: ServiceModal;
+
   @IsOptional()
   @IsEnum(ServiceCalculationType)
   calculationType?: ServiceCalculationType; // Tipo de cálculo do serviço
@@ -31,4 +41,8 @@ export class CreateServiceDto {
   @IsOptional()
   @IsBoolean()
   hasStripping?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hasLcl?: boolean;
 }

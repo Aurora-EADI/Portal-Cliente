@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { ProtheusIntegrationModule } from './protheus/protheus-integration.module';
+import { Module } from "@nestjs/common";
+import { ProtheusIntegrationModule } from "./protheus/protheus-integration.module";
 
 @Module({
   imports: [ProtheusIntegrationModule],

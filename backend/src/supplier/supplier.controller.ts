@@ -12,23 +12,23 @@ import {
   ParseUUIDPipe,
   Logger,
   Request,
-} from '@nestjs/common';
-import { SupplierService } from './supplier.service';
-import { CreateSupplierDto } from './dto/create-supplier.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client-postgres';
+} from "@nestjs/common";
+import { SupplierService } from "./supplier.service";
+import { CreateSupplierDto } from "./dto/create-supplier.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client";
 
-@Controller('suppliers')
+@Controller("suppliers")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class SupplierController {
   private readonly logger = new Logger(SupplierController.name);
 
-  constructor(private readonly supplierService: SupplierService) { }
+  constructor(private readonly supplierService: SupplierService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateSupplierDto) {
     this.logger.log(`Criando supplier: ${dto.email}`);
@@ -36,39 +36,41 @@ export class SupplierController {
   }
 
   @Get()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   findAll() {
-    this.logger.log('Listando todos os suppliers');
+    this.logger.log("Listando todos os suppliers");
     return this.supplierService.findAll();
   }
 
-  @Get(':id')
-  @Roles(UserRole.ADMIN)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @Get(":id")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  findOne(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Buscando supplier ID: ${id}`);
     return this.supplierService.findOne(id);
   }
 
-  @Patch(':id')
-  @Roles(UserRole.ADMIN)
+  @Patch(":id")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: Partial<CreateSupplierDto>,
   ) {
     this.logger.log(`Atualizando supplier ID: ${id}`);
     return this.supplierService.update(id, dto);
   }
 
-  @Delete(':id')
-  @Roles(UserRole.ADMIN)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  @Delete(":id")
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
+  remove(@Param("id", ParseUUIDPipe) id: string) {
     this.logger.log(`Removendo supplier ID: ${id}`);
     return this.supplierService.remove(id);
   }
 
-  @Get('me/requirements')
-  @Roles(UserRole.ADMIN, UserRole.SUPPLIER)
-  getRequirements(@Request() req) {
+  @Get("me/requirements")
+  @Roles(UserRole.ADMIN, UserRole.SUPPLIER, UserRole.EMPLOYEE)
+  getRequirements(
+    @Request() req: { user: { id: string; role: string; companyId?: string } },
+  ) {
     return this.supplierService.getRequirements(req.user.id);
   }
 }

@@ -1,14 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { isTokenExpired } from './jwt-helper';
 import {
-  getAccessToken,
-  refreshAccessToken,
+  refreshAccessTokenWithRetry,
   clearAllAuthData,
 } from '@/services/auth/token.service';
+import { backendApiUrl } from '@/lib/backendApi';
 
-// Instância principal do axios
+// Instância principal do axios — withCredentials envia cookies automaticamente
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333/api',
+  baseURL: backendApiUrl,
+  withCredentials: true, // browser envia cookies httpOnly em todas as requisições
   headers: {
     'Content-Type': 'application/json',
     ...(process.env.NEXT_PUBLIC_API_KEY ? { 'X-API-Key': process.env.NEXT_PUBLIC_API_KEY } : {}),
@@ -17,121 +17,33 @@ export const api = axios.create({
 
 // Controle de estado para evitar múltiplas renovações simultâneas
 let isRefreshing = false;
-let refreshSubscribers: Array<(token: string) => void> = [];
+
+// Fila de requisições aguardando renovação do token
+type QueueItem = {
+  resolve: () => void;
+  reject: (error: unknown) => void;
+};
+
+let failedQueue: QueueItem[] = [];
 
 /**
- * Adiciona callback para ser executado quando o token for renovado
+ * Processa a fila de requisições pausadas após tentativa de refresh
  */
-function subscribeTokenRefresh(callback: (token: string) => void): void {
-  refreshSubscribers.push(callback);
-}
-
-/**
- * Notifica todos os callbacks aguardando pela renovação do token
- */
-function onTokenRefreshed(token: string): void {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-}
-
-/**
- * REQUEST INTERCEPTOR
- * Adiciona token e renova automaticamente se expirado
- */
-api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    if (typeof window === 'undefined') return config;
-
-    const requestUrl = config.url || '';
-
-    // Ignora rotas públicas (login, register, refresh)
-    const isPublicRoute =
-      requestUrl.includes('/auth/login') ||
-      requestUrl.includes('/auth/register') ||
-      requestUrl.includes('/auth/refresh');
-
-    if (isPublicRoute) {
-      return config;
+const processQueue = (error: unknown) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
     }
+  });
 
-    // Obtém token atual
-    let token = getAccessToken();
-
-    if (!token) {
-      // Não tem token, deixa a requisição prosseguir (vai dar 401)
-      return config;
-    }
-
-    // Verifica se o token está expirado
-    if (isTokenExpired(token)) {
-      if (isRefreshing) {
-        // Já está renovando, aguarda renovação
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((newToken: string) => {
-            if (config.headers) {
-              config.headers.Authorization = `Bearer ${newToken}`;
-            }
-            resolve(config);
-          });
-        });
-      }
-
-      // Inicia renovação
-      isRefreshing = true;
-
-      try {
-        const newToken = await refreshAccessToken();
-
-        if (newToken) {
-          // Renovação bem-sucedida
-          if (config.headers) {
-            config.headers.Authorization = `Bearer ${newToken}`;
-          }
-
-          // Notifica requisições pendentes
-          onTokenRefreshed(newToken);
-          isRefreshing = false;
-
-          return config;
-        } else {
-          // Renovação falhou, limpa tudo e redireciona
-          isRefreshing = false;
-          clearAllAuthData();
-
-          const currentPath = window.location.pathname;
-          if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-            window.location.href = '/session-expired';
-          }
-
-          return Promise.reject(new Error('Token expirado e renovação falhou'));
-        }
-      } catch (error) {
-        // Erro na renovação
-        isRefreshing = false;
-        clearAllAuthData();
-
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-          window.location.href = '/session-expired';
-        }
-
-        return Promise.reject(error);
-      }
-    }
-
-    // Token válido, adiciona ao header
-    if (config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+  failedQueue = [];
+};
 
 /**
  * RESPONSE INTERCEPTOR
- * Trata erros 401 e tenta renovar token automaticamente
+ * Trata erros 401 — tenta renovar o token via cookie e faz retry
  */
 api.interceptors.response.use(
   (response) => response,
@@ -143,50 +55,60 @@ api.interceptors.response.use(
     };
     const requestUrl = originalRequest?.url || '';
 
-    // Ignora rotas públicas
+    // Ignora rotas públicas para evitar loop infinito
     const isPublicRoute =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/register') ||
       requestUrl.includes('/auth/refresh');
 
-    if (status === 401 && !isPublicRoute) {
-      // Tenta renovar token uma vez
-      if (!originalRequest._retry) {
-        originalRequest._retry = true;
+    if (status === 401 && !isPublicRoute && !originalRequest._retry) {
+      originalRequest._retry = true;
 
-        try {
-          const newToken = await refreshAccessToken();
+      console.log('[INTERCEPTOR] 401 recebido para:', requestUrl);
 
-          if (newToken && originalRequest.headers) {
-            // Atualiza header da requisição original
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-            // Retry da requisição original
-            return api(originalRequest);
-          }
-        } catch (refreshError) {
-          // Renovação falhou, limpa tudo
-          clearAllAuthData();
-
-          if (typeof window !== 'undefined') {
-            const currentPath = window.location.pathname;
-            if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-              window.location.href = '/session-expired';
-            }
-          }
-
-          return Promise.reject(refreshError);
-        }
+      if (isRefreshing) {
+        // Outro refresh já está em andamento — enfileira e aguarda
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: () => resolve(api(originalRequest)),
+            reject: (err) => reject(err),
+          });
+        });
       }
 
-      // Já tentou renovar e falhou, limpa tudo
-      clearAllAuthData();
+      isRefreshing = true;
 
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
-          window.location.href = '/session-expired';
+      try {
+        console.log('[INTERCEPTOR] tentando refresh com retry...');
+        // Tenta até 2 vezes com back-off antes de deslogar (erros transitórios de rede)
+        const success = await refreshAccessTokenWithRetry(2);
+
+        console.log('[INTERCEPTOR] refresh resultado:', success ? 'sucesso' : 'falhou');
+
+        if (success) {
+          // Refresh bem-sucedido — libera a fila e retry da requisição original
+          processQueue(null);
+          isRefreshing = false;
+          return api(originalRequest);
+        } else {
+          throw new Error('Refresh token falhou após todas as tentativas');
         }
+      } catch (refreshError) {
+        isRefreshing = false;
+
+        // Rejeita todas as requisições na fila
+        processQueue(refreshError);
+
+        clearAllAuthData();
+
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+            window.location.href = '/session-expired';
+          }
+        }
+
+        return Promise.reject(refreshError);
       }
     }
 

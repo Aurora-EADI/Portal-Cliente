@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client-postgres';
+﻿import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function debugUserPermissions(userEmail: string) {
-  console.log(`\n🔍 Diagnóstico de Permissões para: ${userEmail}\n`);
+  console.log(`\nðŸ” Diagnóstico de Permissões para: ${userEmail}\n`);
 
   // 1. Buscar usuário
   const user = await prisma.user.findUnique({
@@ -17,18 +17,18 @@ async function debugUserPermissions(userEmail: string) {
   });
 
   if (!user) {
-    console.error(`❌ Usuário não encontrado: ${userEmail}`);
+    console.error(`âŒ Usuário não encontrado: ${userEmail}`);
     return;
   }
 
-  console.log('✅ Usuário encontrado:');
+  console.log("✅ Usuário encontrado:");
   console.log(`   ID: ${user.id}`);
   console.log(`   Nome: ${user.name}`);
   console.log(`   Role: ${user.role}\n`);
 
   // 2. Buscar módulo Documentos
   const docModule = await prisma.module.findFirst({
-    where: { route: '/documentos' },
+    where: { route: "/documentos" },
     include: {
       activities: {
         include: {
@@ -43,11 +43,11 @@ async function debugUserPermissions(userEmail: string) {
   });
 
   if (!docModule) {
-    console.error('❌ Módulo /documentos não encontrado');
+    console.error("âŒ Módulo /documentos não encontrado");
     return;
   }
 
-  console.log('📦 Módulo Documentos:');
+  console.log("📦 Módulo Documentos:");
   console.log(`   ID: ${docModule.id}`);
   console.log(`   Nome: ${docModule.name}`);
   console.log(`   Ativo: ${docModule.active}`);
@@ -63,21 +63,23 @@ async function debugUserPermissions(userEmail: string) {
     },
   });
 
-  console.log('🔐 Acesso ao Módulo:');
+  console.log("ðŸ” Acesso ao Módulo:");
   if (userModuleAccess) {
     console.log(`   ✅ Tem acesso (ID: ${userModuleAccess.id})`);
     console.log(`   Habilitado: ${userModuleAccess.isEnabled}`);
   } else {
-    console.log('   ❌ SEM acesso ao módulo');
+    console.log("   âŒ SEM acesso ao módulo");
   }
-  console.log('');
+  console.log("");
 
   // 4. Listar atividades e verificar acesso
-  console.log('📋 Atividades do módulo:\n');
+  console.log("ðŸ“‹ Atividades do módulo:\n");
   for (const activity of docModule.activities) {
     console.log(`   Atividade: ${activity.name} (ID: ${activity.id})`);
     console.log(`   Obrigatória: ${activity.isMandatory}`);
-    console.log(`   Permissões: ${activity.permissions.map(p => p.permission.key).join(', ')}`);
+    console.log(
+      `   Permissões: ${activity.permissions.map((p) => p.permission.key).join(", ")}`,
+    );
 
     if (userModuleAccess) {
       const activityAccess = await prisma.userActivityAccess.findFirst({
@@ -88,18 +90,20 @@ async function debugUserPermissions(userEmail: string) {
       });
 
       if (activityAccess) {
-        console.log(`   ✅ Acesso à atividade: ${activityAccess.isEnabled ? 'HABILITADO' : 'DESABILITADO'}`);
+        console.log(
+          `   ✅ Acesso à atividade: ${activityAccess.isEnabled ? "HABILITADO" : "DESABILITADO"}`,
+        );
       } else {
-        console.log(`   ❌ SEM acesso à atividade`);
+        console.log(`   âŒ SEM acesso à atividade`);
       }
     }
-    console.log('');
+    console.log("");
   }
 
   // 5. Verificar permissão DOC_VIEW especificamente
-  console.log('🎯 Permissão DOC_VIEW:');
+  console.log("ðŸŽ¯ Permissão DOC_VIEW:");
   const docViewPermission = await prisma.permission.findUnique({
-    where: { key: 'DOC_VIEW' },
+    where: { key: "DOC_VIEW" },
     include: {
       activities: {
         include: {
@@ -117,12 +121,12 @@ async function debugUserPermissions(userEmail: string) {
       console.log(`      - ${ap.activity.name} (ID: ${ap.activity.id})`);
     }
   } else {
-    console.log('   ❌ Permissão DOC_VIEW não encontrada no banco');
+    console.log("   âŒ Permissão DOC_VIEW não encontrada no banco");
   }
 }
 
 // Executar diagnóstico
-const userEmail = process.argv[2] || 'admin@example.com';
+const userEmail = process.argv[2] || "admin@example.com";
 
 debugUserPermissions(userEmail)
   .catch(console.error)

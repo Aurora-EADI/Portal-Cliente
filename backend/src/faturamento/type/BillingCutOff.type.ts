@@ -1,18 +1,18 @@
 export interface TypeBillingCutOff {
-  "CLIENTE": string;
-  "ENTRADA": string; // ou Date se você for converter
+  CLIENTE: string;
+  ENTRADA: string; // ou Date se você for converter
   "BL / AWB Nº": string;
-  "LOTE": string;
+  LOTE: string;
   "Nº DTA": string;
-  "CONTAINER": number;
-  "MODALIDADE": string;
+  CONTAINER: number;
+  MODALIDADE: string;
   "CIF (R$) DTA": string;
   "DTA COBERTURA": string; // ou Date
-  "PER": number;
+  PER: number;
   "TAXA DOLAR": string;
-  "PESO": string;
-  "CUBAGEM": string;
-  "ARMAZENAGEM": string;
+  PESO: string;
+  CUBAGEM: string;
+  ARMAZENAGEM: string;
   "ABATIMENTO DO VALOR COBRADO ANTECIPADO": string;
   "ADICIONAL DE VISTORIA RECEITA FEDERAL": string;
   "ADICIONAL PERICULOSIDADE": string;
@@ -27,7 +27,7 @@ export interface TypeBillingCutOff {
   "COMPLEMENTO DE FATURAMENTO": string;
   "CONSUMO DE ENERGIA": string;
   "DESCARTE DE EMBALAGEM": string;
-  "DESCONTO": string;
+  DESCONTO: string;
   "DESOVA DE CONTAINER (CONEXOS)": string;
   "DESUNITIZACAO (DESOVA) EXP": string;
   "DESUNITIZACAO DE CONTAINER (DESOVA)": string;
@@ -41,10 +41,10 @@ export interface TypeBillingCutOff {
   "FUMIGACAO DE CONTAINER (20)": string;
   "FUMIGACAO DE CONTAINER (40)": string;
   "GERENCIAMENTO DE RISCO": string;
-  "GRIS": string;
+  GRIS: string;
   "GRIS 2": string;
   "INFRAESTRUTURA PORTUARIA": string;
-  "LACRE": string;
+  LACRE: string;
   "LOCAÇÃO ÁREA MERC PERIG./TOX./INFLAM./CORROS.": string;
   "LOCAÇÃO DE ÁREA - COMPLEMENTO": string;
   "LOCAÇÃO DE ÁREA PARA CARGA SOLTA": string;
@@ -63,7 +63,7 @@ export interface TypeBillingCutOff {
   "MOVIMENTACAO DE CONTAINER IN/OUT ( TRANSBORDO)": string;
   "MULTA REFERENTE A PROCESSO": string;
   "PERNOITE DE VEICULO": string;
-  "PESAGEM": string;
+  PESAGEM: string;
   "PUXE (CONEXOS)": string;
   "RETORNO DO CAVALO": string;
   "SEGURO TRANSPORTE DE CARGA": string;

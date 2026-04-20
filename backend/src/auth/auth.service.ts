@@ -1,17 +1,22 @@
 // src/auth/auth.service.ts
 
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { PrismaPostgresService as PrismaService } from "../prisma/prisma.service";
+import * as bcrypt from "bcrypt";
+import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
 import {
   ActivityPermissions,
   ModuleData,
   UserPermissionsResponse,
-} from './types/user-permissions.types';
-import { TokenService, TokenSecurityMetadata } from './services/token.service';
+} from "./types/user-permissions.types";
+import { TokenService, TokenSecurityMetadata } from "./services/token.service";
 
 @Injectable()
 export class AuthService {
@@ -19,7 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private tokenService: TokenService,
-  ) { }
+  ) {}
 
   /**
    * Realiza o login do usuário
@@ -34,19 +39,19 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas');
+      throw new UnauthorizedException("Credenciais inválidas");
     }
 
     // Verificação de Status da Empresa
     if (user.company) {
-      if (user.company.status === 'PENDING_ACTIVE') {
+      if (user.company.status === "PENDING_ACTIVE") {
         throw new UnauthorizedException(
-          'Seu cadastro está em análise. Aguarde a aprovação.',
+          "Seu cadastro está em análise. Aguarde a aprovação.",
         );
       }
-      if (user.company.status === 'REJECTED') {
+      if (user.company.status === "REJECTED") {
         throw new UnauthorizedException(
-          'Seu cadastro foi recusado. Entre em contato com o suporte.',
+          "Seu cadastro foi recusado. Entre em contato com o suporte.",
         );
       }
     }
@@ -54,17 +59,18 @@ export class AuthService {
     // Verificar senha
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciais inválidas');
+      throw new UnauthorizedException("Credenciais inválidas");
     }
 
     // Gerar par de tokens (access + refresh) usando o TokenService
-    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(
-      user.id,
-      user.email,
-      user.role,
-      user.companyId ?? undefined, // Converte null para undefined
-      metadata,
-    );
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokenPair(
+        user.id,
+        user.email,
+        user.role,
+        user.companyId ?? undefined, // Converte null para undefined
+        metadata,
+      );
 
     const { password: _, ...userWithoutPassword } = user;
 
@@ -80,13 +86,13 @@ export class AuthService {
    */
   async refreshToken(refreshToken: string) {
     try {
-      console.log('[AUTH SERVICE] Tentando renovar token...');
+      console.log("[AUTH SERVICE] Tentando renovar token...");
       const result = await this.tokenService.refreshAccessToken(refreshToken);
-      console.log('[AUTH SERVICE] Token renovado com sucesso');
+      console.log("[AUTH SERVICE] Token renovado com sucesso");
       return result;
     } catch (error: any) {
-      console.error('[AUTH SERVICE] Erro ao renovar token:', error.message);
-      throw new UnauthorizedException('Refresh token inválido ou expirado');
+      console.error("[AUTH SERVICE] Erro ao renovar token:", error.message);
+      throw new UnauthorizedException("Refresh token inválido ou expirado");
     }
   }
 
@@ -96,10 +102,10 @@ export class AuthService {
   async logout(refreshToken: string) {
     try {
       await this.tokenService.revokeRefreshToken(refreshToken);
-      return { message: 'Logout realizado com sucesso' };
+      return { message: "Logout realizado com sucesso" };
     } catch (error) {
       // Mesmo se falhar, retorna sucesso (token pode já estar revogado)
-      return { message: 'Logout realizado com sucesso' };
+      return { message: "Logout realizado com sucesso" };
     }
   }
 
@@ -108,7 +114,7 @@ export class AuthService {
    */
   async logoutAll(userId: string) {
     await this.tokenService.revokeAllUserTokens(userId);
-    return { message: 'Logout de todas as sessões realizado com sucesso' };
+    return { message: "Logout de todas as sessões realizado com sucesso" };
   }
 
   /**
@@ -129,14 +135,14 @@ export class AuthService {
         include: {
           users: {
             where: {
-              role: 'SUPPLIER',
+              role: "SUPPLIER",
             },
           },
         },
       });
 
       if (!existingCompany) {
-        throw new BadRequestException('Empresa não encontrada');
+        throw new BadRequestException("Empresa não encontrada");
       }
 
       // IMPORTANTE: Impede criação de múltiplos usuários para a mesma empresa
@@ -153,7 +159,7 @@ export class AuthService {
       });
 
       if (existingUser && existingUser.companyId !== companyId) {
-        throw new ConflictException('Email já cadastrado para outra empresa');
+        throw new ConflictException("Email já cadastrado para outra empresa");
       }
 
       // Atualiza empresa e cria o primeiro usuário em transação
@@ -172,9 +178,24 @@ export class AuthService {
             city: company.city,
             state: company.state,
             phone: company.phone,
-            status: 'PENDING_ACTIVE', // Atualiza status para aguardar aprovação
+            classification: company.classification,
+            allocationRegime: company.allocationRegime,
+            status: "PENDING_ACTIVE", // Atualiza status para aguardar aprovação
           },
         });
+
+        await this._syncSupplierTypes(
+          prisma,
+          companyId,
+          company.supplierTypeIds || [],
+        );
+
+        await this._syncCompanyWorkforce(
+          prisma,
+          companyId,
+          company.allocationRegime,
+          company.workforceEmployees || [],
+        );
 
         // Se o usuário já existe para esta empresa, atualiza os dados
         // Caso contrário, cria um novo usuário
@@ -193,7 +214,7 @@ export class AuthService {
           const hasDocPermissions = await prisma.userModuleAccess.findFirst({
             where: {
               userId: existingUser.id,
-              module: { route: '/documentos' },
+              module: { route: "/documentos" },
             },
           });
 
@@ -208,7 +229,7 @@ export class AuthService {
               name: user.name,
               email: user.email,
               password: hashedPassword,
-              role: 'SUPPLIER',
+              role: "SUPPLIER",
               companyId: companyId,
             },
           });
@@ -219,13 +240,14 @@ export class AuthService {
       });
 
       return {
-        message: 'Cadastro atualizado com sucesso. Aguardando aprovação do administrador.',
+        message:
+          "Cadastro atualizado com sucesso. Aguardando aprovação do administrador.",
       };
     }
 
     // CENÁRIO 2: Criar nova empresa (comportamento original)
-    // Remove formatação do CNPJ para verificação (mantém apenas números)
-    const cnpjNumbers = company.cnpj.replace(/\D/g, '');
+    // Remove apenas pontuação do CNPJ, preservando letras (CNPJ alfanumérico - RFB 2026)
+    const cnpjClean = company.cnpj.replace(/[.\-\/]/g, "").toUpperCase();
 
     // Verifica se o email já existe
     const existingUser = await this.prisma.user.findUnique({
@@ -233,20 +255,21 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('Email já cadastrado no sistema');
+      throw new ConflictException("Email já cadastrado no sistema");
     }
 
-    // Verifica se o CNPJ já existe (busca pelo CNPJ sem formatação)
+    // Verifica se o CNPJ já existe
     const existingCompany = await this.prisma.company.findFirst({
       where: {
         cnpj: {
-          contains: cnpjNumbers,
+          equals: cnpjClean,
+          mode: "insensitive",
         },
       },
     });
 
     if (existingCompany) {
-      throw new ConflictException('CNPJ já cadastrado no sistema');
+      throw new ConflictException("CNPJ já cadastrado no sistema");
     }
 
     // Cria empresa e usuário em uma transação
@@ -254,7 +277,7 @@ export class AuthService {
       // Cria a empresa com status PENDING
       const newCompany = await prisma.company.create({
         data: {
-          cnpj: cnpjNumbers, // Salva CNPJ sem formatação
+          cnpj: cnpjClean, // Salva CNPJ sem pontuação, mas preservando letras
           fantasyName: company.fantasyName,
           socialReason: company.socialReason,
           zipCode: company.zipCode,
@@ -265,9 +288,24 @@ export class AuthService {
           city: company.city,
           state: company.state,
           phone: company.phone,
-          status: 'PENDING_ACTIVE', // Aguardando aprovação do admin
+          classification: company.classification,
+          allocationRegime: company.allocationRegime,
+          status: "PENDING_ACTIVE", // Aguardando aprovação do admin
         },
       });
+
+      await this._syncSupplierTypes(
+        prisma,
+        newCompany.id,
+        company.supplierTypeIds || [],
+      );
+
+      await this._syncCompanyWorkforce(
+        prisma,
+        newCompany.id,
+        company.allocationRegime,
+        company.workforceEmployees || [],
+      );
 
       // Cria o usuário vinculado à empresa com role SUPPLIER
       const newUser = await prisma.user.create({
@@ -275,7 +313,7 @@ export class AuthService {
           name: user.name,
           email: user.email,
           password: hashedPassword,
-          role: 'SUPPLIER', // Usuário que registra a empresa é SUPPLIER
+          role: "SUPPLIER", // Usuário que registra a empresa é SUPPLIER
           companyId: newCompany.id,
         },
       });
@@ -286,7 +324,7 @@ export class AuthService {
 
     return {
       message:
-        'Cadastro realizado com sucesso. Aguardando aprovação do administrador.',
+        "Cadastro realizado com sucesso. Aguardando aprovação do administrador.",
     };
   }
 
@@ -296,11 +334,13 @@ export class AuthService {
   private async _grantSupplierPermissions(tx: any, userId: string) {
     // 1. Busca o módulo "/documentos"
     const docModule = await tx.module.findFirst({
-      where: { route: '/documentos' },
+      where: { route: "/documentos" },
     });
 
     if (!docModule) {
-      console.warn('[AUTH] Módulo /documentos não encontrado. Permissões não concedidas.');
+      console.warn(
+        "[AUTH] Módulo /documentos não encontrado. Permissões não concedidas.",
+      );
       return;
     }
 
@@ -308,7 +348,7 @@ export class AuthService {
     const attachActivity = await tx.activity.findFirst({
       where: {
         moduleId: docModule.id,
-        name: 'Anexar documento',
+        name: "Anexar documento",
       },
     });
 
@@ -341,6 +381,76 @@ export class AuthService {
     }
   }
 
+  private async _syncSupplierTypes(
+    tx: any,
+    companyId: string,
+    supplierTypeIds: string[],
+  ) {
+    if (!supplierTypeIds || supplierTypeIds.length === 0) {
+      return;
+    }
+
+    const uniqueSupplierTypeIds = [...new Set(supplierTypeIds)];
+
+    await tx.companySupplierType.deleteMany({
+      where: { companyId },
+    });
+
+    await tx.companySupplierType.createMany({
+      data: uniqueSupplierTypeIds.map((supplierTypeId) => ({
+        companyId,
+        supplierTypeId,
+      })),
+    });
+  }
+
+  private async _syncCompanyWorkforce(
+    tx: any,
+    companyId: string,
+    allocationRegime: string | undefined,
+    workforceEmployees: Array<{
+      fullName: string;
+      cpf: string;
+      position: string;
+      hiredAt: string;
+    }>,
+  ) {
+    await tx.companyEmployee.deleteMany({ where: { companyId } });
+
+    if (allocationRegime !== "FULL_WORKFORCE_AT_EADI") {
+      return;
+    }
+
+    const validEmployees = workforceEmployees
+      .map((employee) => ({
+        fullName: employee.fullName?.trim(),
+        cpf: employee.cpf?.replace(/\D/g, ""),
+        position: employee.position?.trim(),
+        hiredAt: employee.hiredAt,
+      }))
+      .filter(
+        (employee) =>
+          employee.fullName &&
+          employee.cpf &&
+          employee.position &&
+          employee.hiredAt,
+      );
+
+    if (validEmployees.length === 0) {
+      return;
+    }
+
+    await tx.companyEmployee.createMany({
+      data: validEmployees.map((employee) => ({
+        companyId,
+        fullName: employee.fullName,
+        cpf: employee.cpf,
+        position: employee.position,
+        hiredAt: new Date(employee.hiredAt),
+      })),
+    });
+  }
+
   async getUserPermissions(userId: string): Promise<UserPermissionsResponse> {
     console.log(`[AUTH SERVICE] Buscando permissões para User ID: ${userId}`);
 
@@ -365,7 +475,7 @@ export class AuthService {
 
     // Se não tiver módulos, retorna vazio
     if (userModules.length === 0) {
-      console.log('[AUTH SERVICE] Usuário não tem módulos ativos');
+      console.log("[AUTH SERVICE] Usuário não tem módulos ativos");
       return {
         modules: [],
         permissions: [],
@@ -431,13 +541,11 @@ export class AuthService {
     // Converte Set para Array
     const finalPermissions = Array.from(permissionsSet);
 
-    console.log('[AUTH SERVICE] Permissões encontradas:', finalPermissions);
+    console.log("[AUTH SERVICE] Permissões encontradas:", finalPermissions);
 
     return {
       modules: modulesData,
       permissions: finalPermissions,
     };
   }
-
-
 }

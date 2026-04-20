@@ -1,8 +1,8 @@
-import { Injectable, ConflictException, Logger } from '@nestjs/common';
-import { PrismaPostgresService as  PrismaService } from '../../prisma/prisma.service';
-import { CreateSupplierFromProtheusDto } from './dto/create-supplier-from-protheus.dto';
-import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { Injectable, ConflictException, Logger } from "@nestjs/common";
+import { PrismaPostgresService as PrismaService } from "../../prisma/prisma.service";
+import { CreateSupplierFromProtheusDto } from "./dto/create-supplier-from-protheus.dto";
+import * as bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 
 @Injectable()
 export class ProtheusSupplierService {
@@ -10,11 +10,12 @@ export class ProtheusSupplierService {
 
   constructor(private prisma: PrismaService) {}
 
-  async createSupplier(dto: CreateSupplierFromProtheusDto) {  
+  async createSupplier(dto: CreateSupplierFromProtheusDto) {
     this.logger.log(`Iniciando criação de fornecedor: CNPJ ${dto.cnpj}`);
 
     // 1. VALIDAR UNICIDADE DE CNPJ
-    const cnpjLimpo = dto.cnpj.replace(/\D/g, ''); // Remove pontuação
+    // Remove apenas pontuação (pontos, barra, hífen), preservando letras (CNPJ alfanumérico)
+    const cnpjLimpo = dto.cnpj.replace(/[.\-\/]/g, "").toUpperCase();
     const companyExists = await this.prisma.company.findFirst({
       where: {
         cnpj: {
@@ -27,11 +28,11 @@ export class ProtheusSupplierService {
       this.logger.warn(`CNPJ já cadastrado: ${dto.cnpj}`);
       throw new ConflictException({
         success: false,
-        message: 'CNPJ já cadastrado no sistema',
+        message: "CNPJ já cadastrado no sistema",
         error: {
-          code: 'CNPJ_ALREADY_EXISTS',
+          code: "CNPJ_ALREADY_EXISTS",
           details: `CNPJ ${dto.cnpj} já está cadastrado`,
-          field: 'cnpj',
+          field: "cnpj",
         },
       });
     }
@@ -45,11 +46,11 @@ export class ProtheusSupplierService {
       this.logger.warn(`Email já cadastrado: ${dto.contactEmail}`);
       throw new ConflictException({
         success: false,
-        message: 'Email já cadastrado no sistema',
+        message: "Email já cadastrado no sistema",
         error: {
-          code: 'EMAIL_ALREADY_EXISTS',
+          code: "EMAIL_ALREADY_EXISTS",
           details: `Email ${dto.contactEmail} já está em uso`,
-          field: 'contactEmail',
+          field: "contactEmail",
         },
       });
     }
@@ -75,7 +76,7 @@ export class ProtheusSupplierService {
             city: dto.city,
             state: dto.state.toUpperCase(), // Garantir maiúscula
             phone: dto.phone,
-            status: 'PENDING', // STATUS CRÍTICO PARA APROVAÇÃO
+            status: "PENDING", // STATUS CRÍTICO PARA APROVAÇÃO
           },
         });
 
@@ -85,13 +86,13 @@ export class ProtheusSupplierService {
             name: dto.cnpj,
             email: dto.contactEmail,
             password: hashedPassword,
-            role: 'SUPPLIER', // ROLE OBRIGATÓRIO PARA FORNECEDOR
+            role: "SUPPLIER", // ROLE OBRIGATÓRIO PARA FORNECEDOR
             companyId: company.id,
           },
         });
 
         this.logger.log(
-          `Fornecedor criado com sucesso: Company ${company.id}, User ${user.id}`
+          `Fornecedor criado com sucesso: Company ${company.id}, User ${user.id}`,
         );
 
         return { company, user, tempPassword };
@@ -100,7 +101,8 @@ export class ProtheusSupplierService {
       // 6. RETORNAR DADOS DE SUCESSO
       return {
         success: true,
-        message: 'Fornecedor cadastrado com sucesso. Aguardando aprovação do administrador.',
+        message:
+          "Fornecedor cadastrado com sucesso. Aguardando aprovação do administrador.",
         data: {
           companyId: result.company.id,
           userId: result.user.id,
@@ -111,18 +113,21 @@ export class ProtheusSupplierService {
         },
       };
     } catch (error) {
-      this.logger.error('Erro ao criar fornecedor no banco de dados', error.stack);
-      throw new Error('Erro ao processar cadastro de fornecedor');
+      this.logger.error(
+        "Erro ao criar fornecedor no banco de dados",
+        error.stack,
+      );
+      throw new Error("Erro ao processar cadastro de fornecedor");
     }
   }
 
   private generateTemporaryPassword(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let password = '';
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let password = "";
 
     for (let i = 0; i < 12; i++) {
       if (i > 0 && i % 4 === 0) {
-        password += '-';
+        password += "-";
       }
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }

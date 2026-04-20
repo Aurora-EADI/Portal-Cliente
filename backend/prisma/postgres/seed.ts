@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client-postgres';
+﻿import { PrismaClient, UserRole, CompanyStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -32,7 +32,7 @@ async function main() {
     },
   });
 
-  console.log(`✔️ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
+  console.log(`✔️ Empresa ${company.fantasyName} garantida (ID: ${company.id})`);
 
   // Verificar se já existe um usuário admin
   const existingAdmin = await prisma.user.findFirst({
@@ -42,7 +42,7 @@ async function main() {
   });
 
   if (existingAdmin) {
-    console.log('⚠️  Usuario admin ja existe. Atualizando vínculo com a empresa...');
+    console.log('⚠️  Usuario admin ja existe. Atualizando vínculo com a empresa...');
 
     await prisma.user.update({
       where: { id: existingAdmin.id },
@@ -51,7 +51,7 @@ async function main() {
       }
     });
 
-    console.log('✔️ Vínculo atualizado com sucesso.');
+    console.log('✔️ Vínculo atualizado com sucesso.');
     console.log(`🆔 ID: ${existingAdmin.id}`);
     console.log(`👤 Nome: ${existingAdmin.name}`);
     console.log(`🎭 Role: ${existingAdmin.role}`);
@@ -85,10 +85,10 @@ async function main() {
     },
   });
 
-  console.log('✔️ Admin Aurora criado com sucesso.');
+  console.log('✔️ Admin Aurora criado com sucesso.');
 
   // ============================================
-  // 2. CRIAR PERMISSÕES TÉCNICAS
+  // 2. CRIAR PERMISSÃ•ES TÉCNICAS
   // ============================================
   const pPermManageUsers = await prisma.permission.create({
     data: {
@@ -106,10 +106,10 @@ async function main() {
     },
   });
 
-  console.log('✔️ Permissões técnicas criadas.');
+  console.log('✔️ Permissões técnicas criadas.');
 
   // ============================================
-  // 3. CRIAR MÓDULO DE PERMISSÕES
+  // 3. CRIAR MÓDULO DE PERMISSÃ•ES
   // ============================================
   const modPermissoes = await prisma.module.create({
     data: {
@@ -121,7 +121,7 @@ async function main() {
     },
   });
 
-  console.log('✔️ Módulo de Permissões criado.');
+  console.log('✔️ Módulo de Permissões criado.');
 
   // ============================================
   // 4. CRIAR ATIVIDADES OBRIGATÓRIAS
@@ -150,7 +150,7 @@ async function main() {
     },
   });
 
-  console.log('✔️ Atividades obrigatórias criadas.');
+  console.log('✔️ Atividades obrigatórias criadas.');
 
   // ============================================
   // 5. ATRIBUIR MÓDULO AO ADMIN
@@ -163,7 +163,7 @@ async function main() {
     },
   });
 
-  console.log('✔️ Módulo de Permissões atribuído ao Admin Aurora.');
+  console.log('✔️ Módulo de Permissões atribuído ao Admin Aurora.');
 
   // ============================================
   // 6. LOG FINAL
@@ -171,34 +171,34 @@ async function main() {
   console.log('\n✅ Seed concluído com sucesso!');
   console.log('🎉 Usuario admin criado com sucesso!');
   console.log(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 USUÁRIO ADMINISTRADOR CRIADO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📧 Email: admin@aurora.com.br
 🔑 Senha: aurora@2025
 👤 Nome: Admin Aurora
-🛡️  Role: ADMIN
+ðŸ›¡ï¸  Role: ADMIN
 🏢 Empresa: Aurora EADI
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MÓDULO E PERMISSÕES ATRIBUÍDAS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MÓDULO E PERMISSÃ•ES ATRIBUÍDAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📦 Módulo: Permissões
-📝 Descrição: Gestão de acessos e permissões
+ðŸ“ Descrição: Gestão de acessos e permissões
 
 Atividades Obrigatórias:
   ✓ Gerenciar Usuários (PERM_MANAGE_USERS)
   ✓ Gerenciar Módulos (PERM_MANAGE_MODULES)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Erro ao executar seed:', e);
+    console.error('âŒ Erro ao executar seed:', e);
     process.exit(1);
   })
   .finally(async () => {

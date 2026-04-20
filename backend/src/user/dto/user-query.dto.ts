@@ -1,6 +1,13 @@
-import { IsOptional, IsInt, IsEnum, Max, IsString, IsArray } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
-import { UserRole } from '@prisma/client-postgres';
+﻿import {
+  IsOptional,
+  IsInt,
+  IsEnum,
+  Max,
+  IsString,
+  IsArray,
+} from "class-validator";
+import { Type, Transform } from "class-transformer";
+import { UserRole, CompanyStatus } from "@prisma/client";
 
 export class UserQueryDto {
   @IsOptional()
@@ -19,12 +26,12 @@ export class UserQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum(['asc', 'desc'])
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  @IsEnum(["asc", "desc"])
+  sortOrder?: "asc" | "desc" = "desc";
 
   @IsOptional()
   @IsString()
-  sortBy?: string = 'createdAt';
+  sortBy?: string = "createdAt";
 
   @IsOptional()
   @IsEnum(UserRole)
@@ -32,11 +39,15 @@ export class UserQueryDto {
 
   @IsOptional()
   @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      return value.split(',').map(v => v.trim());
+    if (typeof value === "string") {
+      return value.split(",").map((v) => v.trim());
     }
     return value;
   })
   @IsArray()
   roles?: UserRole[]; // Array de roles permitidos (ex: "ADMIN,EMPLOYEE")
+
+  @IsOptional()
+  @IsEnum(CompanyStatus)
+  companyStatus?: CompanyStatus; // Filtrar por status da empresa
 }

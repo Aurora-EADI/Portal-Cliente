@@ -1,0 +1,39 @@
+#!/bin/sh
+# Bloqueia commit de novas migrations criadas via "prisma migrate dev"
+# Migrations devem ser criadas manualmente pelo responsavel pelo schema.
+
+ALLOWED_MIGRATIONS="20260220120000_baseline 20260220130000_add_warehouse_reason"
+
+# Pega arquivos staged que sao novos migration.sql
+NEW_MIGRATIONS=$(git diff --cached --name-only --diff-filter=A | grep "prisma/postgres/migrations/.*/migration.sql")
+
+if [ -z "$NEW_MIGRATIONS" ]; then
+  exit 0
+fi
+
+for FILE in $NEW_MIGRATIONS; do
+  # Extrai o nome da pasta da migration
+  MIGRATION_NAME=$(echo "$FILE" | sed 's|.*/migrations/||' | sed 's|/migration.sql||')
+
+  # Verifica se esta na lista de permitidas
+  FOUND=0
+  for ALLOWED in $ALLOWED_MIGRATIONS; do
+    if [ "$MIGRATION_NAME" = "$ALLOWED" ]; then
+      FOUND=1
+      break
+    fi
+  done
+
+  if [ "$FOUND" = "0" ]; then
+    echo ""
+    echo "BLOQUEADO: nova migration detectada: $MIGRATION_NAME"
+    echo ""
+    echo "Nao use 'prisma migrate dev'. Use 'npm run prisma:push:pg' para desenvolvimento local."
+    echo "Para adicionar uma migration oficial, crie o arquivo manualmente e adicione o nome"
+    echo "na lista ALLOWED_MIGRATIONS em .githooks/pre-commit"
+    echo ""
+    exit 1
+  fi
+done
+
+exit 0
