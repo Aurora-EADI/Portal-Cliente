@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import { AgendaFilters, AgendaResponse, PreRegistroVisitante, VisitanteStatus } from '@/types/visitantes';
+import { AgendaFilters, AgendaResponse, AgendaSummary, PreRegistroVisitante, VisitanteStatus } from '@/types/visitantes';
 
 const BASE = '/visitantes';
 
@@ -25,6 +25,14 @@ export const agendaService = {
 
   async updateStatus(id: string, status: VisitanteStatus): Promise<PreRegistroVisitante> {
     const response = await api.patch(`${BASE}/${id}/status`, { status });
+    return response.data;
+  },
+
+  async findSummary(dataInicio?: string, dataFim?: string): Promise<AgendaSummary> {
+    const params = new URLSearchParams();
+    if (dataInicio) params.append('dataInicio', dataInicio);
+    if (dataFim) params.append('dataFim', dataFim);
+    const response = await api.get(`${BASE}/summary?${params.toString()}`);
     return response.data;
   },
 };

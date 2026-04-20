@@ -1341,7 +1341,7 @@ model PreRegistroVisitante {
   rg              String?
   telefone        String?
   motivo          String?
-  horarioPrevisto String?
+  horarioPrevisto DateTime?
   status          VisitanteStatus @default(AGENDADO)
   endereco        String?
   bairro          String?

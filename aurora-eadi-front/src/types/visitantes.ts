@@ -39,3 +39,9 @@ export interface AgendaResponse {
   data: PreRegistroVisitante[];
   total: number;
 }
+
+export interface AgendaSummary {
+  agendado: number;
+  presente: number;
+  naoCompareceu: number;
+}

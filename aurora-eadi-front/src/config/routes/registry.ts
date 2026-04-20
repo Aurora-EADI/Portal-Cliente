@@ -94,6 +94,21 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Recepção
   { path: '/recepcao/contatos', label: 'Lista de Ramais', icon: 'Users', parentPath: '/recepcao', isModuleRoot: false },
   { path: '/recepcao/agenda', label: 'Agenda de Visitantes', icon: 'CalendarDays', parentPath: '/recepcao', isModuleRoot: false },
+
+  // Armazém Geral
+  { path: '/armazem-geral/dashboard', label: 'Dashboard', icon: 'FileBarChart', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/carga-geral', label: 'Carga Geral', icon: 'Box', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers', label: 'Containers', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/containers-ag', label: 'Containers AG', icon: 'Package', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/transbordos', label: 'Transbordos', icon: 'ArrowRightLeft', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/auditoria', label: 'Auditoria', icon: 'ShieldCheck', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/conferentes', label: 'Conferentes', icon: 'UserCircle', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/fornecedores-container', label: 'Fornecedores', icon: 'Building2', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/patio', label: 'Pátio', icon: 'LayoutGrid', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/transportadoras', label: 'Transportadoras', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/dashboard', label: 'Relatórios - Visão Geral', icon: 'BarChart3', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/movimentacao', label: 'Relatórios - Entrada e Saída', icon: 'ArrowDownUp', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/relatorios/patio', label: 'Relatórios - Posição de Pátio', icon: 'LayoutGrid', parentPath: '/armazem-geral', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====

@@ -19,7 +19,6 @@ import { HOME_ITEM } from '../shared';
 
 export const armazemGeralNavigation: NavigationContext = {
   basePath: '/armazem-geral',
-  staticOnly: true,
   items: [
     HOME_ITEM,
     {

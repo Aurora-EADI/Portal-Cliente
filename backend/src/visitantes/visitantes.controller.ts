@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { VisitantesService } from './visitantes.service';
 import { UpdateVisitanteStatusDto } from './dto/update-visitante-status.dto';
+import { VisitantesSummaryQueryDto } from './dto/visitantes-summary-query.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -34,6 +35,12 @@ export class VisitantesController {
     @Query('limit') limit?: number,
   ) {
     return this.visitantesService.findAll({ nome, status, data, dataInicio, dataFim, page, limit });
+  }
+
+  @Get('summary')
+  @ApiOperation({ summary: 'Contagem de visitantes agrupada por status' })
+  findSummary(@Query() query: VisitantesSummaryQueryDto) {
+    return this.visitantesService.findSummary(query);
   }
 
   @Get(':id')

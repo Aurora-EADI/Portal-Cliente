@@ -7,6 +7,7 @@ import {
 import { PrismaPostgresService as PrismaService } from '../prisma/prisma.service';
 import { UpdateVisitanteStatusDto } from './dto/update-visitante-status.dto';
 import { VisitanteStatus } from '@prisma/client';
+import { VisitantesSummary } from './type/visitantes-summary.type';
 
 @Injectable()
 export class VisitantesService {
@@ -36,18 +37,14 @@ export class VisitantesService {
     }
 
     if (filters?.dataInicio || filters?.dataFim) {
-      const range: { gte?: string; lte?: string } = {};
-      if (filters.dataInicio) {
-        range.gte = `${filters.dataInicio}T00:00:00.000Z`;
-      }
-      if (filters.dataFim) {
-        range.lte = `${filters.dataFim}T23:59:59.999Z`;
-      }
+      const range: { gte?: Date; lte?: Date } = {};
+      if (filters.dataInicio) range.gte = new Date(`${filters.dataInicio}T00:00:00`);
+      if (filters.dataFim) range.lte = new Date(`${filters.dataFim}T23:59:59`);
       where.horarioPrevisto = range;
     } else if (filters?.data) {
       where.horarioPrevisto = {
-        gte: `${filters.data}T00:00:00.000Z`,
-        lte: `${filters.data}T23:59:59.999Z`,
+        gte: new Date(`${filters.data}T00:00:00`),
+        lte: new Date(`${filters.data}T23:59:59`),
       };
     }
 
@@ -66,6 +63,38 @@ export class VisitantesService {
     ]);
 
     return { data, total };
+  }
+
+  async findSummary(filters?: {
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<VisitantesSummary> {
+    this.logger.log('Calculando resumo de visitantes por status');
+
+    const where: any = {};
+
+    if (filters?.dataInicio || filters?.dataFim) {
+      const range: { gte?: Date; lte?: Date } = {};
+      if (filters.dataInicio) range.gte = new Date(`${filters.dataInicio}T00:00:00`);
+      if (filters.dataFim) range.lte = new Date(`${filters.dataFim}T23:59:59`);
+      where.horarioPrevisto = range;
+    }
+
+    const counts = await this.prisma.preRegistroVisitante.groupBy({
+      by: ['status'],
+      where,
+      _count: { status: true },
+    });
+
+    const map = Object.fromEntries(
+      counts.map((c) => [c.status, c._count.status]),
+    );
+
+    return {
+      agendado: map[VisitanteStatus.AGENDADO] ?? 0,
+      presente: map[VisitanteStatus.PRESENTE] ?? 0,
+      naoCompareceu: map[VisitanteStatus.NAO_COMPARECEU] ?? 0,
+    };
   }
 
   async findOne(id: string) {

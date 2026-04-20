@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CalendarDays, FileText, CheckCircle, XCircle, Clock, Eye, MapPin, Phone, User, Briefcase, CreditCard, RefreshCw } from 'lucide-react';
-import { useAgenda, useUpdateVisitanteStatus } from '@/hooks/useAgenda';
+import { useAgenda, useAgendaSummary, useUpdateVisitanteStatus } from '@/hooks/useAgenda';
 import { AgendaFilters, PreRegistroVisitante, VisitanteStatus } from '@/types/visitantes';
 import { gerarDeclaracaoVisitante } from '@/lib/declaracaoVisitante';
 import { Pagination } from '@/components/ui/Pagination';
@@ -235,6 +235,7 @@ export function AgendaPage() {
   const [selectedVisitante, setSelectedVisitante] = useState<PreRegistroVisitante | null>(null);
 
   const { data, isLoading, dataUpdatedAt, refetch, isFetching } = useAgenda(filters);
+  const { data: summary } = useAgendaSummary(filters.dataInicio, filters.dataFim);
   const { mutate: updateStatus } = useUpdateVisitanteStatus();
 
   const applyFilters = () => {
@@ -371,6 +372,39 @@ export function AgendaPage() {
             <Button variant="outline" onClick={clearFilters} className="h-9 px-4">
               Limpar
             </Button>
+          </div>
+        </div>
+
+        {/* Cards de resumo */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-xl border border-blue-100 shadow-sm p-5 flex items-center gap-4">
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-blue-100">
+              <Clock size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Agendado</p>
+              <p className="text-2xl font-bold text-gray-900">{summary?.agendado ?? '—'}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-green-100 shadow-sm p-5 flex items-center gap-4">
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-green-100">
+              <CheckCircle size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Presente</p>
+              <p className="text-2xl font-bold text-gray-900">{summary?.presente ?? '—'}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-red-100 shadow-sm p-5 flex items-center gap-4">
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-red-100">
+              <XCircle size={20} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Não Compareceu</p>
+              <p className="text-2xl font-bold text-gray-900">{summary?.naoCompareceu ?? '—'}</p>
+            </div>
           </div>
         </div>
 
