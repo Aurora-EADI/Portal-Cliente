@@ -230,7 +230,16 @@ A navegação é configurada em dois níveis — estático e dinâmico:
    - Módulos sem sharedItems no banco usam o fallback estático integralmente
    - **Estrutura correta para grupos colapsáveis** no static nav: o item do grupo deve ter `isGroup: true` + `children: [...]`. Itens fora do grupo (ex: `CLIENTE_ITEM`) ficam no nível raiz do `items[]` — `buildNavigation.ts` os coleta via `extraItems` filtrando `!i.isGroup`
 
-3. **Route Registry**: Lista centralizada de todas as rotas válidas
+3. **Respeito a sub-páginas desabilitadas** (`sharedItems` + nav estática):
+   - O editor de módulos armazena apenas as sub-páginas habilitadas em `ModuleAccess.sharedItems`
+   - `useNavigationWithPermissions` aplica esse filtro mesmo para módulos `staticOnly: true`:
+     - `sharedItems == null` → nunca configurado → exibe todos os itens estáticos
+     - `sharedItems = []`   → todas desmarcadas → não exibe nenhuma sub-página
+     - `sharedItems = [...]` → exibe apenas as rotas listadas no array
+   - A filtragem ocorre pelo caminho (`path`) do item: só sub-páginas com `path.split('/').length > 2` são filtradas; itens raiz de módulo e Home passam livremente
+   - **Nunca adicionar sub-página nova ao static nav sem registrar no banco** (via editor de módulos), caso contrário ela aparece para todos mesmo antes de ser habilitada
+
+4. **Route Registry**: Lista centralizada de todas as rotas válidas
    - Frontend: `src/config/routes/registry.ts` (MODULE_ROUTES + SUB_ROUTES)
    - Backend: `backend/src/modules/available-routes.ts` (espelho para validação server-side)
    - **Ao criar nova rota, registrar em ambos os arquivos**

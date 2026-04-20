@@ -1,4 +1,4 @@
-import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users } from 'lucide-react';
+import { History as HistoryIcon, Wrench, Calculator, BarChart2, Users, KanbanSquare } from 'lucide-react';
 import { UserRole } from '@/types';
 import type { NavigationContext } from '../types';
 import { HOME_ITEM } from '../shared';
@@ -28,6 +28,11 @@ export const comercialNavigation: NavigationContext = {
                     label: 'Gestão de Cotação Marítima',
                     icon: HistoryIcon,
                     path: '/comercial/history',
+                },
+                {
+                    label: 'Kanban de Propostas',
+                    icon: KanbanSquare,
+                    path: '/comercial/kanban',
                 },
             ],
         },

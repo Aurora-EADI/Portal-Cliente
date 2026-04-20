@@ -88,12 +88,34 @@ export function useNavigationWithPermissions(): NavItem[] {
       return item.requiredRoles.includes(userRole);
     };
 
+    // Conjunto de rotas habilitadas no editor de módulos.
+    // null → nunca configurado → exibe tudo; Set vazio → todas desmarcadas → nada exibe.
+    const enabledRoutes: Set<string> | null = module.sharedItems != null
+      ? new Set(module.sharedItems.map((item) => item.targetRoute))
+      : null;
+
+    /**
+     * Verifica se uma rota de sub-página está habilitada pelo editor de módulos.
+     * Itens sem path, raízes de grupo ou paths de outros módulos não são filtrados.
+     */
+    const isSubPageEnabled = (path?: string): boolean => {
+      if (!enabledRoutes || !path) return true;
+      const isSubPage = path.split('/').filter(Boolean).length > 1;
+      if (!isSubPage) return true;
+      return enabledRoutes.has(path);
+    };
+
     /**
      * Função recursiva que filtra itens e seus children baseado em permissões e roles
      */
     const filterItemWithChildren = (item: NavItem): NavItem | null => {
       // Verifica role e permissão
       if (!hasRequiredRoles(item) || !hasRequiredPermissions(item)) {
+        return null;
+      }
+
+      // Verifica se a sub-página está habilitada no editor de módulos
+      if (!isSubPageEnabled(item.path)) {
         return null;
       }
 

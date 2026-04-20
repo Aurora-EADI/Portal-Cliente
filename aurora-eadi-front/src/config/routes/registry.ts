@@ -44,6 +44,8 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/comercial/dashboard', label: 'Dashboard Cotações', icon: 'BarChart2', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/simulador', label: 'Simulador Marítimo', icon: 'Ship', parentPath: '/comercial', isModuleRoot: false },
   { path: '/comercial/history', label: 'Gestão de Cotação Marítima', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/aereo/simulador', label: 'Simulador Aéreo', icon: 'Plane', parentPath: '/comercial', isModuleRoot: false },
+  { path: '/aereo/history', label: 'Gestão de Cotação Aérea', icon: 'FileText', parentPath: '/comercial', isModuleRoot: false },
   { path: '/simulacoes/propostas', label: 'Kanban Cotações', icon: 'KanbanSquare', parentPath: '/simulacoes', isModuleRoot: false },
 
   // Faturamento
