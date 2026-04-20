@@ -93,13 +93,19 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/dashboard/kanban', label: 'Transito no Recinto', icon: 'LayoutDashboard', parentPath: '/dashboard', isModuleRoot: false },
   { path: '/dashboard/conferencia-de-carga', label: 'Conferência de Carga', icon: 'ClipboardList', parentPath: '/dashboard', isModuleRoot: false },
 
+  // Recepção
+  { path: '/recepcao/contatos', label: 'Lista de Ramais', icon: 'Users', parentPath: '/recepcao', isModuleRoot: false },
+  { path: '/recepcao/agenda', label: 'Agenda de Visitantes', icon: 'CalendarDays', parentPath: '/recepcao', isModuleRoot: false },
+
   // Armazém Geral
   { path: '/armazem-geral/dashboard', label: 'Dashboard', icon: 'FileBarChart', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/carga-geral', label: 'Carga Geral', icon: 'Box', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/containers', label: 'Containers', icon: 'Truck', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/containers-ag', label: 'Containers AG', icon: 'Package', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/transbordos', label: 'Transbordos', icon: 'ArrowRightLeft', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/auditoria', label: 'Auditoria', icon: 'ShieldCheck', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/conferentes', label: 'Conferentes', icon: 'UserCircle', parentPath: '/armazem-geral', isModuleRoot: false },
+  { path: '/armazem-geral/fornecedores-container', label: 'Fornecedores', icon: 'Building2', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/patio', label: 'Pátio', icon: 'LayoutGrid', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/relatorios', label: 'Relatórios', icon: 'ClipboardList', parentPath: '/armazem-geral', isModuleRoot: false },
   { path: '/armazem-geral/relatorios/movimentacao', label: 'Entrada e Saída', icon: 'ArrowDownUp', parentPath: '/armazem-geral', isModuleRoot: false },

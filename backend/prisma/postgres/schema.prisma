@@ -1395,3 +1395,60 @@ enum AuditAction {
   DELETE
   STATUS_CHANGE
 }
+
+model WarehouseAuditLog {
+  id                String     @id @default(uuid())
+  warehouseId       String
+  entityType        String
+  entityId          String
+  action            AuditAction
+  before            Json?
+  after             Json?
+  performedByUserId String?
+  createdAt         DateTime   @default(now())
+
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  performedByUser   User?     @relation("UserWarehouseAuditLogs", fields: [performedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([warehouseId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([performedByUserId])
+  @@index([createdAt])
+  @@map("warehouse_audit_logs")
+}
+
+// ============================================================
+// AGENDA DE VISITANTES
+// ============================================================
+
+enum VisitanteStatus {
+  AGENDADO
+  PRESENTE
+  NAO_COMPARECEU
+}
+
+model PreRegistroVisitante {
+  id              String          @id @default(uuid())
+  nome            String
+  name            String?
+  cpf             String
+  rg              String?
+  telefone        String?
+  motivo          String?
+  horarioPrevisto DateTime?
+  status          VisitanteStatus @default(AGENDADO)
+  endereco        String?
+  bairro          String?
+  numero          String?
+  cep             String?
+  cidade          String?
+  estado          String?
+  funcao          String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([horarioPrevisto])
+  @@map("pre_registro_visitantes")
+}

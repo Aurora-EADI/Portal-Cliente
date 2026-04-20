@@ -56,7 +56,9 @@ export function buildNavigationContexts(
     if (!mod.route || !mod.isEnabled) continue;
 
     // Pula módulos sem sub-páginas configuradas — usa fallback estático
-    if (!mod.sharedItems || mod.sharedItems.length === 0) continue;
+    // sharedItems == null → nunca configurado → usa estático
+    // sharedItems = []   → configurado sem itens → não exibe sub-páginas (não usa estático)
+    if (mod.sharedItems == null) continue;
 
     // Resolve ícone e label do módulo
     // Prioridade: navegação estática > registry > banco > fallback
@@ -105,16 +107,6 @@ export function buildNavigationContexts(
         };
       });
 
-    // Inclui children da navegação estática que não foram cobertos pelos sharedItems
-    // Isso garante que novas rotas adicionadas ao static nav apareçam automaticamente
-    if (staticGroupItem?.children) {
-      for (const staticChild of staticGroupItem.children) {
-        if (!children.some((c) => c.path === staticChild.path)) {
-          children.push(staticChild);
-        }
-      }
-    }
-
     const moduleItem: NavItem = {
       label: moduleLabel,
       icon: moduleIcon,
@@ -123,16 +115,10 @@ export function buildNavigationContexts(
       children,
     };
 
-    // Coleta items extras da navegação estática (ex: CLIENTE_ITEM)
-    // que não são Home nem o grupo principal
-    const extraItems: NavItem[] = staticContext
-      ? staticContext.items.filter((i) => i.path !== '/modules' && !i.isGroup)
-      : [];
-
     // Preserva allowedRoles da navegação estática
     const context: NavigationContext = {
       basePath: mod.route,
-      items: [homeItem, moduleItem, ...extraItems],
+      items: [homeItem, moduleItem],
       ...(staticContext?.allowedRoles && { allowedRoles: staticContext.allowedRoles }),
     };
 
