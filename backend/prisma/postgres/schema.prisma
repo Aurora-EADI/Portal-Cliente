@@ -778,6 +778,7 @@ model InspectionMobile {
   cpf                    String
   placaCavalo            String
   placaPrancha           String?
+  beneficiario           String?
   dataHora               DateTime
   localizacaoArmazenagem String?
   observacaoGeral        String?
@@ -785,6 +786,8 @@ model InspectionMobile {
   gpsLat                 Float?
   gpsLng                 Float?
   inspectionStatus       String                  @default("pending")
+  inspecao717            Json?
+  inspecao717Header      Json?
   userId                 String
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
@@ -830,11 +833,45 @@ model InspectionPhotoMobile {
   isMock       Boolean               @default(false)
   inspectionId String?
   itemId       String?
+  sideLabel    String?
   createdAt    DateTime              @default(now())
   inspection   InspectionMobile?     @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
   item         InspectionItemMobile? @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@map("inspection_photos_mobile")
+}
+
+// ============================================================
+// CONTAINER ENTRIES — espelho do SQL Server para histórico
+// ============================================================
+
+model ContainerEntry {
+  id                 String    @id @default(uuid())
+  entryNumber        Int
+
+  entryDate          DateTime
+  exitDate           DateTime?
+  status             String
+  tipoEntrada        String
+  carrier            String
+  abreviatura        String?
+  licensePlate       String?
+  licensePlateBoogie String?
+  containerNumber    String
+  lacre              String?
+  beneficiario       String?
+  motorista          String?
+  cpfMotorista       String?
+  tempoPermanencia   Int
+  priority           String
+
+  containerStatus    String   @default("pending")
+
+  firstSeenAt        DateTime @default(now())
+  lastSyncAt         DateTime @updatedAt
+
+  @@unique([entryNumber, containerNumber])
+  @@map("container_entries")
 }
 
 // ============================================================

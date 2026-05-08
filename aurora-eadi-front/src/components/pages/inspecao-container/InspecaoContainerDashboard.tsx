@@ -1,374 +1,463 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Eye, Container, Clock, CheckCircle, Loader2, AlertCircle, Search, X, RefreshCw } from 'lucide-react';
-import { inspectionsService, type Inspection, type InspectionListParams } from '@/services/inspections/inspections.service';
-import { InspecaoContainerDetail } from './InspecaoContainerDetail';
-import { Pagination } from '@/components/ui/Pagination';
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  PageHeader,
+  DataTable,
+  Column,
+  StatusCards,
+  StatusCardConfig,
+} from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Layers,
+  Hourglass,
+  ClipboardCheck,
+  CheckCircle2,
+  RefreshCw,
+  Search,
+  X,
+  Eye,
+} from "lucide-react";
+import {
+  inspectionsService,
+  type ContainerEntry,
+  type Inspection,
+} from "@/services/inspections/inspections.service";
+import { InspecaoContainerDetail } from "./InspecaoContainerDetail";
 
-const POLL_INTERVAL_MS = 30_000; // 30 segundos
+// ── Status cards config ──────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  in_progress: { label: 'Em Andamento', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  completed: { label: 'Concluída', color: 'bg-green-100 text-green-700 border-green-200' },
-};
+const STATUS_CARDS: StatusCardConfig[] = [
+  {
+    status: "ALL",
+    label: "Todos",
+    icon: Layers,
+    bgColor: "bg-slate-100",
+    textColor: "text-slate-700",
+  },
+  {
+    status: "pending",
+    label: "Pendentes",
+    icon: Hourglass,
+    bgColor: "bg-orange-100",
+    textColor: "text-orange-700",
+  },
+  {
+    status: "in_progress",
+    label: "Em Inspeção",
+    icon: ClipboardCheck,
+    bgColor: "bg-blue-100",
+    textColor: "text-blue-700",
+  },
+  {
+    status: "completed",
+    label: "Inspecionados",
+    icon: CheckCircle2,
+    bgColor: "bg-green-100",
+    textColor: "text-green-700",
+  },
+];
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? { label: status, color: 'bg-gray-100 text-gray-600 border-gray-200' };
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatPermanencia(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / 1440)}d`;
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  const cfg: Record<string, { label: string; color: string }> = {
+    high:   { label: "Alta",   color: "bg-red-50 text-red-700 border-red-200" },
+    medium: { label: "Média",  color: "bg-amber-50 text-amber-700 border-amber-200" },
+    low:    { label: "Normal", color: "bg-gray-50 text-gray-500 border-gray-200" },
+  };
+  const { label, color } = cfg[priority] ?? cfg.low;
   return (
-    <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border inline-block ${cfg.color}`}>
-      {cfg.label}
+    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${color}`}>
+      {label}
     </span>
   );
 }
 
+function ContainerStatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, { label: string; color: string }> = {
+    pending:     { label: "Pendente",     color: "bg-orange-100 text-orange-700 border-orange-200" },
+    in_progress: { label: "Em Inspeção",  color: "bg-blue-100 text-blue-700 border-blue-200" },
+    completed:   { label: "Inspecionado", color: "bg-green-100 text-green-700 border-green-200" },
+  };
+  const { label, color } = cfg[status] ?? { label: status, color: "bg-gray-100 text-gray-600 border-gray-200" };
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border inline-block ${color}`}>
+      {label}
+    </span>
+  );
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+
+const LIMIT = 20;
+
 export function InspecaoContainerDashboard() {
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Inspection | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  // Filters
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  // Pagination
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [search, setSearch] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [showFilters, setShowFilters] = useState(true);
+  const [activeStatus, setActiveStatus] = useState("pending");
+
+  const [entries, setEntries] = useState<ContainerEntry[]>([]);
   const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Summary counts
-  const [counts, setCounts] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0 });
+  const [counts, setCounts] = useState<Record<string, number>>({
+    ALL: 0,
+    pending: 0,
+    in_progress: 0,
+    completed: 0,
+  });
 
-  // Ref para acessar filtros atuais dentro do interval sem re-criar o timer
-  const filtersRef = useRef({ page, limit, search, statusFilter, startDate, endDate });
-  useEffect(() => {
-    filtersRef.current = { page, limit, search, statusFilter, startDate, endDate };
-  }, [page, limit, search, statusFilter, startDate, endDate]);
+  const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
 
-  const buildParams = useCallback((overrides?: Partial<InspectionListParams>): InspectionListParams => {
-    const f = filtersRef.current;
-    return {
-      page: f.page,
-      limit: f.limit,
-      search: f.search || undefined,
-      status: f.statusFilter || undefined,
-      startDate: f.startDate || undefined,
-      endDate: f.endDate || undefined,
-      ...overrides,
-    };
-  }, []);
+  // ── Fetch entries ──────────────────────────────────────────────────────────
 
-  // Busca principal (com spinner)
-  const fetchData = useCallback(async (params: InspectionListParams) => {
-    try {
+  const fetchEntries = useCallback(
+    async (opts?: { page?: number; search?: string; status?: string; removed?: boolean }) => {
       setIsLoading(true);
-      setError(null);
-      const res = await inspectionsService.findAll(params);
-      setInspections(res.data);
-      setTotal(res.pagination.total);
-      setLastUpdated(new Date());
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao carregar inspeções.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Refresh silencioso em background (sem spinner na tabela)
-  const silentRefresh = useCallback(async () => {
-    try {
-      setIsRefreshing(true);
-      const params = buildParams();
-      const [res, all, pending, in_progress, completed] = await Promise.all([
-        inspectionsService.findAll(params),
-        inspectionsService.findAll({ limit: 1 }),
-        inspectionsService.findAll({ limit: 1, status: 'pending' }),
-        inspectionsService.findAll({ limit: 1, status: 'in_progress' }),
-        inspectionsService.findAll({ limit: 1, status: 'completed' }),
-      ]);
-      setInspections(res.data);
-      setTotal(res.pagination.total);
-      setCounts({
-        total: all.pagination.total,
-        pending: pending.pagination.total,
-        in_progress: in_progress.pagination.total,
-        completed: completed.pagination.total,
-      });
-      setLastUpdated(new Date());
-    } catch { /* silent — não interrompe o usuário */ } finally {
-      setIsRefreshing(false);
-    }
-  }, [buildParams]);
+      setIsError(false);
+      try {
+        const status = opts?.status ?? activeStatus;
+        const res = await inspectionsService.listContainerEntries({
+          page: opts?.page ?? page,
+          limit: LIMIT,
+          search: (opts?.search ?? search) || undefined,
+          containerStatus: status === "ALL" ? undefined : status,
+        });
+        setEntries(res.data);
+        setTotal(res.pagination.total);
+      } catch {
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [page, search, activeStatus],
+  );
 
   const fetchCounts = useCallback(async () => {
     try {
-      const [all, pending, in_progress, completed] = await Promise.all([
-        inspectionsService.findAll({ limit: 1 }),
-        inspectionsService.findAll({ limit: 1, status: 'pending' }),
-        inspectionsService.findAll({ limit: 1, status: 'in_progress' }),
-        inspectionsService.findAll({ limit: 1, status: 'completed' }),
+      const [all, pend, inProg, done] = await Promise.all([
+        inspectionsService.listContainerEntries({ limit: 1 }),
+        inspectionsService.listContainerEntries({ limit: 1, containerStatus: "pending" }),
+        inspectionsService.listContainerEntries({ limit: 1, containerStatus: "in_progress" }),
+        inspectionsService.listContainerEntries({ limit: 1, containerStatus: "completed" }),
       ]);
-      setCounts({
-        total: all.pagination.total,
-        pending: pending.pagination.total,
-        in_progress: in_progress.pagination.total,
-        completed: completed.pagination.total,
-      });
-    } catch { /* silent */ }
+      const next = {
+        ALL: all.pagination.total,
+        pending: pend.pagination.total,
+        in_progress: inProg.pagination.total,
+        completed: done.pagination.total,
+      };
+      setCounts(next);
+      return next;
+    } catch {}
   }, []);
 
-  // Carga inicial
-  useEffect(() => {
-    fetchCounts();
-  }, []);
+  // ── Sync with SQL Server ───────────────────────────────────────────────────
 
-  useEffect(() => {
-    fetchData(buildParams({ page, limit }));
-  }, [page, limit]);
-
-  // Polling automático a cada 30s
-  useEffect(() => {
-    const timer = setInterval(() => {
-      silentRefresh();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [silentRefresh]);
-
-  const handleSearch = () => {
-    setPage(1);
-    fetchData(buildParams({ page: 1 }));
-  };
-
-  const handleClearFilters = () => {
-    setSearch('');
-    setStatusFilter('');
-    setStartDate('');
-    setEndDate('');
-    setPage(1);
-    fetchData({ page: 1, limit });
-  };
-
-  const handleManualRefresh = () => {
-    silentRefresh();
-  };
-
-  const handleViewDetail = async (inspection: Inspection) => {
+  const syncAndRefresh = useCallback(async () => {
+    setIsSyncing(true);
     try {
-      setLoadingDetail(true);
-      const full = await inspectionsService.findOne(inspection.id);
-      setSelected(full);
-    } catch {
-      setError('Erro ao carregar detalhe da inspeção.');
+      await inspectionsService.findPendingContainers();
+    } catch {}
+    await Promise.all([fetchEntries({ page: 1 }), fetchCounts()]);
+    setPage(1);
+    setIsSyncing(false);
+  }, [fetchEntries, fetchCounts]);
+
+  // ── Initial load ───────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    syncAndRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Detail panel ──────────────────────────────────────────────────────────
+
+  const handleViewDetails = useCallback(async (containerNumber: string) => {
+    setLoadingDetail(containerNumber);
+    try {
+      const inspRes = await inspectionsService.findAll({
+        search: containerNumber,
+        limit: 1,
+      });
+      const insp = inspRes.data[0];
+      if (!insp) return;
+      const full = await inspectionsService.findOne(insp.id);
+      setSelectedInspection(full);
     } finally {
-      setLoadingDetail(false);
+      setLoadingDetail(null);
     }
+  }, []);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleBuscar = () => {
+    setSearch(inputValue);
+    setPage(1);
+    fetchEntries({ page: 1, search: inputValue });
   };
 
-  const hasFilters = search || statusFilter || startDate || endDate;
+  const handleStatusClick = (status: string) => {
+    setActiveStatus(status);
+    setPage(1);
+    fetchEntries({ page: 1, status });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchEntries({ page: newPage });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const hasFilters = search.length > 0;
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setInputValue("");
+    setPage(1);
+    fetchEntries({ page: 1, search: "" });
+  };
+
+  // ── Columns ────────────────────────────────────────────────────────────────
+
+  const columns: Column<ContainerEntry>[] = [
+    {
+      key: "containerNumber",
+      header: "Container",
+      render: (e) => (
+        <div className="min-w-[160px] font-mono font-semibold text-gray-900 whitespace-nowrap">
+          {e.containerNumber || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "beneficiario",
+      header: "Beneficiário",
+      render: (e) => (
+        <div className="min-w-[180px] text-sm text-gray-800 whitespace-nowrap">
+          {e.beneficiario || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "carrier",
+      header: "Transportadora",
+      render: (e) => (
+        <div className="min-w-[180px] text-sm text-gray-700 whitespace-nowrap">
+          {e.carrier || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "motorista",
+      header: "Motorista",
+      render: (e) => (
+        <div className="min-w-[160px] text-sm text-gray-800 whitespace-nowrap">
+          {e.motorista || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "lacre",
+      header: "Lacre",
+      render: (e) => (
+        <div className="min-w-[80px] text-sm font-mono text-gray-700 whitespace-nowrap">
+          {e.lacre || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "licensePlate",
+      header: "Placa Cavalo",
+      render: (e) => (
+        <div className="min-w-[100px] text-sm text-gray-800 whitespace-nowrap">
+          {e.licensePlate || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "licensePlateBoogie",
+      header: "Placa Prancha",
+      render: (e) => (
+        <div className="min-w-[100px] text-sm text-gray-700 whitespace-nowrap">
+          {e.licensePlateBoogie || "—"}
+        </div>
+      ),
+    },
+    {
+      key: "entryNumber",
+      header: "Nº Entrada",
+      render: (e) => (
+        <span className="font-mono text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-100 text-sm whitespace-nowrap">
+          {e.entryNumber}
+        </span>
+      ),
+    },
+    {
+      key: "entryDate",
+      header: "Entrada",
+      render: (e) => (
+        <div className="min-w-[110px] text-sm text-gray-700 whitespace-nowrap">
+          {new Date(e.entryDate).toLocaleDateString("pt-BR")}
+        </div>
+      ),
+    },
+    {
+      key: "actions" as keyof ContainerEntry,
+      header: "",
+      render: (e) =>
+        e.containerStatus !== "pending" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 whitespace-nowrap"
+            disabled={loadingDetail === e.containerNumber}
+            onClick={() => handleViewDetails(e.containerNumber)}
+          >
+            <Eye size={14} />
+            {loadingDetail === e.containerNumber ? "Carregando..." : "Ver inspeção"}
+          </Button>
+        ) : null,
+    },
+  ];
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-
-      {/* Error */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700 flex-1">{error}</p>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X size={16} /></button>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Painel de Vistorias</h1>
-          <p className="text-gray-500 mt-1">Visualize todas as inspeções de containers realizadas pelo app mobile.</p>
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          {lastUpdated && (
-            <span className="text-xs text-gray-400">
-              Atualizado às {lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          )}
-          <button
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
-            title="Atualizar agora"
-            className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-primary-600 hover:border-primary-400 transition-all disabled:opacity-50"
+    <div className="space-y-4 animate-in fade-in duration-500 pb-20 p-8 pt-6">
+      <PageHeader
+        title="Painel de Vistorias"
+        description="Containers sincronizados do SQL Server. Clique em 'Ver inspeção' para detalhes do registro do app mobile."
+        actions={
+          <Button
+            onClick={syncAndRefresh}
+            disabled={isSyncing}
+            variant="outline"
+            className="gap-2"
           >
-            <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
+            <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+            {isSyncing ? "Sincronizando..." : "Sincronizar"}
+          </Button>
+        }
+      />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total', value: counts.total, icon: Container, color: 'bg-gray-100 text-gray-600' },
-          { label: 'Pendentes', value: counts.pending, icon: Clock, color: 'bg-yellow-100 text-yellow-600' },
-          { label: 'Em Andamento', value: counts.in_progress, icon: Loader2, color: 'bg-blue-100 text-blue-600' },
-          { label: 'Concluídas', value: counts.completed, icon: CheckCircle, color: 'bg-green-100 text-green-600' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 shadow-sm">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${color}`}>
-              <Icon size={18} />
+      <StatusCards
+        cards={STATUS_CARDS}
+        statusCounts={counts}
+        activeStatus={activeStatus}
+        onStatusClick={handleStatusClick}
+        columns={4}
+      />
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle className="flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                Filtros
+              </CardTitle>
+              {hasFilters && (
+                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                  Filtros ativos
+                </span>
+              )}
             </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
-              <p className="text-xs text-gray-500">{label}</p>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="toggle-filters" className="text-sm text-gray-600 cursor-pointer">
+                {showFilters ? "Ocultar" : "Mostrar"}
+              </Label>
+              <Switch
+                id="toggle-filters"
+                checked={showFilters}
+                onCheckedChange={setShowFilters}
+              />
             </div>
           </div>
-        ))}
-      </div>
+        </CardHeader>
 
-      {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="md:col-span-2 relative">
-            <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por container, motorista ou placa..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-          >
-            <option value="">Todos os status</option>
-            <option value="pending">Pendente</option>
-            <option value="in_progress">Em Andamento</option>
-            <option value="completed">Concluída</option>
-          </select>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSearch}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
-            >
-              Filtrar
-            </button>
-            {hasFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                title="Limpar filtros"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">Período:</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={e => setStartDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-          <span className="text-xs text-gray-400">até</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={e => setEndDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-        </div>
-      ) : inspections.length > 0 ? (
-        <div className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-opacity ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}>
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
-              <tr>
-                <th className="px-5 py-4">Container</th>
-                <th className="px-5 py-4">Tipo Op.</th>
-                <th className="px-5 py-4">Motorista</th>
-                <th className="px-5 py-4">Inspetor</th>
-                <th className="px-5 py-4">Data/Hora</th>
-                <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4 text-center">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {inspections.map(insp => (
-                <tr key={insp.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="font-medium text-gray-900">{insp.containerNumero}</div>
-                    <div className="text-xs text-gray-500">{insp.containerType}</div>
-                  </td>
-                  <td className="px-5 py-3 text-gray-700">{insp.tipoOperacao}</td>
-                  <td className="px-5 py-3">
-                    <div className="text-gray-800">{insp.motorista}</div>
-                    <div className="text-xs text-gray-500">{insp.placaCavalo}</div>
-                  </td>
-                  <td className="px-5 py-3 text-gray-700">{insp.user?.name ?? '—'}</td>
-                  <td className="px-5 py-3 text-gray-600 text-xs whitespace-nowrap">
-                    {new Date(insp.dataHora).toLocaleString('pt-BR')}
-                  </td>
-                  <td className="px-5 py-3">
-                    <StatusBadge status={insp.inspectionStatus} />
-                  </td>
-                  <td className="px-5 py-3 text-center">
-                    <button
-                      onClick={() => handleViewDetail(insp)}
-                      disabled={loadingDetail}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-primary-500 hover:text-primary-600 rounded-lg text-sm font-medium text-gray-700 transition-all shadow-sm disabled:opacity-50"
+        {showFilters && (
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Buscar</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    placeholder="Container, motorista, transportadora ou beneficiário..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleBuscar()}
+                    className="pl-10 pr-10"
+                  />
+                  {inputValue && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setInputValue("")}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-transparent"
                     >
-                      {loadingDetail ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
-                      Ver
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-gray-300">
-          <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <Container size={28} className="text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900">Nenhuma inspeção encontrada</h3>
-          <p className="text-gray-500 mt-1">
-            {hasFilters ? 'Tente ajustar os filtros aplicados.' : 'As vistorias realizadas pelo app aparecerão aqui.'}
-          </p>
-        </div>
-      )}
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-      {/* Pagination */}
-      {total > 0 && (
-        <Pagination
-          page={page}
-          total={total}
-          limit={limit}
-          onPageChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-          onLimitChange={(l) => { setLimit(l); setPage(1); }}
-        />
-      )}
+            </div>
 
-      {/* Detail Panel */}
-      {selected && (
+            <div className="flex justify-between mt-6 pt-4 border-t">
+              <Button variant="outline" onClick={clearAllFilters} disabled={!hasFilters && !inputValue}>
+                <X className="w-4 h-4 mr-2" />
+                Limpar Filtros
+              </Button>
+              <Button onClick={handleBuscar}>
+                <Search className="w-4 h-4" />
+                Buscar
+              </Button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      <DataTable
+        columns={columns}
+        data={entries}
+        keyExtractor={(e) => e.id}
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage="Erro ao carregar containers. Verifique a conexão com o servidor."
+        emptyMessage="Nenhum container encontrado para os filtros selecionados."
+        rowClassName={() => ""}
+        pagination={{
+          page,
+          total,
+          limit: LIMIT,
+          onPageChange: handlePageChange,
+        }}
+      />
+
+      {selectedInspection && (
         <InspecaoContainerDetail
-          inspection={selected}
-          onClose={() => setSelected(null)}
+          inspection={selectedInspection}
+          onClose={() => setSelectedInspection(null)}
         />
       )}
     </div>

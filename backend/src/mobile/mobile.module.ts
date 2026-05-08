@@ -15,6 +15,7 @@ import { MobilePhotosController } from "./mobile-photos.controller";
 import { MobileUsersController } from "./mobile-users.controller";
 import { MobileUsersService } from "./mobile-users.service";
 import { MobilePortalInspectionsController } from "./mobile-portal-inspections.controller";
+import { ContainerSyncService } from "./container-sync.service";
 import { MinioModule } from "../minio/minio.module";
 
 @Module({
@@ -43,6 +44,7 @@ import { MinioModule } from "../minio/minio.module";
     MobileAuthService,
     MobileInspectionsService,
     MobileUsersService,
+    ContainerSyncService,
   ],
 })
 export class MobileModule {}

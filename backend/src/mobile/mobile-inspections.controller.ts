@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -24,6 +25,33 @@ export class MobileInspectionsController {
   @Get()
   list(@Req() req: any) {
     return this.inspectionsService.listInspections(req.user.id);
+  }
+
+  @Get("pending-containers")
+  getPendingContainers(
+    @Query("dtInicio") dtInicio?: string,
+    @Query("dtFinal") dtFinal?: string,
+  ) {
+    return this.inspectionsService.getPendingContainersFromCache({ dtInicio, dtFinal });
+  }
+
+  @Get("container-entries")
+  listContainerEntries(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+    @Query("containerStatus") containerStatus?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
+    return this.inspectionsService.listContainerEntries({
+      page: page ? +page : undefined,
+      limit: limit ? +limit : undefined,
+      search,
+      containerStatus,
+      startDate,
+      endDate,
+    });
   }
 
   @Post()

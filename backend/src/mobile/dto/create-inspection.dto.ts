@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsDateString,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   ValidateNested,
@@ -92,6 +93,10 @@ export class CreateInspectionDto {
   @IsString()
   placaPrancha?: string;
 
+  @IsOptional()
+  @IsString()
+  beneficiario?: string;
+
   @IsDateString()
   dataHora: string;
 
@@ -116,4 +121,10 @@ export class CreateInspectionDto {
   @ValidateNested({ each: true })
   @Type(() => SideLadoDto)
   lados?: SideLadoDto[];
+
+  @IsOptional()
+  inspecao717?: unknown;
+
+  @IsOptional()
+  inspecao717Header?: unknown;
 }

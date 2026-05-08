@@ -70,6 +70,482 @@ const STATUS_LABEL: Record<string, string> = {
   completed: 'Concluída',
 };
 
+// ── Checkbox helper ──────────────────────────────────────────────────────────
+function drawCheckbox(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  status: string | undefined,
+  size = 4,
+) {
+  if (status === 'C') {
+    doc.setFillColor(220, 252, 231);
+    doc.rect(x, y, size, size, 'F');
+    doc.setDrawColor(180, 220, 180);
+    doc.rect(x, y, size, size);
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(22, 163, 74);
+    doc.text('C', x + size / 2, y + size - 0.8, { align: 'center' });
+  } else if (status === 'NC') {
+    doc.setFillColor(254, 226, 226);
+    doc.rect(x, y, size, size, 'F');
+    doc.setDrawColor(220, 180, 180);
+    doc.rect(x, y, size, size);
+    doc.setFontSize(4); doc.setFont('helvetica', 'bold'); doc.setTextColor(220, 38, 38);
+    doc.text('NC', x + size / 2, y + size - 0.8, { align: 'center' });
+  } else if (status === 'NA') {
+    doc.setFillColor(240, 240, 240);
+    doc.rect(x, y, size, size, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(x, y, size, size);
+    doc.setFontSize(4); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 130, 130);
+    doc.text('NA', x + size / 2, y + size - 0.8, { align: 'center' });
+  } else {
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(80, 80, 80);
+    doc.rect(x, y, size, size);
+  }
+  doc.setDrawColor(0, 0, 0);
+  doc.setTextColor(0, 0, 0);
+}
+
+// ── Inspeção 7/17 PDF (replica do formulário físico) ─────────────────────────
+export const exportInspecao717ToPDF = async (inspection: Inspection) => {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const W = doc.internal.pageSize.getWidth();   // 210
+  const H = doc.internal.pageSize.getHeight();  // 297
+  const mX = 8;
+  const cW = W - mX * 2;                        // conteúdo width ~194
+
+  // dados 7/17
+  const grp17 = (inspection.inspecao717 ?? []).find(g => g.tipo === 'veiculo_17');
+  const grp7  = (inspection.inspecao717 ?? []).find(g => g.tipo === 'container_7');
+  const hdr   = inspection.inspecao717Header;
+
+  const itemMap17: Record<number, string | undefined> = {};
+  (grp17?.itens ?? []).forEach(it => { itemMap17[it.numero] = it.status; });
+  const itemMap7: Record<number, string | undefined> = {};
+  (grp7?.itens ?? []).forEach(it => { itemMap7[it.numero] = it.status; });
+
+  // helper: border box (draws outer page border)
+  const borderColor: [number, number, number] = [60, 60, 60];
+
+  // ── Borda externa ──
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.4);
+  doc.rect(mX - 1, 5, cW + 2, H - 10);
+
+  // ── Cabeçalho ──
+  const hdrY = 6;
+  // logo box
+  doc.setDrawColor(...borderColor);
+  doc.rect(mX - 1, hdrY, 33, 18);
+  try {
+    doc.addImage('/logo-aurora.png', 'PNG', mX + 1, hdrY + 2, 28, 12);
+  } catch {
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text('AURORA EADI\nManaus', mX + 2, hdrY + 7);
+  }
+
+  // título centro
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('INSPEÇÕES DOS 07 E 17 PONTOS - OEA', W / 2, hdrY + 8, { align: 'center' });
+  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+  doc.text('(Operador Econômico Autorizado)', W / 2, hdrY + 13, { align: 'center' });
+
+  // Nº box (direita)
+  const numStr = `Nº ${inspection.id.slice(-6).toUpperCase()}`;
+  doc.setDrawColor(...borderColor);
+  doc.rect(W - mX - 26, hdrY, 26, 10);
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text(numStr, W - mX - 13, hdrY + 7, { align: 'center' });
+
+  // linha divisória header
+  doc.setLineWidth(0.3);
+  doc.line(mX - 1, hdrY + 18, W - mX + 1, hdrY + 18);
+
+  // ── Faixa "REGISTRAMOS..." ──
+  let y = hdrY + 18;
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text(
+    'REGISTRAMOS A CHEGADA A ESTE EADI DO VEÍCULO/CONTAINER CUJOS DADOS SE SEGUEM:',
+    W / 2, y + 4, { align: 'center' },
+  );
+  doc.line(mX - 1, y + 7, W - mX + 1, y + 7);
+  y += 7;
+
+  // helper: field row with label + value underlined
+  const drawField = (lbl: string, val: string, fx: number, fy: number, fw: number, fontSize = 7) => {
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+    doc.text(lbl, fx + 0.5, fy + 3.5);
+    doc.setFontSize(fontSize); doc.setFont('helvetica', 'normal');
+    doc.text(val, fx + doc.getTextWidth(lbl) + 2, fy + 3.5, { maxWidth: fw - doc.getTextWidth(lbl) - 2 });
+  };
+
+  const rowH = 7;
+
+  // ── Linha DATA E HORA + TIPO ──
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.2);
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  // vertical split
+  const splitX = mX - 1 + cW * 0.42;
+  doc.line(splitX, y, splitX, y + rowH);
+
+  const dataStr = new Date(inspection.dataHora).toLocaleString('pt-BR');
+  drawField('DATA E HORA:', dataStr, mX, y, cW * 0.42);
+
+  // TIPO checkboxes
+  const tipoX = splitX + 2;
+  doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('TIPO:', tipoX, y + 3.5);
+
+  const tipoOp = (inspection.tipoOperacao ?? '').toLowerCase();
+  const isEntrada = tipoOp.includes('entrada') || tipoOp.includes('importa');
+  const isSaida   = tipoOp.includes('saida') || tipoOp.includes('exporta');
+  const isImport  = tipoOp.includes('importa');
+  const isExport  = tipoOp.includes('exporta');
+  const isCntr    = (inspection.containerType ?? '').toLowerCase().includes('container');
+  const is20      = (inspection.containerType ?? '').includes('20');
+  const is40      = (inspection.containerType ?? '').includes('40');
+
+  const drawInlineCheck = (lbl: string, checked: boolean, cx: number, cy: number) => {
+    const s = 2.5;
+    const p = 0.4;
+    doc.setFillColor(checked ? 220 : 255, checked ? 252 : 255, checked ? 220 : 255);
+    doc.setDrawColor(80); doc.setLineWidth(0.2);
+    doc.rect(cx, cy, s, s, checked ? 'FD' : 'S');
+    if (checked) {
+      doc.setDrawColor(22, 163, 74); doc.setLineWidth(0.5);
+      doc.line(cx + p, cy + p, cx + s - p, cy + s - p);
+      doc.line(cx + s - p, cy + p, cx + p, cy + s - p);
+      doc.setLineWidth(0.2);
+    }
+    doc.setFontSize(5.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+    doc.text(lbl, cx + s + 0.7, cy + s - 0.3);
+  };
+
+  let cx = tipoX + 10;
+  drawInlineCheck('ENTRADA',   isEntrada, cx, y + 1.5); cx += 18;
+  drawInlineCheck('IMPORTAÇÃO', isImport, cx, y + 1.5); cx += 20;
+  drawInlineCheck('CARRETA',  false, cx, y + 1.5); cx += 14;
+  drawInlineCheck('CONTAINER', isCntr, cx, y + 1.5); cx += 18;
+  drawInlineCheck('20', is20, cx, y + 1.5); cx += 8;
+  drawInlineCheck('40', is40, cx, y + 1.5);
+
+  cx = tipoX + 10;
+  drawInlineCheck('SAÍDA',    isSaida, cx, y + 4.5); cx += 18;
+  drawInlineCheck('EXPORTAÇÃO', isExport, cx, y + 4.5); cx += 20;
+  drawInlineCheck('BAÚ', false, cx, y + 4.5); cx += 14;
+  drawInlineCheck('OUTROS', false, cx, y + 4.5);
+
+  y += rowH;
+
+  // ── TRANSPORTADOR ──
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  drawField('TRANSPORTADOR:', inspection.transportadora ?? '—', mX, y, cW);
+  y += rowH;
+
+  // ── MOTORISTA + RG ──
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  doc.line(splitX, y, splitX, y + rowH);
+  drawField('MOTORISTA:', inspection.motorista ?? '—', mX, y, cW * 0.42);
+  drawField('RG:', '—', splitX + 2, y, cW * 0.58 - 2);
+  y += rowH;
+
+  // ── PLACAS ──
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  const p3 = cW / 3;
+  doc.line(mX - 1 + p3, y, mX - 1 + p3, y + rowH);
+  doc.line(mX - 1 + p3 * 2, y, mX - 1 + p3 * 2, y + rowH);
+  drawField('PLACAS: CAVALO', inspection.placaCavalo ?? '—', mX, y, p3);
+  drawField('BAÚ:', inspection.placaPrancha ?? '—', mX - 1 + p3 + 1, y, p3);
+  drawField('CONTAINER:', inspection.containerNumero ?? '—', mX - 1 + p3 * 2 + 1, y, p3);
+  y += rowH;
+
+  // ── DOCUMENTO + LACRE ──
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  doc.line(splitX, y, splitX, y + rowH);
+  drawField('ACOBERTADO PELO DOCUMENTO:', '—', mX, y, cW * 0.42);
+  drawField('LACRE:', inspection.lacre ?? '—', splitX + 2, y, cW * 0.58 - 2);
+  y += rowH;
+
+  // ── ENTRADA SIAUM + PESO ──
+  doc.line(mX - 1, y + rowH, W - mX + 1, y + rowH);
+  doc.line(splitX, y, splitX, y + rowH);
+  drawField('ENTRADA SIAUM:', '—', mX, y, cW * 0.42);
+  drawField('PESO:', '—', splitX + 2, y, cW * 0.58 - 2);
+  y += rowH;
+
+  // ── Legenda ──
+  doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('LEGENDA: C - CONFORME / NC - NÃO CONFORME / NA - NÃO SE APLICA', W / 2, y + 3.5, { align: 'center' });
+  doc.line(mX - 1, y + 6, W - mX + 1, y + 6);
+  y += 6;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Seção 17 pontos ──
+  // ─────────────────────────────────────────────────────────────────────────────
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(0);
+  doc.text('A inspeção de dezessete pontos para veículos de carga compreende:', W / 2, y + 5, { align: 'center' });
+  y += 7;
+
+  // ── Caminhão: frame Figma 174 × 52 mm ──────────────────────────────────────
+  // x, y = mm a partir do canto superior-esquerdo da imagem
+  // Valores negativos = fora da imagem (acima ou à esquerda)
+  // checkPos: 'above' | 'below' | 'left' | 'right' — onde o checkbox fica em relação ao texto
+  const imgX17 = mX + 10;
+  const imgW17 = cW - 20;  // 174mm
+  const imgH17 = 52;
+  const imgY17 = y + 14;   // espaço para labels que ficam acima da imagem
+
+  type Label17 = { num: number; text: string; x: number; y: number; checkPos?: 'above' | 'below' | 'left' | 'right' };
+
+  const labels17: Label17[] = [
+    { num: 1,  text: '',  x:  10,  y: 38,  checkPos: 'above' },
+    { num: 2,  text: '',  x:  22,  y: 44,  checkPos: 'above' },
+    { num: 3,  text: '',  x:  38,  y: 52,  checkPos: 'above' },
+    { num: 4,  text: '',  x:  56,  y: 46,  checkPos: 'above' },
+    { num: 5,  text: '',  x:  72,  y: 50,  checkPos: 'above' },
+    { num: 6,  text: '',  x:  17,  y: 9,  checkPos: 'above' },
+    { num: 7,  text: '',  x:  96,  y: 45,  checkPos: 'above' },
+    { num: 8,  text: '',  x:  116,  y: 58,  checkPos: 'above' },
+    { num: 9,  text: '',  x:  118,  y: 46,  checkPos: 'above' },
+    { num: 10, text: '',  x:  45,  y: 7,  checkPos: 'above' },
+    { num: 11, text: '',  x:  143,  y: 38,  checkPos: 'above' },
+    { num: 12, text: '',  x:  154,  y: 8,  checkPos: 'left'  },
+    { num: 13, text: '',  x:  138,  y: 9,  checkPos: 'left'  },
+    { num: 14, text: '',  x:  100,  y: 7,  checkPos: 'above'  },
+    { num: 15, text: '',  x:  76,  y: 4,  checkPos: 'above'  },
+    { num: 16, text: '',  x:  120,  y: 9,  checkPos: 'above'  },
+    { num: 17, text: '',  x: 160, y: 35, checkPos: 'above' },
+  ];
+
+  const cbSize = 3.2;
+  const lineH  = 3.5;
+
+  // 1. Imagem primeiro — labels ficam por cima
+  const truckUrl = await loadImageAsDataUrl('/caminhao.png');
+  if (truckUrl) {
+    doc.addImage(truckUrl, 'PNG', imgX17, imgY17, imgW17, imgH17);
+  } else {
+    doc.setFillColor(240, 240, 240);
+    doc.rect(imgX17, imgY17, imgW17, imgH17, 'F');
+    doc.setFontSize(8); doc.setTextColor(150);
+    doc.text('[Imagem do caminhão]', imgX17 + imgW17 / 2, imgY17 + imgH17 / 2, { align: 'center' });
+  }
+
+  // 2. Labels e checkboxes por cima da imagem
+  labels17.forEach(({ num, text, x, y: ly, checkPos = 'above' }) => {
+    const px = imgX17 + x;
+    const py = imgY17 + ly;
+    const lines = text.split('\n');
+    const textH = lines.length * lineH;
+
+    doc.setFontSize(5); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+
+    if (checkPos === 'above') {
+      drawCheckbox(doc, px, py - textH - cbSize - 1, itemMap17[num], cbSize);
+      lines.forEach((line, i) => doc.text(line, px, py - textH + i * lineH));
+    } else if (checkPos === 'below') {
+      lines.forEach((line, i) => doc.text(line, px, py + i * lineH));
+      drawCheckbox(doc, px, py + textH + 0.5, itemMap17[num], cbSize);
+    } else if (checkPos === 'right') {
+      lines.forEach((line, i) => doc.text(line, px, py + i * lineH));
+      drawCheckbox(doc, px + 20, py, itemMap17[num], cbSize);
+    } else {
+      // left: checkbox à esquerda do texto
+      drawCheckbox(doc, px, py, itemMap17[num], cbSize);
+      lines.forEach((line, i) => doc.text(line, px + cbSize + 1, py + i * lineH + cbSize - 1));
+    }
+  });
+
+  y = imgY17 + imgH17 + 6;
+
+  // Descrição NC veículo
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.2);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(0);
+  doc.text('Descrição de não conformidade:', mX, y + 4);
+  const ncV = grp17?.descricaoNaoConformidade ?? '';
+  doc.setFont('helvetica', 'normal');
+  doc.text(ncV, mX + 52, y + 4, { maxWidth: cW - 52 });
+  doc.line(mX + 52, y + 5, W - mX, y + 5);
+  y += 8;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ── Seção 7 pontos ──
+  // ─────────────────────────────────────────────────────────────────────────────
+  doc.setLineWidth(0.3);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(0);
+  doc.text('A inspeção de sete pontos para container de carga compreende:', W / 2, y + 5, { align: 'center' });
+  y += 7;
+
+  // ── Container: frame Figma 164 × 38 mm ──────────────────────────────────────
+  // x, y = mm a partir do canto superior-esquerdo da imagem
+  // Valores negativos = fora da imagem (acima ou à esquerda)
+  // checkPos: 'above' | 'below' | 'left' | 'right'
+  const imgX7 = mX + 15;
+  const imgW7 = cW - 30;  // 164mm
+  const imgH7 = 38;
+  const imgY7 = y + 10;
+
+  type Label7 = { num: number; text: string; x: number; y: number; checkPos?: 'above' | 'below' | 'left' | 'right' };
+
+  const labels7: Label7[] = [
+    { num: 1, text: '',  x:  44, y: 38, checkPos: 'right' },
+    { num: 2, text: '', x:  132, y: 25, checkPos: 'right' },
+    { num: 3, text: '',  x: 110, y: 1, checkPos: 'right'  },
+    { num: 4, text: '',  x: 19, y: 18, checkPos: 'below' },
+    { num: 5, text: '',  x:  18, y: 2, checkPos: 'left'  },
+    { num: 6, text: '',  x:  50, y: 6, checkPos: 'right' },
+    { num: 7, text: '',  x:  100, y: 36, checkPos: 'right' },
+  ];
+
+  // 1. Imagem primeiro — labels ficam por cima
+  const cntImgUrl = await loadImageAsDataUrl('/Container.png');
+  if (cntImgUrl) {
+    doc.addImage(cntImgUrl, 'PNG', imgX7, imgY7, imgW7, imgH7);
+  } else {
+    doc.setFillColor(240, 240, 240);
+    doc.rect(imgX7, imgY7, imgW7, imgH7, 'F');
+    doc.setFontSize(8); doc.setTextColor(150);
+    doc.text('[Imagem do container]', imgX7 + imgW7 / 2, imgY7 + imgH7 / 2, { align: 'center' });
+  }
+
+  // 2. Labels e checkboxes por cima da imagem
+  labels7.forEach(({ num, text, x, y: ly, checkPos = 'above' }) => {
+    const px = imgX7 + x;
+    const py = imgY7 + ly;
+    const lines = text.split('\n');
+    const textH = lines.length * lineH;
+
+    doc.setFontSize(5); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+
+    if (checkPos === 'above') {
+      drawCheckbox(doc, px, py - textH - cbSize - 1, itemMap7[num], cbSize);
+      lines.forEach((line, i) => doc.text(line, px, py - textH + i * lineH));
+    } else if (checkPos === 'below') {
+      lines.forEach((line, i) => doc.text(line, px, py + i * lineH));
+      drawCheckbox(doc, px, py + textH + 0.5, itemMap7[num], cbSize);
+    } else if (checkPos === 'right') {
+      lines.forEach((line, i) => doc.text(line, px, py + i * lineH));
+      drawCheckbox(doc, px + 20, py, itemMap7[num], cbSize);
+    } else {
+      // left: checkbox à esquerda do texto
+      drawCheckbox(doc, px, py, itemMap7[num], cbSize);
+      lines.forEach((line, i) => doc.text(line, px + cbSize + 1, py + i * lineH + cbSize - 1));
+    }
+  });
+
+  y = imgY7 + imgH7 + 6;
+
+  // Refrigerado + Ventilador
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.2);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  y += 1;
+  const refrigY = y + 4;
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('Container refrigerado?', mX, refrigY);
+  const refrigX = mX + 35;
+  drawInlineCheckBig(doc, 'SIM', hdr?.containerRefrigerado === true,  refrigX,     refrigY - 3.5);
+  drawInlineCheckBig(doc, 'NÃO', hdr?.containerRefrigerado === false, refrigX + 14, refrigY - 3.5);
+
+  const ventX = W / 2 + 5;
+  doc.text('CARCAÇA DO VENTILADOR OK?', ventX, refrigY);
+  drawInlineCheckBig(doc, 'SIM', hdr?.carcacaVentiladorOk === true,  ventX + 50,    refrigY - 3.5);
+  drawInlineCheckBig(doc, 'NÃO', hdr?.carcacaVentiladorOk === false, ventX + 64, refrigY - 3.5);
+  y += 7;
+
+  // Descrição NC container
+  doc.setLineWidth(0.2);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(0);
+  doc.text('Descrição de não conformidade:', mX, y + 4);
+  const ncC = grp7?.descricaoNaoConformidade ?? '';
+  doc.setFont('helvetica', 'normal');
+  doc.text(ncC, mX + 52, y + 4, { maxWidth: cW - 52 });
+  doc.line(mX + 52, y + 5, W - mX, y + 5);
+  y += 8;
+
+  // ── VTT + Observação ──
+  doc.setLineWidth(0.3);
+  doc.line(mX - 1, y, W - mX + 1, y);
+
+  const vttX = W / 2;
+  doc.line(vttX, y, vttX, y + 30);
+
+  // Observação (esquerda)
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(0);
+  doc.text('Observação:', mX, y + 4);
+  const obsVal = hdr?.observacao717 ?? '';
+  doc.setFont('helvetica', 'normal');
+  doc.text(obsVal, mX, y + 9, { maxWidth: vttX - mX - 5 });
+
+  // VTT tabela (direita)
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('VERIFICAÇÃO DE LACRE - VTT', W / 2 + (W / 2 - mX) / 2, y + 4, { align: 'center' });
+  doc.line(vttX, y + 6, W - mX + 1, y + 6);
+
+  const vttItems = [
+    'V - VISUALIZAÇÃO MECANISMO',
+    'V - VERIFICAR NUMERAÇÃO',
+    'T - TRACIONAR E PUXAR',
+    'T - TORCER E GIRAR',
+  ];
+  vttItems.forEach((item, i) => {
+    const iy = y + 8 + i * 5.5;
+    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+    doc.text(item, vttX + 2, iy + 3);
+    doc.setDrawColor(80); doc.setLineWidth(0.2);
+    doc.rect(W - mX - 5, iy, 4, 4);
+    if (i < vttItems.length - 1) doc.line(vttX, iy + 5.5, W - mX + 1, iy + 5.5);
+  });
+
+  y += 30;
+
+  // ── Assinaturas ──
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.3);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  doc.line(W / 2, y, W / 2, y + 12);
+
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  doc.text('TRANSPORTADOR', W / 4 + mX / 2, y + 8, { align: 'center' });
+  doc.text('AURORA EADI', W / 2 + (W / 2 - mX) / 2, y + 8, { align: 'center' });
+  y += 12;
+
+  // ── Rodapé ──
+  doc.setLineWidth(0.3);
+  doc.line(mX - 1, y, W - mX + 1, y);
+  doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(0);
+  // doc.text(
+  //   'CASO HAJA VIOLAÇÃO NA UNIDADE DE CARGA INSPECIONADA, COMUNICAR AO CHEFE IMEDIATO OU AUTORIDADE COMPETENTE',
+  //   W / 2, y + 4, { align: 'center' },
+  // );
+  doc.line(mX - 1, y + 7, W - mX + 1, y + 7);
+
+  doc.save(`Inspecao717_${inspection.containerNumero}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+};
+
+function drawInlineCheckBig(doc: jsPDF, lbl: string, checked: boolean, x: number, y: number) {
+  const s = 3.5;
+  const p = 0.5;
+  doc.setFillColor(checked ? 220 : 255, checked ? 252 : 255, checked ? 220 : 255);
+  doc.setDrawColor(80); doc.setLineWidth(0.2);
+  doc.rect(x, y, s, s, checked ? 'FD' : 'S');
+  if (checked) {
+    doc.setDrawColor(22, 163, 74); doc.setLineWidth(0.7);
+    doc.line(x + p, y + p, x + s - p, y + s - p);
+    doc.line(x + s - p, y + p, x + p, y + s - p);
+    doc.setLineWidth(0.2);
+  }
+  doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(0);
+  doc.text(lbl, x + s + 1, y + s - 0.5);
+}
+
 export const exportInspecaoToPDF = async (inspection: Inspection) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -253,55 +729,185 @@ export const exportInspecaoToPDF = async (inspection: Inspection) => {
     y = Math.max(leftEnd, rightEnd) + 3;
   }
 
-  // ── Fotos das Avarias ──
-  const itensComFoto = lados.flatMap((side) =>
-    (side.itens ?? [])
-      .filter((item) => item.fotos && item.fotos.length > 0)
-      .map((item) => ({ ...item, lado: side.lado })),
-  );
+  // ── Fotos da Inspeção ──
+  const photoGap = 4;
+  const colW = (pageWidth - mX * 2 - photoGap) / 2; // ~93mm — igual largura das tabelas
+  const photoH = 65;                                  // altura fixa, 4:3 landscape
+  const photoRX = mX + colW + photoGap;
 
-  if (itensComFoto.length > 0) {
+  type PhotoItem = { label: string; url: string };
+
+  const renderPhotoGrid = async (items: PhotoItem[], startY: number): Promise<number> => {
+    if (items.length === 0) return startY;
+    let cy = startY;
+    const cellH = 5 + photoH;
+    for (let i = 0; i < items.length; i += 2) {
+      if (cy + cellH > pageHeight - 15) { doc.addPage(); cy = 15; }
+      for (let col = 0; col < 2; col++) {
+        const item = items[i + col];
+        if (!item) break;
+        const x = col === 0 ? mX : photoRX;
+        if (item.label) {
+          doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkGray);
+          doc.text(item.label, x, cy + 4, { maxWidth: colW });
+        }
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(x, cy + 5, colW, photoH);
+        try {
+          const dataUrl = await loadImageAsDataUrl(item.url);
+          if (dataUrl) doc.addImage(dataUrl, 'JPEG', x, cy + 5, colW, photoH);
+        } catch { /* skip */ }
+      }
+      cy += cellH + photoGap;
+    }
+    return cy;
+  };
+
+  const allFotos = inspection.fotos ?? [];
+  const hasAnyPhoto =
+    allFotos.some((f) => f.url) ||
+    lados.some((side) => (side.itens ?? []).some((item) => (item.fotos ?? []).some((f) => f.url)));
+
+  if (hasAnyPhoto) {
+    y += 2;
+    if (y + 20 > pageHeight - 15) { doc.addPage(); y = 15; }
+    doc.setFontSize(8); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
+    doc.text('FOTOS DA INSPEÇÃO', mX, y);
+    y += 5;
+
+    for (const side of lados) {
+      const items: PhotoItem[] = [];
+      for (const f of allFotos.filter((f) => f.sideLabel === side.lado && !f.itemId && f.url)) {
+        items.push({ label: 'Foto do Lado', url: f.url! });
+      }
+      for (const item of (side.itens ?? []).filter((item) => (item.fotos ?? []).some((f) => f.url))) {
+        const label = `${item.nome}${item.posicao ? ` (${item.posicao})` : ''}${
+          item.avarias?.length ? ' | ' + item.avarias.join(', ') : ''
+        }`;
+        for (const f of (item.fotos ?? []).filter((f) => f.url)) {
+          items.push({ label, url: f.url! });
+        }
+      }
+      if (items.length === 0) continue;
+
+      if (y + 12 > pageHeight - 15) { doc.addPage(); y = 15; }
+      doc.setFillColor(...darkGray);
+      doc.rect(mX, y, pageWidth - mX * 2, 7, 'F');
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+      doc.text(side.lado, mX + 2, y + 5);
+      y += 9;
+
+      y = await renderPhotoGrid(items, y);
+    }
+
+    const generalItems: PhotoItem[] = allFotos
+      .filter((f) => !f.sideLabel && !f.itemId && f.url)
+      .map((f) => ({ label: '', url: f.url! }));
+    if (generalItems.length > 0) {
+      if (y + 12 > pageHeight - 15) { doc.addPage(); y = 15; }
+      doc.setFillColor(100, 100, 100);
+      doc.rect(mX, y, pageWidth - mX * 2, 7, 'F');
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+      doc.text('FOTOS GERAIS', mX + 2, y + 5);
+      y += 9;
+      y = await renderPhotoGrid(generalItems, y);
+    }
+  }
+
+  // ── Inspeção 7/17 ──
+  const grupos717 = inspection.inspecao717 ?? [];
+  if (grupos717.length > 0) {
     y += 2;
     if (y + 20 > pageHeight - 15) { doc.addPage(); y = 15; }
 
     doc.setFontSize(8); doc.setTextColor(...orange); doc.setFont('helvetica', 'bold');
-    doc.text('FOTOS DAS AVARIAS', mX, y);
-    y += 5;
+    doc.text('INSPEÇÃO 7/17 (OEA)', mX, y);
+    y += 4;
 
-    const photoSize = 55;
-    const photoGap = 4;
-    const photosPerRow = 3;
+    const GROUP_LABEL_717: Record<string, string> = {
+      veiculo_17: '17 Pontos — Veículo de Carga',
+      container_7: '7 Pontos — Container',
+    };
+    const STATUS_SHORT: Record<string, string> = { C: 'C', NC: 'NC', NA: 'NA' };
+    const fullW = pageWidth - mX * 2;
 
-    for (const item of itensComFoto) {
-      const validFotos = item.fotos!.filter((f) => f.url);
-      if (validFotos.length === 0) continue;
+    const headStyles717 = { fillColor: darkGray, textColor: [255, 255, 255] as [number,number,number], fontSize: 7, fontStyle: 'bold' as const, cellPadding: 1.2 };
 
-      if (y + 14 + photoSize > pageHeight - 15) { doc.addPage(); y = 15; }
-
-      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkGray);
-      const caption = `${item.lado} — ${item.nome}${item.posicao ? ` (${item.posicao})` : ''}${item.avarias?.length ? ' | ' + item.avarias.join(', ') : ''}`;
-      doc.text(caption, mX, y);
-      y += 4;
-
-      let photoX = mX;
-      let colIndex = 0;
-
-      for (const foto of validFotos) {
-        if (colIndex > 0 && colIndex % photosPerRow === 0) {
-          y += photoSize + photoGap;
-          photoX = mX;
-          if (y + photoSize > pageHeight - 15) { doc.addPage(); y = 15; }
-        }
-        try {
-          const dataUrl = await loadImageAsDataUrl(foto.url!);
-          if (dataUrl) doc.addImage(dataUrl, 'JPEG', photoX, y, photoSize, photoSize);
-        } catch { /* skip */ }
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(photoX, y, photoSize, photoSize);
-        photoX += photoSize + photoGap;
-        colIndex++;
+    const didParsePaired = (data: any) => {
+      if (data.section === 'body' && (data.column.index === 1 || data.column.index === 3)) {
+        const v = String(data.cell.raw ?? '');
+        if (v === 'C')  { data.cell.styles.textColor = [22, 163, 74]; data.cell.styles.fontStyle = 'bold'; }
+        else if (v === 'NC') { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+        else data.cell.styles.textColor = [120, 120, 120];
       }
-      y += photoSize + photoGap + 5;
+    };
+
+    const pairedColStyles = {
+      0: { cellWidth: fullW * 0.40 },
+      1: { cellWidth: fullW * 0.10, halign: 'center' as const },
+      2: { cellWidth: fullW * 0.40 },
+      3: { cellWidth: fullW * 0.10, halign: 'center' as const },
+    };
+
+    const buildPairedRows = (group: typeof grupos717[number]) => {
+      const rows: string[][] = [];
+      for (let i = 0; i < group.itens.length; i += 2) {
+        const a = group.itens[i];
+        const b = group.itens[i + 1];
+        rows.push([
+          `${a.numero}. ${a.nome}${a.observacao ? ` — ${a.observacao}` : ''}`,
+          STATUS_SHORT[a.status ?? ''] ?? '—',
+          b ? `${b.numero}. ${b.nome}${b.observacao ? ` — ${b.observacao}` : ''}` : '',
+          b ? (STATUS_SHORT[b.status ?? ''] ?? '—') : '',
+        ]);
+      }
+      return rows;
+    };
+
+    for (const group of grupos717) {
+      if (y + 20 > pageHeight - 15) { doc.addPage(); y = 15; }
+
+      autoTable(doc, {
+        startY: y,
+        head: [
+          [{ content: `${GROUP_LABEL_717[group.tipo] ?? group.tipo}  [${group.concluido ? '✓' : '…'}]`, colSpan: 4, styles: { halign: 'left' as const } }],
+          ['Item', 'St.', 'Item', 'St.'],
+        ],
+        body: buildPairedRows(group),
+        headStyles: headStyles717,
+        alternateRowStyles: { fillColor: lightGray },
+        margin: { left: mX, right: mX },
+        styles: { fontSize: 7, cellPadding: 1 },
+        columnStyles: pairedColStyles,
+        didParseCell: didParsePaired,
+      });
+      y = (doc as any).lastAutoTable?.finalY ?? y;
+
+      if (group.descricaoNaoConformidade) {
+        y += 2;
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(220, 38, 38);
+        doc.text(`${GROUP_LABEL_717[group.tipo]} — NC:`, mX, y + 3);
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(...darkGray);
+        doc.text(group.descricaoNaoConformidade, mX + 48, y + 3, { maxWidth: fullW - 51 });
+        y += 7;
+      }
+      y += 2;
+    }
+
+    const h717 = inspection.inspecao717Header;
+    if (h717) {
+      const headerFields: string[] = [];
+      if (h717.containerRefrigerado !== undefined)
+        headerFields.push(`Container Refrigerado: ${h717.containerRefrigerado ? 'Sim' : 'Não'}`);
+      if (h717.carcacaVentiladorOk !== undefined)
+        headerFields.push(`Carcaça Ventilador OK: ${h717.carcacaVentiladorOk ? 'Sim' : 'Não'}`);
+      if (h717.observacao717)
+        headerFields.push(`Obs.: ${h717.observacao717}`);
+      if (headerFields.length > 0) {
+        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 110, 110);
+        doc.text(headerFields.join('   |   '), mX, y + 3);
+        y += 6;
+      }
     }
   }
 

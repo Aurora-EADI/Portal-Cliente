@@ -64,4 +64,10 @@ export class CompleteInspectionDto {
   @ValidateNested({ each: true })
   @Type(() => CompleteSideDto)
   lados?: CompleteSideDto[];
+
+  @IsOptional()
+  inspecao717?: unknown;
+
+  @IsOptional()
+  inspecao717Header?: unknown;
 }

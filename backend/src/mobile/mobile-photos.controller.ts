@@ -32,6 +32,7 @@ export class MobilePhotosController {
     @UploadedFile() file: Express.Multer.File,
     @Body("inspectionId") inspectionId?: string,
     @Body("itemId") itemId?: string,
+    @Body("sideLabel") sideLabel?: string,
   ) {
     if (!file) {
       throw new BadRequestException("Arquivo não fornecido");
@@ -49,6 +50,7 @@ export class MobilePhotosController {
         url,
         inspectionId: inspectionId || null,
         itemId: itemId || null,
+        sideLabel: sideLabel || null,
       },
     });
 

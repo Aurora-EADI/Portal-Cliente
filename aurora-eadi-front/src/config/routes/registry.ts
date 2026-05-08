@@ -31,6 +31,7 @@ export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', isModuleRoot: true },
   { path: '/recepcao', label: 'Recepção', icon: 'Users', isModuleRoot: true },
   { path: '/armazem-geral', label: 'Armazém Geral', icon: 'Package', isModuleRoot: true },
+  { path: '/inspecao-container', label: 'Inspeção de Container', icon: 'Package', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -98,6 +99,9 @@ export const SUB_ROUTES: RouteDefinition[] = [
   // Recepção
   { path: '/recepcao/contatos', label: 'Lista de Ramais', icon: 'Users', parentPath: '/recepcao', isModuleRoot: false },
   { path: '/recepcao/agenda', label: 'Agenda de Visitantes', icon: 'CalendarDays', parentPath: '/recepcao', isModuleRoot: false },
+
+  // Inspeção de Container
+  { path: '/inspecao-container/painel', label: 'Painel de Inspeções', icon: 'LayoutDashboard', parentPath: '/inspecao-container', isModuleRoot: false },
 
   // Armazém Geral
   { path: '/armazem-geral/dashboard', label: 'Dashboard', icon: 'FileBarChart', parentPath: '/armazem-geral', isModuleRoot: false },
