@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// AUTH & USERS
+// ============================================================
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+  CLIENTE
+}
+
+model User {
+  id         String    @id @default(uuid())
+  name       String
+  email      String    @unique
+  password   String
+  role       UserRole  @default(EMPLOYEE)
+  position   String?
+  active     Boolean   @default(true)
+  clienteId  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tokens       UserToken[]
+  moduleAccess UserModuleAccess[]
+  cliente      Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  @@map("users")
+}
+
+model UserToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_tokens")
+}
+
+// ============================================================
+// MODULES / CONFIGURADOR
+// ============================================================
+
+model Module {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  route       String?
+  icon        String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activities  Activity[]
+  userAccess  UserModuleAccess[]
+  sharedItems ModuleSharedItem[]
+
+  @@map("modules")
+}
+
+model ModuleSharedItem {
+  id          Int    @id @default(autoincrement())
+  moduleId    Int
+  targetRoute String
+  label       String
+  icon        String?
+  sortOrder   Int    @default(0)
+
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@map("module_shared_items")
+}
+
+model Activity {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  moduleId    Int
+  isMandatory Boolean @default(false)
+
+  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  permissions    ActivityPermission[]
+  activityAccess UserActivityAccess[]
+
+  @@unique([name, moduleId])
+  @@map("activities")
+}
+
+model Permission {
+  id          Int    @id @default(autoincrement())
+  key         String @unique
+  description String
+  category    String
+
+  activities ActivityPermission[]
+
+  @@map("permissions")
+}
+
+model ActivityPermission {
+  activityId   Int
+  permissionId Int
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, permissionId])
+  @@map("activity_permissions")
+}
+
+model UserModuleAccess {
+  id        String  @id @default(uuid())
+  userId    String
+  moduleId  Int
+  isEnabled Boolean @default(false)
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  activityAccess UserActivityAccess[]
+
+  @@unique([userId, moduleId])
+  @@map("user_module_access")
+}
+
+model UserActivityAccess {
+  id                 String  @id @default(uuid())
+  userModuleAccessId String
+  activityId         Int
+  isEnabled          Boolean @default(false)
+
+  userModuleAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
+  activity         Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userModuleAccessId, activityId])
+  @@map("user_activity_access")
+}
+
+// ============================================================
+// FCL — PORTAL DO CLIENTE
+// ============================================================
+
+enum DIStatus {
+  liberada
+  bloqueada
+  retirado
+}
+
+model Cliente {
+  id        String   @id @default(uuid())
+  nome      String
+  cnpj      String?  @unique
+  email     String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dis        DI[]
+  motoristas Motorista[]
+  veiculos   Veiculo[]
+  users      User[]
+
+  @@map("clientes")
+}
+
+model DI {
+  id             String   @id @default(uuid())
+  numeroDI       String   @unique
+  clienteId      String
+  container      String
+  tipoContainer  String
+  status         DIStatus @default(bloqueada)
+  pesoBruto      Float    @default(0)
+  mercadoria     String
+  transportadora String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@map("dis")
+}
+
+model Motorista {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cpf       String
+  cnh       String
+  telefone  String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, cpf])
+  @@map("motoristas")
+}
+
+model Veiculo {
+  id        String   @id @default(uuid())
+  clienteId String
+  placa     String
+  modelo    String
+  tipo      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, placa])
+  @@map("veiculos")
+}
+
+model JanelaAtendimento {
+  id                String   @id @default(uuid())
+  descricao         String
+  horaInicio        String
+  horaFim           String
+  intervaloMinutos  Int      @default(60)
+  vagasSimultaneas  Int      @default(3)
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("janelas_atendimento")
+}
+
+model SlotReserva {
+  id       String   @id @default(uuid())
+  data     String
+  horario  String
+  diId     String
+  expiraEm DateTime
+  criadaEm DateTime @default(now())
+
+  @@map("slot_reservas")
+}
+
+model Agendamento {
+  id         String   @id @default(uuid())
+  diId       String
+  motoristaId String
+  veiculoId  String
+  data       String
+  horario    String
+  protocolo  String   @unique
+  criadoEm  DateTime @default(now())
+  cancelado  Boolean  @default(false)
+
+  di        DI        @relation(fields: [diId], references: [id])
+  motorista Motorista @relation(fields: [motoristaId], references: [id])
+  veiculo   Veiculo   @relation(fields: [veiculoId], references: [id])
+
+  @@map("agendamentos")
+}
