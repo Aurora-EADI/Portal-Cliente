@@ -1,8 +1,8 @@
 import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import { UserRole } from '@/types';
 import type { User } from '@/types';
 
-const validRoles = Object.values(UserRole);
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 const MOCK_USERS: Record<string, User> = {
@@ -27,7 +27,7 @@ const MOCK_USERS: Record<string, User> = {
 };
 
 export const authService = {
-  login: async (email: string, password: string, role: UserRole) => {
+  login: async (email: string, password: string, _role?: UserRole) => {
     if (MOCK_MODE) {
       const key = email.includes('admin') ? 'admin' : email.includes('func') || email.includes('employee') ? 'employee' : 'cliente';
       const user = { ...MOCK_USERS[key], email };
@@ -35,33 +35,18 @@ export const authService = {
       return { user, expires_at };
     }
 
-    if (!validRoles.includes(role)) {
-      return Promise.reject(new Error(`Tipo de acesso inválido. Valores válidos: ${validRoles.join(', ')}`));
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
 
-    try {
-      const response = await api.post('/auth/login', { email, password, role });
-      return {
-        user: response.data.user,
-        expires_at: response.data.expires_at,
-      };
-    } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao fazer login';
+    const user = await authService.getProfile();
+    const expires_at = data.session.expires_at
+      ? new Date(data.session.expires_at * 1000).toISOString()
+      : new Date(Date.now() + 3600 * 1000).toISOString();
 
-      if (typeof backendMessage === 'string') {
-        message = backendMessage;
-      } else if (Array.isArray(backendMessage)) {
-        message = backendMessage.join(', ');
-      } else if (backendMessage && typeof backendMessage === 'object') {
-        message = JSON.stringify(backendMessage);
-      }
-
-      return Promise.reject(new Error(message));
-    }
+    return { user, expires_at };
   },
 
-  getProfile: async () => {
+  getProfile: async (): Promise<User> => {
     try {
       const response = await api.get('/auth/me');
       return response.data.user;

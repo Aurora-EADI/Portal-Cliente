@@ -1,5 +1,4 @@
 import { UserRole } from "./auth";
-import { UserModuleAccess } from "./access-control";
 
 export interface User {
     id: string;
@@ -12,7 +11,6 @@ export interface User {
     active?: boolean;
     createdAt: string;
     updatedAt: string;
-    moduleAccess?: UserModuleAccess[];
     cliente?: { id: string; nome: string; cnpj?: string } | null;
 }
 

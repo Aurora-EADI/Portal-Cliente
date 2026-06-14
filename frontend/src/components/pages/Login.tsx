@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLogin } from '../../hooks/useAuth';
-import { UserRole } from '../../types';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
@@ -34,8 +33,7 @@ export function Login() {
     if (e) e.preventDefault();
     if (!email || !password) { setError('Preencha e-mail e senha.'); return; }
     setError('');
-    const role = email.includes('admin') ? UserRole.ADMIN : UserRole.EMPLOYEE;
-    login({ email, password, role }, {
+    login({ email, password }, {
       onError: (err: any) => setError(err.message || 'E-mail ou senha incorretos.'),
     });
   };

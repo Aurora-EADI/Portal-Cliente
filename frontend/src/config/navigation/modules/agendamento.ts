@@ -1,4 +1,4 @@
-﻿import { CalendarDays, Home, Clock, Container, Users, SlidersHorizontal } from 'lucide-react';
+﻿import { CalendarDays, CalendarPlus, Home, Clock, Container, Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
 import { NavigationContext } from '../types';
 import { UserRole } from '@/types';
 
@@ -13,8 +13,8 @@ export const agendamentoFCLNavigation: NavigationContext = {
       path: '/agendamento',
       isGroup: true,
       children: [
-        { label: 'Dashboard', icon: Home, path: '/agendamento' },
-        { label: 'Novo Agendamento', icon: CalendarDays, path: '/agendamento?tab=wizard' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/agendamento' },
+        { label: 'Novo Agendamento', icon: CalendarPlus, path: '/agendamento?tab=wizard' },
         { label: 'Portaria (Gate)', icon: Clock, path: '/agendamento?tab=gate' },
         { label: 'DIs & Containers', icon: Container, path: '/agendamento?tab=dis' },
         { label: 'Motoristas', icon: Users, path: '/agendamento?tab=drivers' },

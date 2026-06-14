@@ -1,16 +1,20 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
-import { Trash2, AlertCircle, Eye, Calendar, Clock, Truck, PackageOpen, Building2 } from 'lucide-react';
+import { Trash2, AlertCircle, Eye, Calendar, Clock, Truck, PackageOpen, CheckCircle } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { SuccessVoucher } from './steps/SuccessVoucher';
 import { Agendamento } from '@/types/agendamento';
 
 export function PortariaView() {
-  const { visibleDis, visibleBookings, selectedClient, handleCancelBooking, viewingArchiveBooking, setViewingArchiveBooking } = useAgendamento();
+  const {
+    visibleDis, visibleBookings,
+    handleCancelBooking,
+    viewingArchiveBooking, setViewingArchiveBooking,
+  } = useAgendamento();
 
-  const clientBookings = visibleBookings;
   const totLiberadas = visibleDis.filter(d => d.status === 'liberada').length;
+  const ativos = visibleBookings.filter(b => b.status === 'ATIVO').length;
 
   const formatReadableDate = (ds: string) => {
     if (!ds) return '';
@@ -35,15 +39,15 @@ export function PortariaView() {
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Painel de Monitoramento (EADI Gate)</span>
                 </h3>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Gestão em tempo real de agendamentos autorizados</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">Gestão em tempo real de agendamentos confirmados</p>
               </div>
               <span className="text-[11px] bg-sky-50 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-150">
-                {clientBookings.length} {clientBookings.length === 1 ? 'Agendamento' : 'Agendamentos'}
+                {ativos} {ativos === 1 ? 'Agendamento' : 'Agendamentos'}
               </span>
             </div>
 
             <div className="p-4">
-              {clientBookings.length === 0 ? (
+              {visibleBookings.length === 0 ? (
                 <div className="text-center py-10 flex flex-col items-center justify-center text-zinc-400 p-4">
                   <PackageOpen className="w-8 h-8 text-zinc-300 mb-2" />
                   <p className="text-xs font-semibold text-zinc-500">Sem agendamentos ativos no momento</p>
@@ -51,7 +55,7 @@ export function PortariaView() {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                  {clientBookings.map((bk) => (
+                  {visibleBookings.map((bk) => (
                     <BookingCard key={bk.id} bk={bk} onView={(b) => setViewingArchiveBooking(b)} onCancel={handleCancelBooking} formatDate={formatReadableDate} />
                   ))}
                 </div>
@@ -71,12 +75,8 @@ export function PortariaView() {
               </div>
               <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-lg flex justify-between items-center">
                 <span>Agendamentos Ativos</span>
-                <span className="font-mono font-bold text-[#ED6A23] text-sm">{clientBookings.length}</span>
+                <span className="font-mono font-bold text-[#ED6A23] text-sm">{ativos}</span>
               </div>
-            </div>
-            <div className="bg-sky-50 text-[10px] p-3 text-sky-800 rounded-lg leading-relaxed flex gap-2">
-              <Building2 className="w-4 h-4 text-sky-600 shrink-0" />
-              <p><span className="font-bold">Guarita Integrada:</span> O QR Code gerado valida a liberação aduaneira em menos de 2 segundos.</p>
             </div>
           </div>
         </aside>
@@ -106,7 +106,12 @@ export function PortariaView() {
   );
 }
 
-function BookingCard({ bk, onView, onCancel, formatDate }: { bk: Agendamento; onView: (b: Agendamento) => void; onCancel: (id: string) => void; formatDate: (s: string) => string }) {
+function BookingCard({ bk, onView, onCancel, formatDate }: {
+  bk: Agendamento;
+  onView: (b: Agendamento) => void;
+  onCancel: (id: string) => void;
+  formatDate: (s: string) => string;
+}) {
   return (
     <div className="bg-zinc-50 hover:bg-zinc-100/70 border border-zinc-200 rounded-xl p-3.5 flex flex-col gap-3 transition-all text-xs">
       <div className="flex justify-between items-center pb-2 border-b border-zinc-150">
@@ -115,6 +120,9 @@ function BookingCard({ bk, onView, onCancel, formatDate }: { bk: Agendamento; on
           <span className="font-mono font-bold text-sky-950 text-xs">{bk.protocolo}</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+            <CheckCircle className="w-3 h-3 inline mr-0.5" />Confirmado
+          </span>
           <button type="button" onClick={() => onView(bk)} className="p-1 px-2 border border-zinc-200 bg-white hover:bg-sky-50 hover:text-sky-700 rounded-md transition-colors font-medium flex items-center gap-1 text-[10.5px]">
             <Eye className="w-3.5 h-3.5" /> <span>Visualizar</span>
           </button>

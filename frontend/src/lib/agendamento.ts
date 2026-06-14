@@ -49,7 +49,8 @@ export const getInitialAgendamentos = (): Agendamento[] => [
     container: 'TGBU5819320',
     motorista: { id: 'mot-1', nome: 'Raimundo Nonato da Silva', cpf: '403.921.843-12', cnh: '9081234710', telefone: '(92) 98412-4012' },
     veiculo: { id: 'veic-1', placa: 'PHO2H54', modelo: 'Volvo FH 540', tipo: 'Cavalo Mecânico + Carreta' },
-    data: '2026-06-01', horario: '10:00 (Agendamento DTA)', protocolo: 'FCL-20260601-089432-A1B2', criadoEm: '2026-05-29T10:00:00Z',
+    data: '2026-06-01', horario: '10:00 (Agendamento DTA)', protocolo: 'FCL-20260601-089432-A1B2',
+    status: 'ATIVO' as const, criadoEm: '2026-05-29T10:00:00Z',
   },
 ];
 

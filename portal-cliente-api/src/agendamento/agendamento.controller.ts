@@ -71,11 +71,15 @@ export class AgendamentoController {
   @Get('agendamentos')
   findAllAgendamentos(@Query('clienteId') clienteId?: string) { return this.fcl.findAllAgendamentos(clienteId); }
 
+  @Get('agendamentos/historico')
+  findHistorico(@Query('clienteId') clienteId?: string) { return this.fcl.findHistorico(clienteId); }
+
   @Post('agendamentos')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
   createAgendamento(@Body() body: any) { return this.fcl.createAgendamento(body); }
 
   @Patch('agendamentos/:id/cancelar')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
   cancelarAgendamento(@Param('id') id: string) { return this.fcl.cancelarAgendamento(id); }
 
   // SLOT RESERVAS

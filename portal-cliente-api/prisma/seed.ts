@@ -1,47 +1,22 @@
-﻿import { PrismaClient, UserRole } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Iniciando seed do banco portal-cliente...');
 
-  // Admin user
-  const hashedPassword = await bcrypt.hash('admin123', 10);
+  // Admin user — senha gerenciada pelo Supabase Auth
   const admin = await prisma.user.upsert({
     where: { email: 'admin@portalcliente.com.br' },
     update: {},
     create: {
       name: 'ADMINISTRADOR',
       email: 'admin@portalcliente.com.br',
-      password: hashedPassword,
       role: UserRole.ADMIN,
       position: 'Administrador do Sistema',
     },
   });
   console.log(`Admin criado: ${admin.email}`);
-
-  // Módulo Configurador
-  const configurador = await prisma.module.upsert({
-    where: { name: 'Configurador' },
-    update: {},
-    create: {
-      name: 'Configurador',
-      description: 'Gestão de usuários, módulos e permissões',
-      route: '/permissoes',
-      icon: 'Shield',
-      sortOrder: 1,
-      sharedItems: {
-        create: [
-          { targetRoute: '/permissoes/gestao', label: 'Gestão de Perfis', icon: 'Shield', sortOrder: 1 },
-          { targetRoute: '/permissoes/usuario', label: 'Gestão de Usuário', icon: 'Users', sortOrder: 2 },
-          { targetRoute: '/permissoes/catalogo', label: 'Catálogo de Funcionalidades', icon: 'Database', sortOrder: 3 },
-          { targetRoute: '/permissoes/atividades', label: 'Módulo x Funcionalidade', icon: 'Layers', sortOrder: 4 },
-        ],
-      },
-    },
-  });
-  console.log(`Módulo criado: ${configurador.name}`);
 
   // Módulo Agendamento FCL
   const fcl = await prisma.module.upsert({
@@ -52,7 +27,7 @@ async function main() {
       description: 'Portal de agendamento de retirada de containers FCL',
       route: '/agendamento',
       icon: 'CalendarDays',
-      sortOrder: 2,
+      sortOrder: 1,
       sharedItems: {
         create: [
           { targetRoute: '/agendamento', label: 'Dashboard', icon: 'LayoutDashboard', sortOrder: 1 },
@@ -67,13 +42,7 @@ async function main() {
   });
   console.log(`Módulo criado: ${fcl.name}`);
 
-  // Ativar módulos para o admin
-  await prisma.userModuleAccess.upsert({
-    where: { userId_moduleId: { userId: admin.id, moduleId: configurador.id } },
-    update: { isEnabled: true },
-    create: { userId: admin.id, moduleId: configurador.id, isEnabled: true },
-  });
-
+  // Ativar módulo para o admin
   await prisma.userModuleAccess.upsert({
     where: { userId_moduleId: { userId: admin.id, moduleId: fcl.id } },
     update: { isEnabled: true },
@@ -191,15 +160,13 @@ async function main() {
     },
   });
 
-  // Usuário cliente para cliente1
-  const hashedCliente = await bcrypt.hash('cliente123', 10);
+  // Usuários cliente — senhas gerenciadas pelo Supabase Auth
   await prisma.user.upsert({
     where: { email: 'operador@globalimport.com.br' },
     update: {},
     create: {
       name: 'OPERADOR GLOBAL',
       email: 'operador@globalimport.com.br',
-      password: hashedCliente,
       role: UserRole.CLIENTE,
       clienteId: cliente1.id,
       position: 'Operador Logístico',
@@ -207,14 +174,12 @@ async function main() {
   });
   console.log('Usuário cliente1 criado: operador@globalimport.com.br');
 
-  // Usuário cliente para cliente2
   await prisma.user.upsert({
     where: { email: 'logistica@tecavancada.com.br' },
     update: {},
     create: {
       name: 'LOGÍSTICA TECAVANÇADA',
       email: 'logistica@tecavancada.com.br',
-      password: hashedCliente,
       role: UserRole.CLIENTE,
       clienteId: cliente2.id,
       position: 'Coordenador de Logística',
@@ -223,10 +188,7 @@ async function main() {
   console.log('Usuário cliente2 criado: logistica@tecavancada.com.br');
 
   console.log('\nSeed concluído com sucesso!');
-  console.log('\nCredenciais:');
-  console.log('  ADMIN:    admin@portalcliente.com.br   / admin123');
-  console.log('  CLIENTE1: operador@globalimport.com.br / cliente123');
-  console.log('  CLIENTE2: logistica@tecavancada.com.br / cliente123');
+  console.log('Lembre-se de criar os usuários no Supabase Auth com os mesmos e-mails.');
 }
 
 main()

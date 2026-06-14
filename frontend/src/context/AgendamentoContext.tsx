@@ -70,6 +70,8 @@ function mapApiBooking(b: any): Agendamento {
     data: b.data,
     horario: b.horario,
     protocolo: b.protocolo,
+    status: b.status === 'CANCELADO' ? 'CANCELADO' : 'ATIVO',
+    observacao: b.observacao ?? undefined,
     criadoEm: b.criadoEm,
   };
 }
@@ -181,7 +183,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
         id: `bk-${Date.now()}`, diId: selectedDI.id, diNumero: selectedDI.numeroDI,
         diCliente: selectedDI.cliente, container: selectedDI.container,
         motorista: selectedMotorista, veiculo: selectedVeiculo,
-        data, horario, protocolo, criadoEm: new Date().toISOString(),
+        data, horario, protocolo, status: 'ATIVO', criadoEm: new Date().toISOString(),
       };
       setActiveBookings(prev => [newBooking, ...prev]);
       setSuccessBooking(newBooking);
@@ -260,8 +262,9 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       selectedMotorista, setSelectedMotorista, selectedVeiculo, setSelectedVeiculo,
       successBooking, setSuccessBooking, viewingArchiveBooking, setViewingArchiveBooking,
       setSelectedClient, saveJanelasToStorage, saveSelectedJanelaIdToStorage,
-      handleAddMotorista, handleAddVeiculo, handleCancelBooking,
-      handleConfirmBooking, handleResetWizard, handleResetAllData,
+      handleAddMotorista, handleAddVeiculo,
+      handleCancelBooking, handleConfirmBooking,
+      handleResetWizard, handleResetAllData,
       reservaAtiva, criarReserva, liberarReserva,
     }}>
       {children}

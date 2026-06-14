@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/context/AuthContext';
-import { getTokenExpiry } from '@/services/auth/token.service';
+import { supabase } from '@/lib/supabase';
 
-/**
- * Hook para monitorar o tempo de expiração da sessão.
- * Com cookies httpOnly, usa o expires_at armazenado no sessionStorage
- * (salvo após login/refresh) em vez de decodificar o JWT.
- */
 export function useSessionTimeout() {
   const { currentUser } = useAuthContext();
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -23,20 +18,19 @@ export function useSessionTimeout() {
       return;
     }
 
-    const checkExpiration = () => {
-      const expiresAt = getTokenExpiry();
-      if (!expiresAt) {
+    const checkExpiration = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.expires_at) {
         setTimeRemaining(null);
         setTimeRemainingFormatted('');
         setIsExpiringSoon(false);
         return;
       }
 
-      const remaining = new Date(expiresAt).getTime() - Date.now();
+      const remaining = session.expires_at * 1000 - Date.now();
       const remainingMinutes = Math.floor(remaining / (1000 * 60));
-      const expiringSoon = remaining > 0 && remaining <= 5 * 60 * 1000; // menos de 5 min
+      const expiringSoon = remaining > 0 && remaining <= 5 * 60 * 1000;
 
-      // Formata o tempo restante
       let formatted = '';
       if (remaining <= 0) {
         formatted = 'expirada';
@@ -51,30 +45,23 @@ export function useSessionTimeout() {
       setTimeRemainingFormatted(formatted);
       setIsExpiringSoon(expiringSoon);
 
-      // Mostra aviso apenas uma vez quando estiver próximo de expirar
       if (expiringSoon && !hasShownWarning && remaining > 0) {
         setHasShownWarning(true);
       }
-
-      // Reset warning quando renovar
       if (!expiringSoon && hasShownWarning) {
         setHasShownWarning(false);
       }
     };
 
-    // Checa imediatamente
     checkExpiration();
-
-    // Checa a cada 30 segundos
     const interval = setInterval(checkExpiration, 30 * 1000);
-
     return () => clearInterval(interval);
   }, [currentUser, hasShownWarning]);
 
   return {
-    timeRemaining,          // Tempo em milissegundos
-    timeRemainingFormatted, // Tempo formatado ("5 minutos", "2 horas", etc)
-    isExpiringSoon,         // true se faltam menos de 5 minutos
-    isActive: currentUser !== null, // true se há sessão ativa
+    timeRemaining,
+    timeRemainingFormatted,
+    isExpiringSoon,
+    isActive: currentUser !== null,
   };
 }

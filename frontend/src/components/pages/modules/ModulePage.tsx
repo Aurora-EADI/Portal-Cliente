@@ -179,7 +179,7 @@ export function ModulesPage() {
                         key={module.id}
                         icon={Icon}
                         title={module.name}
-                        description={module.description}
+                        description={module.description ?? ''}
                         onClick={() => handleModuleClick(module)}
                         disabled={false}
                       />

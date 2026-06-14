@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================
@@ -21,7 +22,6 @@ model User {
   id         String    @id @default(uuid())
   name       String
   email      String    @unique
-  password   String
   role       UserRole  @default(EMPLOYEE)
   position   String?
   active     Boolean   @default(true)
@@ -29,28 +29,14 @@ model User {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  tokens       UserToken[]
   moduleAccess UserModuleAccess[]
   cliente      Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
 
-model UserToken {
-  id        String    @id @default(uuid())
-  userId    String
-  token     String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_tokens")
-}
-
 // ============================================================
-// MODULES / CONFIGURADOR
+// MODULES / ACCESS CONTROL
 // ============================================================
 
 model Module {
@@ -158,6 +144,11 @@ enum DIStatus {
   retirado
 }
 
+enum AgendamentoStatus {
+  ATIVO
+  CANCELADO
+}
+
 model Cliente {
   id        String   @id @default(uuid())
   nome      String
@@ -256,15 +247,16 @@ model SlotReserva {
 }
 
 model Agendamento {
-  id         String   @id @default(uuid())
-  diId       String
+  id          String            @id @default(uuid())
+  diId        String
   motoristaId String
-  veiculoId  String
-  data       String
-  horario    String
-  protocolo  String   @unique
-  criadoEm  DateTime @default(now())
-  cancelado  Boolean  @default(false)
+  veiculoId   String
+  data        String
+  horario     String
+  protocolo   String            @unique
+  status      AgendamentoStatus @default(ATIVO)
+  observacao  String?
+  criadoEm   DateTime          @default(now())
 
   di        DI        @relation(fields: [diId], references: [id])
   motorista Motorista @relation(fields: [motoristaId], references: [id])
