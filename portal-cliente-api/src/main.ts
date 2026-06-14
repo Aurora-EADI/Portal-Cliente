@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request, Response } from 'express';
 import { AppModule } from './app/app.module';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
 
@@ -24,7 +26,12 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = Number(process.env.BACKEND_PORT || 5001);
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get('/api/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 5001);
   await app.listen(port, '0.0.0.0');
   console.log(`Portal do Cliente API rodando em http://localhost:${port}`);
 }

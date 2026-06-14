@@ -8,6 +8,8 @@ data/
 .env.dev
 .env.prod
 .env.*
+!.env.example
+!**/.env.example
 
 # Documentação
 .DEPLOY_PROD.md
