@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { supabase } from './supabase';
 
-const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 export const api = axios.create({
