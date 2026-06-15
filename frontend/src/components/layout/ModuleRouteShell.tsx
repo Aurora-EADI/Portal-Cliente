@@ -3,8 +3,6 @@
 import React from 'react';
 import { Header } from '@/components/layout/Header';
 import { Layout } from '@/components/layout/Layout';
-import { PermissionRouteGuard } from '@/components/guards/PermissionRouteGuard';
-
 type GuardConfig = {
   moduleRoute: string;
   requiredPermissions: string[];
@@ -53,14 +51,5 @@ export function ModuleRouteShell({
     </div>
   );
 
-  if (!guard) return content;
-
-  return (
-    <PermissionRouteGuard
-      moduleRoute={guard.moduleRoute}
-      requiredPermissions={guard.requiredPermissions}
-    >
-      {content}
-    </PermissionRouteGuard>
-  );
+  return content;
 }

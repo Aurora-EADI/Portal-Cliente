@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -75,9 +74,8 @@ export class UsersService {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new ConflictException('Email já cadastrado');
 
-    const hashed = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
-      data: { ...dto, password: hashed, name: dto.name.toUpperCase() },
+      data: { ...dto, name: dto.name.toUpperCase() },
       select: { id: true, name: true, email: true, role: true, position: true, active: true, createdAt: true, updatedAt: true },
     });
     return user;
@@ -88,7 +86,6 @@ export class UsersService {
     if (!exists) throw new NotFoundException('Usuário não encontrado');
 
     const data: any = { ...dto };
-    if (dto.password) data.password = await bcrypt.hash(dto.password, 10);
     if (dto.name) data.name = dto.name.toUpperCase();
 
     const user = await this.prisma.user.update({

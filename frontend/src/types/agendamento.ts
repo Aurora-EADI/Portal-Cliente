@@ -25,6 +25,8 @@ export interface Veiculo {
   tipo: string;
 }
 
+export type AgendamentoStatus = 'ATIVO' | 'CANCELADO';
+
 export interface Agendamento {
   id: string;
   diId: string;
@@ -36,6 +38,8 @@ export interface Agendamento {
   data: string;
   horario: string;
   protocolo: string;
+  status: AgendamentoStatus;
+  observacao?: string;
   criadoEm: string;
 }
 

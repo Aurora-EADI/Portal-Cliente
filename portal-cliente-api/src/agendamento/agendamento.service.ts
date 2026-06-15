@@ -1,7 +1,9 @@
-﻿import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DIStatus } from '@prisma/client';
+import { DIStatus, AgendamentoStatus } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+
+const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
 
 @Injectable()
 export class AgendamentoService {
@@ -26,7 +28,10 @@ export class AgendamentoService {
       where: clienteId ? { clienteId } : undefined,
       include: {
         cliente: { select: { id: true, nome: true } },
-        agendamentos: { where: { cancelado: false }, select: { id: true, data: true, horario: true, protocolo: true } },
+        agendamentos: {
+          where: { status: { in: ACTIVE_STATUSES } },
+          select: { id: true, data: true, horario: true, protocolo: true, status: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -97,7 +102,22 @@ export class AgendamentoService {
   findAllAgendamentos(clienteId?: string) {
     return this.prisma.agendamento.findMany({
       where: {
-        cancelado: false,
+        status: { in: ACTIVE_STATUSES },
+        ...(clienteId ? { di: { clienteId } } : {}),
+      },
+      include: {
+        di: { include: { cliente: { select: { id: true, nome: true } } } },
+        motorista: true,
+        veiculo: true,
+      },
+      orderBy: { criadoEm: 'desc' },
+    });
+  }
+
+  findHistorico(clienteId?: string) {
+    return this.prisma.agendamento.findMany({
+      where: {
+        status: AgendamentoStatus.CANCELADO,
         ...(clienteId ? { di: { clienteId } } : {}),
       },
       include: {
@@ -112,7 +132,7 @@ export class AgendamentoService {
   async createAgendamento(data: { diId: string; motoristaId: string; veiculoId: string; data: string; horario: string }) {
     const di = await this.prisma.dI.findUnique({ where: { id: data.diId } });
     if (!di) throw new NotFoundException('DI não encontrada');
-    if (di.status !== 'liberada') throw new NotFoundException('DI não está liberada para agendamento');
+    if (di.status !== 'liberada') throw new BadRequestException('DI não está liberada para agendamento');
 
     const cleanedDate = data.data.replace(/-/g, '');
     const diCode = di.numeroDI.replace(/[^A-Z0-9]/gi, '').slice(2, 8).toUpperCase();
@@ -120,18 +140,20 @@ export class AgendamentoService {
     const protocolo = `FCL-${cleanedDate}-${diCode}-${randomHash}`;
 
     const agendamento = await this.prisma.agendamento.create({
-      data: { ...data, protocolo },
+      data: { ...data, protocolo, status: AgendamentoStatus.ATIVO },
       include: { di: true, motorista: true, veiculo: true },
     });
 
-    // liberar hold imediatamente após confirmação (não espera cron de 5min)
     await this.prisma.slotReserva.deleteMany({ where: { diId: data.diId } });
 
     return agendamento;
   }
 
   cancelarAgendamento(id: string) {
-    return this.prisma.agendamento.update({ where: { id }, data: { cancelado: true } });
+    return this.prisma.agendamento.update({
+      where: { id },
+      data: { status: AgendamentoStatus.CANCELADO },
+    });
   }
 
   // ---- SLOT RESERVAS (HOLD) ----
@@ -139,8 +161,6 @@ export class AgendamentoService {
 
   async reservarSlot(data: string, horario: string, diId: string, vagasTotais: number) {
     const now = new Date();
-
-    // Auto-release any stale hold for this DI (handles frontend refresh / missed DELETE)
     await this.prisma.slotReserva.deleteMany({ where: { diId } });
 
     const ocupados = await this.contarOcupacao(data, horario);
@@ -169,7 +189,7 @@ export class AgendamentoService {
   private async contarOcupacao(data: string, horario: string): Promise<number> {
     const now = new Date();
     const [bookings, holds] = await Promise.all([
-      this.prisma.agendamento.count({ where: { data, horario, cancelado: false } }),
+      this.prisma.agendamento.count({ where: { data, horario, status: { in: ACTIVE_STATUSES } } }),
       this.prisma.slotReserva.count({ where: { data, horario, expiraEm: { gt: now } } }),
     ]);
     return bookings + holds;

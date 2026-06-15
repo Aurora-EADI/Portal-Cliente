@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Container, Calendar, Clock, FileText, CheckCircle, Users, BarChart3, AlertCircle } from 'lucide-react';
+import { ArrowRight, Container, Calendar, Clock, FileText, CheckCircle } from 'lucide-react';
 import { useAgendamento, CLIENTS } from '@/context/AgendamentoContext';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 
@@ -121,18 +121,20 @@ export function DashboardView() {
             </h3>
             {visibleBookings.length > 0 ? (
               <div className="divide-y divide-zinc-100">
-                {visibleBookings.slice(0, 3).map((bk) => (
-                  <div key={bk.id} className="py-2.5 first:pt-0 last:pb-0 flex justify-between items-center text-xs">
-                    <div>
-                      <p className="font-semibold font-mono text-zinc-850">{bk.container}</p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">Condutor: {bk.motorista.nome.split(' ')[0]} • {bk.veiculo.placa}</p>
+                {visibleBookings.slice(0, 3).map((bk) => {
+                  return (
+                    <div key={bk.id} className="py-2.5 first:pt-0 last:pb-0 flex justify-between items-center text-xs gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold font-mono text-zinc-850 truncate">{bk.container}</p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5 truncate">Condutor: {bk.motorista.nome.split(' ')[0]} • {bk.veiculo.placa}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-mono font-bold text-sky-850">{bk.horario.split(' ')[0]}</p>
+                        <p className="text-[10px] text-zinc-500 font-semibold">{bk.data.split('-').reverse().join('/')}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-mono font-bold text-sky-850">{bk.horario.split(' ')[0]}</p>
-                      <p className="text-[10px] text-zinc-500 font-semibold">{bk.data.split('-').reverse().join('/')}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-zinc-400 flex flex-col items-center">

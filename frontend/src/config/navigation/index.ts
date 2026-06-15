@@ -3,13 +3,11 @@ import { UserRole } from '@/types';
 import { NavItem, NavigationContext } from './types';
 
 export type { NavItem, NavigationContext } from './types';
-import { permissoesNavigation } from './modules/permissoes';
 import { mainNavigation } from './modules/main';
 import { agendamentoFCLNavigation } from './modules/agendamento';
 
 // Navegação estática (fallback)
 export const allNavigationContexts: NavigationContext[] = [
-    permissoesNavigation,
     agendamentoFCLNavigation,
     mainNavigation,
 ];

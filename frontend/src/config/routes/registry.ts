@@ -17,18 +17,11 @@ export interface RouteDefinition {
 
 // ===== Rotas de módulos (root) =====
 export const MODULE_ROUTES: RouteDefinition[] = [
-  { path: '/permissoes', label: 'Configurador', icon: 'Shield', isModuleRoot: true },
   { path: '/agendamento', label: 'Agendamento FCL', icon: 'CalendarDays', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
 export const SUB_ROUTES: RouteDefinition[] = [
-  // Permissões / Configurador
-  { path: '/permissoes/catalogo', label: 'Gestão de Funcionalidade', icon: 'Database', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/atividades', label: 'Módulo x Funcionalidade', icon: 'Layers', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/usuario', label: 'Gestão de Usuário', icon: 'Users', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/usuario-mobile', label: 'Usuário Mobile', icon: 'Smartphone', parentPath: '/permissoes', isModuleRoot: false },
-  { path: '/permissoes/gestao', label: 'Gestão de Perfis', icon: 'Shield', parentPath: '/permissoes', isModuleRoot: false },
   // Agendamento FCL
   { path: '/agendamento', label: 'Dashboard', icon: 'LayoutDashboard', parentPath: '/agendamento', isModuleRoot: false },
   { path: '/agendamento?tab=wizard', label: 'Novo Agendamento', icon: 'CalendarDays', parentPath: '/agendamento', isModuleRoot: false },
