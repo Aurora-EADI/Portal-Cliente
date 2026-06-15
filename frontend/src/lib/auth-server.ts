@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from './supabase-admin';
+import { createClient } from '@supabase/supabase-js';
 import { prisma } from './prisma';
 import type { User, UserRole } from '@prisma/client';
 
@@ -14,7 +14,12 @@ export async function requireAuth(request: NextRequest): Promise<AuthSuccess | A
     return { user: null, error: NextResponse.json({ message: 'Token não fornecido' }, { status: 401 }) };
   }
 
-  const { data: { user: supabaseUser }, error } = await supabaseAdmin.auth.admin.getUser(token);
+  const supabaseClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+  const { data: { user: supabaseUser }, error } = await supabaseClient.auth.getUser(token);
   if (error || !supabaseUser?.email) {
     return { user: null, error: NextResponse.json({ message: 'Token inválido' }, { status: 401 }) };
   }

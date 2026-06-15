@@ -124,7 +124,9 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : fallback; } catch { return fallback; }
     };
 
-    api.get('/agendamento/dis', { params: clienteId ? { clienteId } : {} }).then(r => setDis(r.data)).catch(() => setDis(loadLocal('eadi_dis', INITIAL_DIS)));
+    api.get('/agendamento/dis', { params: clienteId ? { clienteId } : {} })
+      .then(r => setDis(r.data.map((d: any) => ({ ...d, cliente: d.cliente?.nome ?? d.cliente }))))
+      .catch(() => setDis(loadLocal('eadi_dis', INITIAL_DIS)));
     api.get('/agendamento/motoristas', { params: clienteId ? { clienteId } : {} }).then(r => setMotoristas(r.data)).catch(() => setMotoristas(loadLocal('eadi_motoristas', INITIAL_MOTORISTAS)));
     api.get('/agendamento/veiculos', { params: clienteId ? { clienteId } : {} }).then(r => setVeiculos(r.data)).catch(() => setVeiculos(loadLocal('eadi_veiculos', INITIAL_VEICULOS)));
     api.get('/agendamento/agendamentos', { params: clienteId ? { clienteId } : {} })

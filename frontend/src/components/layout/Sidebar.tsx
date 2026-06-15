@@ -105,13 +105,8 @@ export const Sidebar: React.FC = () => {
       return true;
     }
 
-    // Default case for paths without query params
-    // Special case for CCTE: if status=SENT is present, the base /ccte item is not active
-    if (baseUrl === '/ccte' && searchParams.get('status') === 'SENT') {
-      return false;
-    }
-
-    return true;
+    // Path has no query — only active when current URL also has no search params
+    return searchParams.toString() === '';
   };
 
   const isGroupActive = (item: NavItem): boolean => {

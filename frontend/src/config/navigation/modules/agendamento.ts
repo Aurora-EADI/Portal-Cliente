@@ -1,4 +1,4 @@
-﻿import { CalendarDays, CalendarPlus, Home, Clock, Container, Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
+﻿import { CalendarDays, CalendarPlus, Clock, Container, Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
 import { NavigationContext } from '../types';
 import { UserRole } from '@/types';
 
@@ -6,7 +6,6 @@ export const agendamentoFCLNavigation: NavigationContext = {
   basePath: '/agendamento',
   staticOnly: true,
   items: [
-    { label: 'Home', icon: Home, path: '/modules' },
     {
       label: 'Agendamento FCL',
       icon: CalendarDays,
