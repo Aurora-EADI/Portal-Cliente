@@ -4,5 +4,6 @@
       "path": "/api/cron/cleanup",
       "schedule": "*/5 * * * *"
     }
-  ]
+  ],
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
