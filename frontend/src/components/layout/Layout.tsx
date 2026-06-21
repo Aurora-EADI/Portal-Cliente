@@ -9,6 +9,7 @@ interface LayoutProps {
   className?: string;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   showSidebar?: boolean;
+  noPadding?: boolean;
 }
 
 const maxWidthClasses = {
@@ -25,11 +26,12 @@ const maxWidthClasses = {
   full: 'max-w-full',
 };
 
-export const Layout: React.FC<LayoutProps> = ({ 
-  children, 
+export const Layout: React.FC<LayoutProps> = ({
+  children,
   className = '',
   maxWidth = '7xl',
   showSidebar = true,
+  noPadding = false,
 }) => {
   const { currentUser } = useAuthContext();
 
@@ -45,7 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Main Content */}
       <main className={`flex-1 overflow-y-auto ${className}`}>
-        <div className={`${maxWidthClasses[maxWidth]} mx-auto p-4 md:p-8`}>
+        <div className={`${maxWidthClasses[maxWidth]} mx-auto ${noPadding ? '' : 'p-4 md:p-8'}`}>
           {children}
         </div>
       </main>

@@ -14,8 +14,8 @@ export const agendamentoFCLNavigation: NavigationContext = {
       children: [
         { label: 'Dashboard', icon: LayoutDashboard, path: '/agendamento' },
         { label: 'Novo Agendamento', icon: CalendarPlus, path: '/agendamento?tab=wizard' },
-        { label: 'Portaria (Gate)', icon: Clock, path: '/agendamento?tab=gate' },
-        { label: 'DIs & Containers', icon: Container, path: '/agendamento?tab=dis' },
+        { label: 'Portaria (Gate)', icon: Clock, path: '/agendamento?tab=gate', requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
+        { label: 'DIs & Containers', icon: Container, path: '/agendamento?tab=dis', requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
         { label: 'Motoristas', icon: Users, path: '/agendamento?tab=drivers' },
         {
           label: 'Configurações',

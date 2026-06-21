@@ -18,18 +18,18 @@ function AgendamentoContent() {
   const { currentUser } = useAuthContext();
   const tab = searchParams.get('tab') ?? 'dashboard';
 
-  const isCliente = currentUser?.role === UserRole.CLIENTE;
+  const isExternalUser = currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE;
 
   React.useEffect(() => {
-    if (isCliente && tab === 'config') {
+    if (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) {
       router.replace('/agendamento');
     }
-  }, [isCliente, tab, router]);
+  }, [isExternalUser, tab, router]);
 
-  if (isCliente && tab === 'config') return null;
+  if (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200 p-4 md:p-6">
       {tab === 'dashboard' && <DashboardView />}
       {tab === 'wizard'    && <WizardView />}
       {tab === 'gate'      && <PortariaView />}

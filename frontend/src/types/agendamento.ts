@@ -25,7 +25,7 @@ export interface Veiculo {
   tipo: string;
 }
 
-export type AgendamentoStatus = 'ATIVO' | 'CANCELADO';
+export type AgendamentoStatus = 'ATIVO' | 'CANCELADO' | 'CHEGOU' | 'NO_SHOW' | 'ON_TIME' | 'ATRASADO' | 'AG_CHEGADA' | 'CONCLUIDO';
 
 export interface Agendamento {
   id: string;
@@ -41,6 +41,23 @@ export interface Agendamento {
   status: AgendamentoStatus;
   observacao?: string;
   criadoEm: string;
+  operacao?: string;
+  subOperacao?: string;
+  cargaEspecial?: boolean;
+  servicos?: string[];
+  empresa?: string;
+  awbMawb?: string | string[];
+  dta?: string | string[];
+  hawb?: string | string[];
+  di?: string | string[];
+  numeroVoo?: string;
+  volumes?: string;
+  peso?: string;
+  consignatario?: string;
+  transportadora?: string;
+  prioridade?: string;
+  criadoPorNome?: string;
+  criadoPorRole?: string;
 }
 
 export interface HorarioSlot {

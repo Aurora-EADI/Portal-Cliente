@@ -23,6 +23,7 @@ type LayoutConfig = {
     | '7xl'
     | 'full';
   showSidebar?: boolean;
+  noPadding?: boolean;
 };
 
 type HeaderConfig = {

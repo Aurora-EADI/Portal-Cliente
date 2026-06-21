@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, RotateCcw, Clock, SlidersHorizontal } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { JanelaAtendimento } from '@/types/agendamento';
-import { DEFAULT_JANELAS_ATENDIMENTO, gerarSlotsDeJanela } from '@/lib/agendamento';
+import { gerarSlotsDeJanela } from '@/lib/agendamento';
 
 export function ConfiguracaoView() {
   const { janelasAtendimento, saveJanelasToStorage, selectedJanelaId, saveSelectedJanelaIdToStorage } = useAgendamento();
@@ -74,7 +74,7 @@ export function ConfiguracaoView() {
 
   const handleReset = () => {
     if (!confirm('Restaurar janelas padrão?')) return;
-    saveJanelasToStorage(DEFAULT_JANELAS_ATENDIMENTO);
+    saveJanelasToStorage([]);
     saveSelectedJanelaIdToStorage('all');
     setEditingId(null);
     setForm(emptyForm());

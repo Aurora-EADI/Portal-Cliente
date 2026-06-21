@@ -1,169 +1,226 @@
 'use client';
 
-import React from 'react';
-import { Trash2, AlertCircle, Eye, Calendar, Clock, Truck, PackageOpen, CheckCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Trash2, Plus, Search } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
-import { SuccessVoucher } from './steps/SuccessVoucher';
+import { Input } from '@/components/ui/input';
+import {
+  Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+} from '@/components/ui/select';
+import { StatusBadge, getStatusLabel } from './StatusBadge';
 import { Agendamento } from '@/types/agendamento';
 
-export function PortariaView() {
-  const {
-    visibleDis, visibleBookings,
-    handleCancelBooking,
-    viewingArchiveBooking, setViewingArchiveBooking,
-  } = useAgendamento();
+const MONTH_SHORT = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const MONTH_LONG  = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DAY_HEADERS = ['do','2ª','3ª','4ª','5ª','6ª','sá'];
 
-  const totLiberadas = visibleDis.filter(d => d.status === 'liberada').length;
-  const ativos = visibleBookings.filter(b => b.status === 'ATIVO').length;
+const STATUS_KEYS = ['ATIVO','AG_CHEGADA','CHEGOU','ON_TIME','ATRASADO','NO_SHOW','CONCLUIDO','CANCELADO'];
 
-  const formatReadableDate = (ds: string) => {
-    if (!ds) return '';
-    const [y, m, d] = ds.split('-');
-    return `${d}/${m}/${y}`;
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in">
-      <div className="bg-white border border-zinc-200 rounded-xl p-5">
-        <h2 className="text-base font-extrabold text-zinc-900">Mapeamento em Tempo Real - Portaria (EADI Gate)</h2>
-        <p className="text-xs text-zinc-500 mt-1">Pesquise, consulte e imprima as guias de tráfego emitidas</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Bookings list */}
-        <div className="lg:col-span-8">
-          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-zinc-50 border-b border-zinc-200 p-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Painel de Monitoramento (EADI Gate)</span>
-                </h3>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Gestão em tempo real de agendamentos confirmados</p>
-              </div>
-              <span className="text-[11px] bg-sky-50 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-150">
-                {ativos} {ativos === 1 ? 'Agendamento' : 'Agendamentos'}
-              </span>
-            </div>
-
-            <div className="p-4">
-              {visibleBookings.length === 0 ? (
-                <div className="text-center py-10 flex flex-col items-center justify-center text-zinc-400 p-4">
-                  <PackageOpen className="w-8 h-8 text-zinc-300 mb-2" />
-                  <p className="text-xs font-semibold text-zinc-500">Sem agendamentos ativos no momento</p>
-                  <p className="text-[10px] text-zinc-400 mt-1 max-w-xs leading-relaxed">Inicie o fluxo de agendamento para reservar uma doca.</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                  {visibleBookings.map((bk) => (
-                    <BookingCard key={bk.id} bk={bk} onView={(b) => setViewingArchiveBooking(b)} onCancel={handleCancelBooking} formatDate={formatReadableDate} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar stats */}
-        <aside className="lg:col-span-4 space-y-6">
-          <div className="bg-white border border-zinc-200 rounded-xl p-4 space-y-3.5">
-            <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-widest block">Seu Portfólio Logístico</h4>
-            <div className="space-y-2.5 text-xs text-zinc-500">
-              <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-lg flex justify-between items-center">
-                <span>DIs Desembaraçadas</span>
-                <span className="font-mono font-bold text-emerald-600 text-sm">{totLiberadas}</span>
-              </div>
-              <div className="p-3 bg-zinc-50 border border-zinc-150 rounded-lg flex justify-between items-center">
-                <span>Agendamentos Ativos</span>
-                <span className="font-mono font-bold text-[#ED6A23] text-sm">{ativos}</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      {/* Voucher modal */}
-      {viewingArchiveBooking && (
-        <div className="fixed inset-0 bg-[#050814]/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-zinc-200 overflow-hidden shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center pb-4 mb-4 border-b border-zinc-150">
-              <div>
-                <h3 className="text-sm font-extrabold text-zinc-900">Visualização de Guia de Porta</h3>
-                <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Protocolo: {viewingArchiveBooking.protocolo}</p>
-              </div>
-              <button
-                onClick={() => setViewingArchiveBooking(null)}
-                className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 font-bold text-xs rounded-lg transition-all cursor-pointer"
-              >
-                Fechar
-              </button>
-            </div>
-            <SuccessVoucher booking={viewingArchiveBooking} onReset={() => setViewingArchiveBooking(null)} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function daysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
+function firstWeekday(y: number, m: number) { return new Date(y, m, 1).getDay(); }
+function toDateStr(y: number, m: number, d: number) {
+  return `${y}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
-function BookingCard({ bk, onView, onCancel, formatDate }: {
-  bk: Agendamento;
-  onView: (b: Agendamento) => void;
-  onCancel: (id: string) => void;
-  formatDate: (s: string) => string;
-}) {
+export function PortariaView() {
+  const router = useRouter();
+  const { visibleBookings } = useAgendamento();
+  const today = new Date();
+
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [cm, setCm] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  const [busca, setBusca] = useState('');
+  const [filterHorario, setFilterHorario] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterOperacao, setFilterOperacao] = useState('');
+
+  const prevMonth = () => setCm(({ y, m }) => { const d = new Date(y, m - 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const nextMonth = () => setCm(({ y, m }) => { const d = new Date(y, m + 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+
+  const selectedStr = toDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+  const filteredBookings = useMemo(() => {
+    return visibleBookings.filter(bk => {
+      if (bk.data !== selectedStr) return false;
+      if (busca) {
+        const q = busca.toLowerCase();
+        const match = [bk.motorista?.nome, bk.veiculo?.placa, bk.diCliente, bk.container, bk.transportadora]
+          .some(v => v?.toLowerCase().includes(q));
+        if (!match) return false;
+      }
+      if (filterHorario && bk.horario.split(' ')[0] !== filterHorario) return false;
+      if (filterStatus && bk.status !== filterStatus) return false;
+      if (filterOperacao && bk.operacao?.toLowerCase() !== filterOperacao) return false;
+      return true;
+    });
+  }, [visibleBookings, selectedStr, busca, filterHorario, filterStatus, filterOperacao]);
+
+  const grouped = useMemo(() => {
+    const g: Record<string, Agendamento[]> = {};
+    filteredBookings.forEach(bk => {
+      const h = bk.horario.split(' ')[0];
+      (g[h] ??= []).push(bk);
+    });
+    return g;
+  }, [filteredBookings]);
+
+  const uniqueHorarios = useMemo(() =>
+    [...new Set(visibleBookings.filter(b => b.data === selectedStr).map(b => b.horario.split(' ')[0]))].sort(),
+  [visibleBookings, selectedStr]);
+
+  const totalDays = daysInMonth(cm.y, cm.m);
+  const offset    = firstWeekday(cm.y, cm.m);
+  const cells: (number | null)[] = [
+    ...Array(offset).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const isToday = (d: number) => d === today.getDate() && cm.m === today.getMonth() && cm.y === today.getFullYear();
+  const isSel   = (d: number) => d === selectedDate.getDate() && cm.m === selectedDate.getMonth() && cm.y === selectedDate.getFullYear();
+
+  const formattedDate = `${selectedDate.getDate()} de ${MONTH_LONG[selectedDate.getMonth()]} de ${selectedDate.getFullYear()}`;
+
   return (
-    <div className="bg-zinc-50 hover:bg-zinc-100/70 border border-zinc-200 rounded-xl p-3.5 flex flex-col gap-3 transition-all text-xs">
-      <div className="flex justify-between items-center pb-2 border-b border-zinc-150">
-        <div>
-          <span className="text-[9px] font-mono text-zinc-400 block uppercase">Protocolo emitido</span>
-          <span className="font-mono font-bold text-sky-950 text-xs">{bk.protocolo}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
-            <CheckCircle className="w-3 h-3 inline mr-0.5" />Confirmado
+    <div className="flex border border-zinc-200 rounded-xl overflow-hidden min-h-[560px] relative bg-white animate-in fade-in">
+      {/* Sidebar */}
+      <aside className="w-60 shrink-0 bg-white border-r border-zinc-200 flex flex-col gap-4 p-4 overflow-y-auto">
+        <p className="font-bold text-zinc-900 text-sm leading-tight">{formattedDate}</p>
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-zinc-700 uppercase tracking-wide">
+            {MONTH_SHORT[cm.m]} {cm.y}
           </span>
-          <button type="button" onClick={() => onView(bk)} className="p-1 px-2 border border-zinc-200 bg-white hover:bg-sky-50 hover:text-sky-700 rounded-md transition-colors font-medium flex items-center gap-1 text-[10.5px]">
-            <Eye className="w-3.5 h-3.5" /> <span>Visualizar</span>
-          </button>
-          <button type="button" onClick={() => { if (confirm(`Cancelar agendamento do container ${bk.container}?`)) onCancel(bk.id); }}
-            className="p-1 px-2 border border-red-150 bg-white hover:bg-red-50 hover:text-red-700 text-zinc-500 rounded-md transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <span className="text-[10px] text-zinc-400 uppercase font-medium">DI e Container</span>
-          <p className="font-semibold text-zinc-800">DI {bk.diNumero}</p>
-          <p className="font-mono text-[10.5px] text-sky-800 font-semibold">{bk.container}</p>
-        </div>
-        <div className="space-y-1">
-          <span className="text-[10px] text-zinc-400 uppercase font-medium">Saída Programada</span>
-          <p className="font-semibold text-emerald-800 flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>{formatDate(bk.data)}</span>
-          </p>
-          <p className="font-semibold text-zinc-700 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> <span>{bk.horario}</span>
-          </p>
-        </div>
-      </div>
-      <div className="bg-white/80 border border-zinc-150 rounded-lg p-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Truck className="w-4 h-4 text-zinc-400 shrink-0" />
-          <div>
-            <p className="font-semibold text-zinc-800 text-[11px] truncate max-w-[130px]">{bk.motorista.nome}</p>
-            <p className="text-[9.5px] text-zinc-400">CPF: {bk.motorista.cpf}</p>
+          <div className="flex gap-0.5">
+            <button onClick={prevMonth} className="p-1 rounded hover:bg-zinc-100 transition-colors">
+              <ChevronLeft className="w-3.5 h-3.5 text-zinc-500" />
+            </button>
+            <button onClick={nextMonth} className="p-1 rounded hover:bg-zinc-100 transition-colors">
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+            </button>
           </div>
         </div>
-        <div className="font-mono text-[10px] font-bold bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">
-          {bk.veiculo?.placa}
+
+        <div className="grid grid-cols-7 gap-y-0.5">
+          {DAY_HEADERS.map(h => (
+            <div key={h} className="text-center text-[10px] font-semibold text-zinc-400 py-1">{h}</div>
+          ))}
+          {cells.map((day, i) => (
+            <button
+              key={i}
+              disabled={!day}
+              onClick={() => day && setSelectedDate(new Date(cm.y, cm.m, day))}
+              className={[
+                'mx-auto w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors',
+                !day ? 'invisible pointer-events-none' : '',
+                day && isToday(day) ? 'bg-emerald-500 text-white font-bold' : '',
+                day && isSel(day) && !isToday(day) ? 'bg-zinc-200 text-zinc-900 font-semibold' : '',
+                day && !isToday(day) && !isSel(day) ? 'text-zinc-700 hover:bg-zinc-100' : '',
+              ].join(' ')}
+            >
+              {day}
+            </button>
+          ))}
         </div>
-      </div>
-      <div className="flex items-center gap-1 text-[9.5px] text-zinc-400">
-        <AlertCircle className="w-3 h-3 text-zinc-300" />
-        <span>Apresentar em guarita. Tolerância 20min.</span>
-      </div>
+
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+          <Input placeholder="Buscar" value={busca} onChange={e => setBusca(e.target.value)} className="pl-8 h-8 text-xs" />
+        </div>
+
+        <Select value={filterHorario} onValueChange={setFilterHorario}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Horário" /></SelectTrigger>
+          <SelectContent>
+            {uniqueHorarios.map(h => <SelectItem key={h} value={h} className="text-xs">{h}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            {STATUS_KEYS.map(k => (
+              <SelectItem key={k} value={k} className="text-xs">{getStatusLabel(k)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterOperacao} onValueChange={setFilterOperacao}>
+          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Operação" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="importação" className="text-xs">Importação</SelectItem>
+            <SelectItem value="exportação" className="text-xs">Exportação</SelectItem>
+            <SelectItem value="cabotagem"  className="text-xs">Cabotagem</SelectItem>
+            <SelectItem value="nacional"   className="text-xs">Nacional</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <button
+          onClick={() => { setBusca(''); setFilterHorario(''); setFilterStatus(''); setFilterOperacao(''); }}
+          className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Limpar Filtros
+        </button>
+      </aside>
+
+      {/* Table */}
+      <main className="flex-1 overflow-auto">
+        {filteredBookings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-zinc-400 gap-2">
+            <Search className="w-8 h-8 text-zinc-200" />
+            <p className="text-sm">Nenhum agendamento para este dia.</p>
+          </div>
+        ) : (
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-white z-10">
+              <tr className="border-b border-zinc-100">
+                {['Horário','Status','Transportadora','Empresa','Motorista','Placa','Veículo','Operação','Observações'].map(col => (
+                  <th key={col} className="text-left py-3 px-4 text-[10px] font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {Object.entries(grouped).sort().flatMap(([horario, bks]) =>
+                bks.map((bk, idx) => (
+                  <tr key={bk.id} className="hover:bg-zinc-50/60 transition-colors">
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {idx === 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          {bks.length > 1 && (
+                            <span className="w-5 h-5 bg-zinc-200 rounded-full text-[10px] font-bold text-zinc-700 flex items-center justify-center shrink-0">
+                              {bks.length}
+                            </span>
+                          )}
+                          <span className="font-medium text-zinc-700">{horario}</span>
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap"><StatusBadge status={bk.status} /></td>
+                    <td className="py-3 px-4 max-w-[160px] truncate text-zinc-700 whitespace-nowrap">{bk.transportadora ?? bk.diCliente ?? '—'}</td>
+                    <td className="py-3 px-4 max-w-[180px] truncate text-zinc-700 whitespace-nowrap">{bk.empresa ?? bk.diCliente ?? '—'}</td>
+                    <td className="py-3 px-4 text-zinc-700 whitespace-nowrap">{bk.motorista?.nome || '—'}</td>
+                    <td className="py-3 px-4 font-mono text-zinc-700 whitespace-nowrap">{bk.veiculo?.placa || '—'}</td>
+                    <td className="py-3 px-4 text-zinc-700 whitespace-nowrap">{bk.veiculo?.tipo ?? bk.veiculo?.modelo ?? '—'}</td>
+                    <td className="py-3 px-4 text-zinc-500 whitespace-nowrap">{bk.operacao ?? '—'}</td>
+                    <td className="py-3 px-4 text-zinc-500 whitespace-nowrap">{bk.observacao ?? '—'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+      </main>
+
+      {/* FAB */}
+      <button
+        onClick={() => router.push('/agendamento?tab=wizard')}
+        className="fixed bottom-6 right-6 w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-20"
+        title="Novo agendamento"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
     </div>
   );
 }

@@ -5,17 +5,6 @@ import { userModuleAccessService } from '@/services/access/user-module-access.se
 import { ModuleAccess } from '@/types/access-control';
 import { useAuthContext } from './AuthContext';
 
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-
-const MOCK_MODULES: ModuleAccess[] = [
-  {
-    id: 1, name: 'Agendamento FCL', description: 'Portal de Agendamento de Containers',
-    isEnabled: true, userModuleAccessId: 1,
-    activities: [], totalActivities: 0, activeActivities: 0,
-    route: '/agendamento', icon: 'Calendar', sharedItems: [],
-  },
-];
-
 interface ModuleAccessContextType {
   modules: ModuleAccess[];
   isLoading: boolean;
@@ -38,11 +27,6 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Função para carregar módulos (com cache)
   const loadModules = useCallback(async (userId: string, forceRefresh = false) => {
-    if (MOCK_MODE) {
-      setModules(MOCK_MODULES);
-      setIsLoading(false);
-      return;
-    }
     try {
       setIsLoading(true);
       setError(null);

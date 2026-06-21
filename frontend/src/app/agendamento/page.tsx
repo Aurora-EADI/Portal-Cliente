@@ -7,7 +7,7 @@ import { AgendamentoPage } from '@/components/pages/agendamento/AgendamentoPage'
 export default function AgendamentoRoute() {
   return (
     <RouteGuard route="/agendamento">
-      <ModuleRouteShell>
+      <ModuleRouteShell layout={{ maxWidth: 'full', noPadding: true }}>
         <AgendamentoPage />
       </ModuleRouteShell>
     </RouteGuard>

@@ -3,6 +3,8 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  serverExternalPackages: ['@prisma/client', 'prisma'],
+
   images: {
     domains: ['172.20.210.81', '172.20.210.84'],
   },

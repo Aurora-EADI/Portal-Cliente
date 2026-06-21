@@ -7,11 +7,13 @@ export interface User {
     role: UserRole;
     companyId: string | null;
     clienteId?: string | null;
+    despachanteId?: string | null;
     position: string | null;
     active?: boolean;
     createdAt: string;
     updatedAt: string;
     cliente?: { id: string; nome: string; cnpj?: string } | null;
+    despachante?: { id: string; codDespachante: string; nome: string } | null;
 }
 
 export interface CreateUserDto {

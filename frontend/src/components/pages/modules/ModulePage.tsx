@@ -29,18 +29,7 @@ import {
 import { userModuleAccessService } from '@/services/access/user-module-access.service';
 import { ModuleAccess } from '@/types/access-control';
 
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-
-const MOCK_MODULES_PAGE: ModuleAccess[] = [
-  {
-    id: 1, name: 'Agendamento FCL', description: 'Portal de Agendamento de Containers',
-    isEnabled: true, userModuleAccessId: 1,
-    activities: [], totalActivities: 0, activeActivities: 0,
-    route: '/agendamento', icon: 'Calendar', sharedItems: [],
-  },
-];
-
-// 🚀 OTIMIZAÇÃO: Map de ícones movido para escopo do módulo
+// Map de ícones movido para escopo do módulo
 // Evita recriação do objeto em cada render (~5-10ms de economia)
 const ICON_COMPONENTS: Record<string, React.ElementType> = {
   'Truck': Truck,
@@ -74,11 +63,6 @@ export function ModulesPage() {
 
   useEffect(() => {
     const loadModules = async () => {
-      if (MOCK_MODE) {
-        setModules(MOCK_MODULES_PAGE);
-        setIsLoading(false);
-        return;
-      }
       try {
         setIsLoading(true);
         setError(null);

@@ -2,17 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DI, Motorista, Veiculo, Agendamento } from '@/types/agendamento';
 
-interface SlotReservaAtiva {
-  id: string;
-  expiraEm: string;
-}
-
 interface AgendamentoWizardState {
   currentStep: number;
   selectedDI: DI | null;
   selectedMotorista: Motorista | null;
   selectedVeiculo: Veiculo | null;
-  reservaAtiva: SlotReservaAtiva | null;
   selectedJanelaId: string;
   selectedClient: string;
   successBooking: Agendamento | null;
@@ -22,7 +16,6 @@ interface AgendamentoWizardState {
   setSelectedDI: (di: DI | null) => void;
   setSelectedMotorista: (m: Motorista | null) => void;
   setSelectedVeiculo: (v: Veiculo | null) => void;
-  setReservaAtiva: (r: SlotReservaAtiva | null) => void;
   setSelectedJanelaId: (id: string) => void;
   setSelectedClient: (c: string) => void;
   setSuccessBooking: (b: Agendamento | null) => void;
@@ -33,13 +26,12 @@ interface AgendamentoWizardState {
 const WIZARD_INITIAL: Pick<
   AgendamentoWizardState,
   'currentStep' | 'selectedDI' | 'selectedMotorista' | 'selectedVeiculo' |
-  'reservaAtiva' | 'successBooking' | 'viewingArchiveBooking'
+  'successBooking' | 'viewingArchiveBooking'
 > = {
   currentStep: 1,
   selectedDI: null,
   selectedMotorista: null,
   selectedVeiculo: null,
-  reservaAtiva: null,
   successBooking: null,
   viewingArchiveBooking: null,
 };
@@ -55,7 +47,6 @@ export const useAgendamentoWizard = create<AgendamentoWizardState>()(
       setSelectedDI: (di) => set({ selectedDI: di }),
       setSelectedMotorista: (m) => set({ selectedMotorista: m }),
       setSelectedVeiculo: (v) => set({ selectedVeiculo: v }),
-      setReservaAtiva: (r) => set({ reservaAtiva: r }),
       setSelectedJanelaId: (id) => set({ selectedJanelaId: id }),
       setSelectedClient: (c) => set({ selectedClient: c, selectedDI: null }),
       setSuccessBooking: (b) => set({ successBooking: b }),
@@ -69,7 +60,6 @@ export const useAgendamentoWizard = create<AgendamentoWizardState>()(
         selectedDI: state.selectedDI,
         selectedMotorista: state.selectedMotorista,
         selectedVeiculo: state.selectedVeiculo,
-        reservaAtiva: state.reservaAtiva,
         selectedJanelaId: state.selectedJanelaId,
         selectedClient: state.selectedClient,
         successBooking: state.successBooking,

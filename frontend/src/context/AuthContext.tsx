@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from '@/lib/supabase';
 import { authService } from '@/services/api';
 
-const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-
 interface AuthContextType {
   currentUser: User | null;
   loginUser: (user: User, expiresAt: string) => Promise<void>;
@@ -26,20 +24,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (MOCK_MODE) {
-      setIsLoading(false);
-      return;
-    }
-
-    const restoreSession = async () => {
+    const restoreSession = async (retries = 2) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const user = await authService.getProfile();
           setCurrentUser(user);
         }
-      } catch {
-        // No valid session or profile fetch failed
+      } catch (err: any) {
+        if (retries > 0 && err?.response?.status !== 401) {
+          await new Promise(r => setTimeout(r, 1500));
+          return restoreSession(retries - 1);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -63,9 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logoutUser = async () => {
     try {
-      if (!MOCK_MODE) {
-        await supabase.auth.signOut();
-      }
+      await supabase.auth.signOut();
     } catch {
       // Continue even if signOut fails
     } finally {

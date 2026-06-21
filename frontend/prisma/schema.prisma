@@ -12,6 +12,7 @@ enum UserRole {
   ADMIN
   EMPLOYEE
   CLIENTE
+  DESPACHANTE
 }
 
 model User {
@@ -21,12 +22,14 @@ model User {
   role       UserRole  @default(EMPLOYEE)
   position   String?
   active     Boolean   @default(true)
-  clienteId  String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  clienteId      String?
+  despachanteId  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   moduleAccess UserModuleAccess[]
-  cliente      Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -42,7 +45,6 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  activities  Activity[]
   userAccess  UserModuleAccess[]
   sharedItems ModuleSharedItem[]
 
@@ -62,42 +64,6 @@ model ModuleSharedItem {
   @@map("module_shared_items")
 }
 
-model Activity {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  moduleId    Int
-  isMandatory Boolean @default(false)
-
-  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  permissions    ActivityPermission[]
-  activityAccess UserActivityAccess[]
-
-  @@unique([name, moduleId])
-  @@map("activities")
-}
-
-model Permission {
-  id          Int    @id @default(autoincrement())
-  key         String @unique
-  description String
-  category    String
-
-  activities ActivityPermission[]
-
-  @@map("permissions")
-}
-
-model ActivityPermission {
-  activityId   Int
-  permissionId Int
-
-  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([activityId, permissionId])
-  @@map("activity_permissions")
-}
 
 model UserModuleAccess {
   id        String  @id @default(uuid())
@@ -107,24 +73,11 @@ model UserModuleAccess {
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  activityAccess UserActivityAccess[]
 
   @@unique([userId, moduleId])
   @@map("user_module_access")
 }
 
-model UserActivityAccess {
-  id                 String  @id @default(uuid())
-  userModuleAccessId String
-  activityId         Int
-  isEnabled          Boolean @default(false)
-
-  userModuleAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
-  activity         Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
-
-  @@unique([userModuleAccessId, activityId])
-  @@map("user_activity_access")
-}
 
 enum DIStatus {
   liberada
@@ -135,6 +88,12 @@ enum DIStatus {
 enum AgendamentoStatus {
   ATIVO
   CANCELADO
+  CHEGOU
+  NO_SHOW
+  ON_TIME
+  ATRASADO
+  AG_CHEGADA
+  CONCLUIDO
 }
 
 model Cliente {
@@ -147,10 +106,11 @@ model Cliente {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dis        DI[]
-  motoristas Motorista[]
-  veiculos   Veiculo[]
-  users      User[]
+  dis          DI[]
+  motoristas   Motorista[]
+  veiculos     Veiculo[]
+  users        User[]
+  agendamentos Agendamento[]
 
   @@map("clientes")
 }
@@ -223,32 +183,120 @@ model JanelaAtendimento {
   @@map("janelas_atendimento")
 }
 
-model SlotReserva {
-  id       String   @id @default(uuid())
-  data     String
-  horario  String
-  diId     String
-  expiraEm DateTime
-  criadaEm DateTime @default(now())
-
-  @@map("slot_reservas")
-}
 
 model Agendamento {
   id          String            @id @default(uuid())
-  diId        String
-  motoristaId String
-  veiculoId   String
+  diId        String?
+  motoristaId String?
+  veiculoId   String?
+  clienteId   String?
   data        String
   horario     String
   protocolo   String            @unique
   status      AgendamentoStatus @default(ATIVO)
   observacao  String?
-  criadoEm   DateTime          @default(now())
+  criadoEm    DateTime          @default(now())
 
-  di        DI        @relation(fields: [diId], references: [id])
-  motorista Motorista @relation(fields: [motoristaId], references: [id])
-  veiculo   Veiculo   @relation(fields: [veiculoId], references: [id])
+  // Campos do novo formulário de agendamento
+  operacao       String?
+  subOperacao    String?
+  cargaEspecial  Boolean  @default(false)
+  servicos       String[]
+  tipoVeiculo    String?
+  cpfMotorista   String?
+  nomeMotorista  String?
+  placaVeiculo   String?
+  transportadora String?
+  empresa        String?
+  awbMawb        String?
+  diNumero       String?
+  dta            String?
+  hawb           String?
+  numeroVoo      String?
+  volumes        String?
+  peso           String?
+  consignatario  String?
+  container      String?
+  criadoPorNome  String?   @map("criado_por_nome")
+  criadoPorRole  String?   @map("criado_por_role")
+
+  di        DI?        @relation(fields: [diId], references: [id])
+  motorista Motorista? @relation(fields: [motoristaId], references: [id])
+  veiculo   Veiculo?   @relation(fields: [veiculoId], references: [id])
+  cliente   Cliente?   @relation(fields: [clienteId], references: [id])
 
   @@map("agendamentos")
+}
+
+// ============================================================
+// DESPACHANTE — acesso externo para despachantes
+// ============================================================
+
+model Despachante {
+  id             String   @id @default(uuid())
+  codDespachante String   @unique @map("cod_despachante")
+  nome           String
+  email          String?  @unique
+  cnpj           String?  @unique
+  telefone       String?
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users        User[]
+  disAverbadas DiAverbada[]
+
+  @@map("despachantes")
+}
+
+// ============================================================
+// DIs AVERBADAS — sincronizadas do Portal Aurora (intranet)
+// ============================================================
+
+model DiAverbada {
+  id             String    @id @default(uuid())
+  nLote          String    @unique @map("n_lote")
+  nConhecimento  String?   @map("n_conhecimento")
+  dta            String?
+  documentoSaida String?   @map("documento_saida")
+  tipoDocumento  String?   @map("tipo_documento")
+  modalidade     String?
+  cliente        String?
+  cnpjCliente    String?   @map("cnpj_cliente")
+  codDespachante String?   @map("cod_despachante")
+  despachante    String?
+  saldo          Float?
+  dtEntrada      DateTime? @map("dt_entrada")
+  localizacao    String?
+  containers     String?
+  averbadoEm     DateTime  @map("averbado_em")
+  sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
+  status         DIStatus  @default(liberada)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
+
+  @@index([cnpjCliente])
+  @@map("dis_averbadas")
+}
+
+// ============================================================
+// CONVITES DE REGISTRO — gerados pelo Portal Aurora
+// ============================================================
+
+model ConviteRegistro {
+  id             String    @id @default(uuid())
+  token          String    @unique @default(uuid())
+  tipo           UserRole
+  codDespachante String?   @map("cod_despachante")
+  cnpjCliente    String?   @map("cnpj_cliente")
+  nome           String
+  email          String?
+  expiresAt      DateTime  @map("expires_at")
+  usedAt         DateTime? @map("used_at")
+  usedByUserId   String?   @map("used_by_user_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("convites_registro")
 }
