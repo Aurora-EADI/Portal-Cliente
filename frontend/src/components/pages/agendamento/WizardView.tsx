@@ -70,16 +70,16 @@ function ConfirmationVoucher({ booking, onNew, onBack }: { booking: Agendamento;
       {/* Voucher card */}
       <div ref={voucherRef} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
         {/* Header com logo */}
-        <div className="px-8 py-5 border-b border-zinc-200 flex items-center justify-between">
+        <div className="px-4 sm:px-8 py-5 border-b border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <Image src="/logo-aurora.png" alt="Aurora" width={130} height={44} className="object-contain" />
-            <div className="h-10 w-px bg-zinc-200" />
-            <div>
+            <div className="h-10 w-px bg-zinc-200 hidden sm:block" />
+            <div className="hidden sm:block">
               <p className="text-zinc-900 text-sm font-bold">Comprovante de Agendamento</p>
               <p className="text-zinc-400 text-[11px] mt-0.5">Portal do Cliente</p>
             </div>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-[#ED6A23] font-mono text-sm font-bold">{booking.protocolo}</p>
             <p className="text-zinc-400 text-[11px]">{new Date().toLocaleDateString('pt-BR')}</p>
           </div>
@@ -97,8 +97,8 @@ function ConfirmationVoucher({ booking, onNew, onBack }: { booking: Agendamento;
         </div>
 
         {/* Dados */}
-        <div className="px-8 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
+        <div className="px-4 sm:px-8 py-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
             {(booking.diNumero || booking.di) && <InfoField label="D.I" value={Array.isArray(booking.di) ? booking.di.join(', ') : (booking.diNumero || booking.di || '—')} mono />}
             {booking.container && <InfoField label="Container" value={booking.container} mono />}
             <InfoField label="Data" value={formatDate(booking.data)} />
@@ -131,7 +131,7 @@ function ConfirmationVoucher({ booking, onNew, onBack }: { booking: Agendamento;
       </div>
 
       {/* Ações */}
-      <div className="flex justify-center gap-3">
+      <div className="flex flex-col sm:flex-row justify-center gap-3">
         <button
           onClick={handleDownloadPDF}
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors shadow-sm"

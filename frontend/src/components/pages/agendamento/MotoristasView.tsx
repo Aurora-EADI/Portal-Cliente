@@ -76,14 +76,14 @@ export function MotoristasView() {
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="bg-white border border-zinc-200 rounded-xl p-5 flex items-center justify-between">
+      <div className="bg-white border border-zinc-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-extrabold text-zinc-900">Diretório de Motoristas & Veículos</h2>
           <p className="text-xs text-zinc-500 mt-1">Cadastros credenciados para retirada FCL</p>
         </div>
         <button
           onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
-          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>{activeTab === 'drivers' ? 'Novo Motorista' : 'Novo Veículo'}</span>
@@ -125,7 +125,7 @@ export function MotoristasView() {
                 <thead>
                   <tr className="border-b border-zinc-200 bg-zinc-50">
                     {['Nome Completo', 'CPF', 'CNH', 'Telefone', 'Status'].map(h => (
-                      <th key={h} className="text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px]">{h}</th>
+                      <th key={h} className={`text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px] ${h === 'CNH' ? 'hidden sm:table-cell' : ''}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -141,7 +141,7 @@ export function MotoristasView() {
                         </div>
                       </td>
                       <td className="py-3 px-3 font-mono text-zinc-600">{d.cpf}</td>
-                      <td className="py-3 px-3 font-mono text-zinc-600">{d.cnh}</td>
+                      <td className="py-3 px-3 font-mono text-zinc-600 hidden sm:table-cell">{d.cnh}</td>
                       <td className="py-3 px-3 text-zinc-600">{d.telefone}</td>
                       <td className="py-3 px-3">
                         <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold">
@@ -213,7 +213,7 @@ export function MotoristasView() {
                 <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Nome Civil"
                   className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-zinc-600 font-bold block mb-1.5">CPF *</label>
                   <input type="text" required value={formCPF} onChange={(e) => setFormCPF(formatCPF(e.target.value))} placeholder="000.000.000-00"
@@ -253,7 +253,7 @@ export function MotoristasView() {
                   {vehicleErrors.map((e, i) => <p key={i}>• {e}</p>)}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-zinc-600 font-bold block mb-1.5">Placa *</label>
                   <input type="text" required value={formPlaca} onChange={(e) => setFormPlaca(formatPlaca(e.target.value))} placeholder="ABC1D23"

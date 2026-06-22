@@ -1,15 +1,16 @@
 'use client'
 
 import React, { useCallback } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useAuthContext } from '@/context/AuthContext';
 
 interface HeaderProps {
   pageTitle?: string;
+  onMenuClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
+export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) => {
   const { currentUser, logoutUser } = useAuthContext();
 
   if (!currentUser) return null;
@@ -34,8 +35,17 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '' }) => {
     >
       <div className="flex items-center justify-between h-12">
 
-        {/* Logo + título */}
+        {/* Menu + Logo + título */}
         <div className="flex items-center gap-3">
+          {onMenuClick && (
+            <button
+              onClick={onMenuClick}
+              className="md:hidden p-2 -ml-2 rounded-lg text-white hover:bg-white/10 transition-colors"
+              aria-label="Abrir menu"
+            >
+              <Menu size={22} />
+            </button>
+          )}
           <Logo src="/logo_principal.png" size="sm" />
           <span className="text-white font-semibold tracking-wide hidden md:block">
             {pageTitle}

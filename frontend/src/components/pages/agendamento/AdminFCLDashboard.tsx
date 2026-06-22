@@ -57,7 +57,7 @@ export function AdminAgendamentoDashboard() {
                 type="date"
                 value={periodo}
                 onChange={e => setPeriodo(e.target.value)}
-                className="pl-3 pr-10 w-44 text-sm"
+                className="pl-3 pr-10 w-full sm:w-44 text-sm"
                 placeholder="Período"
               />
               <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
@@ -66,10 +66,10 @@ export function AdminAgendamentoDashboard() {
               placeholder="Operação"
               value={operacao}
               onChange={e => setOperacao(e.target.value)}
-              className="w-44 text-sm"
+              className="w-full sm:w-44 text-sm"
             />
             <Select value={transportadora} onValueChange={setTransportadora}>
-              <SelectTrigger className="w-52 text-sm">
+              <SelectTrigger className="w-full sm:w-52 text-sm">
                 <SelectValue placeholder="Transportadora" />
               </SelectTrigger>
               <SelectContent>

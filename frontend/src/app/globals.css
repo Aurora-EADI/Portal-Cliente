@@ -66,11 +66,10 @@ vercel-live-feedback {
   }
 }
 
-html, body, #__next {
+html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
 }
 
 @layer base {

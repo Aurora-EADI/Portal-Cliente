@@ -82,7 +82,7 @@ export function DIDirectoryView() {
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50">
                   {['Nº DI', 'Container / Tipo', 'Mercadoria', 'Peso Bruto', 'Status', 'Ação'].map(h => (
-                    <th key={h} className="text-left py-3 px-4 font-bold text-zinc-500 uppercase tracking-wider text-[10px]">{h}</th>
+                    <th key={h} className={`text-left py-3 px-4 font-bold text-zinc-500 uppercase tracking-wider text-[10px] ${h === 'Peso Bruto' ? 'hidden sm:table-cell' : ''}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -102,7 +102,7 @@ export function DIDirectoryView() {
                       <td className="py-3 px-4 max-w-[180px]">
                         <p className="text-zinc-700 font-medium truncate">{di.mercadoria}</p>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 hidden sm:table-cell">
                         <span className="font-mono text-zinc-600">{di.pesoBruto.toLocaleString('pt-BR')} kg</span>
                       </td>
                       <td className="py-3 px-4">

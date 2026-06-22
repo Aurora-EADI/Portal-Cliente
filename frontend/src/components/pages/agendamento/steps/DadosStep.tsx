@@ -1130,18 +1130,18 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
           {!isExternalUser && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="AWB - MAWB"><MultiInput values={data.awbMawb} onChange={v => set('awbMawb')(v)} placeholder="Adicionar AWB" /></Field>
                 <Field label="D.I"><MultiInput values={data.di} onChange={v => set('di')(v)} placeholder="Adicionar D.I" /></Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="DTA"><MultiInput values={data.dta} onChange={v => set('dta')(v)} placeholder="Adicionar DTA" /></Field>
                 <Field label="HAWB"><MultiInput values={data.hawb} onChange={v => set('hawb')(v)} placeholder="Adicionar HAWB" /></Field>
               </div>
             </>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(!isExternalUser || data.subOperacao === 'Aéreo') && (
               <Field label="Número do Voo"><input type="text" placeholder="Nº do voo" value={data.numeroVoo} onChange={e => set('numeroVoo')(e.target.value)} className={INPUT} /></Field>
             )}
@@ -1198,7 +1198,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Volumes"><input type="text" placeholder="Qtd. volumes" value={data.volumes} onChange={e => set('volumes')(e.target.value)} className={INPUT} /></Field>
             <Field label="Peso"><input type="text" placeholder="Peso (kg)" value={data.peso} onChange={e => set('peso')(e.target.value)} className={INPUT} /></Field>
           </div>

@@ -83,9 +83,9 @@ export function PortariaView() {
   const formattedDate = `${selectedDate.getDate()} de ${MONTH_LONG[selectedDate.getMonth()]} de ${selectedDate.getFullYear()}`;
 
   return (
-    <div className="flex border border-zinc-200 rounded-xl overflow-hidden min-h-[560px] relative bg-white animate-in fade-in">
+    <div className="flex flex-col md:flex-row border border-zinc-200 rounded-xl overflow-hidden md:min-h-[560px] relative bg-white animate-in fade-in">
       {/* Sidebar */}
-      <aside className="w-60 shrink-0 bg-white border-r border-zinc-200 flex flex-col gap-4 p-4 overflow-y-auto">
+      <aside className="w-full md:w-60 md:shrink-0 bg-white border-b md:border-b-0 md:border-r border-zinc-200 flex flex-col gap-4 p-4 overflow-y-auto">
         <p className="font-bold text-zinc-900 text-sm leading-tight">{formattedDate}</p>
 
         <div className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export function PortariaView() {
       {/* FAB */}
       <button
         onClick={() => router.push('/agendamento?tab=wizard')}
-        className="fixed bottom-6 right-6 w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-20"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-12 h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-20"
         title="Novo agendamento"
       >
         <Plus className="w-5 h-5" />

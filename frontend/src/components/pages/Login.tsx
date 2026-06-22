@@ -115,18 +115,18 @@ export function Login() {
   const isLoading = mode === 'login' ? isLoggingIn : isRegistering;
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex overflow-y-auto">
       {/* Painel esquerdo — imagem */}
       <div className="hidden lg:block lg:w-1/2 h-screen sticky top-0 bg-[#0b1624] overflow-hidden flex-shrink-0">
         <Image src="/cover-home.png" alt="Portal do Cliente" fill priority className="object-cover object-left" sizes="50vw" />
       </div>
 
       {/* Painel direito — formulário */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 py-8 bg-gray-50">
         <div className="w-full max-w-md">
           {/* Logo mobile */}
           <div className="lg:hidden mb-8 flex flex-col items-center gap-2">
-            <Image src="/cover-home.png" alt="Portal do Cliente" width={320} height={220} className="rounded-xl object-contain" priority />
+            <img src="/cover-home.png" alt="Portal do Cliente" className="rounded-xl object-contain w-full max-w-[320px]" />
           </div>
 
           <Card className="p-8 shadow-lg border border-gray-100 rounded-2xl">
@@ -241,7 +241,7 @@ export function Login() {
                       <Input type="email" placeholder="seu@empresa.com" value={regEmail} onChange={e => setRegEmail(e.target.value)} disabled={isLoading} autoComplete="email" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label>Senha *</Label>
                         <div className="relative">

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Layout } from '@/components/layout/Layout';
 type GuardConfig = {
@@ -45,10 +45,12 @@ export function ModuleRouteShell({
   wrapperClassName = 'h-screen flex flex-col overflow-hidden',
   header,
 }: ModuleRouteShellProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const content = (
     <div className={wrapperClassName}>
-      <Header pageTitle={header?.pageTitle} />
-      <Layout {...layout}>{children}</Layout>
+      <Header pageTitle={header?.pageTitle} onMenuClick={() => setMobileMenuOpen(true)} />
+      <Layout {...layout} mobileMenuOpen={mobileMenuOpen} onMobileMenuChange={setMobileMenuOpen}>{children}</Layout>
     </div>
   );
 

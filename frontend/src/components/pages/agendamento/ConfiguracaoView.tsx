@@ -276,7 +276,7 @@ export function ConfiguracaoView() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Janelas</p>

@@ -198,14 +198,14 @@ export function DashboardView() {
     {viewingBooking && <VoucherModal booking={viewingBooking} onClose={() => setViewingBooking(null)} />}
     <div className="space-y-5 animate-in fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-zinc-900">{selectedClient}</h2>
           <p className="text-xs text-zinc-500 mt-0.5">Painel de acompanhamento de agendamentos</p>
         </div>
         <button
           onClick={() => router.push('/agendamento?tab=wizard')}
-          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm"
+          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
           Novo Agendamento
@@ -246,7 +246,7 @@ export function DashboardView() {
 
       {/* Tabela unificada — DIs disponíveis + Agendamentos */}
       <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-zinc-800">Minhas DIs e Agendamentos</h3>
             {pendingRows.length > 0 && (
@@ -262,7 +262,7 @@ export function DashboardView() {
               placeholder="Buscar por DI, container, motorista, placa..."
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs border border-zinc-200 rounded-lg bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow w-72"
+              className="pl-8 pr-3 py-1.5 text-xs border border-zinc-200 rounded-lg bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow w-full sm:w-72"
             />
           </div>
         </div>
@@ -286,7 +286,7 @@ export function DashboardView() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[800px] text-xs">
               <thead>
                 <tr className="bg-zinc-50 text-zinc-500 text-left">
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">DI</th>

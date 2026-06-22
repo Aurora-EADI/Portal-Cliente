@@ -26,7 +26,7 @@ export function KanbanColumn({
   children,
 }: KanbanColumnProps) {
   return (
-    <div className="flex flex-col bg-slate-50 rounded-xl w-80 flex-shrink-0">
+    <div className="flex flex-col bg-slate-50 rounded-xl w-72 sm:w-80 flex-shrink-0">
       {/* Header */}
       <div className={cn('p-4 rounded-t-xl', colorClass)}>
         <div className="flex items-center justify-between">
@@ -58,7 +58,7 @@ export function KanbanColumn({
               snapshot.isDraggingOver ? 'bg-slate-100' : 'bg-slate-50',
             )}
           >
-            <ScrollArea className="h-[calc(100vh-320px)] px-3 py-3">
+            <ScrollArea className="h-[calc(100vh-280px)] sm:h-[calc(100vh-320px)] px-3 py-3">
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 2 }).map((_, i) => (
