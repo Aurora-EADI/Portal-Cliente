@@ -25,6 +25,13 @@ export interface Veiculo {
   tipo: string;
 }
 
+export interface Transportadora {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  telefone?: string;
+}
+
 export type AgendamentoStatus = 'ATIVO' | 'CANCELADO' | 'CHEGOU' | 'NO_SHOW' | 'ON_TIME' | 'ATRASADO' | 'AG_CHEGADA' | 'CONCLUIDO';
 
 export interface Agendamento {

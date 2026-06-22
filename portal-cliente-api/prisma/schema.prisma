@@ -162,10 +162,11 @@ model Cliente {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dis        DI[]
-  motoristas Motorista[]
-  veiculos   Veiculo[]
-  users      User[]
+  dis             DI[]
+  motoristas      Motorista[]
+  veiculos        Veiculo[]
+  transportadoras Transportadora[]
+  users           User[]
 
   @@map("clientes")
 }
@@ -224,6 +225,23 @@ model Veiculo {
   @@map("veiculos")
 }
 
+model Transportadora {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cnpj      String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, nome])
+  @@map("transportadoras")
+}
+
 model JanelaAtendimento {
   id                String   @id @default(uuid())
   descricao         String
@@ -250,20 +268,22 @@ model SlotReserva {
 }
 
 model Agendamento {
-  id          String            @id @default(uuid())
-  diId        String
-  motoristaId String
-  veiculoId   String
-  data        String
-  horario     String
-  protocolo   String            @unique
-  status      AgendamentoStatus @default(ATIVO)
-  observacao  String?
-  criadoEm   DateTime          @default(now())
+  id              String            @id @default(uuid())
+  diId            String
+  motoristaId     String
+  veiculoId       String
+  transportadoraId String?
+  data            String
+  horario         String
+  protocolo       String            @unique
+  status          AgendamentoStatus @default(ATIVO)
+  observacao      String?
+  criadoEm        DateTime          @default(now())
 
-  di        DI        @relation(fields: [diId], references: [id])
-  motorista Motorista @relation(fields: [motoristaId], references: [id])
-  veiculo   Veiculo   @relation(fields: [veiculoId], references: [id])
+  di             DI              @relation(fields: [diId], references: [id])
+  motorista      Motorista       @relation(fields: [motoristaId], references: [id])
+  veiculo        Veiculo         @relation(fields: [veiculoId], references: [id])
+  transportadora Transportadora? @relation(fields: [transportadoraId], references: [id])
 
   @@map("agendamentos")
 }

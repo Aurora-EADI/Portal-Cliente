@@ -81,6 +81,22 @@ export class AgendamentoService {
     return this.prisma.veiculo.update({ where: { id }, data });
   }
 
+  // ---- TRANSPORTADORAS ----
+  findAllTransportadoras(clienteId?: string) {
+    return this.prisma.transportadora.findMany({
+      where: { ...(clienteId ? { clienteId } : {}), ativo: true },
+      orderBy: { nome: 'asc' },
+    });
+  }
+
+  createTransportadora(data: { clienteId: string; nome: string; cnpj?: string; telefone?: string }) {
+    return this.prisma.transportadora.create({ data });
+  }
+
+  updateTransportadora(id: string, data: Partial<{ nome: string; cnpj: string; telefone: string; ativo: boolean }>) {
+    return this.prisma.transportadora.update({ where: { id }, data });
+  }
+
   // ---- JANELAS ----
   findAllJanelas() {
     return this.prisma.janelaAtendimento.findMany({ where: { ativo: true }, orderBy: { horaInicio: 'asc' } });

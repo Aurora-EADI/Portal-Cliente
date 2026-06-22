@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, X, UserPlus, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, X, UserPlus, Truck, ChevronLeft, ChevronRight, Clock, Users, CheckCircle2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
-import { Motorista, Veiculo } from '@/types/agendamento';
-import { formatCPF, formatPhone, formatPlaca } from '@/lib/agendamento';
+import { Motorista, Veiculo, Transportadora } from '@/types/agendamento';
+import { formatCPF, formatPhone, formatPlaca, gerarSlotsDeJanela } from '@/lib/agendamento';
+import { JanelaAtendimento } from '@/types/agendamento';
 
 export interface DadosFormData {
   operacao: string;
@@ -55,11 +56,6 @@ function parseContainers(containerStr: string): string[] {
   return containerStr.split('/').map(c => c.trim()).filter(Boolean);
 }
 const TIPOS_VEICULO = ['Cavalo + Carreta', 'Truck', 'Toco', 'Van', 'Bitrem', 'Carreta'];
-const HORARIOS = Array.from({ length: 25 }, (_, i) => {
-  const h = Math.floor(i / 2) + 6;
-  const m = i % 2 === 0 ? '00' : '30';
-  return `${String(h).padStart(2, '0')}:${m}`;
-}).filter(h => Number(h.split(':')[0]) <= 18);
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAY_HEADERS = ['Do','2ª','3ª','4ª','5ª','6ª','Sá'];
@@ -117,18 +113,28 @@ function toDateStr(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
 
-function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlots }: {
+function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlots, janelas }: {
   date: string;
   horario: string;
   onDateChange: (d: string) => void;
   onHorarioChange: (h: string) => void;
   busySlots: Record<string, number>;
+  janelas: JanelaAtendimento[];
 }) {
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
   const [sel] = date ? date.split('T') : [''];
   const selParts = sel ? sel.split('-').map(Number) : [today.getFullYear(), today.getMonth() + 1, today.getDate()];
   const [cm, setCm] = useState({ y: selParts[0], m: selParts[1] - 1 });
+
+  const dynamicSlots = useMemo(() => {
+    if (janelas.length) return janelas.flatMap(j => gerarSlotsDeJanela(j)).sort((a, b) => a.horario.localeCompare(b.horario));
+    return Array.from({ length: 25 }, (_, i) => {
+      const h = Math.floor(i / 2) + 6;
+      const m = i % 2 === 0 ? '00' : '30';
+      return { horario: `${String(h).padStart(2, '0')}:${m}`, descricao: 'Geral', vagasTotais: 3, janelaId: 'default' };
+    }).filter(s => Number(s.horario.split(':')[0]) <= 18);
+  }, [janelas]);
 
   const totalDays = daysInMonth(cm.y, cm.m);
   const offset = firstWeekday(cm.y, cm.m);
@@ -141,12 +147,13 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
   const isToday = (d: number) => toDateStr(cm.y, cm.m, d) === todayStr;
   const isSel = (d: number) => toDateStr(cm.y, cm.m, d) === date;
   const isPast = (d: number) => toDateStr(cm.y, cm.m, d) < todayStr;
+  const isWeekend = (d: number) => [0, 6].includes(new Date(cm.y, cm.m, d).getDay());
 
   return (
     <div className="border border-zinc-200 rounded-xl bg-white overflow-hidden">
-      <div className="flex">
+      <div className="flex flex-col lg:flex-row">
         {/* Calendar */}
-        <div className="p-4 border-r border-zinc-100 w-[260px]">
+        <div className="p-4 border-b lg:border-b-0 lg:border-r border-zinc-100 lg:w-[280px]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-zinc-800">{MONTH_NAMES[cm.m]} {cm.y}</span>
             <div className="flex gap-0.5">
@@ -162,66 +169,143 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
             {DAY_HEADERS.map(h => (
               <div key={h} className="text-center text-[10px] font-semibold text-zinc-400 py-1">{h}</div>
             ))}
-            {cells.map((day, i) => (
-              <button
-                key={i}
-                type="button"
-                disabled={!day || isPast(day!)}
-                onClick={() => day && onDateChange(toDateStr(cm.y, cm.m, day))}
-                className={[
-                  'mx-auto w-8 h-8 flex items-center justify-center rounded-full text-xs transition-colors',
-                  !day ? 'invisible' : '',
-                  day && isPast(day) ? 'text-zinc-300 cursor-not-allowed' : '',
-                  day && !isPast(day) && isToday(day) && !isSel(day) ? 'bg-emerald-500 text-white font-bold' : '',
-                  day && !isPast(day) && isSel(day) ? 'bg-[#ED6A23] text-white font-bold' : '',
-                  day && !isPast(day) && !isToday(day) && !isSel(day) ? 'text-zinc-700 hover:bg-zinc-100 cursor-pointer' : '',
-                ].join(' ')}
-              >
-                {day}
-              </button>
-            ))}
+            {cells.map((day, i) => {
+              const wknd = day ? isWeekend(day) : false;
+              const past = day ? isPast(day) : false;
+              const disabled = !day || past || wknd;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => day && onDateChange(toDateStr(cm.y, cm.m, day))}
+                  className={[
+                    'relative mx-auto w-9 h-9 flex flex-col items-center justify-center rounded-full text-xs transition-all',
+                    !day ? 'invisible' : '',
+                    wknd ? 'text-zinc-300 cursor-default' : '',
+                    past && !wknd ? 'text-zinc-300 cursor-not-allowed' : '',
+                    day && !disabled && isToday(day) && !isSel(day) ? 'bg-emerald-500 text-white font-bold' : '',
+                    day && !disabled && isSel(day) ? 'bg-[#ED6A23] text-white font-bold shadow-md shadow-orange-200' : '',
+                    day && !disabled && !isToday(day) && !isSel(day) ? 'text-zinc-700 hover:bg-zinc-100 cursor-pointer' : '',
+                  ].join(' ')}
+                >
+                  <span className="leading-none">{day}</span>
+                  {day && !disabled && !isSel(day) && !isToday(day) && (
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-[10px] text-zinc-400">
+            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Disponível</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#ED6A23] inline-block" /> Selecionado</span>
           </div>
         </div>
 
         {/* Time slots */}
-        <div className="p-4 flex-1 min-w-[200px]">
-          <p className="text-xs font-bold text-zinc-800 mb-3">
-            {date ? `Horários — ${date.split('-').reverse().join('/')}` : 'Selecione uma data'}
-          </p>
-          {date ? (
-            <div className="grid grid-cols-3 gap-1.5 max-h-[220px] overflow-y-auto">
-              {HORARIOS.map(h => {
-                const count = busySlots[h] ?? 0;
-                const selected = horario === h;
-                const isDateToday = date === todayStr;
-                const nowMinutes = today.getHours() * 60 + today.getMinutes();
-                const [hh, mm] = h.split(':').map(Number);
-                const slotPast = isDateToday && (hh * 60 + mm) <= nowMinutes;
-                return (
-                  <button
-                    key={h}
-                    type="button"
-                    disabled={slotPast}
-                    onClick={() => onHorarioChange(h)}
-                    className={[
-                      'px-2 py-2 rounded-lg text-xs font-mono transition-all border text-center',
-                      slotPast ? 'text-zinc-300 border-zinc-100 bg-zinc-50 cursor-not-allowed' : '',
-                      !slotPast && selected
-                        ? 'bg-[#ED6A23] text-white border-[#ED6A23] font-bold'
-                        : !slotPast ? 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50' : '',
-                    ].join(' ')}
-                  >
-                    {h}
-                    {count > 0 && !selected && (
-                      <span className="block text-[9px] text-zinc-400 font-sans mt-0.5">{count} agend.</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-zinc-400 mt-8 text-center">Escolha um dia no calendário</p>
-          )}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="px-4 py-3 border-b border-zinc-100">
+            {date ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-zinc-800">
+                    {date.split('-').reverse().join('/')}
+                  </p>
+                  <p className="text-[10px] text-zinc-400">{dynamicSlots.length} horários disponíveis</p>
+                </div>
+                {janelas.length > 0 && (
+                  <div className="flex items-center gap-1 text-[10px] text-zinc-400">
+                    <Users className="w-3 h-3" />
+                    {dynamicSlots.reduce((a, s) => a + s.vagasTotais, 0)} vagas/dia
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs font-semibold text-zinc-500">← Selecione uma data</p>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: 280 }}>
+            {!date ? (
+              <div className="flex flex-col items-center justify-center h-40 text-center gap-2">
+                <Clock className="w-8 h-8 text-zinc-200" />
+                <p className="text-xs text-zinc-400">Selecione uma data no calendário</p>
+              </div>
+            ) : dynamicSlots.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 text-center gap-1">
+                <Clock className="w-6 h-6 text-zinc-200" />
+                <p className="text-xs text-zinc-400">Sem horários configurados</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {dynamicSlots.map(slot => {
+                  const count = busySlots[slot.horario] ?? 0;
+                  const left = Math.max(0, slot.vagasTotais - count);
+                  const full = left === 0;
+                  const selected = horario === slot.horario;
+                  const isDateToday = date === todayStr;
+                  const nowMinutes = today.getHours() * 60 + today.getMinutes();
+                  const [hh, mm] = slot.horario.split(':').map(Number);
+                  const slotPast = isDateToday && (hh * 60 + mm) <= nowMinutes;
+                  const disabled = slotPast || full;
+
+                  return (
+                    <button
+                      key={`${slot.horario}-${slot.janelaId}`}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onHorarioChange(slot.horario)}
+                      className={[
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all',
+                        disabled ? 'border-zinc-100 bg-zinc-50 text-zinc-300 cursor-not-allowed' : '',
+                        selected ? 'border-[#ED6A23] bg-[#ED6A23] text-white shadow-sm' : '',
+                        !disabled && !selected ? 'border-zinc-200 bg-white text-zinc-700 hover:border-sky-300 hover:bg-sky-50 active:scale-[0.98]' : '',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {selected
+                          ? <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+                          : <Clock className={`w-3.5 h-3.5 shrink-0 ${disabled ? 'text-zinc-300' : 'text-zinc-400'}`} />
+                        }
+                        <span className={`font-mono font-bold text-sm tabular-nums ${selected ? 'text-white' : disabled ? 'text-zinc-300' : 'text-zinc-800'}`}>
+                          {slot.horario}
+                        </span>
+                        {slot.descricao !== 'Geral' && (
+                          <span className={`text-[10px] ${selected ? 'text-orange-100' : disabled ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                            {slot.descricao}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        {full ? (
+                          <span className="text-[9px] font-bold uppercase text-zinc-300 tracking-wide">Lotado</span>
+                        ) : slotPast ? (
+                          <span className="text-[9px] font-bold uppercase text-zinc-300 tracking-wide">Passado</span>
+                        ) : selected ? (
+                          <span className="text-[10px] font-bold text-orange-100">Selecionado</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: slot.vagasTotais }, (_, i) => (
+                                <span
+                                  key={i}
+                                  className={`w-1.5 h-1.5 rounded-full ${i < left ? (left === 1 ? 'bg-amber-400' : 'bg-emerald-400') : 'bg-zinc-200'}`}
+                                />
+                              ))}
+                            </div>
+                            <span className={`text-[10px] font-semibold ${left === 1 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                              {left}/{slot.vagasTotais}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -451,9 +535,86 @@ function ModalVeiculo({
   );
 }
 
+// ─── Modal Cadastro Transportadora ────────────────────────────────────────
+function ModalTransportadora({
+  onClose,
+  onSaved,
+  transportadoras,
+  handleAddTransportadora,
+}: {
+  onClose: () => void;
+  onSaved: (t: Transportadora) => void;
+  transportadoras: Transportadora[];
+  handleAddTransportadora: (t: Transportadora) => void;
+}) {
+  const [nome, setNome] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const validate = () => {
+    const errs: string[] = [];
+    if (nome.trim().length < 3) errs.push('Nome deve ter ao menos 3 caracteres.');
+    if (transportadoras.some(t => t.nome.toLowerCase() === nome.trim().toLowerCase())) errs.push('Transportadora já cadastrada.');
+    setErrors(errs);
+    return errs.length === 0;
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    const nova: Transportadora = { id: `transp-${Date.now()}`, nome: nome.trim(), cnpj: cnpj || undefined, telefone: telefone || undefined };
+    handleAddTransportadora(nova);
+    onSaved(nova);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md animate-in fade-in">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+          <div className="flex items-center gap-2">
+            <Truck className="w-4 h-4 text-[#ED6A23]" />
+            <h3 className="text-sm font-bold text-zinc-900">Cadastrar Transportadora</h3>
+          </div>
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSave} className="p-5 space-y-3">
+          {errors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
+              {errors.map(e => <p key={e} className="text-xs text-red-600">{e}</p>)}
+            </div>
+          )}
+          <div>
+            <label className={LABEL}>Nome da transportadora *</label>
+            <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Super Trans Logística" className={INPUT} />
+          </div>
+          <div>
+            <label className={LABEL}>CNPJ</label>
+            <input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" className={INPUT + ' font-mono'} />
+          </div>
+          <div>
+            <label className={LABEL}>Telefone</label>
+            <input value={telefone} onChange={e => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} className={INPUT} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-lg transition-colors">
+              Salvar transportadora
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── DadosStep principal ───────────────────────────────────────────────────
 export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) {
-  const { motoristas, veiculos, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, isDespachante } = useAgendamento();
+  const { motoristas, veiculos, transportadoras, handleAddMotorista, handleAddVeiculo, handleAddTransportadora, activeBookings, visibleDis, isDespachante, janelasAtendimento } = useAgendamento();
   const { currentUser } = useAuthContext();
   const userEmpresa = currentUser?.cliente?.nome ?? '';
   const isExternalUser = currentUser?.role === 'CLIENTE' || currentUser?.role === 'DESPACHANTE';
@@ -513,23 +674,67 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const [placaTouched,  setPlacaTouched]  = useState(false);
   const [showModalMot,  setShowModalMot]  = useState(false);
   const [showModalVeic, setShowModalVeic] = useState(false);
+  const [showModalTransp, setShowModalTransp] = useState(false);
+  const [transpFocused, setTranspFocused] = useState(false);
+  const [transpTouched, setTranspTouched] = useState(false);
 
   const set = <K extends keyof DadosFormData>(field: K) =>
     (value: DadosFormData[K]) => onChange({ ...data, [field]: value });
 
   const subOps = SUB_OPERACOES[data.operacao] ?? [];
 
+  // deduplicate by CPF
+  const uniqueMotoristas = useMemo(() => {
+    const seen = new Set<string>();
+    return motoristas.filter(m => {
+      const key = m.cpf.replace(/\D/g, '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [motoristas]);
+
+  const uniqueVeiculos = useMemo(() => {
+    const seen = new Set<string>();
+    return veiculos.filter(v => {
+      const key = v.placa.replace(/\s/g, '').toUpperCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [veiculos]);
+
+  const uniqueTransportadoras = useMemo(() => {
+    const seen = new Set<string>();
+    return transportadoras.filter(t => {
+      const key = t.nome.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [transportadoras]);
+
+  const transpSuggestions = transpFocused && data.transportadora.length > 0
+    ? uniqueTransportadoras.filter(t => t.nome.toLowerCase().includes(data.transportadora.toLowerCase()))
+    : [];
+  const transpMatch = uniqueTransportadoras.find(t => t.nome.toLowerCase() === data.transportadora.toLowerCase());
+  const transpLocked = !!transpMatch;
+  const transpError: string | null =
+    transpTouched && !transpFocused && data.transportadora.length > 2 && !transpMatch
+      ? 'Transportadora não cadastrada.'
+      : null;
+
   // autocomplete
   const cpfDigits      = data.cpfMotorista.replace(/\D/g, '');
   const cpfSuggestions = cpfFocused && cpfDigits.length > 0
-    ? motoristas.filter(m => m.cpf.replace(/\D/g, '').includes(cpfDigits))
+    ? uniqueMotoristas.filter(m => m.cpf.replace(/\D/g, '').includes(cpfDigits))
     : [];
   const nameSuggestions = nameFocused && data.nomeMotorista.length > 1
-    ? motoristas.filter(m => m.nome.toLowerCase().includes(data.nomeMotorista.toLowerCase()))
+    ? uniqueMotoristas.filter(m => m.nome.toLowerCase().includes(data.nomeMotorista.toLowerCase()))
     : [];
 
   // validações pós-blur
-  const motoristaMatch = motoristas.find(m => m.cpf.replace(/\D/g, '') === cpfDigits);
+  const motoristaMatch = uniqueMotoristas.find(m => m.cpf.replace(/\D/g, '') === cpfDigits);
   const cpfError: string | null =
     cpfTouched && !cpfFocused && data.cpfMotorista
       ? cpfDigits.length !== 11
@@ -541,15 +746,15 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
   const nameError: string | null =
     nameTouched && !nameFocused && data.nomeMotorista.length > 1
-      ? !motoristas.some(m => m.nome.toLowerCase() === data.nomeMotorista.toLowerCase())
+      ? !uniqueMotoristas.some(m => m.nome.toLowerCase() === data.nomeMotorista.toLowerCase())
         ? 'Motorista não encontrado no cadastro.'
         : null
       : null;
 
   const placaClean = data.placaVeiculo.replace(/\s/g, '').toUpperCase();
-  const veiculoMatch = veiculos.find(v => v.placa.replace(/\s/g, '').toUpperCase() === placaClean);
+  const veiculoMatch = uniqueVeiculos.find(v => v.placa.replace(/\s/g, '').toUpperCase() === placaClean);
   const placaSuggestions = placaFocused && placaClean.length > 0
-    ? veiculos.filter(v => v.placa.replace(/\s/g, '').toUpperCase().includes(placaClean))
+    ? uniqueVeiculos.filter(v => v.placa.replace(/\s/g, '').toUpperCase().includes(placaClean))
     : [];
   const placaError: string | null =
     placaTouched && !placaFocused && data.placaVeiculo.length >= 7 && !veiculoMatch
@@ -599,8 +804,33 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     setShowModalVeic(false);
   };
 
+  const selectTransportadora = (t: Transportadora) => {
+    onChange({ ...data, transportadora: t.nome });
+    setTranspFocused(false);
+    setTranspTouched(false);
+  };
+
+  const clearTransportadora = () => {
+    onChange({ ...data, transportadora: '' });
+    setTranspTouched(false);
+  };
+
+  const afterSaveTransportadora = (t: Transportadora) => {
+    onChange({ ...data, transportadora: t.nome });
+    setTranspTouched(false);
+    setShowModalTransp(false);
+  };
+
   return (
     <>
+      {showModalTransp && (
+        <ModalTransportadora
+          transportadoras={uniqueTransportadoras}
+          handleAddTransportadora={handleAddTransportadora}
+          onClose={() => setShowModalTransp(false)}
+          onSaved={afterSaveTransportadora}
+        />
+      )}
       {showModalMot && (
         <ModalMotorista
           motoristas={motoristas}
@@ -761,6 +991,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
               onDateChange={d => onChange({ ...data, dataAgendamento: d, inicio: '' })}
               onHorarioChange={h => set('inicio')(h)}
               busySlots={busySlots}
+              janelas={janelasAtendimento}
             />
           </div>
 
@@ -836,9 +1067,55 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             }
           </div>
 
-          <Field label="Transportadora *">
-            <input type="text" placeholder="Nome da transportadora" value={data.transportadora} onChange={e => set('transportadora')(e.target.value)} className={INPUT} />
-          </Field>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={LABEL} style={{ marginBottom: 0 }}>Transportadora *</label>
+              <button type="button" onClick={() => setShowModalTransp(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Cadastrar transportadora
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Nome da transportadora"
+                value={data.transportadora}
+                onChange={e => onChange({ ...data, transportadora: e.target.value })}
+                onFocus={() => setTranspFocused(true)}
+                onBlur={() => { setTranspFocused(false); setTranspTouched(true); }}
+                readOnly={transpLocked}
+                className={(transpError ? INPUT_ERR : INPUT) + ' pl-8' + (transpLocked ? ' bg-zinc-50' : '')}
+              />
+              {transpLocked && (
+                <button type="button" onClick={clearTransportadora} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {!transpLocked && transpFocused && transpSuggestions.length > 0 && (
+              <div className="mt-1 border border-zinc-200 rounded-lg shadow-sm bg-white overflow-hidden">
+                {transpSuggestions.slice(0, 5).map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); selectTransportadora(t); }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 transition-colors flex items-center gap-2 border-b border-zinc-100 last:border-0"
+                  >
+                    <Truck className="w-3 h-3 text-zinc-400" />
+                    <span className="text-zinc-800 font-semibold truncate">{t.nome}</span>
+                    {t.cnpj && <span className="text-zinc-400 font-mono text-[10px]">{t.cnpj}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!transpLocked && !transpFocused && transpError && (
+              <FieldError
+                msg={transpError}
+                onCadastrar={() => setShowModalTransp(true)}
+                label="Cadastrar transportadora"
+              />
+            )}
+          </div>
 
           <Field label="Empresa *">
             <input

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { DI, Motorista, Veiculo, Agendamento, JanelaAtendimento } from '@/types/agendamento';
+import { DI, Motorista, Veiculo, Transportadora, Agendamento, JanelaAtendimento } from '@/types/agendamento';
 import { DadosFormData } from '@/components/pages/agendamento/steps/DadosStep';
 import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
@@ -13,6 +13,7 @@ interface AgendamentoContextValue {
   dis: DI[];
   motoristas: Motorista[];
   veiculos: Veiculo[];
+  transportadoras: Transportadora[];
   activeBookings: Agendamento[];
   visibleDis: DI[];
   visibleBookings: Agendamento[];
@@ -36,9 +37,13 @@ interface AgendamentoContextValue {
   setViewingArchiveBooking: (b: Agendamento | null) => void;
   setSelectedClient: (c: string) => void;
   saveJanelasToStorage: (list: JanelaAtendimento[]) => void;
+  createJanelaApi: (data: Omit<JanelaAtendimento, 'id'>) => Promise<JanelaAtendimento>;
+  updateJanelaApi: (id: string, data: Partial<JanelaAtendimento>) => Promise<JanelaAtendimento>;
+  deleteJanelaApi: (id: string) => Promise<void>;
   saveSelectedJanelaIdToStorage: (id: string) => void;
   handleAddMotorista: (m: Motorista) => void;
   handleAddVeiculo: (v: Veiculo) => void;
+  handleAddTransportadora: (t: Transportadora) => void;
   handleCancelBooking: (id: string) => void;
   handleConfirmBooking: (data: string, horario: string) => Promise<void>;
   handleSaveNovoAgendamento: (dados: DadosFormData) => Promise<Agendamento>;
@@ -95,6 +100,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   const [dis, setDis] = useState<DI[]>([]);
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
   const [activeBookings, setActiveBookings] = useState<Agendamento[]>([]);
   const [janelasAtendimento, setJanelasAtendimento] = useState<JanelaAtendimento[]>([]);
 
@@ -122,11 +128,32 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       api.get('/agendamento/dis', { params }).then(r => setDis(r.data.map((d: any) => ({ ...d, cliente: d.cliente?.nome ?? d.cliente })))).catch(() => {}),
       api.get('/agendamento/motoristas', { params }).then(r => setMotoristas(r.data)).catch(() => {}),
       api.get('/agendamento/veiculos', { params }).then(r => setVeiculos(r.data)).catch(() => {}),
+      api.get('/agendamento/transportadoras', { params }).then(r => setTransportadoras(r.data)).catch(() => {}),
       api.get('/agendamento/agendamentos', { params }).then(r => setActiveBookings(r.data.map(mapApiBooking))).catch(() => {}),
     ]).finally(() => setIsLoadingData(false));
   }, [clienteId]);
 
-  const saveJanelasToStorage = (list: JanelaAtendimento[]) => setJanelasAtendimento(list);
+  const saveJanelasToStorage = (list: JanelaAtendimento[]) => {
+    setJanelasAtendimento(list);
+  };
+
+  const createJanelaApi = async (data: Omit<JanelaAtendimento, 'id'>) => {
+    const { data: created } = await api.post('/agendamento/janelas', data);
+    setJanelasAtendimento(prev => [...prev, created]);
+    return created as JanelaAtendimento;
+  };
+
+  const updateJanelaApi = async (id: string, data: Partial<JanelaAtendimento>) => {
+    const { data: updated } = await api.patch(`/agendamento/janelas/${id}`, data);
+    setJanelasAtendimento(prev => prev.map(j => j.id === id ? { ...j, ...updated } : j));
+    return updated as JanelaAtendimento;
+  };
+
+  const deleteJanelaApi = async (id: string) => {
+    await api.delete(`/agendamento/janelas/${id}`);
+    setJanelasAtendimento(prev => prev.filter(j => j.id !== id));
+    if (selectedJanelaId === id) setSelectedJanelaId('all');
+  };
   const saveSelectedJanelaIdToStorage = (id: string) => setSelectedJanelaId(id);
   const setSelectedClient = (c: string) => storeSetClient(c);
 
@@ -151,6 +178,18 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       setVeiculos(prev => [created, ...prev.filter(x => x.placa.toUpperCase() !== created.placa.toUpperCase())]);
     } catch {
       setVeiculos(prev => [v, ...prev]);
+    }
+  };
+
+  const handleAddTransportadora = async (t: Transportadora) => {
+    try {
+      const { data: saved } = await api.post('/agendamento/transportadoras', {
+        nome: t.nome, cnpj: t.cnpj, telefone: t.telefone,
+      });
+      const created: Transportadora = { id: saved.id, nome: saved.nome, cnpj: saved.cnpj, telefone: saved.telefone };
+      setTransportadoras(prev => [created, ...prev.filter(x => x.nome.toLowerCase() !== created.nome.toLowerCase())]);
+    } catch {
+      setTransportadoras(prev => [t, ...prev]);
     }
   };
 
@@ -239,14 +278,14 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgendamentoContext.Provider value={{
-      isLoadingData, dis, motoristas, veiculos, activeBookings, janelasAtendimento,
+      isLoadingData, dis, motoristas, veiculos, transportadoras, activeBookings, janelasAtendimento,
       visibleDis, visibleBookings, isAdmin, isDespachante, canSelectClient,
       selectedClient: effectiveClient, selectedJanelaId,
       currentStep, setCurrentStep, selectedDI, setSelectedDI,
       selectedMotorista, setSelectedMotorista, selectedVeiculo, setSelectedVeiculo,
       successBooking, setSuccessBooking, viewingArchiveBooking, setViewingArchiveBooking,
-      setSelectedClient, saveJanelasToStorage, saveSelectedJanelaIdToStorage,
-      handleAddMotorista, handleAddVeiculo,
+      setSelectedClient, saveJanelasToStorage, createJanelaApi, updateJanelaApi, deleteJanelaApi, saveSelectedJanelaIdToStorage,
+      handleAddMotorista, handleAddVeiculo, handleAddTransportadora,
       handleCancelBooking, handleConfirmBooking, handleSaveNovoAgendamento,
       handleResetWizard,
     }}>

@@ -51,6 +51,16 @@ export class AgendamentoController {
   @Patch('veiculos/:id')
   updateVeiculo(@Param('id') id: string, @Body() body: any) { return this.fcl.updateVeiculo(id, body); }
 
+  // TRANSPORTADORAS
+  @Get('transportadoras')
+  findAllTransportadoras(@Query('clienteId') clienteId?: string) { return this.fcl.findAllTransportadoras(clienteId); }
+
+  @Post('transportadoras')
+  createTransportadora(@Body() body: any) { return this.fcl.createTransportadora(body); }
+
+  @Patch('transportadoras/:id')
+  updateTransportadora(@Param('id') id: string, @Body() body: any) { return this.fcl.updateTransportadora(id, body); }
+
   // JANELAS
   @Get('janelas')
   findAllJanelas() { return this.fcl.findAllJanelas(); }
