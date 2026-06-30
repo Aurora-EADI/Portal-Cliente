@@ -32,12 +32,17 @@ export async function GET(request: NextRequest) {
   const clienteId = searchParams.get('clienteId') ?? undefined;
   const cnpjCliente = searchParams.get('cnpjCliente') ?? undefined;
   const status = searchParams.get('status') ?? undefined;
+  const excludeConcluido = searchParams.get('excludeConcluido') === '1';
   const dataInicio = searchParams.get('dataInicio') ?? undefined;
   const dataFim = searchParams.get('dataFim') ?? undefined;
 
+  const effectiveStatuses = excludeConcluido
+    ? ACTIVE_STATUSES.filter(s => s !== AgendamentoStatus.CONCLUIDO)
+    : ACTIVE_STATUSES;
+
   const statusFilter = status
     ? { status: status as AgendamentoStatus }
-    : { status: { in: ACTIVE_STATUSES } };
+    : { status: { in: effectiveStatuses } };
 
   const agendamentos = await prisma.agendamento.findMany({
     where: {
