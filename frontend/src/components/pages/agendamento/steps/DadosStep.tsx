@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { Motorista, Veiculo, Transportadora } from '@/types/agendamento';
-import { formatCPF, formatPhone, formatPlaca, gerarSlotsDeJanela } from '@/lib/agendamento';
+import { formatCPF, formatPhone, formatPlaca, formatCNPJ, gerarSlotsDeJanela } from '@/lib/agendamento';
 import { JanelaAtendimento } from '@/types/agendamento';
 
 export interface DadosFormData {
@@ -55,7 +55,7 @@ function parseContainers(containerStr: string): string[] {
   if (!containerStr) return [];
   return containerStr.split('/').map(c => c.trim()).filter(Boolean);
 }
-const TIPOS_VEICULO = ['Cavalo + Carreta', 'Truck', 'Toco', 'Van', 'Bitrem', 'Carreta'];
+const TIPOS_VEICULO = ['BAU','BESTA','CACAMBA','CAMINHAO','CAMINHAO MUCK','CAMINHAO PIPA','CAMINHAO TANQUE','CARRETA','CARRETA CEGONHA','CARRETA DE PASSEIO','CARRO FORTE','CAVALO','DOBLO','FIORINO','FURGAO','GUINDASTE','KOMBI','MOTO','ONIBUS','PERUA','PICKUP','PLATAFORMA','PRANCHA','TROLE','VAN'];
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DAY_HEADERS = ['Do','2ª','3ª','4ª','5ª','6ª','Sá'];
@@ -462,7 +462,7 @@ function ModalVeiculo({
 }) {
   const [placa, setPlaca] = useState('');
   const [modelo, setModelo] = useState('');
-  const [tipo, setTipo] = useState('Cavalo + Carreta');
+  const [tipo, setTipo] = useState(TIPOS_VEICULO[0]);
   const [errors, setErrors] = useState<string[]>([]);
 
   const validate = () => {
@@ -516,7 +516,7 @@ function ModalVeiculo({
             <input value={modelo} onChange={e => setModelo(e.target.value)} placeholder="Ex: Volvo FH 540" className={INPUT} />
           </div>
           <div>
-            <label className={LABEL}>Tipo *</label>
+            <label className={LABEL}>Tipo de veículo *</label>
             <select value={tipo} onChange={e => setTipo(e.target.value)} className={INPUT}>
               {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -592,7 +592,7 @@ function ModalTransportadora({
           </div>
           <div>
             <label className={LABEL}>CNPJ</label>
-            <input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" className={INPUT + ' font-mono'} />
+            <input value={cnpj} onChange={e => setCnpj(formatCNPJ(e.target.value))} placeholder="00.000.000/0000-00" maxLength={18} className={INPUT + ' font-mono'} />
           </div>
           <div>
             <label className={LABEL}>Telefone</label>
@@ -975,13 +975,6 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             <span className="text-xs font-bold text-zinc-600">Serviços</span>
             <button type="button" className="text-zinc-400 hover:text-zinc-600 transition-colors"><Plus className="w-4 h-4" /></button>
           </div>
-
-          <Field label="Tipo de veículo *">
-            <select value={data.tipoVeiculo} onChange={e => set('tipoVeiculo')(e.target.value)} className={INPUT}>
-              <option value="">Selecione...</option>
-              {TIPOS_VEICULO.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Field>
 
           <div>
             <label className={LABEL}>Data e horário *</label>
