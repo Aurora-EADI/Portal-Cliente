@@ -106,13 +106,30 @@ model Cliente {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dis          DI[]
-  motoristas   Motorista[]
-  veiculos     Veiculo[]
-  users        User[]
-  agendamentos Agendamento[]
+  dis             DI[]
+  motoristas      Motorista[]
+  veiculos        Veiculo[]
+  transportadoras Transportadora[]
+  users           User[]
+  agendamentos    Agendamento[]
 
   @@map("clientes")
+}
+
+model Transportadora {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cnpj      String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, nome])
+  @@map("transportadoras")
 }
 
 model DI {
@@ -278,6 +295,7 @@ model DiAverbada {
   despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
 
   @@index([cnpjCliente])
+  @@index([codDespachante])
   @@map("dis_averbadas")
 }
 

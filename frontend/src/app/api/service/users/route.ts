@@ -36,14 +36,33 @@ export async function GET(request: NextRequest) {
     orderBy: { name: 'asc' },
   });
 
+  // Find users that are missing the entity link (clienteId/despachanteId is null)
+  const unlinkedIds = users
+    .filter(u => !u.clienteId && !u.despachanteId)
+    .map(u => u.id);
+
+  // Fallback: recover cnpj/codDespachante from the accepted convite
+  const fallbackConvites = unlinkedIds.length > 0
+    ? await prisma.conviteRegistro.findMany({
+        where: { usedByUserId: { in: unlinkedIds } },
+        select: { usedByUserId: true, cnpjCliente: true, codDespachante: true },
+      })
+    : [];
+
+  const conviteByUserId = new Map(
+    fallbackConvites
+      .filter(c => c.usedByUserId)
+      .map(c => [c.usedByUserId!, c]),
+  );
+
   const mapped = users.map(u => ({
     id: u.id,
     nome: u.name,
     email: u.email,
     role: u.role,
     active: u.active,
-    codDespachante: u.despachante?.codDespachante ?? null,
-    cnpjCliente: u.cliente?.cnpj ?? null,
+    codDespachante: u.despachante?.codDespachante ?? conviteByUserId.get(u.id)?.codDespachante ?? null,
+    cnpjCliente: u.cliente?.cnpj ?? conviteByUserId.get(u.id)?.cnpjCliente ?? null,
     createdAt: u.createdAt.toISOString(),
   }));
 
