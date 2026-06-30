@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const clienteId = searchParams.get('clienteId') ?? undefined;
+  const cnpjCliente = searchParams.get('cnpjCliente') ?? undefined;
   const status = searchParams.get('status') ?? undefined;
   const dataInicio = searchParams.get('dataInicio') ?? undefined;
   const dataFim = searchParams.get('dataFim') ?? undefined;
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
           { clienteId },
         ],
       } : {}),
+      ...(cnpjCliente ? { cliente: { cnpj: cnpjCliente } } : {}),
       ...(dataInicio && dataFim ? { data: { gte: dataInicio, lte: dataFim } } : {}),
       ...(dataInicio && !dataFim ? { data: { gte: dataInicio } } : {}),
     },
