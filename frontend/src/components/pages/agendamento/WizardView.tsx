@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, AlertCircle, Loader2, Download, Plus } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, Download, Plus, CalendarPlus, Truck, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
@@ -237,21 +237,44 @@ export function WizardView() {
       </div>
 
       {canDelegate && (
-        <div className="px-6 pt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode('agendar')}
-            className={`flex-1 text-xs font-bold py-2.5 rounded-lg border transition-colors ${mode === 'agendar' ? 'bg-[#ED6A23] text-white border-[#ED6A23]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'}`}
-          >
-            Eu mesmo vou agendar
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('atribuir')}
-            className={`flex-1 text-xs font-bold py-2.5 rounded-lg border transition-colors ${mode === 'atribuir' ? 'bg-[#ED6A23] text-white border-[#ED6A23]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'}`}
-          >
-            Atribuir a uma transportadora
-          </button>
+        <div className="px-6 pt-4">
+          <p className="text-xs font-bold text-zinc-500 mb-2">Como deseja prosseguir?</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setMode('agendar')}
+              aria-pressed={mode === 'agendar'}
+              className={`relative flex items-start gap-3 text-left p-4 rounded-lg border-2 transition-colors ${mode === 'agendar' ? 'border-[#ED6A23] bg-[#ED6A23]/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
+            >
+              {mode === 'agendar' && (
+                <span className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#ED6A23] flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5 text-white" />
+                </span>
+              )}
+              <CalendarPlus className={`w-5 h-5 mt-0.5 shrink-0 ${mode === 'agendar' ? 'text-[#ED6A23]' : 'text-zinc-400'}`} />
+              <div>
+                <p className="text-sm font-bold text-zinc-900">Eu mesmo vou agendar</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Preencher os dados da retirada agora.</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('atribuir')}
+              aria-pressed={mode === 'atribuir'}
+              className={`relative flex items-start gap-3 text-left p-4 rounded-lg border-2 transition-colors ${mode === 'atribuir' ? 'border-[#ED6A23] bg-[#ED6A23]/5' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}
+            >
+              {mode === 'atribuir' && (
+                <span className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#ED6A23] flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5 text-white" />
+                </span>
+              )}
+              <Truck className={`w-5 h-5 mt-0.5 shrink-0 ${mode === 'atribuir' ? 'text-[#ED6A23]' : 'text-zinc-400'}`} />
+              <div>
+                <p className="text-sm font-bold text-zinc-900">Atribuir a uma transportadora</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Delegar a retirada pra transportadora responsável.</p>
+              </div>
+            </button>
+          </div>
         </div>
       )}
 
