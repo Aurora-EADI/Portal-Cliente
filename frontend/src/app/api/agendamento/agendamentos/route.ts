@@ -36,6 +36,9 @@ export async function GET(request: NextRequest) {
     } else {
       clienteFilter = { OR: [{ di: { clienteId: { in: clienteIds } } }, { clienteId: { in: clienteIds } }] };
     }
+  } else if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId) return NextResponse.json([]);
+    clienteFilter = { transportadoraContaId: auth.user.transportadoraContaId };
   }
 
   const agendamentos = await prisma.agendamento.findMany({
@@ -62,6 +65,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (body.diId) {
+      if (auth.user.role === UserRole.TRANSPORTADORA) {
+        return NextResponse.json({ message: 'Fluxo não disponível para transportadoras' }, { status: 403 });
+      }
       return handleLegacyPost(body, auth.user);
     }
 
@@ -138,7 +144,49 @@ async function handleNewFormPost(body: any, user: any) {
   }
 
   let clienteId: string | null = null;
-  if (user.role === UserRole.CLIENTE && user.clienteId) {
+  let transportadoraContaId: string | null = null;
+  let transportadoraNome: string | null = null;
+
+  if (user.role === UserRole.TRANSPORTADORA) {
+    if (!user.transportadoraContaId) {
+      return NextResponse.json({ message: 'Conta de transportadora não vinculada' }, { status: 403 });
+    }
+    const diNumeros: string[] = (Array.isArray(diNumero) ? diNumero : diNumero ? [diNumero] : [])
+      .map((d: string) => String(d).trim())
+      .filter(Boolean);
+    if (diNumeros.length === 0) {
+      return NextResponse.json({ message: 'Informe a DI para agendar' }, { status: 400 });
+    }
+
+    // Só DIs atribuídas a esta transportadora podem ser agendadas
+    const disAtribuidas = await prisma.diAverbada.findMany({
+      where: {
+        OR: [{ documentoSaida: { in: diNumeros } }, { nLote: { in: diNumeros } }],
+        atribuicoes: { some: { transportadoraContaId: user.transportadoraContaId } },
+      },
+    });
+    const encontrados = new Set(disAtribuidas.flatMap(d => [d.documentoSaida, d.nLote].filter(Boolean)));
+    const semAtribuicao = diNumeros.filter(n => !encontrados.has(n));
+    if (semAtribuicao.length > 0) {
+      return NextResponse.json(
+        { message: `DI(s) não atribuída(s) a esta transportadora: ${semAtribuicao.join(', ')}` },
+        { status: 403 },
+      );
+    }
+
+    transportadoraContaId = user.transportadoraContaId;
+    const conta = await prisma.transportadoraConta.findUnique({
+      where: { id: user.transportadoraContaId },
+      select: { nome: true },
+    });
+    transportadoraNome = conta?.nome ?? null;
+
+    const cnpjClienteDi = disAtribuidas.find(d => d.cnpjCliente)?.cnpjCliente;
+    if (cnpjClienteDi) {
+      const cliente = await prisma.cliente.findFirst({ where: { cnpj: cnpjClienteDi } });
+      clienteId = cliente?.id ?? null;
+    }
+  } else if (user.role === UserRole.CLIENTE && user.clienteId) {
     clienteId = user.clienteId;
   } else if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
     if (empresa) {
@@ -203,7 +251,8 @@ async function handleNewFormPost(body: any, user: any) {
       cpfMotorista: cpfMotorista || null,
       nomeMotorista: nomeMotorista || null,
       placaVeiculo: placaVeiculo || null,
-      transportadora: transportadora || null,
+      transportadora: transportadora || transportadoraNome || null,
+      transportadoraContaId,
       empresa: empresa || null,
       awbMawb: Array.isArray(awbMawb) ? awbMawb.join(', ') : (awbMawb || null),
       diNumero: Array.isArray(diNumero) ? diNumero.join(', ') : (diNumero || null),

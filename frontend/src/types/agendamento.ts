@@ -8,6 +8,16 @@ export interface DI {
   pesoBruto: number;
   mercadoria: string;
   transportadora: string;
+  // Campos extras vindos da DiAverbada (rota /agendamento/dis)
+  nLote?: string;
+  nConhecimento?: string;
+  dta?: string;
+  modalidade?: string;
+  cnpjCliente?: string;
+  codDespachante?: string;
+  despachante?: string;
+  localizacao?: string;
+  averbadoEm?: string;
 }
 
 export interface Motorista {

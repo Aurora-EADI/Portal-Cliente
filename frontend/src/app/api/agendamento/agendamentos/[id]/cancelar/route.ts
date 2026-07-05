@@ -33,6 +33,12 @@ export async function PATCH(
     }
   }
 
+  if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId || existing.transportadoraContaId !== auth.user.transportadoraContaId) {
+      return NextResponse.json({ message: 'Sem permissão para cancelar este agendamento' }, { status: 403 });
+    }
+  }
+
   if (auth.user.role === UserRole.DESPACHANTE) {
     if (!auth.user.despachanteId) {
       return NextResponse.json({ message: 'Sem permissão' }, { status: 403 });

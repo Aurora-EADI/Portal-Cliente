@@ -1,0 +1,152 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { UserRole } from '@prisma/client';
+import type { User } from '@prisma/client';
+import { requireAuth, requireRoles } from '@/lib/auth-server';
+import { normalizeCnpj } from '@/lib/convites';
+
+// Predicado de ownership da DI averbada pro usuário (CLIENTE por CNPJ, DESPACHANTE por código)
+async function getDiOwnershipWhere(user: User): Promise<Record<string, any> | null> {
+  if (user.role === UserRole.CLIENTE && user.clienteId) {
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: user.clienteId },
+      select: { cnpj: true },
+    });
+    if (!cliente?.cnpj) return null;
+    return { cnpjCliente: cliente.cnpj };
+  }
+  if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
+    const despachante = await prisma.despachante.findUnique({
+      where: { id: user.despachanteId },
+      select: { codDespachante: true },
+    });
+    if (!despachante) return null;
+    return { codDespachante: despachante.codDespachante };
+  }
+  return null;
+}
+
+export async function GET(request: NextRequest) {
+  const { user, error } = await requireAuth(request);
+  if (error) return error;
+  const denied = requireRoles(user, [UserRole.CLIENTE, UserRole.DESPACHANTE]);
+  if (denied) return denied;
+
+  const ownership = await getDiOwnershipWhere(user);
+  if (!ownership) return NextResponse.json([]);
+
+  const { searchParams } = new URL(request.url);
+  const nLote = searchParams.get('nLote');
+
+  const atribuicoes = await prisma.diTransportadoraAtribuicao.findMany({
+    where: {
+      ...(nLote ? { nLote } : {}),
+      diAverbada: ownership,
+    },
+    include: {
+      transportadora: { select: { id: true, nome: true, cnpj: true } },
+    },
+    orderBy: { atribuidoEm: 'desc' },
+  });
+
+  return NextResponse.json(atribuicoes);
+}
+
+export async function POST(request: NextRequest) {
+  const { user, error } = await requireAuth(request);
+  if (error) return error;
+  const denied = requireRoles(user, [UserRole.CLIENTE, UserRole.DESPACHANTE]);
+  if (denied) return denied;
+
+  try {
+    const body = await request.json();
+    const { nLote, cnpj, nome } = body;
+
+    if (!nLote || !cnpj) {
+      return NextResponse.json({ message: 'nLote e cnpj são obrigatórios' }, { status: 400 });
+    }
+
+    const cnpjDigits = normalizeCnpj(String(cnpj));
+    if (cnpjDigits.length !== 14) {
+      return NextResponse.json({ message: 'CNPJ inválido (14 dígitos)' }, { status: 400 });
+    }
+
+    const ownership = await getDiOwnershipWhere(user);
+    if (!ownership) {
+      return NextResponse.json({ message: 'Usuário sem vínculo de cliente/despachante' }, { status: 403 });
+    }
+
+    const di = await prisma.diAverbada.findFirst({ where: { nLote, ...ownership } });
+    if (!di) {
+      return NextResponse.json({ message: 'DI não encontrada ou sem permissão' }, { status: 404 });
+    }
+
+    let transportadora = await prisma.transportadoraConta.findUnique({ where: { cnpj: cnpjDigits } });
+    if (!transportadora) {
+      if (!nome) {
+        return NextResponse.json({ message: 'nome é obrigatório para nova transportadora' }, { status: 400 });
+      }
+      transportadora = await prisma.transportadoraConta.create({
+        data: { cnpj: cnpjDigits, nome },
+      });
+    }
+
+    const existente = await prisma.diTransportadoraAtribuicao.findUnique({
+      where: { nLote_transportadoraContaId: { nLote, transportadoraContaId: transportadora.id } },
+    });
+    if (existente) {
+      return NextResponse.json({ message: 'Transportadora já atribuída a esta DI' }, { status: 409 });
+    }
+
+    const atribuicao = await prisma.diTransportadoraAtribuicao.create({
+      data: {
+        nLote,
+        transportadoraContaId: transportadora.id,
+        atribuidoPorUserId: user.id,
+        atribuidoPorRole: user.role,
+      },
+      include: {
+        transportadora: { select: { id: true, nome: true, cnpj: true } },
+      },
+    });
+
+    return NextResponse.json(atribuicao, { status: 201 });
+  } catch (err: any) {
+    console.error('[atribuicoes] POST error:', err?.message ?? err);
+    return NextResponse.json({ message: 'Erro ao atribuir transportadora' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const { user, error } = await requireAuth(request);
+  if (error) return error;
+  const denied = requireRoles(user, [UserRole.CLIENTE, UserRole.DESPACHANTE]);
+  if (denied) return denied;
+
+  const { searchParams } = new URL(request.url);
+  const nLote = searchParams.get('nLote');
+  const transportadoraContaId = searchParams.get('transportadoraContaId');
+
+  if (!nLote || !transportadoraContaId) {
+    return NextResponse.json({ message: 'nLote e transportadoraContaId são obrigatórios' }, { status: 400 });
+  }
+
+  const ownership = await getDiOwnershipWhere(user);
+  if (!ownership) {
+    return NextResponse.json({ message: 'Usuário sem vínculo de cliente/despachante' }, { status: 403 });
+  }
+
+  const di = await prisma.diAverbada.findFirst({ where: { nLote, ...ownership } });
+  if (!di) {
+    return NextResponse.json({ message: 'DI não encontrada ou sem permissão' }, { status: 404 });
+  }
+
+  const deleted = await prisma.diTransportadoraAtribuicao.deleteMany({
+    where: { nLote, transportadoraContaId },
+  });
+  if (deleted.count === 0) {
+    return NextResponse.json({ message: 'Atribuição não encontrada' }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: 'Atribuição removida' });
+}

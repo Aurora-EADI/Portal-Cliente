@@ -76,6 +76,7 @@ async function registerWithToken(body: any) {
 
   let clienteId: string | null = null;
   let despachanteId: string | null = null;
+  let transportadoraContaId: string | null = null;
 
   if (convite.tipo === UserRole.DESPACHANTE && convite.codDespachante) {
     let despachante = await prisma.despachante.findUnique({
@@ -116,6 +117,32 @@ async function registerWithToken(body: any) {
     clienteId = cliente.id;
   }
 
+  if (convite.tipo === UserRole.TRANSPORTADORA && convite.cnpjTransportadora) {
+    let transportadoraConta = await prisma.transportadoraConta.findUnique({
+      where: { cnpj: convite.cnpjTransportadora },
+    });
+    if (!transportadoraConta) {
+      transportadoraConta = await prisma.transportadoraConta.create({
+        data: {
+          cnpj: convite.cnpjTransportadora,
+          nome: convite.nome,
+          codTransp: convite.codTransp,
+          email,
+          telefone: telefone || null,
+        },
+      });
+    } else if (!transportadoraConta.email || !transportadoraConta.codTransp) {
+      transportadoraConta = await prisma.transportadoraConta.update({
+        where: { id: transportadoraConta.id },
+        data: {
+          email: transportadoraConta.email ?? email,
+          codTransp: transportadoraConta.codTransp ?? convite.codTransp,
+        },
+      });
+    }
+    transportadoraContaId = transportadoraConta.id;
+  }
+
   const user = await prisma.user.create({
     data: {
       id: authData.user.id,
@@ -125,6 +152,7 @@ async function registerWithToken(body: any) {
       active: true,
       clienteId,
       despachanteId,
+      transportadoraContaId,
     },
   });
 

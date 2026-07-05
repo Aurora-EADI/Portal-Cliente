@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
       include: {
         cliente: { select: { id: true, nome: true, cnpj: true } },
         despachante: { select: { id: true, codDespachante: true, nome: true } },
+        transportadoraConta: { select: { id: true, nome: true, cnpj: true } },
       },
     });
 

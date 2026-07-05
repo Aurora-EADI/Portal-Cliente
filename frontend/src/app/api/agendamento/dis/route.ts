@@ -69,7 +69,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(mapDisAverbadas(disAverbadas));
   }
 
-  return NextResponse.json({ message: 'Acesso restrito a clientes e despachantes' }, { status: 403 });
+  if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId) {
+      return NextResponse.json([], { status: 200 });
+    }
+    const disAverbadas = await prisma.diAverbada.findMany({
+      where: { atribuicoes: { some: { transportadoraContaId: auth.user.transportadoraContaId } } },
+      orderBy: { sincronizadoEm: 'desc' },
+    });
+    return NextResponse.json(mapDisAverbadas(disAverbadas));
+  }
+
+  return NextResponse.json({ message: 'Acesso restrito a clientes, despachantes e transportadoras' }, { status: 403 });
 }
 
 export async function POST(request: NextRequest) {

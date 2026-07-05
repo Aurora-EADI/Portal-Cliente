@@ -39,11 +39,11 @@ export function requireRoles(user: User, roles: UserRole[]): NextResponse | null
   return null;
 }
 
-const EXTERNAL_ROLES: UserRole[] = ['CLIENTE' as UserRole, 'DESPACHANTE' as UserRole];
+const EXTERNAL_ROLES: UserRole[] = ['CLIENTE' as UserRole, 'DESPACHANTE' as UserRole, 'TRANSPORTADORA' as UserRole];
 
 export function requireExternalRole(user: User): NextResponse | null {
   if (!EXTERNAL_ROLES.includes(user.role)) {
-    return NextResponse.json({ message: 'Acesso restrito a clientes e despachantes' }, { status: 403 });
+    return NextResponse.json({ message: 'Acesso restrito a clientes, despachantes e transportadoras' }, { status: 403 });
   }
   return null;
 }

@@ -13,6 +13,7 @@ enum UserRole {
   EMPLOYEE
   CLIENTE
   DESPACHANTE
+  TRANSPORTADORA
 }
 
 model User {
@@ -24,12 +25,14 @@ model User {
   active     Boolean   @default(true)
   clienteId      String?
   despachanteId  String?
+  transportadoraContaId String? @map("transportadora_conta_id")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   moduleAccess UserModuleAccess[]
   cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -236,11 +239,13 @@ model Agendamento {
   container      String?
   criadoPorNome  String?   @map("criado_por_nome")
   criadoPorRole  String?   @map("criado_por_role")
+  transportadoraContaId String? @map("transportadora_conta_id")
 
   di        DI?        @relation(fields: [diId], references: [id])
   motorista Motorista? @relation(fields: [motoristaId], references: [id])
   veiculo   Veiculo?   @relation(fields: [veiculoId], references: [id])
   cliente   Cliente?   @relation(fields: [clienteId], references: [id])
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
 
   @@map("agendamentos")
 }
@@ -293,10 +298,49 @@ model DiAverbada {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
+  atribuicoes    DiTransportadoraAtribuicao[]
 
   @@index([cnpjCliente])
   @@index([codDespachante])
   @@map("dis_averbadas")
+}
+
+// ============================================================
+// TRANSPORTADORA — acesso externo para transportadoras
+// ============================================================
+
+model TransportadoraConta {
+  id        String   @id @default(uuid())
+  cnpj      String   @unique
+  nome      String
+  codTransp String?  @map("cod_transp")
+  email     String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  atribuicoes  DiTransportadoraAtribuicao[]
+  agendamentos Agendamento[]
+
+  @@map("transportadora_contas")
+}
+
+model DiTransportadoraAtribuicao {
+  id                    String   @id @default(uuid())
+  nLote                 String   @map("n_lote")
+  transportadoraContaId String   @map("transportadora_conta_id")
+  atribuidoPorUserId    String?  @map("atribuido_por_user_id")
+  atribuidoPorRole      String?  @map("atribuido_por_role")
+  atribuidoEm           DateTime @default(now()) @map("atribuido_em")
+
+  diAverbada     DiAverbada          @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
+  transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+
+  @@unique([nLote, transportadoraContaId])
+  @@index([transportadoraContaId])
+  @@map("di_transportadora_atribuicoes")
 }
 
 // ============================================================
@@ -309,6 +353,8 @@ model ConviteRegistro {
   tipo           UserRole
   codDespachante String?   @map("cod_despachante")
   cnpjCliente    String?   @map("cnpj_cliente")
+  cnpjTransportadora String? @map("cnpj_transportadora")
+  codTransp      String?   @map("cod_transp")
   nome           String
   email          String?
   expiresAt      DateTime  @map("expires_at")

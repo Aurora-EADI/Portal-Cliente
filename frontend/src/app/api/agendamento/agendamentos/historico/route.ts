@@ -21,6 +21,9 @@ export async function GET(request: NextRequest) {
     const clienteIds = await getDespachanteClienteIds(auth.user.despachanteId);
     if (!clienteIds.length) return NextResponse.json([]);
     clienteFilter = { di: { clienteId: { in: clienteIds } } };
+  } else if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId) return NextResponse.json([]);
+    clienteFilter = { transportadoraContaId: auth.user.transportadoraContaId };
   } else {
     return NextResponse.json([]);
   }

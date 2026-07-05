@@ -617,8 +617,17 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const { motoristas, veiculos, transportadoras, handleAddMotorista, handleAddVeiculo, handleAddTransportadora, activeBookings, visibleDis, isDespachante, janelasAtendimento } = useAgendamento();
   const { currentUser } = useAuthContext();
   const userEmpresa = currentUser?.cliente?.nome ?? '';
-  const isExternalUser = currentUser?.role === 'CLIENTE' || currentUser?.role === 'DESPACHANTE';
+  const isTransportadoraUser = currentUser?.role === 'TRANSPORTADORA';
+  const isExternalUser = currentUser?.role === 'CLIENTE' || currentUser?.role === 'DESPACHANTE' || isTransportadoraUser;
   const availableDis = visibleDis.filter(d => d.status === 'liberada');
+
+  // Transportadora agenda em nome próprio: campo travado com o próprio nome
+  const transportadoraContaNome = currentUser?.transportadoraConta?.nome ?? currentUser?.name ?? '';
+  React.useEffect(() => {
+    if (isTransportadoraUser && transportadoraContaNome && !data.transportadora) {
+      onChange({ ...data, transportadora: transportadoraContaNome });
+    }
+  }, [isTransportadoraUser, transportadoraContaNome]);
 
   const busySlots = useMemo(() => {
     if (!data.dataAgendamento) return {};
@@ -718,9 +727,9 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     ? uniqueTransportadoras.filter(t => t.nome.toLowerCase().includes(data.transportadora.toLowerCase()))
     : [];
   const transpMatch = uniqueTransportadoras.find(t => t.nome.toLowerCase() === data.transportadora.toLowerCase());
-  const transpLocked = !!transpMatch;
+  const transpLocked = !!transpMatch || isTransportadoraUser;
   const transpError: string | null =
-    transpTouched && !transpFocused && data.transportadora.length > 2 && !transpMatch
+    !isTransportadoraUser && transpTouched && !transpFocused && data.transportadora.length > 2 && !transpMatch
       ? 'Transportadora não cadastrada.'
       : null;
 

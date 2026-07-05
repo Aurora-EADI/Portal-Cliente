@@ -22,30 +22,31 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get('role') ?? undefined;
 
-  const validRoles = [UserRole.DESPACHANTE, UserRole.CLIENTE] as string[];
+  const validRoles = [UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.TRANSPORTADORA] as string[];
   const roleFilter = role && validRoles.includes(role)
     ? { role: role as UserRole }
-    : { role: { in: [UserRole.DESPACHANTE, UserRole.CLIENTE] } };
+    : { role: { in: [UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.TRANSPORTADORA] } };
 
   const users = await prisma.user.findMany({
     where: roleFilter,
     include: {
       cliente: { select: { id: true, nome: true, cnpj: true } },
       despachante: { select: { id: true, codDespachante: true, nome: true } },
+      transportadoraConta: { select: { id: true, cnpj: true, codTransp: true, nome: true } },
     },
     orderBy: { name: 'asc' },
   });
 
-  // Find users that are missing the entity link (clienteId/despachanteId is null)
+  // Find users that are missing the entity link (clienteId/despachanteId/transportadoraContaId is null)
   const unlinkedIds = users
-    .filter(u => !u.clienteId && !u.despachanteId)
+    .filter(u => !u.clienteId && !u.despachanteId && !u.transportadoraContaId)
     .map(u => u.id);
 
   // Fallback: recover cnpj/codDespachante from the accepted convite
   const fallbackConvites = unlinkedIds.length > 0
     ? await prisma.conviteRegistro.findMany({
         where: { usedByUserId: { in: unlinkedIds } },
-        select: { usedByUserId: true, cnpjCliente: true, codDespachante: true },
+        select: { usedByUserId: true, cnpjCliente: true, codDespachante: true, cnpjTransportadora: true, codTransp: true },
       })
     : [];
 
@@ -63,6 +64,8 @@ export async function GET(request: NextRequest) {
     active: u.active,
     codDespachante: u.despachante?.codDespachante ?? conviteByUserId.get(u.id)?.codDespachante ?? null,
     cnpjCliente: u.cliente?.cnpj ?? conviteByUserId.get(u.id)?.cnpjCliente ?? null,
+    cnpjTransportadora: u.transportadoraConta?.cnpj ?? conviteByUserId.get(u.id)?.cnpjTransportadora ?? null,
+    codTransp: u.transportadoraConta?.codTransp ?? conviteByUserId.get(u.id)?.codTransp ?? null,
     createdAt: u.createdAt.toISOString(),
   }));
 

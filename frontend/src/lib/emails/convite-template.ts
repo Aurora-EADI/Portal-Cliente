@@ -6,7 +6,12 @@ interface ConviteEmailParams {
 }
 
 export function conviteEmailHtml({ nome, tipo, link, diasValidade }: ConviteEmailParams): string {
-  const tipoLabel = tipo === 'DESPACHANTE' ? 'Despachante' : 'Cliente';
+  const TIPO_LABELS: Record<string, string> = {
+    DESPACHANTE: 'Despachante',
+    CLIENTE: 'Cliente',
+    TRANSPORTADORA: 'Transportadora',
+  };
+  const tipoLabel = TIPO_LABELS[tipo] ?? 'Cliente';
 
   return `
 <!DOCTYPE html>

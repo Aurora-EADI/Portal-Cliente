@@ -8,12 +8,14 @@ export interface User {
     companyId: string | null;
     clienteId?: string | null;
     despachanteId?: string | null;
+    transportadoraContaId?: string | null;
     position: string | null;
     active?: boolean;
     createdAt: string;
     updatedAt: string;
     cliente?: { id: string; nome: string; cnpj?: string } | null;
     despachante?: { id: string; codDespachante: string; nome: string } | null;
+    transportadoraConta?: { id: string; nome: string; cnpj: string } | null;
 }
 
 export interface CreateUserDto {

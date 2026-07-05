@@ -11,6 +11,7 @@ import { PortariaView } from './PortariaView';
 import { DIDirectoryView } from './DIDirectoryView';
 import { MotoristasView } from './MotoristasView';
 import { ConfiguracaoView } from './ConfiguracaoView';
+import { AtribuicaoTransportadorasView } from './AtribuicaoTransportadorasView';
 
 function AgendamentoContent() {
   const searchParams = useSearchParams();
@@ -18,15 +19,22 @@ function AgendamentoContent() {
   const { currentUser } = useAuthContext();
   const tab = searchParams.get('tab') ?? 'dashboard';
 
-  const isExternalUser = currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE;
+  const isTransportadora = currentUser?.role === UserRole.TRANSPORTADORA;
+  const isClienteOuDespachante = currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE;
+  const isExternalUser = isClienteOuDespachante || isTransportadora;
+
+  const blockedTab =
+    (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) ||
+    (isTransportadora && (tab === 'drivers' || tab === 'transportadoras')) ||
+    (!isClienteOuDespachante && tab === 'transportadoras');
 
   React.useEffect(() => {
-    if (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) {
+    if (blockedTab) {
       router.replace('/agendamento');
     }
-  }, [isExternalUser, tab, router]);
+  }, [blockedTab, router]);
 
-  if (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) return null;
+  if (blockedTab) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 p-4 md:p-6">
@@ -35,7 +43,8 @@ function AgendamentoContent() {
       {tab === 'gate'      && <PortariaView />}
       {tab === 'dis'       && <DIDirectoryView />}
       {tab === 'drivers'   && <MotoristasView />}
-      {tab === 'config'    && !isCliente && <ConfiguracaoView />}
+      {tab === 'transportadoras' && <AtribuicaoTransportadorasView />}
+      {tab === 'config'    && <ConfiguracaoView />}
     </div>
   );
 }

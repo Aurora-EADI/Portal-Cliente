@@ -1,4 +1,4 @@
-﻿import { CalendarDays, CalendarPlus, Clock, Container, Users, SlidersHorizontal, LayoutDashboard } from 'lucide-react';
+﻿import { CalendarDays, CalendarPlus, Clock, Container, Users, SlidersHorizontal, LayoutDashboard, Truck } from 'lucide-react';
 import { NavigationContext } from '../types';
 import { UserRole } from '@/types';
 
@@ -16,7 +16,8 @@ export const agendamentoFCLNavigation: NavigationContext = {
         { label: 'Novo Agendamento', icon: CalendarPlus, path: '/agendamento?tab=wizard' },
         { label: 'Portaria (Gate)', icon: Clock, path: '/agendamento?tab=gate', requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
         { label: 'DIs & Containers', icon: Container, path: '/agendamento?tab=dis', requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE] },
-        { label: 'Motoristas', icon: Users, path: '/agendamento?tab=drivers' },
+        { label: 'Motoristas', icon: Users, path: '/agendamento?tab=drivers', requiredRoles: [UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE] },
+        { label: 'Transportadoras', icon: Truck, path: '/agendamento?tab=transportadoras', requiredRoles: [UserRole.CLIENTE, UserRole.DESPACHANTE] },
         {
           label: 'Configurações',
           icon: SlidersHorizontal,

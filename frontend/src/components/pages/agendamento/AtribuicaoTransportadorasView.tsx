@@ -1,0 +1,340 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus } from 'lucide-react';
+import { useAgendamento } from '@/context/AgendamentoContext';
+import { api } from '@/lib/api';
+
+interface AtribuicaoApi {
+  id: string;
+  nLote: string;
+  atribuidoEm: string;
+  transportadora: { id: string; nome: string; cnpj: string };
+}
+
+interface ConviteGerado {
+  link: string;
+  expiresAt: string;
+  emailSent: boolean;
+}
+
+export function AtribuicaoTransportadorasView() {
+  const { dis, isLoadingData } = useAgendamento();
+  const [search, setSearch] = useState('');
+  const [atribuicoes, setAtribuicoes] = useState<AtribuicaoApi[]>([]);
+  const [loadingAtribuicoes, setLoadingAtribuicoes] = useState(true);
+
+  // Modal de atribuição
+  const [atribuindoNLote, setAtribuindoNLote] = useState<string | null>(null);
+  const [formCnpj, setFormCnpj] = useState('');
+  const [formNome, setFormNome] = useState('');
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Modal de convite
+  const [showConvite, setShowConvite] = useState(false);
+  const [convCnpj, setConvCnpj] = useState('');
+  const [convNome, setConvNome] = useState('');
+  const [convEmail, setConvEmail] = useState('');
+  const [convError, setConvError] = useState('');
+  const [convGerado, setConvGerado] = useState<ConviteGerado | null>(null);
+  const [convSaving, setConvSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const loadAtribuicoes = async () => {
+    try {
+      const { data } = await api.get<AtribuicaoApi[]>('/agendamento/atribuicoes');
+      setAtribuicoes(data);
+    } catch (err) {
+      console.error('[Atribuições] erro ao carregar', err);
+    } finally {
+      setLoadingAtribuicoes(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAtribuicoes();
+  }, []);
+
+  const atribuicoesPorLote = atribuicoes.reduce<Record<string, AtribuicaoApi[]>>((acc, a) => {
+    (acc[a.nLote] = acc[a.nLote] ?? []).push(a);
+    return acc;
+  }, {});
+
+  const filteredDis = dis.filter(di => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      di.numeroDI?.toLowerCase().includes(q) ||
+      di.nLote?.toLowerCase().includes(q) ||
+      di.cliente?.toLowerCase().includes(q) ||
+      (atribuicoesPorLote[di.nLote ?? ''] ?? []).some(a => a.transportadora.nome.toLowerCase().includes(q))
+    );
+  });
+
+  const handleAtribuir = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!atribuindoNLote) return;
+    setFormError('');
+
+    const cnpjDigits = formCnpj.replace(/\D/g, '');
+    if (cnpjDigits.length !== 14) { setFormError('CNPJ inválido (14 dígitos).'); return; }
+    if (formNome.trim().length < 3) { setFormError('Informe o nome da transportadora.'); return; }
+
+    setSaving(true);
+    try {
+      await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim() });
+      await loadAtribuicoes();
+      setAtribuindoNLote(null);
+      setFormCnpj(''); setFormNome('');
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message ?? 'Erro ao atribuir transportadora.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemover = async (nLote: string, transportadoraContaId: string) => {
+    try {
+      await api.delete(`/agendamento/atribuicoes?nLote=${encodeURIComponent(nLote)}&transportadoraContaId=${encodeURIComponent(transportadoraContaId)}`);
+      setAtribuicoes(prev => prev.filter(a => !(a.nLote === nLote && a.transportadora.id === transportadoraContaId)));
+    } catch (err) {
+      console.error('[Atribuições] erro ao remover', err);
+    }
+  };
+
+  const handleConvidar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConvError('');
+
+    const cnpjDigits = convCnpj.replace(/\D/g, '');
+    if (cnpjDigits.length !== 14) { setConvError('CNPJ inválido (14 dígitos).'); return; }
+    if (convNome.trim().length < 3) { setConvError('Informe o nome da transportadora.'); return; }
+
+    setConvSaving(true);
+    try {
+      const { data } = await api.post('/agendamento/convites-transportadora', {
+        cnpj: cnpjDigits,
+        nome: convNome.trim(),
+        email: convEmail.trim() || undefined,
+      });
+      setConvGerado({ link: data.link, expiresAt: data.expiresAt, emailSent: data.emailSent });
+    } catch (err: any) {
+      setConvError(err?.response?.data?.message ?? 'Erro ao gerar convite.');
+    } finally {
+      setConvSaving(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!convGerado) return;
+    navigator.clipboard.writeText(convGerado.link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const closeConvite = () => {
+    setShowConvite(false);
+    setConvCnpj(''); setConvNome(''); setConvEmail('');
+    setConvError(''); setConvGerado(null); setCopied(false);
+  };
+
+  const isLoading = isLoadingData || loadingAtribuicoes;
+
+  return (
+    <div className="space-y-6 animate-in fade-in">
+      <div className="bg-white border border-zinc-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-extrabold text-zinc-900">Transportadoras</h2>
+          <p className="text-xs text-zinc-500 mt-1">Atribua transportadoras às suas DIs averbadas para que possam agendar a retirada</p>
+        </div>
+        <button
+          onClick={() => setShowConvite(true)}
+          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Convidar Transportadora</span>
+        </button>
+      </div>
+
+      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="p-4">
+          <div className="relative mb-4">
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Buscar por DI, lote, cliente ou transportadora..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800"
+            />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 bg-zinc-50">
+                  {['DI / Lote', 'Cliente', 'Transportadoras Atribuídas', 'Ações'].map(h => (
+                    <th key={h} className="text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {isLoading && (
+                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400 text-xs">Carregando...</td></tr>
+                )}
+                {!isLoading && filteredDis.map(di => {
+                  const lote = di.nLote ?? '';
+                  const doLote = atribuicoesPorLote[lote] ?? [];
+                  return (
+                    <tr key={di.id} className="hover:bg-zinc-50/60">
+                      <td className="py-3 px-3">
+                        <span className="font-mono font-bold text-sky-800">{di.numeroDI}</span>
+                        {lote && <span className="block text-[10px] text-zinc-400 font-mono">Lote {lote}</span>}
+                      </td>
+                      <td className="py-3 px-3 text-zinc-600">{di.cliente || '—'}</td>
+                      <td className="py-3 px-3">
+                        {doLote.length === 0 && (
+                          <span className="text-zinc-400 text-[11px]">Nenhuma atribuída</span>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {doLote.map(a => (
+                            <span key={a.id} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                              <Truck className="w-3 h-3" />
+                              {a.transportadora.nome}
+                              <button
+                                onClick={() => handleRemover(a.nLote, a.transportadora.id)}
+                                title="Remover atribuição"
+                                className="text-sky-400 hover:text-red-500 cursor-pointer ml-0.5"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <button
+                          onClick={() => { setAtribuindoNLote(lote); setFormError(''); }}
+                          disabled={!lote}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ED6A23] hover:text-[#D45917] disabled:text-zinc-300 cursor-pointer"
+                        >
+                          <Truck className="w-3.5 h-3.5" /> Atribuir
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!isLoading && filteredDis.length === 0 && (
+                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400 text-xs">Nenhuma DI averbada encontrada</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de atribuição */}
+      {atribuindoNLote && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200">
+              <h3 className="text-sm font-extrabold text-zinc-900">Atribuir Transportadora — Lote {atribuindoNLote}</h3>
+              <button onClick={() => setAtribuindoNLote(null)} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleAtribuir} className="p-5 space-y-4 text-xs">
+              {formError && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {formError}</div>
+              )}
+              <div>
+                <label className="text-zinc-600 font-bold block mb-1.5">CNPJ da Transportadora *</label>
+                <input type="text" required value={formCnpj} onChange={(e) => setFormCnpj(e.target.value)} placeholder="00.000.000/0000-00"
+                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div>
+                <label className="text-zinc-600 font-bold block mb-1.5">Nome da Transportadora *</label>
+                <input type="text" required value={formNome} onChange={(e) => setFormNome(e.target.value)} placeholder="Razão social ou nome fantasia"
+                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setAtribuindoNLote(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
+                <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-60 text-xs shadow-sm">
+                  {saving ? 'Atribuindo...' : 'Atribuir'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de convite */}
+      {showConvite && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200">
+              <h3 className="text-sm font-extrabold text-zinc-900">Convidar Transportadora</h3>
+              <button onClick={closeConvite} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+
+            {!convGerado ? (
+              <form onSubmit={handleConvidar} className="p-5 space-y-4 text-xs">
+                {convError && (
+                  <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {convError}</div>
+                )}
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">CNPJ *</label>
+                  <input type="text" required value={convCnpj} onChange={(e) => setConvCnpj(e.target.value)} placeholder="00.000.000/0000-00"
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Nome *</label>
+                  <input type="text" required value={convNome} onChange={(e) => setConvNome(e.target.value)} placeholder="Razão social ou nome fantasia"
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">E-mail (envia o convite automaticamente)</label>
+                  <input type="email" value={convEmail} onChange={(e) => setConvEmail(e.target.value)} placeholder="contato@transportadora.com.br"
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={closeConvite} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
+                  <button type="submit" disabled={convSaving} className="px-4 py-2 bg-[#ED6A23] text-white rounded-lg font-bold hover:bg-[#D45917] disabled:opacity-60 text-xs shadow-sm">
+                    {convSaving ? 'Gerando...' : 'Gerar Convite'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="p-5 space-y-4 text-xs">
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded text-emerald-700 font-semibold flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Convite gerado com sucesso!
+                  {convGerado.emailSent && (
+                    <span className="inline-flex items-center gap-1 text-emerald-600"><Mail className="w-3.5 h-3.5" /> E-mail enviado</span>
+                  )}
+                </div>
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Link do convite</label>
+                  <div className="flex gap-2">
+                    <input readOnly value={convGerado.link}
+                      className="flex-1 py-2 px-3 border border-zinc-200 rounded-lg bg-zinc-50 font-mono text-[10px] text-zinc-700" />
+                    <button onClick={handleCopyLink}
+                      className="inline-flex items-center gap-1 px-3 py-2 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 font-bold cursor-pointer">
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copied ? 'Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 mt-1.5">
+                    Expira em {new Date(convGerado.expiresAt).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button onClick={closeConvite} className="px-4 py-2 bg-zinc-800 text-white rounded-lg font-bold hover:bg-zinc-700 text-xs">Fechar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
