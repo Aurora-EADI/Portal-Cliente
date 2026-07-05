@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle, Loader2, Download, Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useAgendamento } from '@/context/AgendamentoContext';
+import { useAuthContext } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 import { Agendamento } from '@/types/agendamento';
 import { StepIndicator } from './steps/StepIndicator';
 import { DadosStep, DadosFormData } from './steps/DadosStep';
 import { NotificacoesStep, NotificacoesFormData } from './steps/NotificacoesStep';
+import { AtribuirTransportadoraForm } from './AtribuirTransportadoraForm';
 
 const WIZARD_STEPS = [
   { number: 1, title: 'Dados',         subtitle: 'Informações do agendamento' },
@@ -166,7 +169,10 @@ function InfoField({ label, value, mono }: { label: string; value: string; mono?
 
 export function WizardView() {
   const router = useRouter();
+  const { currentUser } = useAuthContext();
   const { handleSaveNovoAgendamento } = useAgendamento();
+  const canDelegate = currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE;
+  const [mode, setMode] = useState<'agendar' | 'atribuir'>('agendar');
   const [step, setStep] = useState(1);
   const [dados, setDados] = useState<DadosFormData>(INITIAL_DADOS);
   const [notificacoes, setNotificacoes] = useState<NotificacoesFormData>(INITIAL_NOTIFICACOES);
@@ -230,36 +236,61 @@ export function WizardView() {
         <h2 className="text-base font-bold text-zinc-900">Novo agendamento</h2>
       </div>
 
-      <StepIndicator currentStep={step} steps={WIZARD_STEPS} />
-
-      {submitError && (
-        <div className="mx-6 mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 animate-in fade-in slide-in-from-top-2">
-          <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-          <p className="text-sm text-red-700">{submitError}</p>
+      {canDelegate && (
+        <div className="px-6 pt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('agendar')}
+            className={`flex-1 text-xs font-bold py-2.5 rounded-lg border transition-colors ${mode === 'agendar' ? 'bg-[#ED6A23] text-white border-[#ED6A23]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'}`}
+          >
+            Eu mesmo vou agendar
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('atribuir')}
+            className={`flex-1 text-xs font-bold py-2.5 rounded-lg border transition-colors ${mode === 'atribuir' ? 'bg-[#ED6A23] text-white border-[#ED6A23]' : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'}`}
+          >
+            Atribuir a uma transportadora
+          </button>
         </div>
       )}
 
-      <div className="p-6">
-        {step === 1 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} />}
-        {step === 2 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
-      </div>
+      {mode === 'atribuir' ? (
+        <AtribuirTransportadoraForm onBack={() => router.push('/agendamento')} />
+      ) : (
+        <>
+          <StepIndicator currentStep={step} steps={WIZARD_STEPS} />
 
-      <div className="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
-        <button
-          onClick={handleBack}
-          disabled={saving}
-          className="px-5 py-2 text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-40"
-        >
-          {step > 1 ? 'Anterior' : 'Fechar'}
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!canAdvance || saving}
-          className="px-5 py-2 text-sm font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
-        >
-          {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : step < 2 ? 'Próximo' : 'Salvar'}
-        </button>
-      </div>
+          {submitError && (
+            <div className="mx-6 mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          )}
+
+          <div className="p-6">
+            {step === 1 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} />}
+            {step === 2 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
+          </div>
+
+          <div className="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
+            <button
+              onClick={handleBack}
+              disabled={saving}
+              className="px-5 py-2 text-sm font-medium text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-40"
+            >
+              {step > 1 ? 'Anterior' : 'Fechar'}
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!canAdvance || saving}
+              className="px-5 py-2 text-sm font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : step < 2 ? 'Próximo' : 'Salvar'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
