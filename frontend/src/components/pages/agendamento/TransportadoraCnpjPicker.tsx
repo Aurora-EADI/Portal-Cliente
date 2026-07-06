@@ -22,10 +22,9 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     [transportadoras]
   );
 
-  const [manualMode, setManualMode] = useState(pickable.length === 0);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(cnpj && nome ? `${nome} — ${formatCNPJ(cnpj)}` : '');
   const [focused, setFocused] = useState(false);
-  const [locked, setLocked] = useState(false);
+  const [locked, setLocked] = useState(!!(cnpj && nome));
 
   const suggestions = focused && search.length > 0
     ? pickable.filter(t => {
@@ -48,44 +47,20 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     setLocked(false);
   };
 
-  if (manualMode) {
+  if (pickable.length === 0) {
     return (
-      <>
-        <div>
-          <label className={LABEL}>CNPJ da Transportadora *</label>
-          <input type="text" value={cnpj} onChange={(e) => onChangeCnpj(formatCNPJ(e.target.value))} placeholder="00.000.000/0000-00" maxLength={18}
-            className={INPUT + ' font-mono'} />
-        </div>
-        <div>
-          <label className={LABEL}>Nome da Transportadora *</label>
-          <input type="text" value={nome} onChange={(e) => onChangeNome(e.target.value)} placeholder="Razão social ou nome fantasia"
-            className={INPUT} />
-        </div>
-        {pickable.length > 0 && (
-          <button
-            type="button"
-            onClick={() => { setManualMode(false); clearSelection(); }}
-            className="text-[11px] font-bold text-[#ED6A23] hover:underline"
-          >
-            Escolher transportadora já cadastrada
-          </button>
-        )}
-      </>
+      <div>
+        <label className={LABEL}>Transportadora *</label>
+        <p className="text-xs text-zinc-400 border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50">
+          Nenhuma transportadora sincronizada do SIAUM ainda. Aguarde a próxima sincronização.
+        </p>
+      </div>
     );
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <label className={LABEL} style={{ marginBottom: 0 }}>Transportadora *</label>
-        <button
-          type="button"
-          onClick={() => { setManualMode(true); clearSelection(); }}
-          className="text-[11px] font-bold text-[#ED6A23] hover:underline"
-        >
-          Não encontrou? Cadastrar manualmente
-        </button>
-      </div>
+      <label className={LABEL}>Transportadora *</label>
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
         <input
