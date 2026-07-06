@@ -27,22 +27,23 @@ export async function POST(request: NextRequest) {
 
     let synced = 0;
     let skipped = 0;
+    let failed = 0;
 
-    await prisma.$transaction(async (tx) => {
-      for (const item of items) {
-        const cnpjDigits = String(item.cnpj_cpf ?? '').replace(/\D/g, '');
-        if (cnpjDigits.length !== 14) {
-          skipped += 1;
-          continue;
-        }
+    for (const item of items) {
+      const cnpjDigits = String(item.cnpj_cpf ?? '').replace(/\D/g, '');
+      if (cnpjDigits.length !== 14) {
+        skipped += 1;
+        continue;
+      }
 
-        const nome = item.nomefantasia ?? item.razaosocial ?? null;
-        if (!nome) {
-          skipped += 1;
-          continue;
-        }
+      const nome = item.nomefantasia ?? item.razaosocial ?? null;
+      if (!nome) {
+        skipped += 1;
+        continue;
+      }
 
-        await tx.transportadoraConta.upsert({
+      try {
+        await prisma.transportadoraConta.upsert({
           where: { cnpj: cnpjDigits },
           create: {
             cnpj: cnpjDigits,
@@ -59,10 +60,13 @@ export async function POST(request: NextRequest) {
           },
         });
         synced += 1;
+      } catch (itemError: any) {
+        console.error(`[service/transportadoras/batch] upsert failed for cnpj ${cnpjDigits}:`, itemError.message);
+        failed += 1;
       }
-    });
+    }
 
-    return NextResponse.json({ synced, skipped }, { status: 201 });
+    return NextResponse.json({ synced, skipped, failed }, { status: 201 });
   } catch (error: any) {
     console.error('[service/transportadoras/batch] POST error:', error.message);
     return NextResponse.json({ message: 'Batch sync failed' }, { status: 500 });
