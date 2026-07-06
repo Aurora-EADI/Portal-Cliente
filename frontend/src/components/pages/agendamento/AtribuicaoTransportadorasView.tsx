@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
+import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 interface AtribuicaoApi {
   id: string;
@@ -19,7 +20,7 @@ interface ConviteGerado {
 }
 
 export function AtribuicaoTransportadorasView() {
-  const { dis, isLoadingData } = useAgendamento();
+  const { dis, isLoadingData, transportadoras } = useAgendamento();
   const [search, setSearch] = useState('');
   const [atribuicoes, setAtribuicoes] = useState<AtribuicaoApi[]>([]);
   const [loadingAtribuicoes, setLoadingAtribuicoes] = useState(true);
@@ -246,16 +247,13 @@ export function AtribuicaoTransportadorasView() {
               {formError && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {formError}</div>
               )}
-              <div>
-                <label className="text-zinc-600 font-bold block mb-1.5">CNPJ da Transportadora *</label>
-                <input type="text" required value={formCnpj} onChange={(e) => setFormCnpj(e.target.value)} placeholder="00.000.000/0000-00"
-                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
-              </div>
-              <div>
-                <label className="text-zinc-600 font-bold block mb-1.5">Nome da Transportadora *</label>
-                <input type="text" required value={formNome} onChange={(e) => setFormNome(e.target.value)} placeholder="Razão social ou nome fantasia"
-                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
-              </div>
+              <TransportadoraCnpjPicker
+                transportadoras={transportadoras}
+                cnpj={formCnpj}
+                nome={formNome}
+                onChangeCnpj={setFormCnpj}
+                onChangeNome={setFormNome}
+              />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setAtribuindoNLote(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
                 <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-60 text-xs shadow-sm">
@@ -281,16 +279,13 @@ export function AtribuicaoTransportadorasView() {
                 {convError && (
                   <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {convError}</div>
                 )}
-                <div>
-                  <label className="text-zinc-600 font-bold block mb-1.5">CNPJ *</label>
-                  <input type="text" required value={convCnpj} onChange={(e) => setConvCnpj(e.target.value)} placeholder="00.000.000/0000-00"
-                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                </div>
-                <div>
-                  <label className="text-zinc-600 font-bold block mb-1.5">Nome *</label>
-                  <input type="text" required value={convNome} onChange={(e) => setConvNome(e.target.value)} placeholder="Razão social ou nome fantasia"
-                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                </div>
+                <TransportadoraCnpjPicker
+                  transportadoras={transportadoras}
+                  cnpj={convCnpj}
+                  nome={convNome}
+                  onChangeCnpj={setConvCnpj}
+                  onChangeNome={setConvNome}
+                />
                 <div>
                   <label className="text-zinc-600 font-bold block mb-1.5">E-mail (envia o convite automaticamente)</label>
                   <input type="email" value={convEmail} onChange={(e) => setConvEmail(e.target.value)} placeholder="contato@transportadora.com.br"

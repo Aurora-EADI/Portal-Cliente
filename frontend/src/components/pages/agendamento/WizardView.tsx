@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle, Loader2, Download, Plus, CalendarPlus, Truck, Check } from 'lucide-react';
 import Image from 'next/image';
@@ -180,6 +180,10 @@ export function WizardView() {
   const [savedBooking, setSavedBooking] = useState<Agendamento | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.role === UserRole.DESPACHANTE) setMode('atribuir');
+  }, [currentUser?.role]);
 
   const validateNotificacoes = (): boolean => {
     const errs: Partial<Record<keyof NotificacoesFormData, string>> = {};

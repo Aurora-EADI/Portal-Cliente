@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { CheckCircle, Send, Truck, Plus } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
+import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 const INPUT = 'w-full py-2 px-3 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800';
 const LABEL = 'text-xs font-bold text-zinc-600 block mb-1.5';
@@ -13,7 +14,7 @@ interface AtribuirTransportadoraFormProps {
 }
 
 export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFormProps) {
-  const { visibleDis } = useAgendamento();
+  const { visibleDis, transportadoras } = useAgendamento();
   const availableDis = visibleDis.filter(d => d.status === 'liberada' && d.nLote);
 
   const [nLote, setNLote] = useState('');
@@ -143,17 +144,13 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
         )}
       </div>
 
-      <div>
-        <label className={LABEL}>CNPJ da Transportadora *</label>
-        <input type="text" value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0000-00"
-          className={INPUT + ' font-mono'} />
-      </div>
-
-      <div>
-        <label className={LABEL}>Nome da Transportadora *</label>
-        <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Razão social ou nome fantasia"
-          className={INPUT} />
-      </div>
+      <TransportadoraCnpjPicker
+        transportadoras={transportadoras}
+        cnpj={cnpj}
+        nome={nome}
+        onChangeCnpj={setCnpj}
+        onChangeNome={setNome}
+      />
 
       {showConvite && (
         <div>
