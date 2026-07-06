@@ -20,7 +20,7 @@ interface ConviteGerado {
 }
 
 export function AtribuicaoTransportadorasView() {
-  const { dis, isLoadingData, transportadoras } = useAgendamento();
+  const { dis, isLoadingData, transportadorasConta } = useAgendamento();
   const [search, setSearch] = useState('');
   const [atribuicoes, setAtribuicoes] = useState<AtribuicaoApi[]>([]);
   const [loadingAtribuicoes, setLoadingAtribuicoes] = useState(true);
@@ -248,7 +248,7 @@ export function AtribuicaoTransportadorasView() {
                 <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {formError}</div>
               )}
               <TransportadoraCnpjPicker
-                transportadoras={transportadoras}
+                transportadoras={transportadorasConta}
                 cnpj={formCnpj}
                 nome={formNome}
                 onChangeCnpj={setFormCnpj}
@@ -280,7 +280,7 @@ export function AtribuicaoTransportadorasView() {
                   <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {convError}</div>
                 )}
                 <TransportadoraCnpjPicker
-                  transportadoras={transportadoras}
+                  transportadoras={transportadorasConta}
                   cnpj={convCnpj}
                   nome={convNome}
                   onChangeCnpj={setConvCnpj}

@@ -14,7 +14,7 @@ interface AtribuirTransportadoraFormProps {
 }
 
 export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFormProps) {
-  const { visibleDis, transportadoras } = useAgendamento();
+  const { visibleDis, transportadorasConta } = useAgendamento();
   const availableDis = visibleDis.filter(d => d.status === 'liberada' && d.nLote);
 
   const [nLote, setNLote] = useState('');
@@ -145,7 +145,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
       </div>
 
       <TransportadoraCnpjPicker
-        transportadoras={transportadoras}
+        transportadoras={transportadorasConta}
         cnpj={cnpj}
         nome={nome}
         onChangeCnpj={setCnpj}

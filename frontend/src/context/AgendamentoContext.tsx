@@ -14,6 +14,7 @@ interface AgendamentoContextValue {
   motoristas: Motorista[];
   veiculos: Veiculo[];
   transportadoras: Transportadora[];
+  transportadorasConta: Transportadora[];
   activeBookings: Agendamento[];
   visibleDis: DI[];
   visibleBookings: Agendamento[];
@@ -101,6 +102,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   const [motoristas, setMotoristas] = useState<Motorista[]>([]);
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
+  const [transportadorasConta, setTransportadorasConta] = useState<Transportadora[]>([]);
   const [activeBookings, setActiveBookings] = useState<Agendamento[]>([]);
   const [janelasAtendimento, setJanelasAtendimento] = useState<JanelaAtendimento[]>([]);
 
@@ -129,6 +131,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       api.get('/agendamento/motoristas', { params }).then(r => setMotoristas(r.data)).catch(() => {}),
       api.get('/agendamento/veiculos', { params }).then(r => setVeiculos(r.data)).catch(() => {}),
       api.get('/agendamento/transportadoras', { params }).then(r => setTransportadoras(r.data)).catch(() => {}),
+      api.get('/agendamento/transportadoras-conta').then(r => setTransportadorasConta(r.data)).catch(() => {}),
       api.get('/agendamento/agendamentos', { params }).then(r => setActiveBookings(r.data.map(mapApiBooking))).catch(() => {}),
     ]).finally(() => setIsLoadingData(false));
   }, [clienteId]);
@@ -278,7 +281,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgendamentoContext.Provider value={{
-      isLoadingData, dis, motoristas, veiculos, transportadoras, activeBookings, janelasAtendimento,
+      isLoadingData, dis, motoristas, veiculos, transportadoras, transportadorasConta, activeBookings, janelasAtendimento,
       visibleDis, visibleBookings, isAdmin, isDespachante, canSelectClient,
       selectedClient: effectiveClient, selectedJanelaId,
       currentStep, setCurrentStep, selectedDI, setSelectedDI,
