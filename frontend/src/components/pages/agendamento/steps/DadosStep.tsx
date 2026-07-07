@@ -627,7 +627,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     if (isTransportadoraUser && transportadoraContaNome && !data.transportadora) {
       onChange({ ...data, transportadora: transportadoraContaNome });
     }
-  }, [isTransportadoraUser, transportadoraContaNome]);
+  }, [isTransportadoraUser, transportadoraContaNome, data.transportadora]);
 
   const busySlots = useMemo(() => {
     if (!data.dataAgendamento) return {};
@@ -1072,9 +1072,11 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className={LABEL} style={{ marginBottom: 0 }}>Transportadora *</label>
-              <button type="button" onClick={() => setShowModalTransp(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
-                <Plus className="w-3 h-3" /> Cadastrar transportadora
-              </button>
+              {!isTransportadoraUser && (
+                <button type="button" onClick={() => setShowModalTransp(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> Cadastrar transportadora
+                </button>
+              )}
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
@@ -1088,7 +1090,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
                 readOnly={transpLocked}
                 className={(transpError ? INPUT_ERR : INPUT) + ' pl-8' + (transpLocked ? ' bg-zinc-50' : '')}
               />
-              {transpLocked && (
+              {transpLocked && !isTransportadoraUser && (
                 <button type="button" onClick={clearTransportadora} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
                   <X className="w-3.5 h-3.5" />
                 </button>
