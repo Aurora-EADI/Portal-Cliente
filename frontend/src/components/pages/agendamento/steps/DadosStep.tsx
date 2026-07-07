@@ -535,86 +535,9 @@ function ModalVeiculo({
   );
 }
 
-// ─── Modal Cadastro Transportadora ────────────────────────────────────────
-function ModalTransportadora({
-  onClose,
-  onSaved,
-  transportadoras,
-  handleAddTransportadora,
-}: {
-  onClose: () => void;
-  onSaved: (t: Transportadora) => void;
-  transportadoras: Transportadora[];
-  handleAddTransportadora: (t: Transportadora) => void;
-}) {
-  const [nome, setNome] = useState('');
-  const [cnpj, setCnpj] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [errors, setErrors] = useState<string[]>([]);
-
-  const validate = () => {
-    const errs: string[] = [];
-    if (nome.trim().length < 3) errs.push('Nome deve ter ao menos 3 caracteres.');
-    if (transportadoras.some(t => t.nome.toLowerCase() === nome.trim().toLowerCase())) errs.push('Transportadora já cadastrada.');
-    setErrors(errs);
-    return errs.length === 0;
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    const nova: Transportadora = { id: `transp-${Date.now()}`, nome: nome.trim(), cnpj: cnpj || undefined, telefone: telefone || undefined };
-    handleAddTransportadora(nova);
-    onSaved(nova);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md animate-in fade-in">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-          <div className="flex items-center gap-2">
-            <Truck className="w-4 h-4 text-[#ED6A23]" />
-            <h3 className="text-sm font-bold text-zinc-900">Cadastrar Transportadora</h3>
-          </div>
-          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <form onSubmit={handleSave} className="p-5 space-y-3">
-          {errors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
-              {errors.map(e => <p key={e} className="text-xs text-red-600">{e}</p>)}
-            </div>
-          )}
-          <div>
-            <label className={LABEL}>Nome da transportadora *</label>
-            <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Super Trans Logística" className={INPUT} />
-          </div>
-          <div>
-            <label className={LABEL}>CNPJ</label>
-            <input value={cnpj} onChange={e => setCnpj(formatCNPJ(e.target.value))} placeholder="00.000.000/0000-00" maxLength={18} className={INPUT + ' font-mono'} />
-          </div>
-          <div>
-            <label className={LABEL}>Telefone</label>
-            <input value={telefone} onChange={e => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" maxLength={15} className={INPUT} />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" className="px-4 py-2 text-xs font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-lg transition-colors">
-              Salvar transportadora
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ─── DadosStep principal ───────────────────────────────────────────────────
 export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) {
-  const { motoristas, veiculos, transportadoras, handleAddMotorista, handleAddVeiculo, handleAddTransportadora, activeBookings, visibleDis, isDespachante, janelasAtendimento } = useAgendamento();
+  const { motoristas, veiculos, transportadorasConta, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, isDespachante, janelasAtendimento } = useAgendamento();
   const { currentUser } = useAuthContext();
   const userEmpresa = currentUser?.cliente?.nome ?? '';
   const isTransportadoraUser = currentUser?.role === 'TRANSPORTADORA';
@@ -683,7 +606,6 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const [placaTouched,  setPlacaTouched]  = useState(false);
   const [showModalMot,  setShowModalMot]  = useState(false);
   const [showModalVeic, setShowModalVeic] = useState(false);
-  const [showModalTransp, setShowModalTransp] = useState(false);
   const [transpFocused, setTranspFocused] = useState(false);
   const [transpTouched, setTranspTouched] = useState(false);
 
@@ -715,22 +637,25 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
   const uniqueTransportadoras = useMemo(() => {
     const seen = new Set<string>();
-    return transportadoras.filter(t => {
-      const key = t.nome.toLowerCase();
+    return transportadorasConta.filter(t => {
+      const key = (t.cnpj ?? t.nome.toLowerCase());
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [transportadoras]);
+  }, [transportadorasConta]);
 
   const transpSuggestions = transpFocused && data.transportadora.length > 0
-    ? uniqueTransportadoras.filter(t => t.nome.toLowerCase().includes(data.transportadora.toLowerCase()))
+    ? uniqueTransportadoras.filter(t => {
+        const q = data.transportadora.toLowerCase();
+        return t.nome.toLowerCase().includes(q) || (t.cnpj ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+      })
     : [];
   const transpMatch = uniqueTransportadoras.find(t => t.nome.toLowerCase() === data.transportadora.toLowerCase());
   const transpLocked = !!transpMatch || isTransportadoraUser;
   const transpError: string | null =
     !isTransportadoraUser && transpTouched && !transpFocused && data.transportadora.length > 2 && !transpMatch
-      ? 'Transportadora não cadastrada.'
+      ? 'Transportadora não encontrada. Busque pelo nome ou CNPJ.'
       : null;
 
   // autocomplete
@@ -824,22 +749,8 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     setTranspTouched(false);
   };
 
-  const afterSaveTransportadora = (t: Transportadora) => {
-    onChange({ ...data, transportadora: t.nome });
-    setTranspTouched(false);
-    setShowModalTransp(false);
-  };
-
   return (
     <>
-      {showModalTransp && (
-        <ModalTransportadora
-          transportadoras={uniqueTransportadoras}
-          handleAddTransportadora={handleAddTransportadora}
-          onClose={() => setShowModalTransp(false)}
-          onSaved={afterSaveTransportadora}
-        />
-      )}
       {showModalMot && (
         <ModalMotorista
           motoristas={motoristas}
@@ -1070,19 +981,12 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={LABEL} style={{ marginBottom: 0 }}>Transportadora *</label>
-              {!isTransportadoraUser && (
-                <button type="button" onClick={() => setShowModalTransp(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Cadastrar transportadora
-                </button>
-              )}
-            </div>
+            <label className={LABEL}>Transportadora *</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Nome da transportadora"
+                placeholder="Buscar por nome ou CNPJ..."
                 value={data.transportadora}
                 onChange={e => onChange({ ...data, transportadora: e.target.value })}
                 onFocus={() => setTranspFocused(true)}
@@ -1107,17 +1011,13 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
                   >
                     <Truck className="w-3 h-3 text-zinc-400" />
                     <span className="text-zinc-800 font-semibold truncate">{t.nome}</span>
-                    {t.cnpj && <span className="text-zinc-400 font-mono text-[10px]">{t.cnpj}</span>}
+                    {t.cnpj && <span className="text-zinc-400 font-mono text-[10px]">{formatCNPJ(t.cnpj)}</span>}
                   </button>
                 ))}
               </div>
             )}
             {!transpLocked && !transpFocused && transpError && (
-              <FieldError
-                msg={transpError}
-                onCadastrar={() => setShowModalTransp(true)}
-                label="Cadastrar transportadora"
-              />
+              <FieldError msg={transpError} />
             )}
           </div>
 

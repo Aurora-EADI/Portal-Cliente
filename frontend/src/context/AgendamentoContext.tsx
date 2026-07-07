@@ -45,7 +45,6 @@ interface AgendamentoContextValue {
   saveSelectedJanelaIdToStorage: (id: string) => void;
   handleAddMotorista: (m: Motorista) => void;
   handleAddVeiculo: (v: Veiculo) => void;
-  handleAddTransportadora: (t: Transportadora) => void;
   handleCancelBooking: (id: string) => void;
   handleConfirmBooking: (data: string, horario: string) => Promise<void>;
   handleSaveNovoAgendamento: (dados: DadosFormData) => Promise<Agendamento>;
@@ -186,18 +185,6 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleAddTransportadora = async (t: Transportadora) => {
-    try {
-      const { data: saved } = await api.post('/agendamento/transportadoras', {
-        nome: t.nome, cnpj: t.cnpj, telefone: t.telefone,
-      });
-      const created: Transportadora = { id: saved.id, nome: saved.nome, cnpj: saved.cnpj, telefone: saved.telefone };
-      setTransportadoras(prev => [created, ...prev.filter(x => x.nome.toLowerCase() !== created.nome.toLowerCase())]);
-    } catch {
-      setTransportadoras(prev => [t, ...prev]);
-    }
-  };
-
   const handleCancelBooking = async (id: string) => {
     await api.patch(`/agendamento/agendamentos/${id}/cancelar`);
     setActiveBookings(prev => prev.filter(b => b.id !== id));
@@ -290,7 +277,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       selectedMotorista, setSelectedMotorista, selectedVeiculo, setSelectedVeiculo,
       successBooking, setSuccessBooking, viewingArchiveBooking, setViewingArchiveBooking,
       setSelectedClient, saveJanelasToStorage, createJanelaApi, updateJanelaApi, deleteJanelaApi, saveSelectedJanelaIdToStorage,
-      handleAddMotorista, handleAddVeiculo, handleAddTransportadora,
+      handleAddMotorista, handleAddVeiculo,
       handleCancelBooking, handleConfirmBooking, handleSaveNovoAgendamento,
       handleResetWizard,
     }}>
