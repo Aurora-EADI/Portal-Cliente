@@ -156,8 +156,10 @@ export function DashboardView() {
     visibleBookings.forEach(b => {
       const di = b.diNumero || (Array.isArray(b.di) ? b.di[0] : b.di) || '';
       const ctnr = b.container || '';
-      if (di && ctnr) keys.add(`${di}::${ctnr}`);
-      if (di) keys.add(di);
+      if (di) {
+        keys.add(`${di}::${ctnr}`);
+        keys.add(di);
+      }
       if (b.diId) keys.add(b.diId);
     });
     return keys;

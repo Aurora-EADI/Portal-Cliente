@@ -213,6 +213,11 @@ async function handleNewFormPost(body: any, user: any) {
       motorista = await prisma.motorista.create({
         data: { clienteId, nome: nomeMotorista, cpf: cpfMotorista, cnh: '', telefone: '' },
       });
+    } else if (motorista && nomeMotorista && motorista.nome !== nomeMotorista) {
+      motorista = await prisma.motorista.update({
+        where: { id: motorista.id },
+        data: { nome: nomeMotorista },
+      });
     }
     motoristaId = motorista?.id ?? null;
   }
