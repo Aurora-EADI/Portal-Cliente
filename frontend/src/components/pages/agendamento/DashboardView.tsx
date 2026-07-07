@@ -136,7 +136,7 @@ function VoucherModal({ booking, onClose }: { booking: Agendamento; onClose: () 
 
 export function DashboardView() {
   const router = useRouter();
-  const { visibleBookings, visibleDis, selectedClient, isAdmin, isDespachante, isLoadingData, handleCancelBooking } = useAgendamento();
+  const { visibleBookings, visibleDis, selectedClient, isAdmin, isDespachante, isTransportadora, isLoadingData, handleCancelBooking } = useAgendamento();
   const [busca, setBusca] = useState('');
   const [viewingBooking, setViewingBooking] = useState<Agendamento | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Agendamento | null>(null);
@@ -162,6 +162,12 @@ export function DashboardView() {
     });
     return keys;
   }, [visibleBookings]);
+
+  const despachantePorDi = useMemo(() => {
+    const map: Record<string, string> = {};
+    visibleDis.forEach(d => { if (d.numeroDI && d.despachante) map[d.numeroDI] = d.despachante; });
+    return map;
+  }, [visibleDis]);
 
   const pendingRows = useMemo(() => {
     const rows: { di: typeof visibleDis[0]; container: string; key: string }[] = [];
@@ -292,6 +298,7 @@ export function DashboardView() {
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">DI</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Container</th>
                   {isDespachante && <th className="px-4 py-3 font-semibold whitespace-nowrap">Cliente</th>}
+                  {isTransportadora && <th className="px-4 py-3 font-semibold whitespace-nowrap">Despachante</th>}
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Data</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Horário</th>
@@ -309,6 +316,7 @@ export function DashboardView() {
                     <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{di.numeroDI}</td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.cliente || '—'}</td>}
+                    {isTransportadora && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.despachante || '—'}</td>}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Disponível</span>
                     </td>
@@ -334,6 +342,7 @@ export function DashboardView() {
                     <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{bk.diNumero || bk.di || '—'}</td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{bk.container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{bk.diCliente || bk.empresa || '—'}</td>}
+                    {isTransportadora && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{despachantePorDi[bk.diNumero] || '—'}</td>}
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={bk.status} /></td>
                     <td className="px-4 py-3 font-mono text-zinc-700 whitespace-nowrap">{formatDate(bk.data)}</td>
                     <td className="px-4 py-3 font-mono text-zinc-700 whitespace-nowrap">{bk.horario}</td>

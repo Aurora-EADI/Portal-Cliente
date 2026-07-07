@@ -20,6 +20,7 @@ interface AgendamentoContextValue {
   visibleBookings: Agendamento[];
   isAdmin: boolean;
   isDespachante: boolean;
+  isTransportadora: boolean;
   canSelectClient: boolean;
   janelasAtendimento: JanelaAtendimento[];
   selectedClient: string;
@@ -93,6 +94,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuthContext();
   const isAdmin = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.EMPLOYEE;
   const isDespachante = currentUser?.role === UserRole.DESPACHANTE;
+  const isTransportadora = currentUser?.role === UserRole.TRANSPORTADORA;
   const canSelectClient = isAdmin || isDespachante;
   const userClienteNome = currentUser?.cliente?.nome ?? null;
   const clienteId = (!canSelectClient && currentUser?.cliente?.id) ? currentUser.cliente.id : undefined;
@@ -282,7 +284,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   return (
     <AgendamentoContext.Provider value={{
       isLoadingData, dis, motoristas, veiculos, transportadoras, transportadorasConta, activeBookings, janelasAtendimento,
-      visibleDis, visibleBookings, isAdmin, isDespachante, canSelectClient,
+      visibleDis, visibleBookings, isAdmin, isDespachante, isTransportadora, canSelectClient,
       selectedClient: effectiveClient, selectedJanelaId,
       currentStep, setCurrentStep, selectedDI, setSelectedDI,
       selectedMotorista, setSelectedMotorista, selectedVeiculo, setSelectedVeiculo,
