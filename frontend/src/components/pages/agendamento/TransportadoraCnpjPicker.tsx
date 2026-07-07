@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Truck, X } from 'lucide-react';
 import { Transportadora } from '@/types/agendamento';
 import { formatCNPJ } from '@/lib/agendamento';
@@ -42,6 +42,14 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     setSearch(`${t.nome} — ${formatCNPJ(t.cnpj!)}`);
     setLocked(true);
   };
+
+  useEffect(() => {
+    if (locked) return;
+    const digits = search.replace(/\D/g, '');
+    if (digits.length !== 14) return;
+    const exact = pickable.find(t => (t.cnpj ?? '').replace(/\D/g, '') === digits);
+    if (exact) selectTransportadora(exact);
+  }, [search, locked, pickable]);
 
   const clearSelection = () => {
     onChangeNome('');

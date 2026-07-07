@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Truck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
@@ -22,11 +23,23 @@ interface ConviteInfo {
 export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFormProps) {
   const { visibleDis, transportadorasConta } = useAgendamento();
   const availableDis = visibleDis.filter(d => d.status === 'liberada' && d.nLote);
+  const searchParams = useSearchParams();
 
   const [nLote, setNLote] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [autoFilled, setAutoFilled] = useState(false);
+
+  useEffect(() => {
+    if (autoFilled || availableDis.length === 0) return;
+    const diNumero = searchParams.get('diNumero');
+    if (!diNumero) return;
+    const di = availableDis.find(d => d.numeroDI === diNumero);
+    if (!di) return;
+    setNLote(di.nLote!);
+    setAutoFilled(true);
+  }, [availableDis, searchParams, autoFilled]);
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
