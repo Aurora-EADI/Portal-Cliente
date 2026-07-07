@@ -314,12 +314,9 @@ export function AtribuicaoTransportadorasView() {
                   nome={convNome}
                   onChangeCnpj={setConvCnpj}
                   onChangeNome={setConvNome}
+                  email={convEmail}
+                  onChangeEmail={setConvEmail}
                 />
-                <div>
-                  <label className="text-zinc-600 font-bold block mb-1.5">E-mail (envia o convite automaticamente)</label>
-                  <input type="email" value={convEmail} onChange={(e) => setConvEmail(e.target.value)} placeholder="contato@transportadora.com.br"
-                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
-                </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button type="button" onClick={closeConvite} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
                   <button type="submit" disabled={convSaving} className="px-4 py-2 bg-[#ED6A23] text-white rounded-lg font-bold hover:bg-[#D45917] disabled:opacity-60 text-xs shadow-sm">
