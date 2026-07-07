@@ -40,6 +40,7 @@ export interface Transportadora {
   nome: string;
   cnpj?: string;
   telefone?: string;
+  email?: string | null;
 }
 
 export type AgendamentoStatus = 'ATIVO' | 'CANCELADO' | 'CHEGOU' | 'NO_SHOW' | 'ON_TIME' | 'ATRASADO' | 'AG_CHEGADA' | 'CONCLUIDO';

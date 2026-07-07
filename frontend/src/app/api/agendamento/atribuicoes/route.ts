@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { requireAuth, requireRoles } from '@/lib/auth-server';
-import { normalizeCnpj } from '@/lib/convites';
+import { normalizeCnpj, ensureTransportadoraConvite } from '@/lib/convites';
 
 // Predicado de ownership da DI averbada pro usuário (CLIENTE por CNPJ, DESPACHANTE por código)
 async function getDiOwnershipWhere(user: User): Promise<Record<string, any> | null> {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { nLote, cnpj, nome } = body;
+    const { nLote, cnpj, nome, email } = body;
 
     if (!nLote || !cnpj) {
       return NextResponse.json({ message: 'nLote e cnpj são obrigatórios' }, { status: 400 });
@@ -98,6 +98,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Transportadora já atribuída a esta DI' }, { status: 409 });
     }
 
+    const convite = await ensureTransportadoraConvite(transportadora, email);
+
     const atribuicao = await prisma.diTransportadoraAtribuicao.create({
       data: {
         nLote,
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(atribuicao, { status: 201 });
+    return NextResponse.json({ ...atribuicao, convite }, { status: 201 });
   } catch (err: any) {
     console.error('[atribuicoes] POST error:', err?.message ?? err);
     return NextResponse.json({ message: 'Erro ao atribuir transportadora' }, { status: 500 });

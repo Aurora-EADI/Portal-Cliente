@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus } from 'lucide-react';
+import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus, CheckCircle } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
 import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
@@ -29,8 +29,10 @@ export function AtribuicaoTransportadorasView() {
   const [atribuindoNLote, setAtribuindoNLote] = useState<string | null>(null);
   const [formCnpj, setFormCnpj] = useState('');
   const [formNome, setFormNome] = useState('');
+  const [formEmail, setFormEmail] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState<{ status: 'pending' | 'created'; link?: string; emailSent?: boolean } | null>(null);
 
   // Modal de convite
   const [showConvite, setShowConvite] = useState(false);
@@ -84,10 +86,13 @@ export function AtribuicaoTransportadorasView() {
 
     setSaving(true);
     try {
-      await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim() });
+      const { data } = await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim(), email: formEmail.trim() || undefined });
       await loadAtribuicoes();
       setAtribuindoNLote(null);
-      setFormCnpj(''); setFormNome('');
+      setFormCnpj(''); setFormNome(''); setFormEmail('');
+      if (data.convite && data.convite.status !== 'has_access') {
+        setInviteNotice(data.convite);
+      }
     } catch (err: any) {
       setFormError(err?.response?.data?.message ?? 'Erro ao atribuir transportadora.');
     } finally {
@@ -157,6 +162,28 @@ export function AtribuicaoTransportadorasView() {
           <span>Convidar Transportadora</span>
         </button>
       </div>
+
+      {inviteNotice && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-emerald-800">
+              {inviteNotice.status === 'pending' ? 'Convite pendente reaproveitado' : 'Convite enviado à transportadora'}
+            </p>
+            <p className="text-xs text-emerald-700 mt-1">
+              {inviteNotice.status === 'pending'
+                ? 'Essa transportadora já tinha um convite pendente — ela poderá aceitá-lo normalmente.'
+                : `Transportadora ainda não tinha acesso ao portal — convite ${inviteNotice.emailSent ? 'enviado por e-mail' : 'gerado (sem e-mail cadastrado, compartilhe o link)'}.`}
+            </p>
+            {inviteNotice.link && (
+              <p className="text-[11px] font-mono text-emerald-600 mt-2 break-all">{inviteNotice.link}</p>
+            )}
+          </div>
+          <button onClick={() => setInviteNotice(null)} className="text-emerald-400 hover:text-emerald-600 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
         <div className="p-4">
@@ -253,6 +280,8 @@ export function AtribuicaoTransportadorasView() {
                 nome={formNome}
                 onChangeCnpj={setFormCnpj}
                 onChangeNome={setFormNome}
+                email={formEmail}
+                onChangeEmail={setFormEmail}
               />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setAtribuindoNLote(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>

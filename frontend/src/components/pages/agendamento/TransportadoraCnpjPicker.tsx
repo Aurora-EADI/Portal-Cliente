@@ -14,9 +14,11 @@ interface TransportadoraCnpjPickerProps {
   nome: string;
   onChangeCnpj: (v: string) => void;
   onChangeNome: (v: string) => void;
+  email?: string;
+  onChangeEmail?: (v: string) => void;
 }
 
-export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome }: TransportadoraCnpjPickerProps) {
+export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome, email, onChangeEmail }: TransportadoraCnpjPickerProps) {
   const pickable = useMemo(
     () => transportadoras.filter(t => t.cnpj && t.cnpj.replace(/\D/g, '').length === 14),
     [transportadoras]
@@ -36,6 +38,7 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
   const selectTransportadora = (t: Transportadora) => {
     onChangeNome(t.nome);
     onChangeCnpj(t.cnpj!.replace(/\D/g, ''));
+    onChangeEmail?.(t.email ?? '');
     setSearch(`${t.nome} — ${formatCNPJ(t.cnpj!)}`);
     setLocked(true);
   };
@@ -43,6 +46,7 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
   const clearSelection = () => {
     onChangeNome('');
     onChangeCnpj('');
+    onChangeEmail?.('');
     setSearch('');
     setLocked(false);
   };
@@ -93,6 +97,19 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
               <span className="text-zinc-400 font-mono text-[10px]">{formatCNPJ(t.cnpj!)}</span>
             </button>
           ))}
+        </div>
+      )}
+      {locked && onChangeEmail && (
+        <div className="mt-3">
+          <label className={LABEL}>E-mail para envio do convite</label>
+          <input
+            type="email"
+            value={email ?? ''}
+            onChange={(e) => onChangeEmail(e.target.value)}
+            placeholder="contato@transportadora.com.br"
+            className={INPUT}
+          />
+          <p className="text-[10px] text-zinc-400 mt-1">Usado só se essa transportadora ainda não tiver acesso ao portal.</p>
         </div>
       )}
     </div>
