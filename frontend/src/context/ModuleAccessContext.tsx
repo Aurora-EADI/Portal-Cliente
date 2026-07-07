@@ -76,9 +76,10 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, []);
 
-  // CLIENTE não usa o sistema de módulos — pula chamada para evitar 403
+  // CLIENTE, DESPACHANTE e TRANSPORTADORA não usam o sistema de módulos
+  const NO_MODULE_ROLES = ['CLIENTE', 'DESPACHANTE', 'TRANSPORTADORA'];
   useEffect(() => {
-    if (currentUser?.id && currentUser.role !== 'CLIENTE') {
+    if (currentUser?.id && !NO_MODULE_ROLES.includes(currentUser.role)) {
       loadModules(currentUser.id);
     } else {
       setModules([]);

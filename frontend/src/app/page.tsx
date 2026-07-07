@@ -13,7 +13,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!isLoading && currentUser) {
       // CLIENTE vai direto para o portal de agendamento
-      if (currentUser.role === UserRole.CLIENTE || currentUser.role === UserRole.DESPACHANTE) {
+      if (currentUser.role === UserRole.CLIENTE || currentUser.role === UserRole.DESPACHANTE || currentUser.role === UserRole.TRANSPORTADORA) {
         router.push('/agendamento')
       } else {
         router.push('/modules')

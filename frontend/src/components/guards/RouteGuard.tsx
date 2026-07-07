@@ -18,8 +18,8 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
   const { currentUser } = useAuthContext();
   const { isLoading, hasAccess, error } = useModuleAccess(route);
 
-  // CLIENTE e DESPACHANTE vão direto — não usam o sistema de UserModuleAccess
-  if (currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE) {
+  // CLIENTE, DESPACHANTE e TRANSPORTADORA vão direto — não usam o sistema de UserModuleAccess
+  if (currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE || currentUser?.role === UserRole.TRANSPORTADORA) {
     return <>{children}</>;
   }
 
