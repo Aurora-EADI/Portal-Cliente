@@ -64,7 +64,14 @@ export async function POST(request: NextRequest) {
           prisma.transportadoraConta.upsert({
             where: { cnpj: v.cnpjDigits },
             create: { cnpj: v.cnpjDigits, nome: v.nome, codTransp: v.codTransp, email: v.email, telefone: v.telefone },
-            update: { nome: v.nome, codTransp: v.codTransp, email: v.email, telefone: v.telefone },
+            // Só sobrescreve email/telefone/codTransp se o SIAUM realmente mandou valor —
+            // preserva dado preenchido manualmente (ex: convite) quando o SIAUM não tem.
+            update: {
+              nome: v.nome,
+              ...(v.codTransp ? { codTransp: v.codTransp } : {}),
+              ...(v.email ? { email: v.email } : {}),
+              ...(v.telefone ? { telefone: v.telefone } : {}),
+            },
           }),
         ),
       );
