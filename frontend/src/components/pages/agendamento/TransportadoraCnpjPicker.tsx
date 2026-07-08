@@ -91,6 +91,9 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
           </button>
         )}
       </div>
+      <p className="text-[10px] text-red-500 mt-1">
+        DEBUG: pickable={pickable.length} search="{search}" suggestions={suggestions.length}
+      </p>
       {!locked && focused && suggestions.length > 0 && (
         <div className="mt-1 border border-zinc-200 rounded-lg shadow-sm bg-white overflow-hidden">
           {suggestions.slice(0, 5).map(t => (
