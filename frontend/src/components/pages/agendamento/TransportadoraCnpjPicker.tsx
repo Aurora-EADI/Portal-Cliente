@@ -31,7 +31,10 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
   const suggestions = focused && search.length > 0
     ? pickable.filter(t => {
         const q = search.toLowerCase();
-        return t.nome.toLowerCase().includes(q) || (t.cnpj ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, ''));
+        const qDigits = q.replace(/\D/g, '');
+        const nomeMatch = t.nome.toLowerCase().includes(q);
+        const cnpjMatch = qDigits.length > 0 && (t.cnpj ?? '').replace(/\D/g, '').includes(qDigits);
+        return nomeMatch || cnpjMatch;
       })
     : [];
 
