@@ -23,7 +23,7 @@ export interface CreateConviteParams {
 export async function createConviteRegistro(params: CreateConviteParams) {
   const { tipo, nome, email, diasValidade, codDespachante, cnpjCliente, cnpjTransportadora, codTransp } = params;
 
-  const days = diasValidade ?? 7;
+  const days = diasValidade ?? 36500;
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + days);
 
@@ -51,7 +51,7 @@ export async function createConviteRegistro(params: CreateConviteParams) {
       from: process.env.RESEND_FROM_EMAIL || 'Aurora EADI <onboarding@resend.dev>',
       to,
       subject: testOverride ? `[TESTE — destino real: ${email}] Convite — Portal do Cliente Aurora EADI` : 'Convite — Portal do Cliente Aurora EADI',
-      html: conviteEmailHtml({ nome, tipo, link, diasValidade: days }),
+      html: conviteEmailHtml({ nome, tipo, link }),
     }).then(() => {
       console.log(`[Resend] Email sent to ${to}${testOverride ? ` (override, real destino: ${email})` : ''}`);
     }).catch((err: any) => {

@@ -2,10 +2,9 @@ interface ConviteEmailParams {
   nome: string;
   tipo: string;
   link: string;
-  diasValidade: number;
 }
 
-export function conviteEmailHtml({ nome, tipo, link, diasValidade }: ConviteEmailParams): string {
+export function conviteEmailHtml({ nome, tipo, link }: ConviteEmailParams): string {
   const TIPO_LABELS: Record<string, string> = {
     DESPACHANTE: 'Despachante',
     CLIENTE: 'Cliente',
@@ -28,19 +27,10 @@ export function conviteEmailHtml({ nome, tipo, link, diasValidade }: ConviteEmai
 
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);padding:32px 40px;text-align:center;">
-              <table cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
-                <tr>
-                  <td style="background-color:rgba(255,255,255,0.2);border-radius:10px;padding:8px 14px;">
-                    <span style="color:#ffffff;font-size:24px;font-weight:800;font-style:italic;letter-spacing:1px;">AE</span>
-                  </td>
-                  <td style="padding-left:12px;">
-                    <span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">AURORA EADI</span><br>
-                    <span style="color:#fff7ed;font-size:12px;font-weight:500;letter-spacing:2px;">MANAUS</span>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:0;color:#fff7ed;font-size:13px;font-weight:500;">Portal do Cliente</p>
+            <td bgcolor="#c2410c" style="background-color:#c2410c;padding:32px 40px;text-align:center;">
+              <p style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">AURORA EADI</p>
+              <p style="margin:4px 0 0;color:#fff7ed;font-size:12px;font-weight:500;letter-spacing:2px;">MANAUS</p>
+              <p style="margin:8px 0 0;color:#fff7ed;font-size:13px;font-weight:500;">Portal do Cliente</p>
             </td>
           </tr>
 
@@ -67,13 +57,6 @@ export function conviteEmailHtml({ nome, tipo, link, diasValidade }: ConviteEmai
                   </td>
                 </tr>
               </table>
-
-              <!-- Expiry notice -->
-              <div style="background-color:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;margin:24px 0 0;">
-                <p style="margin:0;color:#9a3412;font-size:13px;">
-                  ⏳ Este convite expira em <strong>${diasValidade} dia${diasValidade > 1 ? 's' : ''}</strong>.
-                </p>
-              </div>
 
               <!-- Fallback link -->
               <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;line-height:1.5;">
