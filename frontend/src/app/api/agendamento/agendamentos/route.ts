@@ -3,6 +3,7 @@ import { requireAuth, requireExternalRole } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
+import { notifyAgendamentoWhatsapp } from '@/lib/n8n';
 
 const ACTIVE_STATUSES = [
   AgendamentoStatus.ATIVO,
@@ -122,7 +123,7 @@ async function handleNewFormPost(body: any, user: any) {
     cpfMotorista, nomeMotorista, transportadora, empresa,
     awbMawb, di: diNumero, dta, hawb, numeroVoo,
     placaVeiculo, volumes, peso, consignatario, observacoes,
-    container,
+    container, notificarWhatsapp, whatsapp,
   } = body;
 
   if (cpfMotorista && dataAgendamento && inicio) {
@@ -277,6 +278,18 @@ async function handleNewFormPost(body: any, user: any) {
       cliente: { select: { id: true, nome: true } },
     },
   });
+
+  if (notificarWhatsapp && whatsapp) {
+    notifyAgendamentoWhatsapp({
+      protocolo,
+      data: dataAgendamento,
+      horario: inicio,
+      operacao,
+      placaVeiculo,
+      transportadora: transportadora || transportadoraNome,
+      whatsapp,
+    });
+  }
 
   return NextResponse.json(agendamento, { status: 201 });
 }

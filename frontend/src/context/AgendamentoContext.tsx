@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { toast } from 'sonner';
 import { DI, Motorista, Veiculo, Transportadora, Agendamento, JanelaAtendimento } from '@/types/agendamento';
 import { DadosFormData } from '@/components/pages/agendamento/steps/DadosStep';
+import { NotificacoesFormData } from '@/components/pages/agendamento/steps/NotificacoesStep';
 import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { api } from '@/lib/api';
 import { useAgendamentoWizard } from '@/store/agendamento-wizard.store';
+import { useDisAverbadasStream } from '@/hooks/useDisAverbadasStream';
 
 interface AgendamentoContextValue {
   isLoadingData: boolean;
@@ -47,7 +50,7 @@ interface AgendamentoContextValue {
   handleAddVeiculo: (v: Veiculo) => void;
   handleCancelBooking: (id: string) => void;
   handleConfirmBooking: (data: string, horario: string) => Promise<void>;
-  handleSaveNovoAgendamento: (dados: DadosFormData) => Promise<Agendamento>;
+  handleSaveNovoAgendamento: (dados: DadosFormData, notificacoes: NotificacoesFormData) => Promise<Agendamento>;
   handleResetWizard: () => void;
 }
 
@@ -137,6 +140,17 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     ]).finally(() => setIsLoadingData(false));
   }, [clienteId]);
 
+  const upsertDi = (di: DI) => {
+    setDis(prev => {
+      const exists = prev.some(d => d.nLote && d.nLote === di.nLote);
+      if (exists) return prev.map(d => (d.nLote === di.nLote ? { ...d, ...di } : d));
+      return [di, ...prev];
+    });
+    toast.info(`DI averbada: ${di.numeroDI}`);
+  };
+
+  useDisAverbadasStream(!!currentUser, upsertDi);
+
   const saveJanelasToStorage = (list: JanelaAtendimento[]) => {
     setJanelasAtendimento(list);
   };
@@ -207,7 +221,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     setViewingArchiveBooking(null);
   };
 
-  const handleSaveNovoAgendamento = async (dados: DadosFormData): Promise<Agendamento> => {
+  const handleSaveNovoAgendamento = async (dados: DadosFormData, notificacoes: NotificacoesFormData): Promise<Agendamento> => {
     const cpfDigits = dados.cpfMotorista.replace(/\D/g, '');
     const motorista: Motorista =
       motoristas.find(m => m.cpf.replace(/\D/g, '') === cpfDigits) ??
@@ -247,7 +261,11 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       transportadora: dados.transportadora,
     };
 
-    const { data: created } = await api.post('/agendamento/agendamentos', dados);
+    const { data: created } = await api.post('/agendamento/agendamentos', {
+      ...dados,
+      notificarWhatsapp: notificacoes.notificarWhatsapp,
+      whatsapp: notificacoes.whatsapp,
+    });
     const mapped = mapApiBooking(created);
     setActiveBookings(prev => [mapped, ...prev]);
     return mapped;

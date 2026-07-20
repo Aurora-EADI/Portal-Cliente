@@ -212,7 +212,7 @@ export function WizardView() {
     setSaving(true);
     setSubmitError(null);
     try {
-      const booking = await handleSaveNovoAgendamento(dados);
+      const booking = await handleSaveNovoAgendamento(dados, notificacoes);
       setSavedBooking(booking);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Erro ao salvar agendamento.';
