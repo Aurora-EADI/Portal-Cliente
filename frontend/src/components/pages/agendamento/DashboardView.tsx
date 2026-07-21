@@ -201,7 +201,7 @@ export function DashboardView() {
         }
       });
     });
-    return rows;
+    return rows.sort((a, b) => (a.di.cliente || '').localeCompare(b.di.cliente || ''));
   }, [visibleDis, bookedKeys]);
 
   const filtered = useMemo(() => {
