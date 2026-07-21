@@ -34,7 +34,19 @@ const INITIAL_NOTIFICACOES: NotificacoesFormData = {
 };
 
 function isDadosValid(d: DadosFormData) {
-  return !!(d.operacao && d.tipoVeiculo && d.inicio && d.cpfMotorista && d.transportadora && d.empresa && d.placaVeiculo);
+  return missingDadosFields(d).length === 0;
+}
+
+function missingDadosFields(d: DadosFormData): string[] {
+  const missing: string[] = [];
+  if (!d.operacao) missing.push('Operação');
+  if (!d.tipoVeiculo) missing.push('Tipo de veículo');
+  if (!d.inicio) missing.push('Data e horário');
+  if (!d.cpfMotorista) missing.push('CPF do motorista');
+  if (!d.transportadora) missing.push('Transportadora');
+  if (!d.empresa) missing.push('Empresa');
+  if (!d.placaVeiculo) missing.push('Placa do veículo');
+  return missing;
 }
 
 function formatDate(dateStr: string) {
@@ -299,6 +311,12 @@ export function WizardView() {
             {step === 1 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} />}
             {step === 2 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
           </div>
+
+          {step === 1 && !canAdvance && (
+            <p className="px-6 pb-2 text-xs text-amber-600">
+              Faltando: {missingDadosFields(dados).join(', ')}
+            </p>
+          )}
 
           <div className="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
             <button

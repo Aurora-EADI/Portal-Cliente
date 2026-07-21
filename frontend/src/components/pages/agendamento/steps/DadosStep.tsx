@@ -675,6 +675,15 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
       : null;
   const veiculoLocked = !!veiculoMatch;
 
+  // Placa digitada bate com veículo já cadastrado: sincroniza tipoVeiculo
+  // (sem isso, campo fica travado no estado inicial pra usuários externos, que não
+  // têm o select de "Tipo de veículo" na tela — só via sugestão clicada ou modal)
+  React.useEffect(() => {
+    if (veiculoMatch && data.tipoVeiculo !== veiculoMatch.tipo) {
+      onChange({ ...data, tipoVeiculo: veiculoMatch.tipo });
+    }
+  }, [veiculoMatch?.id]);
+
   const motoristaLocked = !!motoristaMatch;
   const cpfLocked = motoristaLocked && data.nomeMotorista.length > 0;
   const nameLocked = motoristaLocked && cpfDigits.length > 0;
