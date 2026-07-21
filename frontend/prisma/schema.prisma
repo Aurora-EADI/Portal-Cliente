@@ -241,6 +241,11 @@ model Agendamento {
   criadoPorRole  String?   @map("criado_por_role")
   transportadoraContaId String? @map("transportadora_conta_id")
 
+  // Notificação WhatsApp (enviada pelo Aurora via n8n, ver /api/service/whatsapp-pendentes)
+  whatsapp              String?
+  notificarWhatsapp     Boolean   @default(false)
+  whatsappNotificadoEm  DateTime?
+
   di        DI?        @relation(fields: [diId], references: [id])
   motorista Motorista? @relation(fields: [motoristaId], references: [id])
   veiculo   Veiculo?   @relation(fields: [veiculoId], references: [id])
