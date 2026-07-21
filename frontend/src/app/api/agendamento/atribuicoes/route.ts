@@ -94,6 +94,14 @@ export async function POST(request: NextRequest) {
         where: { id: transportadora.id },
         data: { whatsapp },
       });
+      // WhatsApp acabou de ser cadastrado/alterado: atribuições antigas dessa
+      // transportadora não devem disparar notificação retroativa, só a que
+      // está sendo criada agora nesta requisição (ainda não existe, então
+      // este update só afeta as que já existiam).
+      await prisma.diTransportadoraAtribuicao.updateMany({
+        where: { transportadoraContaId: transportadora.id, whatsappNotificadoEm: null },
+        data: { whatsappNotificadoEm: new Date() },
+      });
     }
 
     const existente = await prisma.diTransportadoraAtribuicao.findUnique({
