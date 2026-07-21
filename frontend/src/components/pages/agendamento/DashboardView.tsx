@@ -318,7 +318,7 @@ export function DashboardView() {
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">DI</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Container</th>
                   {isDespachante && <th className="px-4 py-3 font-semibold whitespace-nowrap">Cliente</th>}
-                  {isTransportadora && <th className="px-4 py-3 font-semibold whitespace-nowrap">Despachante</th>}
+                  {isTransportadora && <th className="px-4 py-3 font-semibold whitespace-nowrap">Cliente / Despachante</th>}
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Data</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Horário</th>
@@ -347,7 +347,14 @@ export function DashboardView() {
                     </td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.cliente || '—'}</td>}
-                    {isTransportadora && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.despachante || '—'}</td>}
+                    {isTransportadora && (
+                      <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">
+                        <div className="flex flex-col">
+                          <span>{di.cliente || '—'}</span>
+                          {di.despachante && <span className="text-[10px] text-zinc-400">{di.despachante}</span>}
+                        </div>
+                      </td>
+                    )}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Disponível</span>
                     </td>
@@ -374,7 +381,14 @@ export function DashboardView() {
                     <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{bk.diNumero || bk.di || '—'}</td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{bk.container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{bk.diCliente || bk.empresa || '—'}</td>}
-                    {isTransportadora && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{despachantePorDi[bk.diNumero] || '—'}</td>}
+                    {isTransportadora && (
+                      <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">
+                        <div className="flex flex-col">
+                          <span>{bk.diCliente || bk.empresa || '—'}</span>
+                          {despachantePorDi[bk.diNumero] && <span className="text-[10px] text-zinc-400">{despachantePorDi[bk.diNumero]}</span>}
+                        </div>
+                      </td>
+                    )}
                     <td className="px-4 py-3 whitespace-nowrap"><StatusBadge status={bk.status} /></td>
                     <td className="px-4 py-3 font-mono text-zinc-700 whitespace-nowrap">{formatDate(bk.data)}</td>
                     <td className="px-4 py-3 font-mono text-zinc-700 whitespace-nowrap">{bk.horario}</td>
