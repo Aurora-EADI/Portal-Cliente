@@ -6,10 +6,7 @@ import type { User, UserRole } from '@prisma/client';
 type AuthSuccess = { user: User; error: null };
 type AuthFailure = { user: null; error: NextResponse };
 
-export async function requireAuth(request: NextRequest): Promise<AuthSuccess | AuthFailure> {
-  const authHeader = request.headers.get('authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
+export async function resolveUserFromToken(token: string | null): Promise<AuthSuccess | AuthFailure> {
   if (!token) {
     return { user: null, error: NextResponse.json({ message: 'Token não fornecido' }, { status: 401 }) };
   }
@@ -30,6 +27,12 @@ export async function requireAuth(request: NextRequest): Promise<AuthSuccess | A
   }
 
   return { user, error: null };
+}
+
+export async function requireAuth(request: NextRequest): Promise<AuthSuccess | AuthFailure> {
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  return resolveUserFromToken(token);
 }
 
 export function requireRoles(user: User, roles: UserRole[]): NextResponse | null {
