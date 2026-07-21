@@ -965,6 +965,18 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             onChangeNome={set('transportadora')}
             email={data.transportadoraEmail ?? ''}
             onChangeEmail={set('transportadoraEmail')}
+            onSelect={t => onChange({
+              ...data,
+              transportadora: t.nome,
+              transportadoraCnpj: (t.cnpj ?? '').replace(/\D/g, ''),
+              transportadoraEmail: t.email ?? '',
+            })}
+            onClear={() => onChange({
+              ...data,
+              transportadora: '',
+              transportadoraCnpj: '',
+              transportadoraEmail: '',
+            })}
           />
 
           <Field label="Empresa *">

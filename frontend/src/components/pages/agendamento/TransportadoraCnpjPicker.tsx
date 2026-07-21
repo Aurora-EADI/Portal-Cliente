@@ -18,9 +18,15 @@ interface TransportadoraCnpjPickerProps {
   onChangeEmail?: (v: string) => void;
   whatsapp?: string;
   onChangeWhatsapp?: (v: string) => void;
+  // Quando o consumidor guarda nome/cnpj/email/whatsapp num objeto só (não em
+  // useState separados), as 4 chamadas onChange* sequenciais pisam uma na outra
+  // (cada uma fecha sobre o mesmo estado stale). onSelect/onClear entregam tudo
+  // numa chamada atômica só pra esses casos.
+  onSelect?: (t: Transportadora) => void;
+  onClear?: () => void;
 }
 
-export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome, email, onChangeEmail, whatsapp, onChangeWhatsapp }: TransportadoraCnpjPickerProps) {
+export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome, email, onChangeEmail, whatsapp, onChangeWhatsapp, onSelect, onClear }: TransportadoraCnpjPickerProps) {
   const pickable = useMemo(
     () => transportadoras.filter(t => t.cnpj && t.cnpj.replace(/\D/g, '').length === 14),
     [transportadoras]
@@ -41,10 +47,14 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     : [];
 
   const selectTransportadora = (t: Transportadora) => {
-    onChangeNome(t.nome);
-    onChangeCnpj(t.cnpj!.replace(/\D/g, ''));
-    onChangeEmail?.(t.email ?? '');
-    onChangeWhatsapp?.(t.whatsapp ?? '');
+    if (onSelect) {
+      onSelect(t);
+    } else {
+      onChangeNome(t.nome);
+      onChangeCnpj(t.cnpj!.replace(/\D/g, ''));
+      onChangeEmail?.(t.email ?? '');
+      onChangeWhatsapp?.(t.whatsapp ?? '');
+    }
     setSearch(`${t.nome} — ${formatCNPJ(t.cnpj!)}`);
     setLocked(true);
   };
@@ -58,10 +68,14 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
   }, [search, locked, pickable]);
 
   const clearSelection = () => {
-    onChangeNome('');
-    onChangeCnpj('');
-    onChangeEmail?.('');
-    onChangeWhatsapp?.('');
+    if (onClear) {
+      onClear();
+    } else {
+      onChangeNome('');
+      onChangeCnpj('');
+      onChangeEmail?.('');
+      onChangeWhatsapp?.('');
+    }
     setSearch('');
     setLocked(false);
   };
