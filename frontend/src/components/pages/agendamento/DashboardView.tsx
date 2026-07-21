@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle, Truck } from 'lucide-react';
 import Image from 'next/image';
 import { useAgendamento } from '@/context/AgendamentoContext';
+import { api } from '@/lib/api';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 import { StatusBadge } from './StatusBadge';
 import { Agendamento } from '@/types/agendamento';
+
+interface AtribuicaoResumo {
+  nLote: string;
+  transportadora: { nome: string };
+}
 
 function formatDate(dateStr: string) {
   const [y, m, d] = dateStr.split('-');
@@ -141,6 +147,18 @@ export function DashboardView() {
   const [viewingBooking, setViewingBooking] = useState<Agendamento | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Agendamento | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [atribuicoesPorLote, setAtribuicoesPorLote] = useState<Record<string, AtribuicaoResumo[]>>({});
+
+  useEffect(() => {
+    if (isTransportadora) return;
+    api.get<AtribuicaoResumo[]>('/agendamento/atribuicoes')
+      .then(({ data }) => {
+        const map: Record<string, AtribuicaoResumo[]> = {};
+        data.forEach(a => { (map[a.nLote] = map[a.nLote] ?? []).push(a); });
+        setAtribuicoesPorLote(map);
+      })
+      .catch(() => {});
+  }, [isTransportadora]);
 
   if (isAdmin) return <AdminAgendamentoDashboard />;
 
@@ -313,9 +331,20 @@ export function DashboardView() {
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {/* DIs/Containers disponíveis (sem agendamento) */}
-                {pendingRows.map(({ di, container, key }) => (
+                {pendingRows.map(({ di, container, key }) => {
+                  const atribuicoes = atribuicoesPorLote[di.nLote ?? ''] ?? [];
+                  return (
                   <tr key={key} className="hover:bg-zinc-50 transition-colors bg-emerald-50/30">
-                    <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{di.numeroDI}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">
+                      <div className="flex flex-col gap-1 items-start">
+                        <span>{di.numeroDI}</span>
+                        {atribuicoes.length > 0 && (
+                          <span title={`Já atribuída a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
+                            <Truck className="w-2.5 h-2.5" /> {atribuicoes[0].transportadora.nome}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.cliente || '—'}</td>}
                     {isTransportadora && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.despachante || '—'}</td>}
@@ -337,7 +366,8 @@ export function DashboardView() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {/* Agendamentos existentes */}
                 {filtered.map((bk: Agendamento) => (
                   <tr key={bk.id} className="hover:bg-zinc-50 transition-colors">
