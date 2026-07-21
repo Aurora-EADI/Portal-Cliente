@@ -41,6 +41,7 @@ export interface Transportadora {
   cnpj?: string;
   telefone?: string;
   email?: string | null;
+  whatsapp?: string | null;
 }
 
 export type AgendamentoStatus = 'ATIVO' | 'CANCELADO' | 'CHEGOU' | 'NO_SHOW' | 'ON_TIME' | 'ATRASADO' | 'AG_CHEGADA' | 'CONCLUIDO';

@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Truck, X } from 'lucide-react';
 import { Transportadora } from '@/types/agendamento';
-import { formatCNPJ } from '@/lib/agendamento';
+import { formatCNPJ, formatPhone } from '@/lib/agendamento';
 
 const INPUT = 'w-full py-2 px-3 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800';
 const LABEL = 'text-xs font-bold text-zinc-600 block mb-1.5';
@@ -16,9 +16,11 @@ interface TransportadoraCnpjPickerProps {
   onChangeNome: (v: string) => void;
   email?: string;
   onChangeEmail?: (v: string) => void;
+  whatsapp?: string;
+  onChangeWhatsapp?: (v: string) => void;
 }
 
-export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome, email, onChangeEmail }: TransportadoraCnpjPickerProps) {
+export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChangeCnpj, onChangeNome, email, onChangeEmail, whatsapp, onChangeWhatsapp }: TransportadoraCnpjPickerProps) {
   const pickable = useMemo(
     () => transportadoras.filter(t => t.cnpj && t.cnpj.replace(/\D/g, '').length === 14),
     [transportadoras]
@@ -42,6 +44,7 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     onChangeNome(t.nome);
     onChangeCnpj(t.cnpj!.replace(/\D/g, ''));
     onChangeEmail?.(t.email ?? '');
+    onChangeWhatsapp?.(t.whatsapp ?? '');
     setSearch(`${t.nome} — ${formatCNPJ(t.cnpj!)}`);
     setLocked(true);
   };
@@ -58,6 +61,7 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
     onChangeNome('');
     onChangeCnpj('');
     onChangeEmail?.('');
+    onChangeWhatsapp?.('');
     setSearch('');
     setLocked(false);
   };
@@ -121,6 +125,19 @@ export function TransportadoraCnpjPicker({ transportadoras, cnpj, nome, onChange
             className={INPUT}
           />
           <p className="text-[10px] text-zinc-400 mt-1">Usado só se essa transportadora ainda não tiver acesso ao portal.</p>
+        </div>
+      )}
+      {locked && onChangeWhatsapp && (
+        <div className="mt-3">
+          <label className={LABEL}>WhatsApp para notificação</label>
+          <input
+            type="text"
+            value={whatsapp ?? ''}
+            onChange={(e) => onChangeWhatsapp(formatPhone(e.target.value))}
+            placeholder="(00) 00000-0000"
+            className={INPUT}
+          />
+          <p className="text-[10px] text-zinc-400 mt-1">Transportadora recebe um aviso por WhatsApp quando for atribuída a uma DI.</p>
         </div>
       )}
     </div>

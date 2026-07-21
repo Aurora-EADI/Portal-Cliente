@@ -29,6 +29,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
   const [cnpj, setCnpj] = useState('');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
         cnpj: cnpjDigits,
         nome: nome.trim(),
         email: email.trim() || undefined,
+        whatsapp: whatsapp.trim() || undefined,
       });
       setResult(data.convite ?? { status: 'has_access' });
     } catch (err: any) {
@@ -70,7 +72,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
   };
 
   const handleReset = () => {
-    setNLote(''); setCnpj(''); setNome(''); setEmail('');
+    setNLote(''); setCnpj(''); setNome(''); setEmail(''); setWhatsapp('');
     setError(''); setResult(null);
   };
 
@@ -140,6 +142,8 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
         onChangeNome={setNome}
         email={email}
         onChangeEmail={setEmail}
+        whatsapp={whatsapp}
+        onChangeWhatsapp={setWhatsapp}
       />
 
       <div className="flex justify-end gap-2 pt-2">

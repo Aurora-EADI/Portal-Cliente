@@ -5,9 +5,10 @@ import { Plus, Search, X, UserPlus, Truck, ChevronLeft, ChevronRight, Clock, Use
 import { useSearchParams } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
-import { Motorista, Veiculo, Transportadora } from '@/types/agendamento';
-import { formatCPF, formatPhone, formatPlaca, formatCNPJ, gerarSlotsDeJanela } from '@/lib/agendamento';
+import { Motorista, Veiculo } from '@/types/agendamento';
+import { formatCPF, formatPhone, formatPlaca, gerarSlotsDeJanela } from '@/lib/agendamento';
 import { JanelaAtendimento } from '@/types/agendamento';
+import { TransportadoraCnpjPicker } from '../TransportadoraCnpjPicker';
 
 export interface DadosFormData {
   operacao: string;
@@ -32,6 +33,8 @@ export interface DadosFormData {
   consignatario: string;
   observacoes: string;
   container?: string;
+  transportadoraCnpj?: string;
+  transportadoraEmail?: string;
 }
 
 interface DadosStepProps {
@@ -546,11 +549,12 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
   // Transportadora agenda em nome próprio: campo travado com o próprio nome
   const transportadoraContaNome = currentUser?.transportadoraConta?.nome ?? currentUser?.name ?? '';
+  const transportadoraContaCnpj = currentUser?.transportadoraConta?.cnpj ?? '';
   React.useEffect(() => {
     if (isTransportadoraUser && transportadoraContaNome && !data.transportadora) {
-      onChange({ ...data, transportadora: transportadoraContaNome });
+      onChange({ ...data, transportadora: transportadoraContaNome, transportadoraCnpj: transportadoraContaCnpj });
     }
-  }, [isTransportadoraUser, transportadoraContaNome, data.transportadora]);
+  }, [isTransportadoraUser, transportadoraContaNome, transportadoraContaCnpj, data.transportadora]);
 
   const busySlots = useMemo(() => {
     if (!data.dataAgendamento) return {};
@@ -606,8 +610,6 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const [placaTouched,  setPlacaTouched]  = useState(false);
   const [showModalMot,  setShowModalMot]  = useState(false);
   const [showModalVeic, setShowModalVeic] = useState(false);
-  const [transpFocused, setTranspFocused] = useState(false);
-  const [transpTouched, setTranspTouched] = useState(false);
 
   const set = <K extends keyof DadosFormData>(field: K) =>
     (value: DadosFormData[K]) => onChange({ ...data, [field]: value });
@@ -634,29 +636,6 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
       return true;
     });
   }, [veiculos]);
-
-  const uniqueTransportadoras = useMemo(() => {
-    const seen = new Set<string>();
-    return transportadorasConta.filter(t => {
-      const key = (t.cnpj ?? t.nome.toLowerCase());
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [transportadorasConta]);
-
-  const transpSuggestions = transpFocused && data.transportadora.length > 0
-    ? uniqueTransportadoras.filter(t => {
-        const q = data.transportadora.toLowerCase();
-        return t.nome.toLowerCase().includes(q) || (t.cnpj ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, ''));
-      })
-    : [];
-  const transpMatch = uniqueTransportadoras.find(t => t.nome.toLowerCase() === data.transportadora.toLowerCase());
-  const transpLocked = !!transpMatch || isTransportadoraUser;
-  const transpError: string | null =
-    !isTransportadoraUser && transpTouched && !transpFocused && data.transportadora.length > 2 && !transpMatch
-      ? 'Transportadora não encontrada. Busque pelo nome ou CNPJ.'
-      : null;
 
   // autocomplete
   const cpfDigits      = data.cpfMotorista.replace(/\D/g, '');
@@ -736,17 +715,6 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     onChange({ ...data, placaVeiculo: v.placa, tipoVeiculo: v.tipo });
     setPlacaTouched(false);
     setShowModalVeic(false);
-  };
-
-  const selectTransportadora = (t: Transportadora) => {
-    onChange({ ...data, transportadora: t.nome });
-    setTranspFocused(false);
-    setTranspTouched(false);
-  };
-
-  const clearTransportadora = () => {
-    onChange({ ...data, transportadora: '' });
-    setTranspTouched(false);
   };
 
   return (
@@ -980,46 +948,15 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             }
           </div>
 
-          <div>
-            <label className={LABEL}>Transportadora *</label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou CNPJ..."
-                value={data.transportadora}
-                onChange={e => onChange({ ...data, transportadora: e.target.value })}
-                onFocus={() => setTranspFocused(true)}
-                onBlur={() => { setTranspFocused(false); setTranspTouched(true); }}
-                readOnly={transpLocked}
-                className={(transpError ? INPUT_ERR : INPUT) + ' pl-8' + (transpLocked ? ' bg-zinc-50' : '')}
-              />
-              {transpLocked && !isTransportadoraUser && (
-                <button type="button" onClick={clearTransportadora} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            {!transpLocked && transpFocused && transpSuggestions.length > 0 && (
-              <div className="mt-1 border border-zinc-200 rounded-lg shadow-sm bg-white overflow-hidden">
-                {transpSuggestions.slice(0, 5).map(t => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onMouseDown={e => { e.preventDefault(); selectTransportadora(t); }}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 transition-colors flex items-center gap-2 border-b border-zinc-100 last:border-0"
-                  >
-                    <Truck className="w-3 h-3 text-zinc-400" />
-                    <span className="text-zinc-800 font-semibold truncate">{t.nome}</span>
-                    {t.cnpj && <span className="text-zinc-400 font-mono text-[10px]">{formatCNPJ(t.cnpj)}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-            {!transpLocked && !transpFocused && transpError && (
-              <FieldError msg={transpError} />
-            )}
-          </div>
+          <TransportadoraCnpjPicker
+            transportadoras={transportadorasConta}
+            cnpj={data.transportadoraCnpj ?? ''}
+            nome={data.transportadora}
+            onChangeCnpj={set('transportadoraCnpj')}
+            onChangeNome={set('transportadora')}
+            email={data.transportadoraEmail ?? ''}
+            onChangeEmail={set('transportadoraEmail')}
+          />
 
           <Field label="Empresa *">
             <input

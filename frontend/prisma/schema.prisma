@@ -321,6 +321,7 @@ model TransportadoraConta {
   codTransp String?  @map("cod_transp")
   email     String?
   telefone  String?
+  whatsapp  String?
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -333,12 +334,13 @@ model TransportadoraConta {
 }
 
 model DiTransportadoraAtribuicao {
-  id                    String   @id @default(uuid())
-  nLote                 String   @map("n_lote")
-  transportadoraContaId String   @map("transportadora_conta_id")
-  atribuidoPorUserId    String?  @map("atribuido_por_user_id")
-  atribuidoPorRole      String?  @map("atribuido_por_role")
-  atribuidoEm           DateTime @default(now()) @map("atribuido_em")
+  id                    String    @id @default(uuid())
+  nLote                 String    @map("n_lote")
+  transportadoraContaId String    @map("transportadora_conta_id")
+  atribuidoPorUserId    String?   @map("atribuido_por_user_id")
+  atribuidoPorRole      String?   @map("atribuido_por_role")
+  atribuidoEm           DateTime  @default(now()) @map("atribuido_em")
+  whatsappNotificadoEm  DateTime? @map("whatsapp_notificado_em")
 
   diAverbada     DiAverbada          @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
   transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)

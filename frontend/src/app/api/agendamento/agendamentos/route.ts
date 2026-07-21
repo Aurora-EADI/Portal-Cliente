@@ -3,6 +3,7 @@ import { requireAuth, requireExternalRole } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
+import { normalizeCnpj, ensureTransportadoraConvite, EnsureTransportadoraConviteResult } from '@/lib/convites';
 
 const ACTIVE_STATUSES = [
   AgendamentoStatus.ATIVO,
@@ -123,6 +124,7 @@ async function handleNewFormPost(body: any, user: any) {
     awbMawb, di: diNumero, dta, hawb, numeroVoo,
     placaVeiculo, volumes, peso, consignatario, observacoes,
     container, notificarWhatsapp, whatsapp,
+    transportadoraCnpj, transportadoraEmail,
   } = body;
 
   if (cpfMotorista && dataAgendamento && inicio) {
@@ -204,6 +206,23 @@ async function handleNewFormPost(body: any, user: any) {
     clienteId = cliente?.id ?? null;
   }
 
+  let transportadoraConvite: EnsureTransportadoraConviteResult | null = null;
+  if (!transportadoraContaId && transportadoraCnpj) {
+    const cnpjDigits = normalizeCnpj(String(transportadoraCnpj));
+    if (cnpjDigits.length === 14) {
+      let transportadoraConta = await prisma.transportadoraConta.findUnique({ where: { cnpj: cnpjDigits } });
+      if (!transportadoraConta && transportadora) {
+        transportadoraConta = await prisma.transportadoraConta.create({
+          data: { cnpj: cnpjDigits, nome: transportadora },
+        });
+      }
+      if (transportadoraConta) {
+        transportadoraContaId = transportadoraConta.id;
+        transportadoraConvite = await ensureTransportadoraConvite(transportadoraConta, transportadoraEmail);
+      }
+    }
+  }
+
   let motoristaId: string | null = null;
   if (cpfMotorista && clienteId) {
     const cpfClean = cpfMotorista.replace(/\D/g, '');
@@ -280,5 +299,5 @@ async function handleNewFormPost(body: any, user: any) {
     },
   });
 
-  return NextResponse.json(agendamento, { status: 201 });
+  return NextResponse.json({ ...agendamento, transportadoraConvite }, { status: 201 });
 }

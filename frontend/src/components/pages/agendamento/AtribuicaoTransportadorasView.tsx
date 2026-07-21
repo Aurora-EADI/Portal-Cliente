@@ -30,6 +30,7 @@ export function AtribuicaoTransportadorasView() {
   const [formCnpj, setFormCnpj] = useState('');
   const [formNome, setFormNome] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formWhatsapp, setFormWhatsapp] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [inviteNotice, setInviteNotice] = useState<{ status: 'pending' | 'created'; link?: string; emailSent?: boolean } | null>(null);
@@ -86,10 +87,10 @@ export function AtribuicaoTransportadorasView() {
 
     setSaving(true);
     try {
-      const { data } = await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim(), email: formEmail.trim() || undefined });
+      const { data } = await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim(), email: formEmail.trim() || undefined, whatsapp: formWhatsapp.trim() || undefined });
       await loadAtribuicoes();
       setAtribuindoNLote(null);
-      setFormCnpj(''); setFormNome(''); setFormEmail('');
+      setFormCnpj(''); setFormNome(''); setFormEmail(''); setFormWhatsapp('');
       if (data.convite && data.convite.status !== 'has_access') {
         setInviteNotice(data.convite);
       }
@@ -282,6 +283,8 @@ export function AtribuicaoTransportadorasView() {
                 onChangeNome={setFormNome}
                 email={formEmail}
                 onChangeEmail={setFormEmail}
+                whatsapp={formWhatsapp}
+                onChangeWhatsapp={setFormWhatsapp}
               />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setAtribuindoNLote(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>

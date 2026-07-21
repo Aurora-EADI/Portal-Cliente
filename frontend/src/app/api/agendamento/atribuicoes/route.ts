@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { nLote, cnpj, nome, email } = body;
+    const { nLote, cnpj, nome, email, whatsapp } = body;
 
     if (!nLote || !cnpj) {
       return NextResponse.json({ message: 'nLote e cnpj são obrigatórios' }, { status: 400 });
@@ -87,7 +87,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'nome é obrigatório para nova transportadora' }, { status: 400 });
       }
       transportadora = await prisma.transportadoraConta.create({
-        data: { cnpj: cnpjDigits, nome },
+        data: { cnpj: cnpjDigits, nome, whatsapp: whatsapp || null },
+      });
+    } else if (whatsapp && whatsapp !== transportadora.whatsapp) {
+      transportadora = await prisma.transportadoraConta.update({
+        where: { id: transportadora.id },
+        data: { whatsapp },
       });
     }
 
