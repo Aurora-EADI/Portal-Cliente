@@ -9,8 +9,14 @@ import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 interface AtribuicaoApi {
   id: string;
   nLote: string;
+  container: string;
   atribuidoEm: string;
   transportadora: { id: string; nome: string; cnpj: string };
+}
+
+function parseContainers(containerStr: string): string[] {
+  if (!containerStr) return [];
+  return containerStr.split('/').map(c => c.trim()).filter(Boolean);
 }
 
 interface ConviteGerado {
@@ -27,6 +33,7 @@ export function AtribuicaoTransportadorasView() {
 
   // Modal de atribuição
   const [atribuindoNLote, setAtribuindoNLote] = useState<string | null>(null);
+  const [formContainer, setFormContainer] = useState('');
   const [formCnpj, setFormCnpj] = useState('');
   const [formNome, setFormNome] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -76,21 +83,33 @@ export function AtribuicaoTransportadorasView() {
     );
   });
 
+  const diAtribuindo = dis.find(d => d.nLote === atribuindoNLote);
+  const containersDaDiAtribuindo = diAtribuindo ? parseContainers(diAtribuindo.container) : [];
+
+  const abrirModalAtribuir = (lote: string) => {
+    setAtribuindoNLote(lote);
+    setFormError('');
+    const di = dis.find(d => d.nLote === lote);
+    const containers = di ? parseContainers(di.container) : [];
+    setFormContainer(containers.length === 1 ? containers[0] : '');
+  };
+
   const handleAtribuir = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!atribuindoNLote) return;
     setFormError('');
 
+    if (containersDaDiAtribuindo.length > 0 && !formContainer) { setFormError('Selecione o container que está atribuindo.'); return; }
     const cnpjDigits = formCnpj.replace(/\D/g, '');
     if (cnpjDigits.length !== 14) { setFormError('CNPJ inválido (14 dígitos).'); return; }
     if (formNome.trim().length < 3) { setFormError('Informe o nome da transportadora.'); return; }
 
     setSaving(true);
     try {
-      const { data } = await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, cnpj: cnpjDigits, nome: formNome.trim(), email: formEmail.trim() || undefined, whatsapp: formWhatsapp.trim() || undefined });
+      const { data } = await api.post('/agendamento/atribuicoes', { nLote: atribuindoNLote, container: formContainer, cnpj: cnpjDigits, nome: formNome.trim(), email: formEmail.trim() || undefined, whatsapp: formWhatsapp.trim() || undefined });
       await loadAtribuicoes();
       setAtribuindoNLote(null);
-      setFormCnpj(''); setFormNome(''); setFormEmail(''); setFormWhatsapp('');
+      setFormContainer(''); setFormCnpj(''); setFormNome(''); setFormEmail(''); setFormWhatsapp('');
       if (data.convite && data.convite.status !== 'has_access') {
         setInviteNotice(data.convite);
       }
@@ -101,10 +120,10 @@ export function AtribuicaoTransportadorasView() {
     }
   };
 
-  const handleRemover = async (nLote: string, transportadoraContaId: string) => {
+  const handleRemover = async (nLote: string, transportadoraContaId: string, container: string) => {
     try {
-      await api.delete(`/agendamento/atribuicoes?nLote=${encodeURIComponent(nLote)}&transportadoraContaId=${encodeURIComponent(transportadoraContaId)}`);
-      setAtribuicoes(prev => prev.filter(a => !(a.nLote === nLote && a.transportadora.id === transportadoraContaId)));
+      await api.delete(`/agendamento/atribuicoes?nLote=${encodeURIComponent(nLote)}&transportadoraContaId=${encodeURIComponent(transportadoraContaId)}&container=${encodeURIComponent(container)}`);
+      setAtribuicoes(prev => prev.filter(a => !(a.nLote === nLote && a.transportadora.id === transportadoraContaId && a.container === container)));
     } catch (err) {
       console.error('[Atribuições] erro ao remover', err);
     }
@@ -231,8 +250,9 @@ export function AtribuicaoTransportadorasView() {
                             <span key={a.id} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-[10px] font-bold">
                               <Truck className="w-3 h-3" />
                               {a.transportadora.nome}
+                              {a.container && <span className="font-mono font-normal text-sky-500">— {a.container}</span>}
                               <button
-                                onClick={() => handleRemover(a.nLote, a.transportadora.id)}
+                                onClick={() => handleRemover(a.nLote, a.transportadora.id, a.container)}
                                 title="Remover atribuição"
                                 className="text-sky-400 hover:text-red-500 cursor-pointer ml-0.5"
                               >
@@ -244,7 +264,7 @@ export function AtribuicaoTransportadorasView() {
                       </td>
                       <td className="py-3 px-3">
                         <button
-                          onClick={() => { setAtribuindoNLote(lote); setFormError(''); }}
+                          onClick={() => abrirModalAtribuir(lote)}
                           disabled={!lote}
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ED6A23] hover:text-[#D45917] disabled:text-zinc-300 cursor-pointer"
                         >
@@ -275,6 +295,32 @@ export function AtribuicaoTransportadorasView() {
               {formError && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {formError}</div>
               )}
+
+              {containersDaDiAtribuindo.length > 0 && (
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Container *</label>
+                  {containersDaDiAtribuindo.length === 1 ? (
+                    <div className="px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg font-mono font-semibold text-emerald-800">
+                      {containersDaDiAtribuindo[0]}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {containersDaDiAtribuindo.map(ctnr => (
+                        <button
+                          key={ctnr}
+                          type="button"
+                          onClick={() => setFormContainer(ctnr)}
+                          className={`w-full text-left px-3 py-2 rounded-lg border font-mono font-semibold transition-colors ${formContainer === ctnr ? 'border-[#ED6A23] bg-[#ED6A23]/5 text-[#ED6A23]' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'}`}
+                        >
+                          {ctnr}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-zinc-400 mt-1">A transportadora só vai enxergar e agendar este container.</p>
+                </div>
+              )}
+
               <TransportadoraCnpjPicker
                 transportadoras={transportadorasConta}
                 cnpj={formCnpj}

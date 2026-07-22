@@ -166,6 +166,9 @@ async function handleNewFormPost(body: any, user: any) {
         OR: [{ documentoSaida: { in: diNumeros } }, { nLote: { in: diNumeros } }],
         atribuicoes: { some: { transportadoraContaId: user.transportadoraContaId } },
       },
+      include: {
+        atribuicoes: { where: { transportadoraContaId: user.transportadoraContaId }, select: { container: true } },
+      },
     });
     const encontrados = new Set(disAtribuidas.flatMap(d => [d.documentoSaida, d.nLote].filter(Boolean)));
     const semAtribuicao = diNumeros.filter(n => !encontrados.has(n));
@@ -174,6 +177,21 @@ async function handleNewFormPost(body: any, user: any) {
         { message: `DI(s) não atribuída(s) a esta transportadora: ${semAtribuicao.join(', ')}` },
         { status: 403 },
       );
+    }
+
+    // Se a atribuição foi feita por container específico (não a DI inteira),
+    // só deixa agendar o container que realmente foi atribuído.
+    const containerSolicitado = typeof container === 'string' ? container.trim() : '';
+    if (containerSolicitado) {
+      const atribuicoesContainers = disAtribuidas.flatMap(d => d.atribuicoes.map(a => a.container));
+      const temDiInteira = atribuicoesContainers.includes('');
+      const temEsseContainer = atribuicoesContainers.includes(containerSolicitado);
+      if (!temDiInteira && !temEsseContainer) {
+        return NextResponse.json(
+          { message: `Container ${containerSolicitado} não foi atribuído a esta transportadora` },
+          { status: 403 },
+        );
+      }
     }
 
     transportadoraContaId = user.transportadoraContaId;

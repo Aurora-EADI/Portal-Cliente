@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Truck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
@@ -9,6 +9,11 @@ import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 const INPUT = 'w-full py-2 px-3 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800';
 const LABEL = 'text-xs font-bold text-zinc-600 block mb-1.5';
+
+function parseContainers(containerStr: string): string[] {
+  if (!containerStr) return [];
+  return containerStr.split('/').map(c => c.trim()).filter(Boolean);
+}
 
 interface AtribuirTransportadoraFormProps {
   onBack: () => void;
@@ -26,11 +31,15 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
   const searchParams = useSearchParams();
 
   const [nLote, setNLote] = useState('');
+  const [container, setContainer] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [autoFilled, setAutoFilled] = useState(false);
+
+  const diSelecionada = useMemo(() => availableDis.find(d => d.nLote === nLote), [availableDis, nLote]);
+  const containersDaDi = useMemo(() => diSelecionada ? parseContainers(diSelecionada.container) : [], [diSelecionada]);
 
   useEffect(() => {
     if (autoFilled || availableDis.length === 0) return;
@@ -39,8 +48,20 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
     const di = availableDis.find(d => d.numeroDI === diNumero);
     if (!di) return;
     setNLote(di.nLote!);
+    const urlContainer = searchParams.get('container') || '';
+    const containers = parseContainers(di.container);
+    if (urlContainer) setContainer(urlContainer);
+    else if (containers.length === 1) setContainer(containers[0]);
     setAutoFilled(true);
   }, [availableDis, searchParams, autoFilled]);
+
+  // Trocou de DI: reseta o container escolhido (ou auto-seleciona se só tiver um)
+  const handleChangeDi = (novoLote: string) => {
+    setNLote(novoLote);
+    const di = availableDis.find(d => d.nLote === novoLote);
+    const containers = di ? parseContainers(di.container) : [];
+    setContainer(containers.length === 1 ? containers[0] : '');
+  };
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -51,6 +72,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
     setError('');
 
     if (!nLote) { setError('Selecione uma DI.'); return; }
+    if (containersDaDi.length > 0 && !container) { setError('Selecione o container que está atribuindo.'); return; }
     const cnpjDigits = cnpj.replace(/\D/g, '');
     if (cnpjDigits.length !== 14) { setError('Selecione uma transportadora.'); return; }
 
@@ -58,6 +80,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
     try {
       const { data } = await api.post('/agendamento/atribuicoes', {
         nLote,
+        container,
         cnpj: cnpjDigits,
         nome: nome.trim(),
         email: email.trim() || undefined,
@@ -72,7 +95,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
   };
 
   const handleReset = () => {
-    setNLote(''); setCnpj(''); setNome(''); setEmail(''); setWhatsapp('');
+    setNLote(''); setContainer(''); setCnpj(''); setNome(''); setEmail(''); setWhatsapp('');
     setError(''); setResult(null);
   };
 
@@ -86,6 +109,12 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
             <p className="text-sm font-bold text-emerald-800">
               {convidou ? 'Transportadora atribuída — convite enviado!' : 'Transportadora atribuída!'}
             </p>
+            {container && (
+              <p className="text-xs text-emerald-700 mt-1">
+                Container atribuído: <span className="font-mono font-bold">{container}</span>
+                {diSelecionada && <> — DI {diSelecionada.numeroDI}</>}
+              </p>
+            )}
             <p className="text-xs text-emerald-700 mt-1">
               {convidou
                 ? result.status === 'pending'
@@ -123,7 +152,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
 
       <div>
         <label className={LABEL}>Declaração de Importação (DI) *</label>
-        <select value={nLote} onChange={(e) => setNLote(e.target.value)} className={INPUT}>
+        <select value={nLote} onChange={(e) => handleChangeDi(e.target.value)} className={INPUT}>
           <option value="">Selecione uma DI...</option>
           {availableDis.map(di => (
             <option key={di.id} value={di.nLote}>{di.numeroDI} — {di.cliente}</option>
@@ -133,6 +162,37 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
           <p className="text-[11px] text-zinc-400 mt-1">Nenhuma DI liberada disponível no momento.</p>
         )}
       </div>
+
+      {nLote && containersDaDi.length > 0 && (
+        <div>
+          <label className={LABEL}>Container *</label>
+          {containersDaDi.length === 1 ? (
+            <div className="px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg text-sm font-mono font-semibold text-emerald-800">
+              {containersDaDi[0]}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {containersDaDi.map(ctnr => (
+                <button
+                  key={ctnr}
+                  type="button"
+                  onClick={() => setContainer(ctnr)}
+                  className={`w-full text-left px-3 py-2 rounded-lg border text-sm font-mono font-semibold transition-colors ${container === ctnr ? 'border-[#ED6A23] bg-[#ED6A23]/5 text-[#ED6A23]' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'}`}
+                >
+                  {ctnr}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-[11px] text-zinc-400 mt-1">A transportadora só vai enxergar e agendar este container.</p>
+        </div>
+      )}
+
+      {nLote && containersDaDi.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-xs text-amber-700">Nenhum container vinculado a esta DI — a atribuição valerá pra DI inteira.</p>
+        </div>
+      )}
 
       <TransportadoraCnpjPicker
         transportadoras={transportadorasConta}

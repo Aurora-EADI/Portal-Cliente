@@ -336,6 +336,9 @@ model TransportadoraConta {
 model DiTransportadoraAtribuicao {
   id                    String    @id @default(uuid())
   nLote                 String    @map("n_lote")
+  // "" = DI inteira (legado / atribuição feita sem container especifico).
+  // Qualquer outro valor = container especifico atribuido a essa transportadora.
+  container             String    @default("") @map("container")
   transportadoraContaId String    @map("transportadora_conta_id")
   atribuidoPorUserId    String?   @map("atribuido_por_user_id")
   atribuidoPorRole      String?   @map("atribuido_por_role")
@@ -345,7 +348,7 @@ model DiTransportadoraAtribuicao {
   diAverbada     DiAverbada          @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
   transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
 
-  @@unique([nLote, transportadoraContaId])
+  @@unique([nLote, transportadoraContaId, container])
   @@index([transportadoraContaId])
   @@map("di_transportadora_atribuicoes")
 }

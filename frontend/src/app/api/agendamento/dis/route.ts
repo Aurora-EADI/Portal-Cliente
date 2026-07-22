@@ -75,9 +75,22 @@ export async function GET(request: NextRequest) {
     }
     const disAverbadas = await prisma.diAverbada.findMany({
       where: { atribuicoes: { some: { transportadoraContaId: auth.user.transportadoraContaId } } },
+      include: {
+        atribuicoes: { where: { transportadoraContaId: auth.user.transportadoraContaId }, select: { container: true } },
+      },
       orderBy: { sincronizadoEm: 'desc' },
     });
-    return NextResponse.json(mapDisAverbadas(disAverbadas));
+    // Atribuição por container específico: só mostra os containers atribuídos,
+    // não a DI inteira. Atribuição legada ("" = DI inteira) continua mostrando tudo.
+    const comContainersRestritos = disAverbadas.map(da => {
+      const temDiInteira = da.atribuicoes.some(a => a.container === '');
+      const containersAtribuidos = da.atribuicoes.map(a => a.container).filter(Boolean);
+      return {
+        ...da,
+        containers: temDiInteira || containersAtribuidos.length === 0 ? da.containers : containersAtribuidos.join(' / '),
+      };
+    });
+    return NextResponse.json(mapDisAverbadas(comContainersRestritos));
   }
 
   return NextResponse.json({ message: 'Acesso restrito a clientes, despachantes e transportadoras' }, { status: 403 });

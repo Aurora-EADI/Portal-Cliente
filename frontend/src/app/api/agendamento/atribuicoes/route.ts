@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { nLote, cnpj, nome, email, whatsapp } = body;
+    const container = typeof body.container === 'string' ? body.container.trim() : '';
 
     if (!nLote || !cnpj) {
       return NextResponse.json({ message: 'nLote e cnpj são obrigatórios' }, { status: 400 });
@@ -79,6 +80,13 @@ export async function POST(request: NextRequest) {
     const di = await prisma.diAverbada.findFirst({ where: { nLote, ...ownership } });
     if (!di) {
       return NextResponse.json({ message: 'DI não encontrada ou sem permissão' }, { status: 404 });
+    }
+
+    if (container) {
+      const containersDaDi = (di.containers ?? '').split('/').map(c => c.trim()).filter(Boolean);
+      if (!containersDaDi.includes(container)) {
+        return NextResponse.json({ message: 'Container não pertence a esta DI' }, { status: 400 });
+      }
     }
 
     let transportadora = await prisma.transportadoraConta.findUnique({ where: { cnpj: cnpjDigits } });
@@ -105,10 +113,10 @@ export async function POST(request: NextRequest) {
     }
 
     const existente = await prisma.diTransportadoraAtribuicao.findUnique({
-      where: { nLote_transportadoraContaId: { nLote, transportadoraContaId: transportadora.id } },
+      where: { nLote_transportadoraContaId_container: { nLote, transportadoraContaId: transportadora.id, container } },
     });
     if (existente) {
-      return NextResponse.json({ message: 'Transportadora já atribuída a esta DI' }, { status: 409 });
+      return NextResponse.json({ message: container ? 'Transportadora já atribuída a este container' : 'Transportadora já atribuída a esta DI' }, { status: 409 });
     }
 
     const convite = await ensureTransportadoraConvite(transportadora, email);
@@ -116,6 +124,7 @@ export async function POST(request: NextRequest) {
     const atribuicao = await prisma.diTransportadoraAtribuicao.create({
       data: {
         nLote,
+        container,
         transportadoraContaId: transportadora.id,
         atribuidoPorUserId: user.id,
         atribuidoPorRole: user.role,
@@ -141,6 +150,7 @@ export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const nLote = searchParams.get('nLote');
   const transportadoraContaId = searchParams.get('transportadoraContaId');
+  const container = searchParams.get('container') ?? undefined;
 
   if (!nLote || !transportadoraContaId) {
     return NextResponse.json({ message: 'nLote e transportadoraContaId são obrigatórios' }, { status: 400 });
@@ -157,7 +167,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   const deleted = await prisma.diTransportadoraAtribuicao.deleteMany({
-    where: { nLote, transportadoraContaId },
+    where: { nLote, transportadoraContaId, ...(container !== undefined ? { container } : {}) },
   });
   if (deleted.count === 0) {
     return NextResponse.json({ message: 'Atribuição não encontrada' }, { status: 404 });
