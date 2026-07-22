@@ -957,27 +957,38 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
             }
           </div>
 
-          <TransportadoraCnpjPicker
-            transportadoras={transportadorasConta}
-            cnpj={data.transportadoraCnpj ?? ''}
-            nome={data.transportadora}
-            onChangeCnpj={set('transportadoraCnpj')}
-            onChangeNome={set('transportadora')}
-            email={data.transportadoraEmail ?? ''}
-            onChangeEmail={set('transportadoraEmail')}
-            onSelect={t => onChange({
-              ...data,
-              transportadora: t.nome,
-              transportadoraCnpj: (t.cnpj ?? '').replace(/\D/g, ''),
-              transportadoraEmail: t.email ?? '',
-            })}
-            onClear={() => onChange({
-              ...data,
-              transportadora: '',
-              transportadoraCnpj: '',
-              transportadoraEmail: '',
-            })}
-          />
+          {isTransportadoraUser ? (
+            <Field label="Transportadora *">
+              <input
+                type="text"
+                readOnly
+                value={data.transportadora || transportadoraContaNome}
+                className={INPUT + ' bg-zinc-50 cursor-not-allowed'}
+              />
+            </Field>
+          ) : (
+            <TransportadoraCnpjPicker
+              transportadoras={transportadorasConta}
+              cnpj={data.transportadoraCnpj ?? ''}
+              nome={data.transportadora}
+              onChangeCnpj={set('transportadoraCnpj')}
+              onChangeNome={set('transportadora')}
+              email={data.transportadoraEmail ?? ''}
+              onChangeEmail={set('transportadoraEmail')}
+              onSelect={t => onChange({
+                ...data,
+                transportadora: t.nome,
+                transportadoraCnpj: (t.cnpj ?? '').replace(/\D/g, ''),
+                transportadoraEmail: t.email ?? '',
+              })}
+              onClear={() => onChange({
+                ...data,
+                transportadora: '',
+                transportadoraCnpj: '',
+                transportadoraEmail: '',
+              })}
+            />
+          )}
 
           <Field label="Empresa *">
             <input
