@@ -25,7 +25,7 @@ function AgendamentoContent() {
 
   const blockedTab =
     (isExternalUser && (tab === 'config' || tab === 'gate' || tab === 'dis')) ||
-    (isTransportadora && (tab === 'drivers' || tab === 'transportadoras')) ||
+    (isTransportadora && tab === 'transportadoras') ||
     (!isClienteOuDespachante && tab === 'transportadoras');
 
   React.useEffect(() => {

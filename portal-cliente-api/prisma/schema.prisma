@@ -17,6 +17,7 @@ enum UserRole {
   EMPLOYEE
   CLIENTE
   DESPACHANTE
+  TRANSPORTADORA
 }
 
 model User {

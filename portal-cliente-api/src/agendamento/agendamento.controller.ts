@@ -33,22 +33,28 @@ export class AgendamentoController {
 
   // MOTORISTAS
   @Get('motoristas')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
   findAllMotoristas(@Query('clienteId') clienteId?: string) { return this.fcl.findAllMotoristas(clienteId); }
 
   @Post('motoristas')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE)
   createMotorista(@Body() body: any) { return this.fcl.createMotorista(body); }
 
   @Patch('motoristas/:id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
   updateMotorista(@Param('id') id: string, @Body() body: any) { return this.fcl.updateMotorista(id, body); }
 
   // VEÍCULOS
   @Get('veiculos')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
   findAllVeiculos(@Query('clienteId') clienteId?: string) { return this.fcl.findAllVeiculos(clienteId); }
 
   @Post('veiculos')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE)
   createVeiculo(@Body() body: any) { return this.fcl.createVeiculo(body); }
 
   @Patch('veiculos/:id')
+  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
   updateVeiculo(@Param('id') id: string, @Body() body: any) { return this.fcl.updateVeiculo(id, body); }
 
   // TRANSPORTADORAS

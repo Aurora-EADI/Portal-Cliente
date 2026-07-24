@@ -48,6 +48,8 @@ interface AgendamentoContextValue {
   saveSelectedJanelaIdToStorage: (id: string) => void;
   handleAddMotorista: (m: Motorista) => void;
   handleAddVeiculo: (v: Veiculo) => void;
+  handleEditMotorista: (id: string, data: Partial<Pick<Motorista, 'nome' | 'cnh' | 'telefone'>>) => Promise<void>;
+  handleEditVeiculo: (id: string, data: Partial<Pick<Veiculo, 'modelo' | 'tipo'>>) => Promise<void>;
   handleCancelBooking: (id: string) => void;
   handleConfirmBooking: (data: string, horario: string) => Promise<void>;
   handleSaveNovoAgendamento: (dados: DadosFormData, notificacoes: NotificacoesFormData) => Promise<Agendamento>;
@@ -199,6 +201,16 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleEditMotorista = async (id: string, data: Partial<Pick<Motorista, 'nome' | 'cnh' | 'telefone'>>) => {
+    const { data: updated } = await api.patch(`/agendamento/motoristas/${id}`, data);
+    setMotoristas(prev => prev.map(m => m.id === id ? { ...m, nome: updated.nome, cnh: updated.cnh, telefone: updated.telefone } : m));
+  };
+
+  const handleEditVeiculo = async (id: string, data: Partial<Pick<Veiculo, 'modelo' | 'tipo'>>) => {
+    const { data: updated } = await api.patch(`/agendamento/veiculos/${id}`, data);
+    setVeiculos(prev => prev.map(v => v.id === id ? { ...v, modelo: updated.modelo, tipo: updated.tipo } : v));
+  };
+
   const handleCancelBooking = async (id: string) => {
     await api.patch(`/agendamento/agendamentos/${id}/cancelar`);
     setActiveBookings(prev => prev.filter(b => b.id !== id));
@@ -295,7 +307,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       selectedMotorista, setSelectedMotorista, selectedVeiculo, setSelectedVeiculo,
       successBooking, setSuccessBooking, viewingArchiveBooking, setViewingArchiveBooking,
       setSelectedClient, saveJanelasToStorage, createJanelaApi, updateJanelaApi, deleteJanelaApi, saveSelectedJanelaIdToStorage,
-      handleAddMotorista, handleAddVeiculo,
+      handleAddMotorista, handleAddVeiculo, handleEditMotorista, handleEditVeiculo,
       handleCancelBooking, handleConfirmBooking, handleSaveNovoAgendamento,
       handleResetWizard,
     }}>

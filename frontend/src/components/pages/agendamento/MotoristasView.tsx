@@ -1,18 +1,21 @@
 ﻿'use client';
 
 import React, { useState } from 'react';
-import { Plus, Search, User, Truck, CheckCircle, X } from 'lucide-react';
+import { Plus, Search, User, Truck, CheckCircle, X, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { Motorista, Veiculo } from '@/types/agendamento';
 import { formatCPF, formatPhone, formatPlaca } from '@/lib/agendamento';
 
 export function MotoristasView() {
-  const { motoristas, veiculos, handleAddMotorista, handleAddVeiculo } = useAgendamento();
+  const { motoristas, veiculos, handleAddMotorista, handleAddVeiculo, handleEditMotorista, handleEditVeiculo, isTransportadora } = useAgendamento();
   const [activeTab, setActiveTab] = useState<'drivers' | 'vehicles'>('drivers');
   const [driverSearch, setDriverSearch] = useState('');
   const [vehicleSearch, setVehicleSearch] = useState('');
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Motorista | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<Veiculo | null>(null);
 
   const [formName, setFormName] = useState('');
   const [formCPF, setFormCPF] = useState('');
@@ -24,6 +27,15 @@ export function MotoristasView() {
   const [formModelo, setFormModelo] = useState('');
   const [formTipo, setFormTipo] = useState('Cavalo Mecânico');
   const [vehicleErrors, setVehicleErrors] = useState<string[]>([]);
+
+  const [editName, setEditName] = useState('');
+  const [editCNH, setEditCNH] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDriverErrors, setEditDriverErrors] = useState<string[]>([]);
+
+  const [editModelo, setEditModelo] = useState('');
+  const [editTipo, setEditTipo] = useState('Cavalo Mecânico');
+  const [editVehicleErrors, setEditVehicleErrors] = useState<string[]>([]);
 
   const filteredDrivers = motoristas.filter(d =>
     !driverSearch.trim() ||
@@ -74,6 +86,57 @@ export function MotoristasView() {
     setShowAddVehicle(false);
   };
 
+  const openEditDriver = (d: Motorista) => {
+    setEditingDriver(d);
+    setEditName(d.nome);
+    setEditCNH(d.cnh);
+    setEditPhone(d.telefone);
+    setEditDriverErrors([]);
+  };
+
+  const openEditVehicle = (v: Veiculo) => {
+    setEditingVehicle(v);
+    setEditModelo(v.modelo);
+    setEditTipo(v.tipo);
+    setEditVehicleErrors([]);
+  };
+
+  const handleUpdateDriver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDriver) return;
+    const errors: string[] = [];
+    if (editName.trim().length < 5) errors.push('Nome deve ter ao menos 5 caracteres.');
+    if (editCNH.replace(/\D/g, '').length !== 11) errors.push('CNH inválida (11 dígitos).');
+    if (editPhone.replace(/\D/g, '').length < 10) errors.push('Telefone inválido.');
+    setEditDriverErrors(errors);
+    if (errors.length > 0) return;
+
+    try {
+      await handleEditMotorista(editingDriver.id, { nome: editName.trim(), cnh: editCNH, telefone: editPhone });
+      toast.success('Motorista atualizado.');
+      setEditingDriver(null);
+    } catch {
+      toast.error('Erro ao atualizar motorista.');
+    }
+  };
+
+  const handleUpdateVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVehicle) return;
+    const errors: string[] = [];
+    if (editModelo.trim().length < 3) errors.push('Modelo deve ter ao menos 3 caracteres.');
+    setEditVehicleErrors(errors);
+    if (errors.length > 0) return;
+
+    try {
+      await handleEditVeiculo(editingVehicle.id, { modelo: editModelo.trim(), tipo: editTipo });
+      toast.success('Veículo atualizado.');
+      setEditingVehicle(null);
+    } catch {
+      toast.error('Erro ao atualizar veículo.');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in">
       <div className="bg-white border border-zinc-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -81,13 +144,15 @@ export function MotoristasView() {
           <h2 className="text-base font-extrabold text-zinc-900">Diretório de Motoristas & Veículos</h2>
           <p className="text-xs text-zinc-500 mt-1">Cadastros credenciados para retirada FCL</p>
         </div>
-        <button
-          onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
-          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{activeTab === 'drivers' ? 'Novo Motorista' : 'Novo Veículo'}</span>
-        </button>
+        {!isTransportadora && (
+          <button
+            onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
+            className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{activeTab === 'drivers' ? 'Novo Motorista' : 'Novo Veículo'}</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -124,7 +189,7 @@ export function MotoristasView() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 bg-zinc-50">
-                    {['Nome Completo', 'CPF', 'CNH', 'Telefone', 'Status'].map(h => (
+                    {['Nome Completo', 'CPF', 'CNH', 'Telefone', 'Status', 'Ações'].map(h => (
                       <th key={h} className={`text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px] ${h === 'CNH' ? 'hidden sm:table-cell' : ''}`}>{h}</th>
                     ))}
                   </tr>
@@ -148,10 +213,18 @@ export function MotoristasView() {
                           <CheckCircle className="w-3 h-3" /> Ativo
                         </span>
                       </td>
+                      <td className="py-3 px-3">
+                        <button
+                          onClick={() => openEditDriver(d)}
+                          className="inline-flex items-center gap-1 text-sky-700 hover:text-sky-900 font-bold text-[11px] cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredDrivers.length === 0 && (
-                    <tr><td colSpan={5} className="py-8 text-center text-zinc-400 text-xs">Nenhum motorista encontrado</td></tr>
+                    <tr><td colSpan={6} className="py-8 text-center text-zinc-400 text-xs">Nenhum motorista encontrado</td></tr>
                   )}
                 </tbody>
               </table>
@@ -164,7 +237,7 @@ export function MotoristasView() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-zinc-200 bg-zinc-50">
-                    {['Placa', 'Modelo / Marca', 'Tipo de Carroceria', 'Status'].map(h => (
+                    {['Placa', 'Modelo / Marca', 'Tipo de Carroceria', 'Status', 'Ações'].map(h => (
                       <th key={h} className="text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px]">{h}</th>
                     ))}
                   </tr>
@@ -182,10 +255,18 @@ export function MotoristasView() {
                           <CheckCircle className="w-3 h-3" /> Ativo
                         </span>
                       </td>
+                      <td className="py-3 px-3">
+                        <button
+                          onClick={() => openEditVehicle(v)}
+                          className="inline-flex items-center gap-1 text-sky-700 hover:text-sky-900 font-bold text-[11px] cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredVehicles.length === 0 && (
-                    <tr><td colSpan={4} className="py-8 text-center text-zinc-400 text-xs">Nenhum veículo encontrado</td></tr>
+                    <tr><td colSpan={5} className="py-8 text-center text-zinc-400 text-xs">Nenhum veículo encontrado</td></tr>
                   )}
                 </tbody>
               </table>
@@ -278,6 +359,95 @@ export function MotoristasView() {
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowAddVehicle(false)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 text-xs shadow-sm">Cadastrar Veículo</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Driver Modal */}
+      {editingDriver && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200">
+              <h3 className="text-sm font-extrabold text-zinc-900">Editar Motorista</h3>
+              <button onClick={() => setEditingDriver(null)} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleUpdateDriver} className="p-5 space-y-4 text-xs">
+              {editDriverErrors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">
+                  {editDriverErrors.map((e, i) => <p key={i}>• {e}</p>)}
+                </div>
+              )}
+              <div>
+                <label className="text-zinc-600 font-bold block mb-1.5">Nome Completo *</label>
+                <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nome Civil"
+                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">CPF</label>
+                  <input type="text" disabled value={editingDriver.cpf}
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-zinc-100 font-mono text-zinc-500 cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Nº CNH *</label>
+                  <input type="text" required maxLength={11} value={editCNH} onChange={(e) => setEditCNH(e.target.value.replace(/\D/g,''))} placeholder="CNH (11 dígitos)"
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+              </div>
+              <div>
+                <label className="text-zinc-600 font-bold block mb-1.5">Telefone *</label>
+                <input type="text" required value={editPhone} onChange={(e) => setEditPhone(formatPhone(e.target.value))} placeholder="(00) 00000-0000"
+                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingDriver(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-sky-600 text-white rounded-lg font-bold hover:bg-sky-700 text-xs shadow-sm">Salvar Alterações</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Vehicle Modal */}
+      {editingVehicle && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200">
+              <h3 className="text-sm font-extrabold text-zinc-900">Editar Veículo</h3>
+              <button onClick={() => setEditingVehicle(null)} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleUpdateVehicle} className="p-5 space-y-4 text-xs">
+              {editVehicleErrors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">
+                  {editVehicleErrors.map((e, i) => <p key={i}>• {e}</p>)}
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Placa</label>
+                  <input type="text" disabled value={editingVehicle.placa}
+                    className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-zinc-100 font-mono uppercase tracking-widest text-zinc-500 cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="text-zinc-600 font-bold block mb-1.5">Tipo de Carroceria *</label>
+                  <select value={editTipo} onChange={(e) => setEditTipo(e.target.value)} className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <option value="Cavalo Mecânico">Cavalo Mecânico</option>
+                    <option value="Carreta Porta-Container">Carreta Porta-Container</option>
+                    <option value="Truck 3/4">Truck 3/4</option>
+                    <option value="Bi-trem / Rodotrem">Bi-trem / Rodotrem</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-zinc-600 font-bold block mb-1.5">Modelo / Marca *</label>
+                <input type="text" required value={editModelo} onChange={(e) => setEditModelo(e.target.value)} placeholder="Ex: Scania R450, Volvo FH"
+                  className="w-full py-2 px-3 border border-zinc-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingVehicle(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-sky-600 text-white rounded-lg font-bold hover:bg-sky-700 text-xs shadow-sm">Salvar Alterações</button>
               </div>
             </form>
           </div>
