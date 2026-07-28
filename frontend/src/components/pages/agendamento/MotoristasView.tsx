@@ -8,7 +8,7 @@ import { Motorista, Veiculo } from '@/types/agendamento';
 import { formatCPF, formatPhone, formatPlaca } from '@/lib/agendamento';
 
 export function MotoristasView() {
-  const { motoristas, veiculos, handleAddMotorista, handleAddVeiculo, handleEditMotorista, handleEditVeiculo, isTransportadora } = useAgendamento();
+  const { motoristas, veiculos, handleAddMotorista, handleAddVeiculo, handleEditMotorista, handleEditVeiculo } = useAgendamento();
   const [activeTab, setActiveTab] = useState<'drivers' | 'vehicles'>('drivers');
   const [driverSearch, setDriverSearch] = useState('');
   const [vehicleSearch, setVehicleSearch] = useState('');
@@ -144,15 +144,13 @@ export function MotoristasView() {
           <h2 className="text-base font-extrabold text-zinc-900">Diretório de Motoristas & Veículos</h2>
           <p className="text-xs text-zinc-500 mt-1">Cadastros credenciados para retirada FCL</p>
         </div>
-        {!isTransportadora && (
-          <button
-            onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
-            className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{activeTab === 'drivers' ? 'Novo Motorista' : 'Novo Veículo'}</span>
-          </button>
-        )}
+        <button
+          onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
+          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{activeTab === 'drivers' ? 'Novo Motorista' : 'Novo Veículo'}</span>
+        </button>
       </div>
 
       {/* Tabs */}

@@ -155,37 +155,43 @@ model DI {
 }
 
 model Motorista {
-  id        String   @id @default(uuid())
-  clienteId String
-  nome      String
-  cpf       String
-  cnh       String
-  telefone  String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  clienteId              String?
+  transportadoraContaId  String?  @map("transportadora_conta_id")
+  nome                   String
+  cpf                    String
+  cnh                    String
+  telefone               String
+  ativo                  Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  agendamentos        Agendamento[]
 
   @@unique([clienteId, cpf])
+  @@unique([transportadoraContaId, cpf])
   @@map("motoristas")
 }
 
 model Veiculo {
-  id        String   @id @default(uuid())
-  clienteId String
-  placa     String
-  modelo    String
-  tipo      String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String   @id @default(uuid())
+  clienteId              String?
+  transportadoraContaId  String?  @map("transportadora_conta_id")
+  placa                  String
+  modelo                 String
+  tipo                   String
+  ativo                  Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  agendamentos        Agendamento[]
 
   @@unique([clienteId, placa])
+  @@unique([transportadoraContaId, placa])
   @@map("veiculos")
 }
 
@@ -329,6 +335,8 @@ model TransportadoraConta {
   users        User[]
   atribuicoes  DiTransportadoraAtribuicao[]
   agendamentos Agendamento[]
+  motoristas   Motorista[]
+  veiculos     Veiculo[]
 
   @@map("transportadora_contas")
 }

@@ -14,26 +14,29 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
 
-  let clienteFilter: { clienteId?: string; clienteId_in?: undefined } | { clienteId?: { in: string[] } } | undefined;
+  let scopeFilter: { clienteId?: string | { in: string[] }; transportadoraContaId?: string } | undefined;
 
   if (auth.user.role === UserRole.CLIENTE) {
-    clienteFilter = auth.user.clienteId ? { clienteId: auth.user.clienteId } : undefined;
+    scopeFilter = auth.user.clienteId ? { clienteId: auth.user.clienteId } : undefined;
   } else if (auth.user.role === UserRole.DESPACHANTE) {
     if (!auth.user.despachanteId) return NextResponse.json([]);
     const clienteIds = await getDespachanteClienteIds(auth.user.despachanteId);
     if (!clienteIds.length) return NextResponse.json([]);
     const qClienteId = searchParams.get('clienteId');
     if (qClienteId && clienteIds.includes(qClienteId)) {
-      clienteFilter = { clienteId: qClienteId };
+      scopeFilter = { clienteId: qClienteId };
     } else {
-      clienteFilter = { clienteId: { in: clienteIds } };
+      scopeFilter = { clienteId: { in: clienteIds } };
     }
+  } else if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId) return NextResponse.json([]);
+    scopeFilter = { transportadoraContaId: auth.user.transportadoraContaId };
   } else {
     return NextResponse.json([]);
   }
 
   const motoristas = await prisma.motorista.findMany({
-    where: { ...clienteFilter, ativo: true },
+    where: { ...scopeFilter, ativo: true },
     orderBy: { nome: 'asc' },
   });
   return NextResponse.json(motoristas);
@@ -51,6 +54,7 @@ export async function POST(request: NextRequest) {
   }
 
   let effectiveClienteId: string | null = null;
+  let effectiveTransportadoraContaId: string | null = null;
 
   if (auth.user.role === UserRole.CLIENTE) {
     effectiveClienteId = auth.user.clienteId;
@@ -63,24 +67,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Sem permissão para este cliente' }, { status: 403 });
     }
     effectiveClienteId = bodyClienteId;
+  } else if (auth.user.role === UserRole.TRANSPORTADORA) {
+    if (!auth.user.transportadoraContaId) {
+      return NextResponse.json({ message: 'Conta de transportadora não identificada' }, { status: 400 });
+    }
+    effectiveTransportadoraContaId = auth.user.transportadoraContaId;
   } else {
     return NextResponse.json({ message: 'Acesso restrito' }, { status: 403 });
   }
 
-  if (!effectiveClienteId) {
+  if (!effectiveClienteId && !effectiveTransportadoraContaId) {
     return NextResponse.json({ message: 'clienteId não identificado' }, { status: 400 });
   }
 
   const cpfClean = cpf.replace(/\D/g, '');
+  const scopeWhere = effectiveTransportadoraContaId
+    ? { transportadoraContaId: effectiveTransportadoraContaId }
+    : { clienteId: effectiveClienteId };
   const existing = await prisma.motorista.findFirst({
-    where: { clienteId: effectiveClienteId, cpf: { contains: cpfClean } },
+    where: { ...scopeWhere, cpf: { contains: cpfClean } },
   });
   if (existing) {
     return NextResponse.json(existing, { status: 200 });
   }
 
   const motorista = await prisma.motorista.create({
-    data: { nome, cpf, cnh: cnh || '', telefone: telefone || '', clienteId: effectiveClienteId },
+    data: { nome, cpf, cnh: cnh || '', telefone: telefone || '', clienteId: effectiveClienteId, transportadoraContaId: effectiveTransportadoraContaId },
   });
   return NextResponse.json(motorista, { status: 201 });
 }
