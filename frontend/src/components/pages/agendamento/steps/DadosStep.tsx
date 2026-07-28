@@ -39,7 +39,7 @@ export interface DadosFormData {
 
 interface DadosStepProps {
   data: DadosFormData;
-  onChange: (data: DadosFormData) => void;
+  onChange: (data: DadosFormData | ((prev: DadosFormData) => DadosFormData)) => void;
   disabled?: boolean;
 }
 
@@ -552,7 +552,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const transportadoraContaCnpj = currentUser?.transportadoraConta?.cnpj ?? '';
   React.useEffect(() => {
     if (isTransportadoraUser && transportadoraContaNome && !data.transportadora) {
-      onChange({ ...data, transportadora: transportadoraContaNome, transportadoraCnpj: transportadoraContaCnpj });
+      onChange(prev => prev.transportadora ? prev : { ...prev, transportadora: transportadoraContaNome, transportadoraCnpj: transportadoraContaCnpj });
     }
   }, [isTransportadoraUser, transportadoraContaNome, transportadoraContaCnpj, data.transportadora]);
 
@@ -567,7 +567,7 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
   React.useEffect(() => {
     if (userEmpresa && !data.empresa) {
-      onChange({ ...data, empresa: userEmpresa });
+      onChange(prev => prev.empresa ? prev : { ...prev, empresa: userEmpresa });
     }
   }, [userEmpresa]);
 
@@ -589,16 +589,16 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     const resolvedContainer = urlContainer || (containers.length === 1 ? containers[0] : '');
     if (resolvedContainer) setSelectedContainer(resolvedContainer);
     const modalSub = di.modalidade ? MODALIDADE_TO_SUB[di.modalidade] ?? '' : '';
-    onChange({
-      ...data,
+    onChange(prev => ({
+      ...prev,
       di: [di.numeroDI],
       operacao: 'Importação',
       subOperacao: modalSub,
-      empresa: di.cliente || data.empresa,
-      consignatario: di.cliente || data.consignatario,
-      dta: di.dta ? [di.dta] : data.dta,
+      empresa: di.cliente || prev.empresa,
+      consignatario: di.cliente || prev.consignatario,
+      dta: di.dta ? [di.dta] : prev.dta,
       container: resolvedContainer,
-    });
+    }));
     setAutoFilled(true);
   }, [availableDis, searchParams, autoFilled, isExternalUser]);
 

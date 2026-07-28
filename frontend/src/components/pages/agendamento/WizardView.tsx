@@ -212,7 +212,7 @@ export function WizardView() {
     else router.push('/agendamento');
   };
 
-  const handleDadosChange = (d: DadosFormData) => {
+  const handleDadosChange = (d: DadosFormData | ((prev: DadosFormData) => DadosFormData)) => {
     setDados(d);
     if (submitError) setSubmitError(null);
   };
