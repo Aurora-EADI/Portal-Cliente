@@ -12,6 +12,7 @@ import { Agendamento } from '@/types/agendamento';
 
 interface AtribuicaoResumo {
   nLote: string;
+  container: string;
   transportadora: { nome: string };
 }
 
@@ -332,15 +333,21 @@ export function DashboardView() {
               <tbody className="divide-y divide-zinc-100">
                 {/* DIs/Containers disponíveis (sem agendamento) */}
                 {pendingRows.map(({ di, container, key }) => {
-                  const atribuicoes = atribuicoesPorLote[di.nLote ?? ''] ?? [];
+                  const atribuicoesDoLote = atribuicoesPorLote[di.nLote ?? ''] ?? [];
+                  const atribuicoes = atribuicoesDoLote.filter(a => a.container === container || a.container === '');
                   return (
                   <tr key={key} className="hover:bg-zinc-50 transition-colors bg-emerald-50/30">
                     <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">
                       <div className="flex flex-col gap-1 items-start">
                         <span>{di.numeroDI}</span>
-                        {atribuicoes.length > 0 && (
-                          <span title={`Já atribuída a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
+                        {atribuicoes.length > 0 ? (
+                          <span title={`Container atribuído a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
                             <Truck className="w-2.5 h-2.5" /> {atribuicoes[0].transportadora.nome}
+                            {atribuicoes.length > 1 && ` +${atribuicoes.length - 1}`}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-zinc-100 text-zinc-400 border border-zinc-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
+                            Sem transportadora
                           </span>
                         )}
                       </div>
