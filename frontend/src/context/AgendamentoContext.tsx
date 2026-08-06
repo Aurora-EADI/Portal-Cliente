@@ -10,6 +10,7 @@ import { UserRole } from '@/types';
 import { api } from '@/lib/api';
 import { useAgendamentoWizard } from '@/store/agendamento-wizard.store';
 import { useDisAverbadasStream } from '@/hooks/useDisAverbadasStream';
+import { useAgendamentoStream } from '@/hooks/useAgendamentoStream';
 
 interface AgendamentoContextValue {
   isLoadingData: boolean;
@@ -59,6 +60,7 @@ interface AgendamentoContextValue {
 const AgendamentoContext = createContext<AgendamentoContextValue | undefined>(undefined);
 
 const VALID_STATUSES = ['ATIVO','CANCELADO','CHEGOU','NO_SHOW','ON_TIME','ATRASADO','AG_CHEGADA','CONCLUIDO'] as const;
+const ACTIVE_BOOKING_STATUSES = new Set(['ATIVO','AG_CHEGADA','CHEGOU','ON_TIME','ATRASADO']);
 
 function mapApiBooking(b: any): Agendamento {
   const status = VALID_STATUSES.includes(b.status) ? b.status : 'ATIVO';
@@ -152,6 +154,22 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   };
 
   useDisAverbadasStream(!!currentUser, upsertDi);
+
+  const handleAgendamentoEvent = (payload: any) => {
+    if (payload?.deleted) {
+      setActiveBookings(prev => prev.filter(b => b.id !== payload.id));
+      return;
+    }
+    const isActive = ACTIVE_BOOKING_STATUSES.has(payload.status);
+    setActiveBookings(prev => {
+      const exists = prev.some(b => b.id === payload.id);
+      if (!isActive) return exists ? prev.filter(b => b.id !== payload.id) : prev;
+      const mapped = mapApiBooking(payload);
+      return exists ? prev.map(b => (b.id === payload.id ? mapped : b)) : [mapped, ...prev];
+    });
+  };
+
+  useAgendamentoStream(!!currentUser, handleAgendamentoEvent);
 
   const saveJanelasToStorage = (list: JanelaAtendimento[]) => {
     setJanelasAtendimento(list);
