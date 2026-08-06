@@ -112,11 +112,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const existente = await prisma.diTransportadoraAtribuicao.findUnique({
-      where: { nLote_transportadoraContaId_container: { nLote, transportadoraContaId: transportadora.id, container } },
+    const existente = await prisma.diTransportadoraAtribuicao.findFirst({
+      where: { nLote, container },
+      include: { transportadora: { select: { nome: true } } },
     });
     if (existente) {
-      return NextResponse.json({ message: container ? 'Transportadora já atribuída a este container' : 'Transportadora já atribuída a esta DI' }, { status: 409 });
+      const mesmaTransportadora = existente.transportadoraContaId === transportadora.id;
+      const message = mesmaTransportadora
+        ? (container ? 'Transportadora já atribuída a este container.' : 'Transportadora já atribuída a esta DI.')
+        : (container
+          ? `Este container já está atribuído a ${existente.transportadora.nome}. Remova a atribuição atual antes de trocar.`
+          : `Esta DI já está atribuída a ${existente.transportadora.nome}. Remova a atribuição atual antes de trocar.`);
+      return NextResponse.json({ message }, { status: 409 });
     }
 
     const convite = await ensureTransportadoraConvite(transportadora, email);

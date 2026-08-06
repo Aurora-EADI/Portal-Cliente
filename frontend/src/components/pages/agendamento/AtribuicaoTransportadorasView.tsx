@@ -88,6 +88,9 @@ export function AtribuicaoTransportadorasView() {
   const atribuicaoPorContainerAtribuindo = new Map(
     (atribuicoesPorLote[atribuindoNLote ?? ''] ?? []).map(a => [a.container, a]),
   );
+  const conflitoAtribuicao = containersDaDiAtribuindo.length > 0
+    ? (formContainer ? atribuicaoPorContainerAtribuindo.get(formContainer) : undefined)
+    : atribuicaoPorContainerAtribuindo.get('');
 
   const abrirModalAtribuir = (lote: string, preselecionarContainer?: string) => {
     setAtribuindoNLote(lote);
@@ -348,8 +351,13 @@ export function AtribuicaoTransportadorasView() {
                 <div>
                   <label className="text-zinc-600 font-bold block mb-1.5">Container *</label>
                   {containersDaDiAtribuindo.length === 1 ? (
-                    <div className="px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg font-mono font-semibold text-emerald-800">
-                      {containersDaDiAtribuindo[0]}
+                    <div className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg font-mono font-semibold border ${conflitoAtribuicao ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-emerald-300 bg-emerald-50 text-emerald-800'}`}>
+                      <span>{containersDaDiAtribuindo[0]}</span>
+                      {conflitoAtribuicao && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-sky-600 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded normal-case">
+                          <Truck className="w-3 h-3" /> já com {conflitoAtribuicao.transportadora.nome}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -373,12 +381,17 @@ export function AtribuicaoTransportadorasView() {
                       })}
                     </div>
                   )}
-                  <p className="text-[10px] text-zinc-400 mt-1">
-                    {formContainer && atribuicaoPorContainerAtribuindo.get(formContainer)
-                      ? `Este container já está com ${atribuicaoPorContainerAtribuindo.get(formContainer)!.transportadora.nome}. Atribuir de novo adiciona outra transportadora ao mesmo container, sem remover a atual.`
+                  <p className={`text-[10px] mt-1 ${conflitoAtribuicao ? 'text-amber-600 font-semibold' : 'text-zinc-400'}`}>
+                    {conflitoAtribuicao
+                      ? `Este container já está atribuído a ${conflitoAtribuicao.transportadora.nome}. Remova a atribuição atual (botão de lixeira na tabela) antes de trocar.`
                       : 'A transportadora só vai enxergar e agendar este container.'}
                   </p>
                 </div>
+              )}
+              {containersDaDiAtribuindo.length === 0 && conflitoAtribuicao && (
+                <p className="text-[10px] text-amber-600 font-semibold">
+                  Esta DI já está atribuída a {conflitoAtribuicao.transportadora.nome}. Remova a atribuição atual (botão de lixeira na tabela) antes de trocar.
+                </p>
               )}
 
               <TransportadoraCnpjPicker
@@ -394,7 +407,11 @@ export function AtribuicaoTransportadorasView() {
               />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setAtribuindoNLote(null)} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-60 text-xs shadow-sm">
+                <button
+                  type="submit"
+                  disabled={saving || !!conflitoAtribuicao}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-xs shadow-sm"
+                >
                   {saving ? 'Atribuindo...' : 'Atribuir'}
                 </button>
               </div>
