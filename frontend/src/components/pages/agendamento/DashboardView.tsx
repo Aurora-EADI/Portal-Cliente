@@ -336,22 +336,8 @@ export function DashboardView() {
                   const atribuicoesDoLote = atribuicoesPorLote[di.nLote ?? ''] ?? [];
                   const atribuicoes = atribuicoesDoLote.filter(a => a.container === container || a.container === '');
                   return (
-                  <tr key={key} className="hover:bg-zinc-50 transition-colors bg-emerald-50/30">
-                    <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span>{di.numeroDI}</span>
-                        {atribuicoes.length > 0 ? (
-                          <span title={`Container atribuído a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
-                            <Truck className="w-2.5 h-2.5" /> {atribuicoes[0].transportadora.nome}
-                            {atribuicoes.length > 1 && ` +${atribuicoes.length - 1}`}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 bg-zinc-100 text-zinc-400 border border-zinc-200 px-1.5 py-0.5 rounded text-[9px] font-bold normal-case">
-                            Sem transportadora
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                  <tr key={key} className={`hover:bg-zinc-50 transition-colors ${atribuicoes.length > 0 ? 'bg-sky-50/40' : 'bg-emerald-50/30'}`}>
+                    <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{di.numeroDI}</td>
                     <td className="px-4 py-3 font-mono text-zinc-600 whitespace-nowrap">{container || '—'}</td>
                     {isDespachante && <td className="px-4 py-3 text-zinc-700 whitespace-nowrap text-[11px]">{di.cliente || '—'}</td>}
                     {isTransportadora && (
@@ -363,7 +349,15 @@ export function DashboardView() {
                       </td>
                     )}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Disponível</span>
+                      {atribuicoes.length > 0 ? (
+                        <span title={`Container atribuído a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full bg-sky-100 text-sky-700 border border-sky-300">
+                          <Truck className="w-3 h-3" />
+                          Atribuída à {atribuicoes[0].transportadora.nome}
+                          {atribuicoes.length > 1 && ` +${atribuicoes.length - 1}`}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Disponível</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-zinc-400">—</td>
                     <td className="px-4 py-3 text-zinc-400">—</td>
