@@ -85,13 +85,16 @@ export function AtribuicaoTransportadorasView() {
 
   const diAtribuindo = dis.find(d => d.nLote === atribuindoNLote);
   const containersDaDiAtribuindo = diAtribuindo ? parseContainers(diAtribuindo.container) : [];
+  const atribuicaoPorContainerAtribuindo = new Map(
+    (atribuicoesPorLote[atribuindoNLote ?? ''] ?? []).map(a => [a.container, a]),
+  );
 
-  const abrirModalAtribuir = (lote: string) => {
+  const abrirModalAtribuir = (lote: string, preselecionarContainer?: string) => {
     setAtribuindoNLote(lote);
     setFormError('');
     const di = dis.find(d => d.nLote === lote);
     const containers = di ? parseContainers(di.container) : [];
-    setFormContainer(containers.length === 1 ? containers[0] : '');
+    setFormContainer(preselecionarContainer ?? (containers.length === 1 ? containers[0] : ''));
   };
 
   const handleAtribuir = async (e: React.FormEvent) => {
@@ -222,18 +225,32 @@ export function AtribuicaoTransportadorasView() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50">
-                  {['DI / Lote', 'Cliente', 'Transportadoras Atribuídas', 'Ações'].map(h => (
+                  {['DI / Lote', 'Cliente', 'Status', 'Transportadoras Atribuídas', 'Ações'].map(h => (
                     <th key={h} className="text-left py-3 px-3 font-bold text-zinc-500 uppercase tracking-wider text-[10px]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {isLoading && (
-                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400 text-xs">Carregando...</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-zinc-400 text-xs">Carregando...</td></tr>
                 )}
                 {!isLoading && filteredDis.map(di => {
                   const lote = di.nLote ?? '';
                   const doLote = atribuicoesPorLote[lote] ?? [];
+                  const containersDaDi = parseContainers(di.container);
+                  const atribuicaoPorContainer = new Map(doLote.map(a => [a.container, a]));
+
+                  const totalUnidades = containersDaDi.length || 1;
+                  const unidadesAtribuidas = containersDaDi.length > 0
+                    ? containersDaDi.filter(c => atribuicaoPorContainer.has(c)).length
+                    : (doLote.length > 0 ? 1 : 0);
+
+                  const StatusBadge = unidadesAtribuidas === 0
+                    ? <span className="inline-flex items-center gap-1 bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">Pendente</span>
+                    : unidadesAtribuidas === totalUnidades
+                    ? <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">Completo</span>
+                    : <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap">Parcial · {unidadesAtribuidas}/{totalUnidades}</span>;
+
                   return (
                     <tr key={di.id} className="hover:bg-zinc-50/60">
                       <td className="py-3 px-3">
@@ -241,26 +258,57 @@ export function AtribuicaoTransportadorasView() {
                         {lote && <span className="block text-[10px] text-zinc-400 font-mono">Lote {lote}</span>}
                       </td>
                       <td className="py-3 px-3 text-zinc-600">{di.cliente || '—'}</td>
+                      <td className="py-3 px-3">{StatusBadge}</td>
                       <td className="py-3 px-3">
-                        {doLote.length === 0 && (
+                        {containersDaDi.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {containersDaDi.map(ctnr => {
+                              const a = atribuicaoPorContainer.get(ctnr);
+                              return a ? (
+                                <span key={ctnr} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  <Truck className="w-3 h-3" />
+                                  {a.transportadora.nome}
+                                  <span className="font-mono font-normal text-sky-500">— {ctnr}</span>
+                                  <button
+                                    onClick={() => handleRemover(a.nLote, a.transportadora.id, a.container)}
+                                    title="Remover atribuição"
+                                    className="text-sky-400 hover:text-red-500 cursor-pointer ml-0.5"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  key={ctnr}
+                                  onClick={() => abrirModalAtribuir(lote, ctnr)}
+                                  disabled={!lote}
+                                  title="Atribuir transportadora a este container"
+                                  className="inline-flex items-center gap-1 border border-dashed border-zinc-300 text-zinc-400 hover:border-[#ED6A23] hover:text-[#ED6A23] px-2 py-0.5 rounded text-[10px] font-bold font-mono cursor-pointer transition-colors"
+                                >
+                                  {ctnr} — sem transportadora
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : doLote.length === 0 ? (
                           <span className="text-zinc-400 text-[11px]">Nenhuma atribuída</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {doLote.map(a => (
+                              <span key={a.id} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                <Truck className="w-3 h-3" />
+                                {a.transportadora.nome}
+                                <button
+                                  onClick={() => handleRemover(a.nLote, a.transportadora.id, a.container)}
+                                  title="Remover atribuição"
+                                  className="text-sky-400 hover:text-red-500 cursor-pointer ml-0.5"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        <div className="flex flex-wrap gap-1.5">
-                          {doLote.map(a => (
-                            <span key={a.id} className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                              <Truck className="w-3 h-3" />
-                              {a.transportadora.nome}
-                              {a.container && <span className="font-mono font-normal text-sky-500">— {a.container}</span>}
-                              <button
-                                onClick={() => handleRemover(a.nLote, a.transportadora.id, a.container)}
-                                title="Remover atribuição"
-                                className="text-sky-400 hover:text-red-500 cursor-pointer ml-0.5"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </span>
-                          ))}
-                        </div>
                       </td>
                       <td className="py-3 px-3">
                         <button
@@ -268,14 +316,14 @@ export function AtribuicaoTransportadorasView() {
                           disabled={!lote}
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ED6A23] hover:text-[#D45917] disabled:text-zinc-300 cursor-pointer"
                         >
-                          <Truck className="w-3.5 h-3.5" /> Atribuir
+                          <Truck className="w-3.5 h-3.5" /> {unidadesAtribuidas > 0 ? 'Gerenciar' : 'Atribuir'}
                         </button>
                       </td>
                     </tr>
                   );
                 })}
                 {!isLoading && filteredDis.length === 0 && (
-                  <tr><td colSpan={4} className="py-8 text-center text-zinc-400 text-xs">Nenhuma DI averbada encontrada</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-zinc-400 text-xs">Nenhuma DI averbada encontrada</td></tr>
                 )}
               </tbody>
             </table>
@@ -305,19 +353,31 @@ export function AtribuicaoTransportadorasView() {
                     </div>
                   ) : (
                     <div className="space-y-1.5">
-                      {containersDaDiAtribuindo.map(ctnr => (
-                        <button
-                          key={ctnr}
-                          type="button"
-                          onClick={() => setFormContainer(ctnr)}
-                          className={`w-full text-left px-3 py-2 rounded-lg border font-mono font-semibold transition-colors ${formContainer === ctnr ? 'border-[#ED6A23] bg-[#ED6A23]/5 text-[#ED6A23]' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'}`}
-                        >
-                          {ctnr}
-                        </button>
-                      ))}
+                      {containersDaDiAtribuindo.map(ctnr => {
+                        const jaAtribuido = atribuicaoPorContainerAtribuindo.get(ctnr);
+                        return (
+                          <button
+                            key={ctnr}
+                            type="button"
+                            onClick={() => setFormContainer(ctnr)}
+                            className={`w-full flex items-center justify-between gap-2 text-left px-3 py-2 rounded-lg border font-mono font-semibold transition-colors ${formContainer === ctnr ? 'border-[#ED6A23] bg-[#ED6A23]/5 text-[#ED6A23]' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'}`}
+                          >
+                            <span>{ctnr}</span>
+                            {jaAtribuido && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-sky-600 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded normal-case">
+                                <Truck className="w-3 h-3" /> já com {jaAtribuido.transportadora.nome}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
-                  <p className="text-[10px] text-zinc-400 mt-1">A transportadora só vai enxergar e agendar este container.</p>
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    {formContainer && atribuicaoPorContainerAtribuindo.get(formContainer)
+                      ? `Este container já está com ${atribuicaoPorContainerAtribuindo.get(formContainer)!.transportadora.nome}. Atribuir de novo adiciona outra transportadora ao mesmo container, sem remover a atual.`
+                      : 'A transportadora só vai enxergar e agendar este container.'}
+                  </p>
                 </div>
               )}
 
