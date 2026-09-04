@@ -5,6 +5,7 @@ data/
 .minio.sys/
 
 # Variáveis de ambiente
+.env
 .env.dev
 .env.prod
 .env.*
