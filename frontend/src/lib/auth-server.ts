@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { prisma } from './prisma';
+import { verifyToken } from './jwt';
 import type { User, UserRole } from '@prisma/client';
 
 type AuthSuccess = { user: User; error: null };
@@ -11,17 +11,12 @@ export async function resolveUserFromToken(token: string | null): Promise<AuthSu
     return { user: null, error: NextResponse.json({ message: 'Token não fornecido' }, { status: 401 }) };
   }
 
-  const supabaseClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
-  const { data: { user: supabaseUser }, error } = await supabaseClient.auth.getUser(token);
-  if (error || !supabaseUser?.email) {
+  const payload = verifyToken(token);
+  if (!payload) {
     return { user: null, error: NextResponse.json({ message: 'Token inválido' }, { status: 401 }) };
   }
 
-  const user = await prisma.user.findUnique({ where: { email: supabaseUser.email } });
+  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
   if (!user || !user.active) {
     return { user: null, error: NextResponse.json({ message: 'Usuário inativo ou não encontrado' }, { status: 401 }) };
   }

@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { AgendamentoStatus, UserRole } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
+import { agendamentoEvents } from '@/lib/events';
 
 export async function PATCH(
   request: NextRequest,
@@ -59,5 +60,6 @@ export async function PATCH(
     where: { id },
     data: { status: AgendamentoStatus.CANCELADO },
   });
+  agendamentoEvents.emit('change', agendamento);
   return NextResponse.json(agendamento);
 }

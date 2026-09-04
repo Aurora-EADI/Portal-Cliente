@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import Cookies from 'js-cookie';
 
 const RETRY_DELAY_MS = 5_000;
 
@@ -16,10 +16,9 @@ export function useAgendamentoStream(enabled: boolean, onEvent: (payload: any) =
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
 
-    const connect = async () => {
+    const connect = () => {
       if (stopped) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const token = Cookies.get('access_token');
       if (!token) {
         retryTimer = setTimeout(connect, RETRY_DELAY_MS);
         return;

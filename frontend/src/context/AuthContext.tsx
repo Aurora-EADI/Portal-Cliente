@@ -1,10 +1,11 @@
 'use client'
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import Cookies from 'js-cookie';
 import { User } from '../types';
 import { useRouter } from "next/navigation";
-import { supabase } from '@/lib/supabase';
 import { authService } from '@/services/api';
+import { clearDraft } from '@/lib/wizard-draft';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -24,17 +25,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const restoreSession = async (retries = 2) => {
+    const restoreSession = async () => {
+      const maxAttempts = 3;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const user = await authService.getProfile();
-          setCurrentUser(user);
-        }
-      } catch (err: any) {
-        if (retries > 0 && err?.response?.status !== 401) {
-          await new Promise(r => setTimeout(r, 1500));
-          return restoreSession(retries - 1);
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            if (Cookies.get('access_token')) {
+              const user = await authService.getProfile();
+              setCurrentUser(user);
+            }
+            return;
+          } catch (err: any) {
+            const isLastAttempt = attempt === maxAttempts - 1;
+            if (isLastAttempt || err?.status === 401) return;
+            await new Promise(r => setTimeout(r, 1500));
+          }
         }
       } finally {
         setIsLoading(false);
@@ -42,15 +47,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     restoreSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setCurrentUser(null);
-        queryClient.clear();
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const loginUser = async (user: User, _expiresAt: string) => {
@@ -58,15 +54,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logoutUser = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch {
-      // Continue even if signOut fails
-    } finally {
-      setCurrentUser(null);
-      queryClient.clear();
-      router.push("/");
-    }
+    Cookies.remove('access_token');
+    clearDraft();
+    setCurrentUser(null);
+    queryClient.clear();
+    router.push("/");
   };
 
   const updateCurrentUser = (user: User) => {

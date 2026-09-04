@@ -37,10 +37,13 @@ export interface DadosFormData {
   transportadoraEmail?: string;
 }
 
+export type DadosSection = 'dados' | 'calendario' | 'motorista' | 'veiculo';
+
 interface DadosStepProps {
   data: DadosFormData;
   onChange: (data: DadosFormData | ((prev: DadosFormData) => DadosFormData)) => void;
   disabled?: boolean;
+  section: DadosSection;
 }
 
 const OPERACOES = ['Importação', 'Exportação', 'Cabotagem', 'Nacional'];
@@ -154,11 +157,11 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
 
   return (
     <div className="border border-zinc-200 rounded-xl bg-white overflow-hidden">
-      <div className="flex flex-col lg:flex-row">
+      <div className="flex flex-col xl:flex-row">
         {/* Calendar */}
-        <div className="p-4 border-b lg:border-b-0 lg:border-r border-zinc-100 lg:w-[280px]">
+        <div className="p-5 border-b xl:border-b-0 xl:border-r border-zinc-100 xl:w-[340px] shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-zinc-800">{MONTH_NAMES[cm.m]} {cm.y}</span>
+            <span className="text-sm font-bold text-zinc-800">{MONTH_NAMES[cm.m]} {cm.y}</span>
             <div className="flex gap-0.5">
               <button type="button" onClick={() => setCm(({ y, m }) => { const d = new Date(y, m - 1); return { y: d.getFullYear(), m: d.getMonth() }; })} className="p-1 rounded hover:bg-zinc-100">
                 <ChevronLeft className="w-3.5 h-3.5 text-zinc-500" />
@@ -183,7 +186,7 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
                   disabled={disabled}
                   onClick={() => day && onDateChange(toDateStr(cm.y, cm.m, day))}
                   className={[
-                    'relative mx-auto w-9 h-9 flex flex-col items-center justify-center rounded-full text-xs transition-all',
+                    'relative mx-auto w-10 h-10 flex flex-col items-center justify-center rounded-full text-sm transition-all',
                     !day ? 'invisible' : '',
                     wknd ? 'text-zinc-300 cursor-default' : '',
                     past && !wknd ? 'text-zinc-300 cursor-not-allowed' : '',
@@ -229,7 +232,7 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: 280 }}>
+          <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: 360 }}>
             {!date ? (
               <div className="flex flex-col items-center justify-center h-40 text-center gap-2">
                 <Clock className="w-8 h-8 text-zinc-200" />
@@ -241,7 +244,7 @@ function DateTimePicker({ date, horario, onDateChange, onHorarioChange, busySlot
                 <p className="text-xs text-zinc-400">Sem horários configurados</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-2">
                 {dynamicSlots.map(slot => {
                   const count = busySlots[slot.horario] ?? 0;
                   const left = Math.max(0, slot.vagasTotais - count);
@@ -539,8 +542,12 @@ function ModalVeiculo({
 }
 
 // ─── DadosStep principal ───────────────────────────────────────────────────
-export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) {
-  const { motoristas, veiculos, transportadorasConta, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, isDespachante, janelasAtendimento } = useAgendamento();
+export function DadosStep({ data, onChange, disabled = false, section }: DadosStepProps) {
+  const { motoristas, veiculos, transportadorasConta, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, isDespachante, janelasAtendimento, selectedJanelaId } = useAgendamento();
+  const janelasAtivas = useMemo(
+    () => selectedJanelaId === 'all' ? janelasAtendimento : janelasAtendimento.filter(j => j.id === selectedJanelaId),
+    [janelasAtendimento, selectedJanelaId]
+  );
   const { currentUser } = useAuthContext();
   const userEmpresa = currentUser?.cliente?.nome ?? '';
   const isTransportadoraUser = currentUser?.role === 'TRANSPORTADORA';
@@ -578,7 +585,8 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
   const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
-    if (autoFilled || !isExternalUser || availableDis.length === 0) return;
+    // `data.di` já preenchido = DI veio de rascunho restaurado; não reescrever por cima.
+    if (autoFilled || !isExternalUser || availableDis.length === 0 || data.di?.length > 0) return;
     const diNumero = searchParams.get('diNumero');
     if (!diNumero) return;
     const di = availableDis.find(d => d.numeroDI === diNumero) as any;
@@ -601,6 +609,18 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
     }));
     setAutoFilled(true);
   }, [availableDis, searchParams, autoFilled, isExternalUser]);
+
+  // Rascunho restaurado (refresh): `data.di`/`data.container` voltam preenchidos, mas
+  // o estado local de UI não. Re-deriva a DI e trava o autofill por query param para
+  // que ele não reescreva campos que o usuário editou à mão.
+  useEffect(() => {
+    if (selectedDiObj || !data.di?.[0] || visibleDis.length === 0) return;
+    const di = visibleDis.find(d => d.numeroDI === data.di[0]) as any;
+    if (!di) return;
+    setSelectedDiObj(di);
+    if (data.container) setSelectedContainer(data.container);
+    setAutoFilled(true);
+  }, [visibleDis, data.di, data.container, selectedDiObj]);
 
   const [cpfFocused,    setCpfFocused]    = useState(false);
   const [nameFocused,   setNameFocused]   = useState(false);
@@ -746,12 +766,12 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
       )}
 
       <fieldset disabled={disabled} className={disabled ? 'opacity-60 pointer-events-none' : ''}>
-      <div className="flex gap-6">
-        <div className="flex-1 space-y-4">
 
+      {section === 'dados' && (
+        <div className="space-y-5">
           {/* DI + Container selector for external users */}
           {isExternalUser && availableDis.length > 0 && (
-            <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Field label="Declaração de Importação (DI) *">
                 {selectedDiObj ? (
                   <div className="flex items-center gap-2">
@@ -802,6 +822,15 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
                 )}
               </Field>
 
+              <Field label="SubOperação">
+                <input
+                  type="text"
+                  value={data.subOperacao}
+                  readOnly
+                  className={INPUT + ' bg-zinc-50 cursor-not-allowed'}
+                />
+              </Field>
+
               {selectedDiObj && selectedContainer && (
                 <Field label="Container">
                   <div className="px-3 py-2 border border-emerald-300 bg-emerald-50 rounded-lg text-sm font-mono font-semibold text-emerald-800">
@@ -812,13 +841,13 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
 
               {selectedDiObj && !selectedContainer && diContainers.length > 0 && (
                 <Field label="Container *">
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {diContainers.map(ctnr => (
                       <button
                         key={ctnr}
                         type="button"
                         onClick={() => { setSelectedContainer(ctnr); onChange({ ...data, container: ctnr }); }}
-                        className="w-full text-left px-4 py-3 rounded-lg border bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all flex items-center justify-between"
+                        className="text-left px-4 py-3 rounded-lg border bg-white border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all flex items-center justify-between"
                       >
                         <span className="font-mono font-bold text-sm text-zinc-900">{ctnr}</span>
                       </button>
@@ -832,21 +861,12 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
                   <p className="text-xs text-amber-700">Nenhum container vinculado a esta DI.</p>
                 </div>
               )}
-
-              <Field label="SubOperação">
-                <input
-                  type="text"
-                  value={data.subOperacao}
-                  readOnly
-                  className={INPUT + ' bg-zinc-50 cursor-not-allowed'}
-                />
-              </Field>
-            </>
+            </div>
           )}
 
           {/* Standard Operação/SubOperação for admin/employee */}
           {!isExternalUser && (
-            <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Operação *">
                 <select value={data.operacao} onChange={e => onChange({ ...data, operacao: e.target.value, subOperacao: '' })} className={INPUT}>
                   <option value="">Selecione...</option>
@@ -860,228 +880,260 @@ export function DadosStep({ data, onChange, disabled = false }: DadosStepProps) 
                   {subOps.map(op => <option key={op} value={op}>{op}</option>)}
                 </select>
               </Field>
-            </>
+            </div>
           )}
 
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input type="checkbox" checked={data.cargaEspecial} onChange={e => set('cargaEspecial')(e.target.checked)} className="w-4 h-4 accent-emerald-600 rounded" />
-            <span className="text-sm text-zinc-700 font-medium">Carga especial</span>
-          </label>
+          <div className="flex items-center justify-between gap-6">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={data.cargaEspecial} onChange={e => set('cargaEspecial')(e.target.checked)} className="w-4 h-4 accent-emerald-600 rounded" />
+              <span className="text-sm text-zinc-700 font-medium">Carga especial</span>
+            </label>
+          </div>
 
           <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
             <span className="text-xs font-bold text-zinc-600">Serviços</span>
             <button type="button" className="text-zinc-400 hover:text-zinc-600 transition-colors"><Plus className="w-4 h-4" /></button>
           </div>
 
-          <div>
-            <label className={LABEL}>Data e horário *</label>
-            <DateTimePicker
-              date={data.dataAgendamento}
-              horario={data.inicio}
-              onDateChange={d => onChange({ ...data, dataAgendamento: d, inicio: '' })}
-              onHorarioChange={h => set('inicio')(h)}
-              busySlots={busySlots}
-              janelas={janelasAtendimento}
-            />
-          </div>
-
-          {/* CPF motorista */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className={LABEL} style={{ marginBottom: 0 }}>CPF do motorista *</label>
-              <button type="button" onClick={() => setShowModalMot(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
-                <Plus className="w-3 h-3" /> Cadastrar motorista
-              </button>
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Empresa *">
               <input
                 type="text"
-                placeholder="000.000.000-00"
-                value={data.cpfMotorista}
-                onChange={e => onChange({ ...data, cpfMotorista: formatCPF(e.target.value) })}
-                onFocus={() => setCpfFocused(true)}
-                onBlur={() => { setCpfFocused(false); setCpfTouched(true); }}
-                readOnly={cpfLocked}
-                maxLength={14}
-                className={(cpfError ? INPUT_ERR : INPUT) + ' pl-8 font-mono' + (cpfLocked ? ' bg-zinc-50' : '')}
-              />
-              {cpfLocked && (
-                <button type="button" onClick={clearMotorista} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            {!cpfLocked && cpfFocused
-              ? <SuggestionList items={cpfSuggestions} onSelect={selectMotorista} />
-              : !cpfLocked && cpfError && (
-                  <FieldError
-                    msg={cpfError}
-                    onCadastrar={cpfError.includes('não cadastrado') ? () => setShowModalMot(true) : undefined}
-                    label="Cadastrar motorista"
-                  />
-                )
-            }
-          </div>
-
-          {/* Nome motorista */}
-          <div>
-            <label className={LABEL}>Nome do motorista</label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Nome do motorista"
-                value={data.nomeMotorista}
-                onChange={e => onChange({ ...data, nomeMotorista: e.target.value })}
-                onFocus={() => setNameFocused(true)}
-                onBlur={() => { setNameFocused(false); setNameTouched(true); }}
-                readOnly={nameLocked}
-                className={(nameError ? INPUT_ERR : INPUT) + ' pl-8' + (nameLocked ? ' bg-zinc-50' : '')}
-              />
-              {nameLocked && (
-                <button type="button" onClick={clearMotorista} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            {!nameLocked && nameFocused
-              ? <SuggestionList items={nameSuggestions} onSelect={selectMotorista} />
-              : !nameLocked && nameError && (
-                  <FieldError
-                    msg={nameError}
-                    onCadastrar={() => setShowModalMot(true)}
-                    label="Cadastrar motorista"
-                  />
-                )
-            }
-          </div>
-
-          {isTransportadoraUser ? (
-            <Field label="Transportadora *">
-              <input
-                type="text"
-                readOnly
-                value={data.transportadora || transportadoraContaNome}
-                className={INPUT + ' bg-zinc-50 cursor-not-allowed'}
+                placeholder="Nome da empresa"
+                value={data.empresa}
+                onChange={e => set('empresa')(e.target.value)}
+                readOnly={!!userEmpresa}
+                className={INPUT + (userEmpresa ? ' bg-zinc-50 cursor-not-allowed' : '')}
               />
             </Field>
-          ) : (
-            <TransportadoraCnpjPicker
-              transportadoras={transportadorasConta}
-              cnpj={data.transportadoraCnpj ?? ''}
-              nome={data.transportadora}
-              onChangeCnpj={set('transportadoraCnpj')}
-              onChangeNome={set('transportadora')}
-              email={data.transportadoraEmail ?? ''}
-              onChangeEmail={set('transportadoraEmail')}
-              onSelect={t => onChange({
-                ...data,
-                transportadora: t.nome,
-                transportadoraCnpj: (t.cnpj ?? '').replace(/\D/g, ''),
-                transportadoraEmail: t.email ?? '',
-              })}
-              onClear={() => onChange({
-                ...data,
-                transportadora: '',
-                transportadoraCnpj: '',
-                transportadoraEmail: '',
-              })}
-            />
-          )}
-
-          <Field label="Empresa *">
-            <input
-              type="text"
-              placeholder="Nome da empresa"
-              value={data.empresa}
-              onChange={e => set('empresa')(e.target.value)}
-              readOnly={!!userEmpresa}
-              className={INPUT + (userEmpresa ? ' bg-zinc-50 cursor-not-allowed' : '')}
-            />
-          </Field>
-
-          {!isExternalUser && (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="AWB - MAWB"><MultiInput values={data.awbMawb} onChange={v => set('awbMawb')(v)} placeholder="Adicionar AWB" /></Field>
-                <Field label="D.I"><MultiInput values={data.di} onChange={v => set('di')(v)} placeholder="Adicionar D.I" /></Field>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Field label="DTA"><MultiInput values={data.dta} onChange={v => set('dta')(v)} placeholder="Adicionar DTA" /></Field>
-                <Field label="HAWB"><MultiInput values={data.hawb} onChange={v => set('hawb')(v)} placeholder="Adicionar HAWB" /></Field>
-              </div>
-            </>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {(!isExternalUser || data.subOperacao === 'Aéreo') && (
               <Field label="Número do Voo"><input type="text" placeholder="Nº do voo" value={data.numeroVoo} onChange={e => set('numeroVoo')(e.target.value)} className={INPUT} /></Field>
             )}
-            {/* Placa */}
+          </div>
+
+          {!isExternalUser && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Field label="AWB - MAWB"><MultiInput values={data.awbMawb} onChange={v => set('awbMawb')(v)} placeholder="Adicionar AWB" /></Field>
+              <Field label="D.I"><MultiInput values={data.di} onChange={v => set('di')(v)} placeholder="Adicionar D.I" /></Field>
+              <Field label="DTA"><MultiInput values={data.dta} onChange={v => set('dta')(v)} placeholder="Adicionar DTA" /></Field>
+              <Field label="HAWB"><MultiInput values={data.hawb} onChange={v => set('hawb')(v)} placeholder="Adicionar HAWB" /></Field>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Field label="Volumes"><input type="text" placeholder="Qtd. volumes" value={data.volumes} onChange={e => set('volumes')(e.target.value)} className={INPUT} /></Field>
+            <Field label="Peso"><input type="text" placeholder="Peso (kg)" value={data.peso} onChange={e => set('peso')(e.target.value)} className={INPUT} /></Field>
+            <Field label="Consignatário"><input type="text" placeholder="Nome do consignatário" value={data.consignatario} onChange={e => set('consignatario')(e.target.value)} className={INPUT} /></Field>
+            <Field label="Observações"><input type="text" placeholder="Observações gerais" value={data.observacoes} onChange={e => set('observacoes')(e.target.value)} className={INPUT} /></Field>
+          </div>
+        </div>
+      )}
+
+      {section === 'calendario' && (
+        <div>
+          <label className={LABEL}>Data e horário *</label>
+          <DateTimePicker
+            date={data.dataAgendamento}
+            horario={data.inicio}
+            onDateChange={d => onChange({ ...data, dataAgendamento: d, inicio: '' })}
+            onHorarioChange={h => set('inicio')(h)}
+            busySlots={busySlots}
+            janelas={janelasAtivas}
+          />
+        </div>
+      )}
+
+      {section === 'motorista' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* CPF motorista */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className={LABEL} style={{ marginBottom: 0 }}>Placa do Veículo *</label>
-                <button type="button" onClick={() => setShowModalVeic(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Cadastrar veículo
+                <label className={LABEL} style={{ marginBottom: 0 }}>CPF do motorista *</label>
+                <button type="button" onClick={() => setShowModalMot(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> Cadastrar motorista
                 </button>
               </div>
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="ABC1D23"
-                  value={data.placaVeiculo}
-                  onChange={e => onChange({ ...data, placaVeiculo: formatPlaca(e.target.value) })}
-                  onFocus={() => setPlacaFocused(true)}
-                  onBlur={() => { setPlacaFocused(false); setPlacaTouched(true); }}
-                  readOnly={veiculoLocked}
-                  className={(placaError ? INPUT_ERR : INPUT) + ' pl-8 uppercase font-mono tracking-widest' + (veiculoLocked ? ' bg-zinc-50' : '')}
+                  placeholder="000.000.000-00"
+                  value={data.cpfMotorista}
+                  onChange={e => onChange({ ...data, cpfMotorista: formatCPF(e.target.value) })}
+                  onFocus={() => setCpfFocused(true)}
+                  onBlur={() => { setCpfFocused(false); setCpfTouched(true); }}
+                  readOnly={cpfLocked}
+                  maxLength={14}
+                  className={(cpfError ? INPUT_ERR : INPUT) + ' pl-8 font-mono' + (cpfLocked ? ' bg-zinc-50' : '')}
                 />
-                {veiculoLocked && (
-                  <button type="button" onClick={clearVeiculo} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                {cpfLocked && (
+                  <button type="button" onClick={clearMotorista} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
-              {!veiculoLocked && placaFocused && placaSuggestions.length > 0 && (
-                <div className="mt-1 border border-zinc-200 rounded-lg shadow-sm bg-white overflow-hidden">
-                  {placaSuggestions.slice(0, 5).map(v => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onMouseDown={e => { e.preventDefault(); selectVeiculo(v); }}
-                      className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 transition-colors flex items-center gap-2 border-b border-zinc-100 last:border-0"
-                    >
-                      <span className="font-mono text-zinc-500 tracking-wider">{v.placa}</span>
-                      <span className="text-zinc-300">—</span>
-                      <span className="text-zinc-800 font-semibold truncate">{v.modelo}</span>
-                      <span className="text-zinc-400 text-[10px]">{v.tipo}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!veiculoLocked && !placaFocused && placaError && (
-                <FieldError
-                  msg={placaError}
-                  onCadastrar={() => setShowModalVeic(true)}
-                  label="Cadastrar veículo"
+              {!cpfLocked && cpfFocused
+                ? <SuggestionList items={cpfSuggestions} onSelect={selectMotorista} />
+                : !cpfLocked && cpfError && (
+                    <FieldError
+                      msg={cpfError}
+                      onCadastrar={cpfError.includes('não cadastrado') ? () => setShowModalMot(true) : undefined}
+                      label="Cadastrar motorista"
+                    />
+                  )
+              }
+            </div>
+
+            {/* Nome motorista */}
+            <div>
+              <label className={LABEL}>Nome do motorista</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Nome do motorista"
+                  value={data.nomeMotorista}
+                  onChange={e => onChange({ ...data, nomeMotorista: e.target.value })}
+                  onFocus={() => setNameFocused(true)}
+                  onBlur={() => { setNameFocused(false); setNameTouched(true); }}
+                  readOnly={nameLocked}
+                  className={(nameError ? INPUT_ERR : INPUT) + ' pl-8' + (nameLocked ? ' bg-zinc-50' : '')}
                 />
-              )}
+                {nameLocked && (
+                  <button type="button" onClick={clearMotorista} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {!nameLocked && nameFocused
+                ? <SuggestionList items={nameSuggestions} onSelect={selectMotorista} />
+                : !nameLocked && nameError && (
+                    <FieldError
+                      msg={nameError}
+                      onCadastrar={() => setShowModalMot(true)}
+                      label="Cadastrar motorista"
+                    />
+                  )
+              }
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Volumes"><input type="text" placeholder="Qtd. volumes" value={data.volumes} onChange={e => set('volumes')(e.target.value)} className={INPUT} /></Field>
-            <Field label="Peso"><input type="text" placeholder="Peso (kg)" value={data.peso} onChange={e => set('peso')(e.target.value)} className={INPUT} /></Field>
+          {motoristaMatch && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3">
+              <span className="text-zinc-400 font-semibold uppercase tracking-wide text-[10px]">Motorista cadastrado</span>
+              <span className="text-zinc-600">CNH: <span className="font-mono font-semibold text-zinc-800">{motoristaMatch.cnh}</span></span>
+              <span className="text-zinc-600">Telefone: <span className="font-mono font-semibold text-zinc-800">{motoristaMatch.telefone}</span></span>
+            </div>
+          )}
+
+          <div className="max-w-xl">
+            {isTransportadoraUser ? (
+              <Field label="Transportadora *">
+                <input
+                  type="text"
+                  readOnly
+                  value={data.transportadora || transportadoraContaNome}
+                  className={INPUT + ' bg-zinc-50 cursor-not-allowed'}
+                />
+              </Field>
+            ) : (
+              <TransportadoraCnpjPicker
+                transportadoras={transportadorasConta}
+                cnpj={data.transportadoraCnpj ?? ''}
+                nome={data.transportadora}
+                onChangeCnpj={set('transportadoraCnpj')}
+                onChangeNome={set('transportadora')}
+                email={data.transportadoraEmail ?? ''}
+                onChangeEmail={set('transportadoraEmail')}
+                onSelect={t => onChange({
+                  ...data,
+                  transportadora: t.nome,
+                  transportadoraCnpj: (t.cnpj ?? '').replace(/\D/g, ''),
+                  transportadoraEmail: t.email ?? '',
+                })}
+                onClear={() => onChange({
+                  ...data,
+                  transportadora: '',
+                  transportadoraCnpj: '',
+                  transportadoraEmail: '',
+                })}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {section === 'veiculo' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {/* Placa */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={LABEL} style={{ marginBottom: 0 }}>Placa do Veículo *</label>
+              <button type="button" onClick={() => setShowModalVeic(true)} className="text-[11px] font-bold text-[#ED6A23] hover:underline flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Cadastrar veículo
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="ABC1D23"
+                value={data.placaVeiculo}
+                onChange={e => onChange({ ...data, placaVeiculo: formatPlaca(e.target.value) })}
+                onFocus={() => setPlacaFocused(true)}
+                onBlur={() => { setPlacaFocused(false); setPlacaTouched(true); }}
+                readOnly={veiculoLocked}
+                className={(placaError ? INPUT_ERR : INPUT) + ' pl-8 uppercase font-mono tracking-widest' + (veiculoLocked ? ' bg-zinc-50' : '')}
+              />
+              {veiculoLocked && (
+                <button type="button" onClick={clearVeiculo} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {!veiculoLocked && placaFocused && placaSuggestions.length > 0 && (
+              <div className="mt-1 border border-zinc-200 rounded-lg shadow-sm bg-white overflow-hidden">
+                {placaSuggestions.slice(0, 5).map(v => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onMouseDown={e => { e.preventDefault(); selectVeiculo(v); }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 transition-colors flex items-center gap-2 border-b border-zinc-100 last:border-0"
+                  >
+                    <span className="font-mono text-zinc-500 tracking-wider">{v.placa}</span>
+                    <span className="text-zinc-300">—</span>
+                    <span className="text-zinc-800 font-semibold truncate">{v.modelo}</span>
+                    <span className="text-zinc-400 text-[10px]">{v.tipo}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {!veiculoLocked && !placaFocused && placaError && (
+              <FieldError
+                msg={placaError}
+                onCadastrar={() => setShowModalVeic(true)}
+                label="Cadastrar veículo"
+              />
+            )}
           </div>
 
-          <Field label="Consignatário"><input type="text" placeholder="Nome do consignatário" value={data.consignatario} onChange={e => set('consignatario')(e.target.value)} className={INPUT} /></Field>
-          <Field label="Observações"><input type="text" placeholder="Observações gerais" value={data.observacoes} onChange={e => set('observacoes')(e.target.value)} className={INPUT} /></Field>
-
+          <div>
+            <label className={LABEL}>Detalhes do veículo</label>
+            {veiculoMatch ? (
+              <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-4 py-3 space-y-1">
+                <p className="text-sm font-semibold text-emerald-800">{veiculoMatch.modelo}</p>
+                <p className="text-xs text-emerald-700">Tipo: <span className="font-semibold">{veiculoMatch.tipo}</span></p>
+              </div>
+            ) : (
+              <div className="border border-dashed border-zinc-200 rounded-lg px-4 py-3">
+                <p className="text-xs text-zinc-400">Selecione uma placa cadastrada ou cadastre um novo veículo pra ver os detalhes aqui.</p>
+              </div>
+            )}
+          </div>
         </div>
+      )}
 
-      </div>
       </fieldset>
     </>
   );

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { resolveUserFromToken } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { agendamentoEvents } from '@/lib/events';
 import { UserRole } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
 
@@ -53,42 +53,36 @@ export async function GET(request: NextRequest) {
         return true;
       };
 
-      const channel = supabaseAdmin
-        .channel(`agendamentos-changes-${user.id}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'agendamentos' },
-          async (payload) => {
-            const changed = (payload.new ?? payload.old) as any;
-            if (!changed?.id) return;
+      const onChange = async (changed: any) => {
+        if (!changed?.id) return;
 
-            const agendamento = await prisma.agendamento.findUnique({
-              where: { id: changed.id },
-              include: {
-                di: { include: { cliente: { select: { id: true, nome: true } } } },
-                motorista: true,
-                veiculo: true,
-                cliente: { select: { id: true, nome: true } },
-              },
-            });
-
-            if (!agendamento) {
-              if (isAllowed({ clienteId: changed.clienteId ?? null, diClienteId: null, transportadoraContaId: changed.transportadoraContaId ?? null })) {
-                send({ id: changed.id, deleted: true });
-              }
-              return;
-            }
-
-            if (isAllowed({
-              clienteId: agendamento.clienteId,
-              diClienteId: agendamento.di?.cliente?.id ?? null,
-              transportadoraContaId: agendamento.transportadoraContaId,
-            })) {
-              send(agendamento);
-            }
+        const agendamento = await prisma.agendamento.findUnique({
+          where: { id: changed.id },
+          include: {
+            di: { include: { cliente: { select: { id: true, nome: true } } } },
+            motorista: true,
+            veiculo: true,
+            cliente: { select: { id: true, nome: true } },
           },
-        )
-        .subscribe();
+        });
+
+        if (!agendamento) {
+          if (isAllowed({ clienteId: changed.clienteId ?? null, diClienteId: null, transportadoraContaId: changed.transportadoraContaId ?? null })) {
+            send({ id: changed.id, deleted: true });
+          }
+          return;
+        }
+
+        if (isAllowed({
+          clienteId: agendamento.clienteId,
+          diClienteId: agendamento.di?.cliente?.id ?? null,
+          transportadoraContaId: agendamento.transportadoraContaId,
+        })) {
+          send(agendamento);
+        }
+      };
+
+      agendamentoEvents.on('change', onChange);
 
       pingTimer = setInterval(() => {
         controller.enqueue(encoder.encode(': ping\n\n'));
@@ -96,7 +90,7 @@ export async function GET(request: NextRequest) {
 
       request.signal.addEventListener('abort', () => {
         if (pingTimer) clearInterval(pingTimer);
-        supabaseAdmin.removeChannel(channel);
+        agendamentoEvents.off('change', onChange);
         try {
           controller.close();
         } catch {

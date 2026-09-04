@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcrypt';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const { accessToken, newPassword } = await request.json();
+    const { token, newPassword } = await request.json();
 
-    if (!accessToken || !newPassword) {
+    if (!token || !newPassword) {
       return NextResponse.json({ message: 'Token e nova senha são obrigatórios' }, { status: 400 });
     }
 
@@ -13,25 +14,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Senha deve ter no mínimo 6 caracteres' }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-
-    const { data: { user }, error: verifyError } = await supabase.auth.getUser(accessToken);
-
-    if (verifyError || !user) {
+    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
       return NextResponse.json({ message: 'Token inválido ou expirado' }, { status: 401 });
     }
 
-    const { error: updateError } = await supabase.auth.admin.updateUserById(user.id, {
-      password: newPassword,
-    });
+    const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    if (updateError) {
-      return NextResponse.json({ message: updateError.message }, { status: 400 });
-    }
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: resetToken.userId }, data: { password: passwordHash } }),
+      prisma.passwordResetToken.update({ where: { id: resetToken.id }, data: { usedAt: new Date() } }),
+    ]);
 
     return NextResponse.json({ message: 'Senha redefinida com sucesso' });
   } catch (error: any) {

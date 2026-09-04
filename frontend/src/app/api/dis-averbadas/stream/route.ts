@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { resolveUserFromToken } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { disAverbadaEvents } from '@/lib/events';
 import { UserRole } from '@prisma/client';
 
 export const runtime = 'nodejs';
@@ -11,23 +11,23 @@ const PING_INTERVAL_MS = 20_000;
 function mapDiAverbada(da: any) {
   return {
     id: da.id,
-    numeroDI: da.documento_saida || da.n_lote,
+    numeroDI: da.documentoSaida || da.nLote,
     cliente: da.cliente || '',
     container: da.containers || '',
-    tipoContainer: da.tipo_documento || '',
+    tipoContainer: da.tipoDocumento || '',
     status: da.status || 'liberada',
     pesoBruto: da.saldo ?? 0,
     mercadoria: '',
     transportadora: '',
-    nLote: da.n_lote,
-    nConhecimento: da.n_conhecimento,
+    nLote: da.nLote,
+    nConhecimento: da.nConhecimento,
     dta: da.dta,
     modalidade: da.modalidade,
-    cnpjCliente: da.cnpj_cliente,
-    codDespachante: da.cod_despachante,
+    cnpjCliente: da.cnpjCliente,
+    codDespachante: da.codDespachante,
     despachante: da.despachante,
     localizacao: da.localizacao,
-    averbadoEm: da.averbado_em,
+    averbadoEm: da.averbadoEm,
   };
 }
 
@@ -75,11 +75,11 @@ export async function GET(request: NextRequest) {
 
       const isAllowed = async (row: any): Promise<boolean> => {
         if (!row) return false;
-        if (allowedCodDespachante !== null) return row.cod_despachante === allowedCodDespachante;
-        if (allowedCnpjCliente !== null) return row.cnpj_cliente === allowedCnpjCliente;
+        if (allowedCodDespachante !== null) return row.codDespachante === allowedCodDespachante;
+        if (allowedCnpjCliente !== null) return row.cnpjCliente === allowedCnpjCliente;
         if (allowedTransportadoraContaIds !== null) {
           const atribuicao = await prisma.diTransportadoraAtribuicao.findFirst({
-            where: { nLote: row.n_lote, transportadoraContaId: { in: [...allowedTransportadoraContaIds] } },
+            where: { nLote: row.nLote, transportadoraContaId: { in: [...allowedTransportadoraContaIds] } },
             select: { id: true },
           });
           return !!atribuicao;
@@ -87,19 +87,13 @@ export async function GET(request: NextRequest) {
         return true;
       };
 
-      const channel = supabaseAdmin
-        .channel(`dis-averbadas-changes-${user.id}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'dis_averbadas' },
-          async (payload) => {
-            const row = payload.new as any;
-            if (await isAllowed(row)) {
-              send(mapDiAverbada(row));
-            }
-          },
-        )
-        .subscribe();
+      const onChange = async (row: any) => {
+        if (await isAllowed(row)) {
+          send(mapDiAverbada(row));
+        }
+      };
+
+      disAverbadaEvents.on('change', onChange);
 
       pingTimer = setInterval(() => {
         controller.enqueue(encoder.encode(': ping\n\n'));
@@ -107,7 +101,7 @@ export async function GET(request: NextRequest) {
 
       request.signal.addEventListener('abort', () => {
         if (pingTimer) clearInterval(pingTimer);
-        supabaseAdmin.removeChannel(channel);
+        disAverbadaEvents.off('change', onChange);
         try {
           controller.close();
         } catch {

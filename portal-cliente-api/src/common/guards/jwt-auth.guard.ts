@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { SupabaseService } from '../../supabase/supabase.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Request } from 'express';
 
@@ -9,7 +9,7 @@ import { Request } from 'express';
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    private supabase: SupabaseService,
+    private jwtService: JwtService,
     private prisma: PrismaService,
   ) {}
 
@@ -24,10 +24,14 @@ export class JwtAuthGuard implements CanActivate {
     const token = this.extractToken(request);
     if (!token) throw new UnauthorizedException('Token não fornecido');
 
-    const { data: { user: supabaseUser }, error } = await this.supabase.admin.auth.getUser(token);
-    if (error || !supabaseUser) throw new UnauthorizedException('Token inválido');
+    let payload: { sub: string };
+    try {
+      payload = await this.jwtService.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException('Token inválido');
+    }
 
-    const user = await this.prisma.user.findUnique({ where: { email: supabaseUser.email } });
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || !user.active) throw new UnauthorizedException('Usuário inativo ou não encontrado');
 
     request['user'] = user;

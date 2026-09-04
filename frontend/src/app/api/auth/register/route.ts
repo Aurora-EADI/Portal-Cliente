@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
-
-const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } },
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,18 +55,7 @@ async function registerWithToken(body: any) {
     return NextResponse.json({ message: 'Este convite expirou. Solicite um novo convite.' }, { status: 400 });
   }
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password: senha,
-    email_confirm: true,
-  });
-
-  if (authError) {
-    if (authError.message?.includes('already been registered')) {
-      return NextResponse.json({ message: 'E-mail já registrado no sistema de autenticação' }, { status: 409 });
-    }
-    return NextResponse.json({ message: authError.message }, { status: 400 });
-  }
+  const passwordHash = await bcrypt.hash(senha, 10);
 
   let clienteId: string | null = null;
   let despachanteId: string | null = null;
@@ -145,9 +128,9 @@ async function registerWithToken(body: any) {
 
   const user = await prisma.user.create({
     data: {
-      id: authData.user.id,
       name: nome.trim(),
       email,
+      password: passwordHash,
       role: convite.tipo,
       active: true,
       clienteId,

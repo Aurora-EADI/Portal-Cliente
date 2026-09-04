@@ -77,6 +77,14 @@ export interface Agendamento {
   prioridade?: string;
   criadoPorNome?: string;
   criadoPorRole?: string;
+  cnpjCliente?: string;
+  enderecoCliente?: string;
+  telefoneCliente?: string;
+  emailCliente?: string;
+  cnpjTransportadora?: string;
+  enderecoTransportadora?: string;
+  telefoneTransportadora?: string;
+  emailTransportadora?: string;
 }
 
 export interface HorarioSlot {

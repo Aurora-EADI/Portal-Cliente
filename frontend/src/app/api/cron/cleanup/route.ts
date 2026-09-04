@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await prisma.slotReserva.deleteMany({
+  const result = await (prisma as any).slotReserva?.deleteMany({
     where: { expiraEm: { lt: new Date() } },
   });
 
-  return NextResponse.json({ deleted: result.count });
+  return NextResponse.json({ deleted: result?.count ?? 0 });
 }

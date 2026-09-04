@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { agendamentoEvents } from '@/lib/events';
 
 const SERVICE_KEY = process.env.SERVICE_API_KEY;
 
@@ -32,6 +33,7 @@ export async function PATCH(
     where: { id },
     data: { whatsappNotificadoEm: new Date() },
   });
+  agendamentoEvents.emit('change', updated);
 
   return NextResponse.json({ id: updated.id, whatsappNotificadoEm: updated.whatsappNotificadoEm });
 }

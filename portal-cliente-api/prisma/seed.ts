@@ -1,17 +1,23 @@
 import { PrismaClient, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
+
+const DEFAULT_DEV_PASSWORD = 'mudar123';
 
 async function main() {
   console.log('Iniciando seed do banco portal-cliente...');
 
-  // Admin user — senha gerenciada pelo Supabase Auth
+  const passwordHash = await bcrypt.hash(DEFAULT_DEV_PASSWORD, 10);
+
+  // Admin user — senha local (dev): mudar123
   const admin = await prisma.user.upsert({
     where: { email: 'admin@portalcliente.com.br' },
     update: {},
     create: {
       name: 'ADMINISTRADOR',
       email: 'admin@portalcliente.com.br',
+      password: passwordHash,
       role: UserRole.ADMIN,
       position: 'Administrador do Sistema',
     },
@@ -160,13 +166,14 @@ async function main() {
     },
   });
 
-  // Usuários cliente — senhas gerenciadas pelo Supabase Auth
+  // Usuários cliente — senha local (dev): mudar123
   await prisma.user.upsert({
     where: { email: 'operador@globalimport.com.br' },
     update: {},
     create: {
       name: 'OPERADOR GLOBAL',
       email: 'operador@globalimport.com.br',
+      password: passwordHash,
       role: UserRole.CLIENTE,
       clienteId: cliente1.id,
       position: 'Operador Logístico',
@@ -180,6 +187,7 @@ async function main() {
     create: {
       name: 'LOGÍSTICA TECAVANÇADA',
       email: 'logistica@tecavancada.com.br',
+      password: passwordHash,
       role: UserRole.CLIENTE,
       clienteId: cliente2.id,
       position: 'Coordenador de Logística',
@@ -187,8 +195,7 @@ async function main() {
   });
   console.log('Usuário cliente2 criado: logistica@tecavancada.com.br');
 
-  console.log('\nSeed concluído com sucesso!');
-  console.log('Lembre-se de criar os usuários no Supabase Auth com os mesmos e-mails.');
+  console.log(`\nSeed concluído com sucesso! Senha padrão dos usuários de dev: ${DEFAULT_DEV_PASSWORD}`);
 }
 
 main()

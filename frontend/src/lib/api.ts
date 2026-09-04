@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import { supabase } from './supabase';
+import Cookies from 'js-cookie';
 
 const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
@@ -11,10 +11,10 @@ export const api = axios.create({
   },
 });
 
-api.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers['Authorization'] = `Bearer ${session.access_token}`;
+api.interceptors.request.use((config) => {
+  const token = Cookies.get('access_token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
 });
@@ -23,10 +23,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      await supabase.auth.signOut();
+      Cookies.remove('access_token');
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
-        if (currentPath !== '/' && currentPath !== '/login' && currentPath !== '/session-expired') {
+        if (currentPath !== '/' && currentPath !== '/session-expired') {
           window.location.href = '/session-expired';
         }
       }

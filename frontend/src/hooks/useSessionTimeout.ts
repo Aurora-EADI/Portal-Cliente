@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
+import Cookies from 'js-cookie';
 import { useAuthContext } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabase';
+
+function getTokenExpiresAt(): number | null {
+  const token = Cookies.get('access_token');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
 
 export function useSessionTimeout() {
   const { currentUser } = useAuthContext();
@@ -18,16 +29,16 @@ export function useSessionTimeout() {
       return;
     }
 
-    const checkExpiration = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.expires_at) {
+    const checkExpiration = () => {
+      const expiresAt = getTokenExpiresAt();
+      if (!expiresAt) {
         setTimeRemaining(null);
         setTimeRemainingFormatted('');
         setIsExpiringSoon(false);
         return;
       }
 
-      const remaining = session.expires_at * 1000 - Date.now();
+      const remaining = expiresAt * 1000 - Date.now();
       const remainingMinutes = Math.floor(remaining / (1000 * 60));
       const expiringSoon = remaining > 0 && remaining <= 5 * 60 * 1000;
 

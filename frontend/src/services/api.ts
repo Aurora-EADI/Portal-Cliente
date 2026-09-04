@@ -1,16 +1,17 @@
+import axios from 'axios';
+import Cookies from 'js-cookie';
 import { api } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
 import type { User } from '@/types';
 
 export const authService = {
   login: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
+    const response = await axios.post('/api/auth/login', { email, password }).catch((error) => {
+      const message = error.response?.data?.message || 'Erro ao autenticar';
+      throw new Error(message);
+    });
 
-    const user = await authService.getProfile();
-    const expires_at = data.session.expires_at
-      ? new Date(data.session.expires_at * 1000).toISOString()
-      : new Date(Date.now() + 3600 * 1000).toISOString();
+    const { user, token, expires_at } = response.data;
+    Cookies.set('access_token', token, { sameSite: 'lax', expires: 1 });
 
     return { user, expires_at };
   },
@@ -29,7 +30,9 @@ export const authService = {
         message = backendMessage.join(', ');
       }
 
-      return Promise.reject(new Error(message));
+      const rejected = new Error(message) as Error & { status?: number };
+      rejected.status = error.response?.status;
+      return Promise.reject(rejected);
     }
   },
 };

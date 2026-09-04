@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 // Rotas públicas (não precisam de autenticação)
-const PUBLIC_ROUTES = ['/', '/registro'];
+const PUBLIC_ROUTES = ['/', '/registro', '/session-expired'];
 
 /**
  * 🚀 OTIMIZAÇÃO: Guard de autenticação centralizado

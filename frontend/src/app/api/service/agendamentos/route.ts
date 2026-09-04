@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { AgendamentoStatus } from '@prisma/client';
+import { agendamentoEvents } from '@/lib/events';
 
 const SERVICE_KEY = process.env.SERVICE_API_KEY;
 
@@ -102,6 +103,14 @@ export async function POST(request: NextRequest) {
       observacao,
       criadoPorNome,
       criadoPorRole,
+      cnpjCliente,
+      enderecoCliente,
+      telefoneCliente,
+      emailCliente,
+      cnpjTransportadora,
+      enderecoTransportadora,
+      telefoneTransportadora,
+      emailTransportadora,
     } = body;
 
     if (!empresa || !operacao || !data || !horario || !cpfMotorista || !placaVeiculo) {
@@ -195,6 +204,14 @@ export async function POST(request: NextRequest) {
         observacao: observacao || null,
         criadoPorNome: criadoPorNome || null,
         criadoPorRole: criadoPorRole || 'AURORA_EMPLOYEE',
+        cnpjCliente: cnpjCliente || null,
+        enderecoCliente: enderecoCliente || null,
+        telefoneCliente: telefoneCliente || null,
+        emailCliente: emailCliente || null,
+        cnpjTransportadora: cnpjTransportadora || null,
+        enderecoTransportadora: enderecoTransportadora || null,
+        telefoneTransportadora: telefoneTransportadora || null,
+        emailTransportadora: emailTransportadora || null,
       },
       include: {
         motorista: true,
@@ -202,6 +219,8 @@ export async function POST(request: NextRequest) {
         cliente: { select: { id: true, nome: true } },
       },
     });
+
+    agendamentoEvents.emit('change', agendamento);
 
     return NextResponse.json(
       { protocolo: agendamento.protocolo, id: agendamento.id, agendamento },

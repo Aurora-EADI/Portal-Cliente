@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useLogin } from '../../hooks/useAuth';
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -14,8 +13,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { formatCNPJ, formatPhone } from '@/lib/agendamento';
 
 export function Login() {
-  const router = useRouter();
-  const { mutate: login, isPending: isLoggingIn, isSuccess } = useLogin();
+  const { mutate: login, isPending: isLoggingIn } = useLogin();
 
   const [mode, setMode] = useState<'login' | 'register' | 'success'>('login');
 
@@ -34,10 +32,6 @@ export function Login() {
   const [regEmpresa, setRegEmpresa] = useState('');
   const [regTelefone, setRegTelefone] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-
-  useEffect(() => {
-    if (isSuccess) router.push('/dashboard');
-  }, [isSuccess, router]);
 
   useEffect(() => {
     if (error) setError('');

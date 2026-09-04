@@ -40,34 +40,29 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./portal-cliente-api
       dockerfile: Dockerfile.dev
     container_name: portal-aurora-backend
+    # Nao roda "prisma:push" aqui: o schema do frontend e o superset (fonte de
+    # verdade do dominio agendamento) e ja faz o push. Rodar push dos dois lados
+    # entra em conflito (enums/colunas divergentes). So espera a tabela existir.
     command: >
-      sh -c "npm run prisma:generate:pg &&
-             npm run prisma:migrate:pg -- --name auto_startup &&
-             npm run prisma:seed &&
+      sh -c "npm run prisma:generate &&
+             until npm run prisma:seed; do echo 'Aguardando schema (frontend ainda nao rodou db push)...'; sleep 2; done &&
              npm run dev"
     environment:
-      NODE_ENV: ${NODE_ENV}
+      NODE_ENV: development
       PORT: 5000
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DATABASE_URL_POSTGRES: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DATABASE_URL_SQLSERVER: ${DATABASE_URL_SQLSERVER}
+      DIRECT_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       CORS_ORIGIN: ${CORS_ORIGIN}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_PORT: ${MINIO_PORT}
-      MINIO_USE_SSL: ${MINIO_USE_SSL}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
     volumes:
-      - ./backend:/app
+      - ./portal-cliente-api:/app
       - /app/node_modules
     ports:
-      - "5000:5000"
+      - "5001:5000"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`api.dev.local`)"
@@ -103,12 +98,20 @@ services:
 
   frontend:
     build:
-      context: ./aurora-eadi-front
+      context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: portal-aurora-frontend
+    command: >
+      sh -c "npx prisma db push --accept-data-loss &&
+             npx prisma generate &&
+             npm run dev"
     environment:
-      NODE_ENV: ${NODE_ENV}
+      NODE_ENV: development
       NEXT_PUBLIC_API_URL: ${API_URL}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DIRECT_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       # Desabilitar telemetria do Next.js
       NEXT_TELEMETRY_DISABLED: 1
       # Otimizações de memória do Node.js
@@ -116,9 +119,9 @@ services:
       # Adicione para resolver o problema de memória com watchpack
       WATCHPACK_POLLING: true
     ports:
-      - "3000:3000"
+      - "3002:3000"
     volumes:
-      - ./aurora-eadi-front:/app
+      - ./frontend:/app
       - /app/node_modules
       - /app/.next
     labels:
@@ -129,7 +132,7 @@ services:
     networks:
       - aurora-network
     depends_on:
-      - backend
+      - db
     restart: unless-stopped
     deploy:
       resources:

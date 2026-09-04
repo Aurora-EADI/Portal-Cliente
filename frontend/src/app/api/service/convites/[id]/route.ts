@@ -23,16 +23,14 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const convite = await prisma.conviteRegistro.findUnique({ where: { id } });
-  if (!convite) {
-    return NextResponse.json({ message: 'Convite não encontrado' }, { status: 404 });
+  try {
+    await prisma.conviteRegistro.delete({ where: { id } });
+    return NextResponse.json({ message: 'Convite revogado' });
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return NextResponse.json({ message: 'Convite não encontrado' }, { status: 404 });
+    }
+    console.error('[service/convites/:id] DELETE error:', error.message);
+    return NextResponse.json({ message: 'Failed to revoke convite' }, { status: 500 });
   }
-
-  if (convite.usedAt) {
-    return NextResponse.json({ message: 'Convite já utilizado, não pode ser revogado' }, { status: 400 });
-  }
-
-  await prisma.conviteRegistro.delete({ where: { id } });
-
-  return NextResponse.json({ success: true });
 }

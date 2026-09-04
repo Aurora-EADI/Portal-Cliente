@@ -13,7 +13,7 @@ export default function SessionExpiredPage() {
   const router = useRouter();
 
   const handleLoginRedirect = () => {
-    router.push('/login');
+    router.push('/');
   };
 
   return (

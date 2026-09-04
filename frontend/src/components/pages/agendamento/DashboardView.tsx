@@ -3,11 +3,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle, Truck } from 'lucide-react';
-import Image from 'next/image';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 import { StatusBadge } from './StatusBadge';
+import { VoucherDocument, downloadVoucherPdf } from './VoucherDocument';
 import { Agendamento } from '@/types/agendamento';
 
 interface AtribuicaoResumo {
@@ -21,15 +21,6 @@ function formatDate(dateStr: string) {
   return `${d}/${m}/${y}`;
 }
 
-function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm text-zinc-800 font-semibold ${mono ? 'font-mono' : ''}`}>{value}</p>
-    </div>
-  );
-}
-
 function VoucherModal({ booking, onClose }: { booking: Agendamento; onClose: () => void }) {
   const voucherRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -39,85 +30,16 @@ function VoucherModal({ booking, onClose }: { booking: Agendamento; onClose: () 
     if (!el) return;
     setDownloading(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-      const origWidth = el.style.width;
-      el.style.width = '800px';
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', width: 800 });
-      el.style.width = origWidth;
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const margin = 15;
-      const pdfWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, imgHeight);
-      pdf.save(`agendamento-${booking.protocolo}.pdf`);
+      await downloadVoucherPdf(el, booking.protocolo);
     } finally {
       setDownloading(false);
     }
   };
 
-  const awb = booking.awbMawb ? (Array.isArray(booking.awbMawb) ? booking.awbMawb.join(', ') : booking.awbMawb) : null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl animate-in fade-in" onClick={e => e.stopPropagation()}>
-        {/* Voucher */}
-        <div ref={voucherRef} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xl">
-          <div className="px-8 py-5 border-b border-zinc-200 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Image src="/logo-aurora.png" alt="Aurora" width={130} height={44} className="object-contain" />
-              <div className="h-10 w-px bg-zinc-200" />
-              <div>
-                <p className="text-zinc-900 text-sm font-bold">Comprovante de Agendamento</p>
-                <p className="text-zinc-400 text-[11px] mt-0.5">Portal do Cliente</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[#ED6A23] font-mono text-sm font-bold">{booking.protocolo}</p>
-              <p className="text-zinc-400 text-[11px]">{new Date().toLocaleDateString('pt-BR')}</p>
-            </div>
-          </div>
-
-          <div className="px-8 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-emerald-800">Agendamento confirmado</p>
-              <p className="text-[11px] text-emerald-600">Registrado com sucesso no sistema.</p>
-            </div>
-          </div>
-
-          <div className="px-8 py-6 grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-            {(booking.diNumero || booking.di) && <InfoItem label="D.I" value={Array.isArray(booking.di) ? booking.di.join(', ') : (booking.diNumero || booking.di || '—')} mono />}
-            {booking.container && <InfoItem label="Container" value={booking.container} mono />}
-            <InfoItem label="Data" value={formatDate(booking.data)} />
-            <InfoItem label="Horário" value={booking.horario} />
-            <InfoItem label="Operação" value={booking.operacao ?? '—'} />
-            {booking.subOperacao && <InfoItem label="SubOperação" value={booking.subOperacao} />}
-            <InfoItem label="Motorista" value={booking.motorista?.nome || '—'} />
-            <InfoItem label="CPF" value={booking.motorista?.cpf || '—'} mono />
-            <InfoItem label="Placa" value={booking.veiculo?.placa || '—'} mono />
-            <InfoItem label="Veículo" value={booking.veiculo?.tipo || booking.veiculo?.modelo || '—'} />
-            <InfoItem label="Transportadora" value={booking.transportadora ?? '—'} />
-            <InfoItem label="Empresa" value={booking.empresa ?? '—'} />
-            {awb && <InfoItem label="AWB / MAWB" value={awb} mono />}
-            {booking.consignatario && <InfoItem label="Consignatário" value={booking.consignatario} />}
-          </div>
-
-          {booking.observacao && (
-            <div className="mx-8 mb-6 pt-4 border-t border-zinc-100">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Observações</p>
-              <p className="text-xs text-zinc-600">{booking.observacao}</p>
-            </div>
-          )}
-
-          <div className="px-8 py-3 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between">
-            <p className="text-[10px] text-zinc-400">Aurora EADI — Terminal de Cargas</p>
-            <p className="text-[10px] text-zinc-400 font-mono">{booking.protocolo}</p>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto animate-in fade-in" onClick={e => e.stopPropagation()}>
+        <VoucherDocument ref={voucherRef} booking={booking} />
 
         {/* Botões */}
         <div className="flex justify-center gap-3 mt-4">
@@ -144,6 +66,7 @@ function VoucherModal({ booking, onClose }: { booking: Agendamento; onClose: () 
 export function DashboardView() {
   const router = useRouter();
   const { visibleBookings, visibleDis, selectedClient, isAdmin, isDespachante, isTransportadora, isLoadingData, handleCancelBooking } = useAgendamento();
+  const isClienteOuDespachante = isDespachante || (!isAdmin && !isTransportadora);
   const [busca, setBusca] = useState('');
   const [viewingBooking, setViewingBooking] = useState<Agendamento | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Agendamento | null>(null);
@@ -235,7 +158,7 @@ export function DashboardView() {
           className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
         >
           <Plus className="w-3.5 h-3.5" />
-          Novo Agendamento
+          {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Novo Agendamento'}
         </button>
       </div>
 
@@ -308,7 +231,7 @@ export function DashboardView() {
               onClick={() => router.push('/agendamento?tab=wizard')}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ED6A23] hover:underline"
             >
-              <Plus className="w-3.5 h-3.5" /> Criar agendamento
+              <Plus className="w-3.5 h-3.5" /> {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Criar agendamento'}
             </button>
           </div>
         ) : (
@@ -370,7 +293,7 @@ export function DashboardView() {
                         onClick={() => router.push(`/agendamento?tab=wizard&diNumero=${encodeURIComponent(di.numeroDI)}&container=${encodeURIComponent(container)}`)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-md transition-colors"
                       >
-                        <Plus className="w-3 h-3" /> Agendar
+                        <Plus className="w-3 h-3" /> {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Agendar'}
                       </button>
                     </td>
                   </tr>

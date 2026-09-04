@@ -9,6 +9,7 @@ import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 const INPUT = 'w-full py-2 px-3 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800';
 const LABEL = 'text-xs font-bold text-zinc-600 block mb-1.5';
+const TODOS_CONTAINERS = '__TODOS__';
 
 function parseContainers(containerStr: string): string[] {
   if (!containerStr) return [];
@@ -23,6 +24,13 @@ interface ConviteInfo {
   status: 'has_access' | 'pending' | 'created';
   link?: string;
   emailSent?: boolean;
+}
+
+interface ResultadoContainer {
+  container: string;
+  ok: boolean;
+  convite?: ConviteInfo;
+  erro?: string;
 }
 
 export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFormProps) {
@@ -65,7 +73,7 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
 
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<ConviteInfo | null>(null);
+  const [resultados, setResultados] = useState<ResultadoContainer[] | null>(null);
 
   const handleAtribuir = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,19 +84,27 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
     const cnpjDigits = cnpj.replace(/\D/g, '');
     if (cnpjDigits.length !== 14) { setError('Selecione uma transportadora.'); return; }
 
+    const containersParaAtribuir = container === TODOS_CONTAINERS ? containersDaDi : [container];
+
     setSaving(true);
     try {
-      const { data } = await api.post('/agendamento/atribuicoes', {
-        nLote,
-        container,
-        cnpj: cnpjDigits,
-        nome: nome.trim(),
-        email: email.trim() || undefined,
-        whatsapp: whatsapp.trim() || undefined,
-      });
-      setResult(data.convite ?? { status: 'has_access' });
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Erro ao atribuir transportadora.');
+      const saida: ResultadoContainer[] = [];
+      for (const ctnr of containersParaAtribuir) {
+        try {
+          const { data } = await api.post('/agendamento/atribuicoes', {
+            nLote,
+            container: ctnr,
+            cnpj: cnpjDigits,
+            nome: nome.trim(),
+            email: email.trim() || undefined,
+            whatsapp: whatsapp.trim() || undefined,
+          });
+          saida.push({ container: ctnr, ok: true, convite: data.convite ?? { status: 'has_access' } });
+        } catch (err: any) {
+          saida.push({ container: ctnr, ok: false, erro: err?.response?.data?.message ?? 'Erro ao atribuir transportadora.' });
+        }
+      }
+      setResultados(saida);
     } finally {
       setSaving(false);
     }
@@ -96,37 +112,51 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
 
   const handleReset = () => {
     setNLote(''); setContainer(''); setCnpj(''); setNome(''); setEmail(''); setWhatsapp('');
-    setError(''); setResult(null);
+    setError(''); setResultados(null);
   };
 
-  if (result) {
-    const convidou = result.status !== 'has_access';
+  if (resultados) {
+    const sucessos = resultados.filter(r => r.ok);
+    const falhas = resultados.filter(r => !r.ok);
     return (
       <div className="p-6 space-y-4 animate-in fade-in">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-emerald-800">
-              {convidou ? 'Transportadora atribuída — convite enviado!' : 'Transportadora atribuída!'}
-            </p>
-            {container && (
-              <p className="text-xs text-emerald-700 mt-1">
-                Container atribuído: <span className="font-mono font-bold">{container}</span>
-                {diSelecionada && <> — DI {diSelecionada.numeroDI}</>}
+        {sucessos.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-emerald-800">
+                {sucessos.length > 1 ? `${sucessos.length} containers atribuídos!` : 'Transportadora atribuída!'}
               </p>
-            )}
-            <p className="text-xs text-emerald-700 mt-1">
-              {convidou
-                ? result.status === 'pending'
-                  ? 'Essa transportadora já tinha um convite pendente — ela poderá aceitá-lo e já vai enxergar esta DI para agendar a retirada.'
-                  : 'Como essa transportadora ainda não tem acesso ao portal, um convite foi gerado e ' + (result.emailSent ? 'enviado por e-mail. ' : 'precisa ser compartilhado manualmente (sem e-mail cadastrado). ') + 'Ela já vai enxergar esta DI para agendar a retirada assim que aceitar.'
-                : 'A transportadora já vai enxergar esta DI para agendar a retirada assim que acessar o portal.'}
-            </p>
-            {result.link && (
-              <p className="text-[11px] font-mono text-emerald-600 mt-2 break-all">{result.link}</p>
-            )}
+              <p className="text-xs text-emerald-700 mt-1">
+                {diSelecionada && <>DI {diSelecionada.numeroDI} — </>}
+                {sucessos.map(s => s.container).filter(Boolean).length > 0
+                  ? <>Container(s): <span className="font-mono font-bold">{sucessos.map(s => s.container).join(', ')}</span></>
+                  : 'atribuição registrada para a DI inteira.'}
+              </p>
+              {sucessos.some(s => s.convite && s.convite.status !== 'has_access') && (
+                <p className="text-xs text-emerald-700 mt-1">
+                  Como essa transportadora ainda não tem acesso ao portal, um convite foi gerado. Ela já vai enxergar esta DI para agendar a retirada assim que aceitar.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {falhas.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm font-bold text-red-800 mb-1.5">
+              {falhas.length > 1 ? `${falhas.length} containers não puderam ser atribuídos` : 'Container não pôde ser atribuído'}
+            </p>
+            <ul className="space-y-0.5">
+              {falhas.map(f => (
+                <li key={f.container} className="text-xs text-red-700">
+                  <span className="font-mono font-bold">{f.container}</span> — {f.erro}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button onClick={handleReset} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">
             Atribuir outra DI
@@ -172,6 +202,13 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
             </div>
           ) : (
             <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setContainer(TODOS_CONTAINERS)}
+                className={`w-full text-left px-3 py-2 rounded-lg border text-sm font-bold transition-colors ${container === TODOS_CONTAINERS ? 'border-[#ED6A23] bg-[#ED6A23]/5 text-[#ED6A23]' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'}`}
+              >
+                Todos os containers ({containersDaDi.length})
+              </button>
               {containersDaDi.map(ctnr => (
                 <button
                   key={ctnr}
@@ -184,7 +221,11 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
               ))}
             </div>
           )}
-          <p className="text-[11px] text-zinc-400 mt-1">A transportadora só vai enxergar e agendar este container.</p>
+          <p className="text-[11px] text-zinc-400 mt-1">
+            {container === TODOS_CONTAINERS
+              ? 'A transportadora vai enxergar e agendar todos os containers desta DI.'
+              : 'A transportadora só vai enxergar e agendar este container.'}
+          </p>
         </div>
       )}
 

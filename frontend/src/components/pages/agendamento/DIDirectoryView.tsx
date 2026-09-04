@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,7 +7,8 @@ import { useAgendamento } from '@/context/AgendamentoContext';
 
 export function DIDirectoryView() {
   const router = useRouter();
-  const { visibleDis, visibleBookings, activeBookings, selectedClient, setSelectedDI, setCurrentStep } = useAgendamento();
+  const { visibleDis, visibleBookings, activeBookings, selectedClient, setSelectedDI, setCurrentStep, isDespachante, isAdmin, isTransportadora } = useAgendamento();
+  const isClienteOuDespachante = isDespachante || (!isAdmin && !isTransportadora);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -121,7 +122,7 @@ export function DIDirectoryView() {
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                           >
                             <CalendarDays className="w-3.5 h-3.5" />
-                            <span>Agendar Retirada</span>
+                            <span>{isClienteOuDespachante ? 'Atribuir | Agendar' : 'Agendar Retirada'}</span>
                           </button>
                         )}
                         {activeBooking && (

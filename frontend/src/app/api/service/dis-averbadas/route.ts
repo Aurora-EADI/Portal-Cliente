@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { disAverbadaEvents } from '@/lib/events';
 
 const SERVICE_KEY = process.env.SERVICE_API_KEY;
 
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         sincronizadoEm: new Date(),
       },
     });
+    disAverbadaEvents.emit('change', diAverbada);
 
     return NextResponse.json(diAverbada, { status: 201 });
   } catch (error: any) {

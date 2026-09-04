@@ -93,6 +93,14 @@ function mapApiBooking(b: any): Agendamento {
     transportadora: b.transportadora ?? undefined,
     criadoPorNome: b.criadoPorNome ?? undefined,
     criadoPorRole: b.criadoPorRole ?? undefined,
+    cnpjCliente: b.cnpjCliente ?? undefined,
+    enderecoCliente: b.enderecoCliente ?? undefined,
+    telefoneCliente: b.telefoneCliente ?? undefined,
+    emailCliente: b.emailCliente ?? undefined,
+    cnpjTransportadora: b.cnpjTransportadora ?? undefined,
+    enderecoTransportadora: b.enderecoTransportadora ?? undefined,
+    telefoneTransportadora: b.telefoneTransportadora ?? undefined,
+    emailTransportadora: b.emailTransportadora ?? undefined,
   };
 }
 
@@ -155,18 +163,24 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
 
   useDisAverbadasStream(!!currentUser, upsertDi);
 
+  const upsertBooking = (mapped: Agendamento) => {
+    setActiveBookings(prev => {
+      const exists = prev.some(b => b.id === mapped.id);
+      return exists ? prev.map(b => (b.id === mapped.id ? mapped : b)) : [mapped, ...prev];
+    });
+  };
+
   const handleAgendamentoEvent = (payload: any) => {
     if (payload?.deleted) {
       setActiveBookings(prev => prev.filter(b => b.id !== payload.id));
       return;
     }
     const isActive = ACTIVE_BOOKING_STATUSES.has(payload.status);
-    setActiveBookings(prev => {
-      const exists = prev.some(b => b.id === payload.id);
-      if (!isActive) return exists ? prev.filter(b => b.id !== payload.id) : prev;
-      const mapped = mapApiBooking(payload);
-      return exists ? prev.map(b => (b.id === payload.id ? mapped : b)) : [mapped, ...prev];
-    });
+    if (!isActive) {
+      setActiveBookings(prev => prev.filter(b => b.id !== payload.id));
+      return;
+    }
+    upsertBooking(mapApiBooking(payload));
   };
 
   useAgendamentoStream(!!currentUser, handleAgendamentoEvent);
@@ -246,7 +260,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       horario,
     });
     const mapped = mapApiBooking(booking);
-    setActiveBookings(prev => [mapped, ...prev]);
+    upsertBooking(mapped);
     setSuccessBooking(mapped);
     setViewingArchiveBooking(null);
   };
@@ -297,7 +311,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       whatsapp: notificacoes.whatsapp,
     });
     const mapped = mapApiBooking(created);
-    setActiveBookings(prev => [mapped, ...prev]);
+    upsertBooking(mapped);
     return mapped;
   };
 

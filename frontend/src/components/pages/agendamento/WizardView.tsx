@@ -2,23 +2,37 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, AlertCircle, Loader2, Download, Plus, CalendarPlus, Truck, Check } from 'lucide-react';
-import Image from 'next/image';
+import { AlertCircle, Loader2, Download, Plus, CalendarPlus, Truck, Check } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { Agendamento } from '@/types/agendamento';
 import { StepIndicator } from './steps/StepIndicator';
-import { DadosStep, DadosFormData } from './steps/DadosStep';
+import { DadosStep, DadosFormData, DadosSection } from './steps/DadosStep';
 import { NotificacoesStep, NotificacoesFormData } from './steps/NotificacoesStep';
 import { AtribuirTransportadoraForm } from './AtribuirTransportadoraForm';
+import { VoucherDocument, downloadVoucherPdf } from './VoucherDocument';
+import { loadDraft, saveDraft, clearDraft } from '@/lib/wizard-draft';
 
 const WIZARD_STEPS = [
-  { number: 1, title: 'Dados',         subtitle: 'Informações do agendamento' },
-  { number: 2, title: 'Notificações',  subtitle: 'Configurar alertas' },
+  { number: 1, title: 'Dados',         subtitle: 'Informações da carga' },
+  { number: 2, title: 'Calendário',    subtitle: 'Data e horário' },
+  { number: 3, title: 'Motorista',     subtitle: 'Motorista e transportadora' },
+  { number: 4, title: 'Veículo',       subtitle: 'Placa do veículo' },
+  { number: 5, title: 'Notificações',  subtitle: 'Configurar alertas' },
 ];
+const LAST_STEP = WIZARD_STEPS.length;
 
-const INITIAL_DADOS: DadosFormData = {
+const SECTION_BY_STEP: Record<number, DadosSection> = {
+  1: 'dados',
+  2: 'calendario',
+  3: 'motorista',
+  4: 'veiculo',
+};
+
+// Factory (não constante de módulo): dataAgendamento tem que ser "hoje" na hora
+// em que o formulário é criado/limpo, não na hora em que o bundle carregou.
+const makeInitialDados = (): DadosFormData => ({
   operacao: '', subOperacao: '', cargaEspecial: false, servicos: [],
   tipoVeiculo: '',
   dataAgendamento: new Date().toISOString().split('T')[0],
@@ -26,132 +40,65 @@ const INITIAL_DADOS: DadosFormData = {
   cpfMotorista: '', nomeMotorista: '', transportadora: '', empresa: '',
   awbMawb: [], di: [], dta: [], hawb: [], numeroVoo: '',
   placaVeiculo: '', volumes: '', peso: '', consignatario: '', observacoes: '',
-};
+});
 
-const INITIAL_NOTIFICACOES: NotificacoesFormData = {
+const makeInitialNotificacoes = (): NotificacoesFormData => ({
   notificarEmail: false, email: '',
   notificarWhatsapp: false, whatsapp: '',
+});
+
+const DRAFT_SAVE_DEBOUNCE_MS = 400;
+
+const STEP_FIELD_CHECKS: Record<number, { field: keyof DadosFormData; label: string }[]> = {
+  1: [
+    { field: 'operacao', label: 'Operação' },
+    { field: 'empresa', label: 'Empresa' },
+  ],
+  2: [
+    { field: 'inicio', label: 'Data e horário' },
+  ],
+  3: [
+    { field: 'cpfMotorista', label: 'CPF do motorista' },
+    { field: 'transportadora', label: 'Transportadora' },
+  ],
+  4: [
+    { field: 'tipoVeiculo', label: 'Tipo de veículo' },
+    { field: 'placaVeiculo', label: 'Placa do veículo' },
+  ],
 };
 
-function isDadosValid(d: DadosFormData) {
-  return missingDadosFields(d).length === 0;
-}
-
-function missingDadosFields(d: DadosFormData): string[] {
-  const missing: string[] = [];
-  if (!d.operacao) missing.push('Operação');
-  if (!d.tipoVeiculo) missing.push('Tipo de veículo');
-  if (!d.inicio) missing.push('Data e horário');
-  if (!d.cpfMotorista) missing.push('CPF do motorista');
-  if (!d.transportadora) missing.push('Transportadora');
-  if (!d.empresa) missing.push('Empresa');
-  if (!d.placaVeiculo) missing.push('Placa do veículo');
-  return missing;
-}
-
-function formatDate(dateStr: string) {
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
+function missingFieldsForStep(step: number, d: DadosFormData): string[] {
+  const checks = STEP_FIELD_CHECKS[step] ?? [];
+  return checks.filter(c => !d[c.field]).map(c => c.label);
 }
 
 function ConfirmationVoucher({ booking, onNew, onBack }: { booking: Agendamento; onNew: () => void; onBack: () => void }) {
   const voucherRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const handleDownloadPDF = async () => {
     const el = voucherRef.current;
     if (!el) return;
-
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
-
-    const origWidth = el.style.width;
-    el.style.width = '800px';
-
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', width: 800 });
-
-    el.style.width = origWidth;
-
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const margin = 15;
-    const pdfWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, imgHeight);
-    pdf.save(`agendamento-${booking.protocolo}.pdf`);
+    setDownloading(true);
+    try {
+      await downloadVoucherPdf(el, booking.protocolo);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
     <div className="animate-in fade-in space-y-4">
-      {/* Voucher card */}
-      <div ref={voucherRef} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
-        {/* Header com logo */}
-        <div className="px-4 sm:px-8 py-5 border-b border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <Image src="/logo-aurora.png" alt="Aurora" width={130} height={44} className="object-contain" />
-            <div className="h-10 w-px bg-zinc-200 hidden sm:block" />
-            <div className="hidden sm:block">
-              <p className="text-zinc-900 text-sm font-bold">Comprovante de Agendamento</p>
-              <p className="text-zinc-400 text-[11px] mt-0.5">Portal do Cliente</p>
-            </div>
-          </div>
-          <div className="sm:text-right">
-            <p className="text-[#ED6A23] font-mono text-sm font-bold">{booking.protocolo}</p>
-            <p className="text-zinc-400 text-[11px]">{new Date().toLocaleDateString('pt-BR')}</p>
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="px-8 py-4 bg-emerald-50 border-b border-emerald-100 flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-emerald-800">Agendamento confirmado</p>
-            <p className="text-[11px] text-emerald-600">Seu agendamento foi registrado com sucesso no sistema.</p>
-          </div>
-        </div>
-
-        {/* Dados */}
-        <div className="px-4 sm:px-8 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-5">
-            {(booking.diNumero || booking.di) && <InfoField label="D.I" value={Array.isArray(booking.di) ? booking.di.join(', ') : (booking.diNumero || booking.di || '—')} mono />}
-            {booking.container && <InfoField label="Container" value={booking.container} mono />}
-            <InfoField label="Data" value={formatDate(booking.data)} />
-            <InfoField label="Horário" value={booking.horario} />
-            <InfoField label="Operação" value={booking.operacao ?? '—'} />
-            {booking.subOperacao && <InfoField label="SubOperação" value={booking.subOperacao} />}
-            <InfoField label="Motorista" value={booking.motorista?.nome || '—'} />
-            <InfoField label="CPF" value={booking.motorista?.cpf || '—'} mono />
-            <InfoField label="Placa" value={booking.veiculo?.placa || '—'} mono />
-            <InfoField label="Veículo" value={booking.veiculo?.tipo || booking.veiculo?.modelo || '—'} />
-            <InfoField label="Transportadora" value={booking.transportadora ?? '—'} />
-            <InfoField label="Empresa" value={booking.empresa ?? '—'} />
-            {booking.awbMawb && <InfoField label="AWB / MAWB" value={Array.isArray(booking.awbMawb) ? booking.awbMawb.join(', ') : booking.awbMawb} mono />}
-            {booking.consignatario && <InfoField label="Consignatário" value={booking.consignatario} />}
-          </div>
-
-          {booking.observacao && (
-            <div className="mt-5 pt-4 border-t border-zinc-100">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Observações</p>
-              <p className="text-xs text-zinc-600">{booking.observacao}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-8 py-3 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between">
-          <p className="text-[10px] text-zinc-400">Aurora EADI — Terminal de Cargas</p>
-          <p className="text-[10px] text-zinc-400 font-mono">{booking.protocolo}</p>
-        </div>
-      </div>
+      <VoucherDocument ref={voucherRef} booking={booking} />
 
       {/* Ações */}
       <div className="flex flex-col sm:flex-row justify-center gap-3">
         <button
           onClick={handleDownloadPDF}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors shadow-sm"
+          disabled={downloading}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-zinc-700 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors shadow-sm disabled:opacity-50"
         >
-          <Download className="w-4 h-4" /> Salvar PDF
+          {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Salvar PDF
         </button>
         <button
           onClick={onNew}
@@ -170,15 +117,6 @@ function ConfirmationVoucher({ booking, onNew, onBack }: { booking: Agendamento;
   );
 }
 
-function InfoField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className={`text-sm text-zinc-800 font-semibold ${mono ? 'font-mono' : ''}`}>{value}</p>
-    </div>
-  );
-}
-
 export function WizardView() {
   const router = useRouter();
   const { currentUser } = useAuthContext();
@@ -186,16 +124,38 @@ export function WizardView() {
   const canDelegate = currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE;
   const [mode, setMode] = useState<'agendar' | 'atribuir'>('agendar');
   const [step, setStep] = useState(1);
-  const [dados, setDados] = useState<DadosFormData>(INITIAL_DADOS);
-  const [notificacoes, setNotificacoes] = useState<NotificacoesFormData>(INITIAL_NOTIFICACOES);
+  const [dados, setDados] = useState<DadosFormData>(makeInitialDados);
+  const [notificacoes, setNotificacoes] = useState<NotificacoesFormData>(makeInitialNotificacoes);
   const [notifErrors, setNotifErrors] = useState<Partial<Record<keyof NotificacoesFormData, string>>>({});
   const [savedBooking, setSavedBooking] = useState<Agendamento | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (currentUser?.role === UserRole.DESPACHANTE) setMode('atribuir');
   }, [currentUser?.role]);
+
+  // Restaura rascunho do localStorage uma única vez, assim que o usuário é conhecido.
+  useEffect(() => {
+    if (hydrated || !currentUser?.id) return;
+    const draft = loadDraft(currentUser.id);
+    if (draft) {
+      setStep(draft.step);
+      setDados(draft.dados);
+      setNotificacoes(draft.notificacoes);
+    }
+    setHydrated(true);
+  }, [currentUser?.id, hydrated]);
+
+  // Salva rascunho (debounce: digitação dispara a cada tecla).
+  // O guard `hydrated` evita que o estado inicial vazio sobrescreva o rascunho antes do load.
+  useEffect(() => {
+    const userId = currentUser?.id;
+    if (!hydrated || !userId || savedBooking) return;
+    const t = setTimeout(() => saveDraft(userId, { step, dados, notificacoes }), DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [hydrated, currentUser?.id, savedBooking, step, dados, notificacoes]);
 
   const validateNotificacoes = (): boolean => {
     const errs: Partial<Record<keyof NotificacoesFormData, string>> = {};
@@ -218,13 +178,14 @@ export function WizardView() {
   };
 
   const handleNext = async () => {
-    if (step < 2) { setStep(s => s + 1); setSubmitError(null); return; }
+    if (step < LAST_STEP) { setStep(s => s + 1); setSubmitError(null); return; }
 
     if (!validateNotificacoes()) return;
     setSaving(true);
     setSubmitError(null);
     try {
       const booking = await handleSaveNovoAgendamento(dados, notificacoes);
+      clearDraft();
       setSavedBooking(booking);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Erro ao salvar agendamento.';
@@ -234,13 +195,19 @@ export function WizardView() {
     }
   };
 
-  const canAdvance = step === 1 ? isDadosValid(dados) : true;
+  const canAdvance = step < LAST_STEP ? missingFieldsForStep(step, dados).length === 0 : true;
 
   if (savedBooking) {
     return (
       <ConfirmationVoucher
         booking={savedBooking}
-        onNew={() => { setSavedBooking(null); setStep(1); setDados(INITIAL_DADOS); setNotificacoes(INITIAL_NOTIFICACOES); }}
+        onNew={() => {
+          clearDraft();
+          setSavedBooking(null);
+          setStep(1);
+          setDados(makeInitialDados());
+          setNotificacoes(makeInitialNotificacoes());
+        }}
         onBack={() => router.push('/agendamento')}
       />
     );
@@ -308,13 +275,13 @@ export function WizardView() {
           )}
 
           <div className="p-6">
-            {step === 1 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} />}
-            {step === 2 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
+            {step <= 4 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} section={SECTION_BY_STEP[step]} />}
+            {step === 5 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
           </div>
 
-          {step === 1 && !canAdvance && (
+          {step <= 4 && !canAdvance && (
             <p className="px-6 pb-2 text-xs text-amber-600">
-              Faltando: {missingDadosFields(dados).join(', ')}
+              Faltando: {missingFieldsForStep(step, dados).join(', ')}
             </p>
           )}
 
@@ -331,7 +298,7 @@ export function WizardView() {
               disabled={!canAdvance || saving}
               className="px-5 py-2 text-sm font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : step < 2 ? 'Próximo' : 'Salvar'}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</> : step < LAST_STEP ? 'Próximo' : 'Salvar'}
             </button>
           </div>
         </>

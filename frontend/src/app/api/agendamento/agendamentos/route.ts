@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
 import { normalizeCnpj, ensureTransportadoraConvite, EnsureTransportadoraConviteResult } from '@/lib/convites';
+import { agendamentoEvents } from '@/lib/events';
 
 const ACTIVE_STATUSES = [
   AgendamentoStatus.ATIVO,
@@ -112,6 +113,7 @@ async function handleLegacyPost(body: any, user: any) {
     data: { diId, motoristaId, veiculoId, data, horario, protocolo, status: AgendamentoStatus.ATIVO, criadoPorNome: user.name || null, criadoPorRole: user.role || null },
     include: { di: true, motorista: true, veiculo: true },
   });
+  agendamentoEvents.emit('change', agendamento);
 
   return NextResponse.json(agendamento, { status: 201 });
 }
@@ -273,6 +275,15 @@ async function handleNewFormPost(body: any, user: any) {
     veiculoId = veiculo?.id ?? null;
   }
 
+  const [clienteInfo, transportadoraInfo] = await Promise.all([
+    clienteId
+      ? prisma.cliente.findUnique({ where: { id: clienteId }, select: { cnpj: true, email: true, telefone: true } })
+      : null,
+    transportadoraContaId
+      ? prisma.transportadoraConta.findUnique({ where: { id: transportadoraContaId }, select: { cnpj: true, email: true, telefone: true } })
+      : null,
+  ]);
+
   const protocolo = `AG-${Date.now().toString(36).toUpperCase()}`;
 
   const agendamento = await prisma.agendamento.create({
@@ -309,6 +320,12 @@ async function handleNewFormPost(body: any, user: any) {
       criadoPorRole: user.role || null,
       whatsapp: (notificarWhatsapp && whatsapp) ? whatsapp : null,
       notificarWhatsapp: !!(notificarWhatsapp && whatsapp),
+      cnpjCliente: clienteInfo?.cnpj || null,
+      telefoneCliente: clienteInfo?.telefone || null,
+      emailCliente: clienteInfo?.email || null,
+      cnpjTransportadora: transportadoraInfo?.cnpj || (transportadoraCnpj ? normalizeCnpj(String(transportadoraCnpj)) : null),
+      telefoneTransportadora: transportadoraInfo?.telefone || null,
+      emailTransportadora: transportadoraInfo?.email || transportadoraEmail || null,
     },
     include: {
       motorista: true,
@@ -316,6 +333,8 @@ async function handleNewFormPost(body: any, user: any) {
       cliente: { select: { id: true, nome: true } },
     },
   });
+
+  agendamentoEvents.emit('change', agendamento);
 
   return NextResponse.json({ ...agendamento, transportadoraConvite }, { status: 201 });
 }
