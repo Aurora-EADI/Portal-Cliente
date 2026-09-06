@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { AppModule } from './app/app.module';
@@ -19,12 +20,21 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
       transform: true,
     }),
   );
 
   app.setGlobalPrefix('api');
+
+  const config = new DocumentBuilder()
+    .setTitle('Portal do Cliente API')
+    .setDescription('Documentação da API do Portal do Cliente')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+
+  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/api/health', (_req: Request, res: Response) => {

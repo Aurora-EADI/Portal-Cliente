@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "prisma:sync": "node scripts/sync-prisma.mjs",
+    "prisma:check": "node scripts/sync-prisma.mjs --check"
+  },
   "dependencies": {
     "date-fns": "^4.1.0"
   }

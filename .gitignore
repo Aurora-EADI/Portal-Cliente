@@ -4,6 +4,13 @@ data/
 *.xl.meta
 .minio.sys/
 
+# Build
+dist/
+*.tsbuildinfo
+
+# Ferramentas locais
+.claude/
+
 # Variáveis de ambiente
 .env
 .env.dev

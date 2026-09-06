@@ -41,10 +41,4 @@ export class UserModuleAccessController {
     @Param('userId') userId: string,
     @Param('moduleId', ParseIntPipe) moduleId: number,
   ) { return this.service.removeModuleAccess(userId, moduleId); }
-
-  @Post('sync/:moduleId')
-  @Roles(UserRole.ADMIN)
-  syncActivities(@Param('moduleId', ParseIntPipe) moduleId: number) {
-    return this.service.syncMandatoryActivities(moduleId);
-  }
 }

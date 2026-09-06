@@ -5,9 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { ModulesModule } from '../modules/modules.module';
-import { ActivitiesModule } from '../activities/activities.module';
 import { UserModuleAccessModule } from '../user-module-access/user-module-access.module';
-import { AgendamentoModule } from '../agendamento/agendamento.module';
 
 @Module({
   imports: [
@@ -17,9 +15,7 @@ import { AgendamentoModule } from '../agendamento/agendamento.module';
     AuthModule,
     UsersModule,
     ModulesModule,
-    ActivitiesModule,
     UserModuleAccessModule,
-    AgendamentoModule,
   ],
 })
 export class AppModule {}

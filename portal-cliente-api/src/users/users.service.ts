@@ -63,7 +63,7 @@ export class UsersService {
       select: {
         id: true, name: true, email: true, role: true,
         position: true, active: true, createdAt: true, updatedAt: true,
-        moduleAccess: { include: { module: true, activityAccess: { include: { activity: true } } } },
+        moduleAccess: { include: { module: true } },
       },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
