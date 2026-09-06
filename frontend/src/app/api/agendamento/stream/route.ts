@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { resolveUserFromToken } from '@/lib/auth-server';
+import { extractToken, resolveUserFromToken } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { agendamentoEvents } from '@/lib/events';
 import { UserRole } from '@prisma/client';
@@ -10,8 +10,10 @@ export const runtime = 'nodejs';
 const PING_INTERVAL_MS = 20_000;
 
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('token');
-  const auth = await resolveUserFromToken(token);
+  // EventSource nao envia headers, mas envia cookies em requisicao same-origin.
+  // O token saiu da query string de proposito: URL vaza em log de proxy,
+  // access log e Referer.
+  const auth = await resolveUserFromToken(extractToken(request));
   if (auth.error) return auth.error;
   const user = auth.user;
 

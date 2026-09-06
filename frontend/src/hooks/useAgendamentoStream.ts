@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Cookies from 'js-cookie';
 
 const RETRY_DELAY_MS = 5_000;
 
@@ -18,13 +17,10 @@ export function useAgendamentoStream(enabled: boolean, onEvent: (payload: any) =
 
     const connect = () => {
       if (stopped) return;
-      const token = Cookies.get('access_token');
-      if (!token) {
-        retryTimer = setTimeout(connect, RETRY_DELAY_MS);
-        return;
-      }
 
-      source = new EventSource(`/api/agendamento/stream?token=${encodeURIComponent(token)}`);
+      // Same-origin: o cookie httpOnly de sessao vai junto sozinho. Sem token
+      // na URL — ela aparece em log de proxy e access log.
+      source = new EventSource('/api/agendamento/stream');
 
       source.onmessage = (event) => {
         try {

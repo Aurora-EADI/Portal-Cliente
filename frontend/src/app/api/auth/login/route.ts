@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
 import { signToken } from '@/lib/jwt';
+import { sessionExpiresAt, setAuthCookie } from '@/lib/auth-cookie';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,11 +25,12 @@ export async function POST(request: NextRequest) {
     const token = signToken({ sub: user.id, email: user.email, role: user.role });
     const { password: _password, ...safeUser } = user;
 
-    return NextResponse.json({
-      user: safeUser,
+    // O token sai apenas no cookie httpOnly — nunca no corpo, para que nenhum
+    // script da pagina consiga captura-lo.
+    return setAuthCookie(
+      NextResponse.json({ user: safeUser, expires_at: sessionExpiresAt() }),
       token,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    });
+    );
   } catch (error: any) {
     console.error('[Login]', error);
     return NextResponse.json({ message: 'Erro ao autenticar' }, { status: 500 });

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { resolveUserFromToken } from '@/lib/auth-server';
+import { extractToken, resolveUserFromToken } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { disAverbadaEvents } from '@/lib/events';
 import { UserRole } from '@prisma/client';
@@ -32,8 +32,8 @@ function mapDiAverbada(da: any) {
 }
 
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('token');
-  const auth = await resolveUserFromToken(token);
+  // Ver nota em api/agendamento/stream/route.ts: cookie em vez de query string.
+  const auth = await resolveUserFromToken(extractToken(request));
   if (auth.error) return auth.error;
   const user = auth.user;
 

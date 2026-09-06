@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Cookies from 'js-cookie';
 import { DI } from '@/types/agendamento';
 
 const RETRY_DELAY_MS = 5_000;
@@ -19,13 +18,9 @@ export function useDisAverbadasStream(enabled: boolean, onEvent: (di: DI) => voi
 
     const connect = () => {
       if (stopped) return;
-      const token = Cookies.get('access_token');
-      if (!token) {
-        retryTimer = setTimeout(connect, RETRY_DELAY_MS);
-        return;
-      }
 
-      source = new EventSource(`/api/dis-averbadas/stream?token=${encodeURIComponent(token)}`);
+      // Ver nota em useAgendamentoStream: cookie httpOnly, sem token na URL.
+      source = new EventSource('/api/dis-averbadas/stream');
 
       source.onmessage = (event) => {
         try {

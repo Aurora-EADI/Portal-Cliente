@@ -1,19 +1,80 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 import { api } from '@/lib/api';
 import type { User } from '@/types';
 
+const EXPIRES_AT_KEY = 'session_expires_at';
+
+export function getSessionExpiresAt(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(EXPIRES_AT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberSessionExpiry(expiresAt: string | undefined) {
+  if (typeof window === 'undefined' || !expiresAt) return;
+  try {
+    window.sessionStorage.setItem(EXPIRES_AT_KEY, expiresAt);
+  } catch {
+    // modo privado / storage bloqueado — o contador de sessao apenas nao aparece
+  }
+}
+
+function forgetSessionExpiry() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(EXPIRES_AT_KEY);
+  } catch {
+    // idem
+  }
+}
+
+function extractMessage(error: any, fallback: string): string {
+  const backendMessage = error?.response?.data?.message;
+  if (typeof backendMessage === 'string') return backendMessage;
+  if (Array.isArray(backendMessage)) return backendMessage.join(', ');
+  return fallback;
+}
+
 export const authService = {
   login: async (email: string, password: string) => {
-    const response = await axios.post('/api/auth/login', { email, password }).catch((error) => {
-      const message = error.response?.data?.message || 'Erro ao autenticar';
-      throw new Error(message);
-    });
+    // O servidor grava o cookie httpOnly na resposta; nada de token no corpo.
+    const response = await api
+      .post('/auth/login', { email, password })
+      .catch((error) => {
+        throw new Error(extractMessage(error, 'Erro ao autenticar'));
+      });
 
-    const { user, token, expires_at } = response.data;
-    Cookies.set('access_token', token, { sameSite: 'lax', expires: 1 });
+    const { user, expires_at } = response.data;
+    rememberSessionExpiry(expires_at);
 
     return { user, expires_at };
+  },
+
+  logout: async () => {
+    forgetSessionExpiry();
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Sessao ja invalida no servidor: o logout local segue mesmo assim.
+    }
+  },
+
+  /**
+   * Sonda a sessao na carga da pagina. Usa um axios cru de proposito: um 401
+   * aqui e resposta normal para visitante anonimo e nao deve disparar o
+   * redirect de sessao expirada do interceptor de `lib/api`.
+   */
+  restoreSession: async (): Promise<User | null> => {
+    try {
+      const response = await axios.get('/api/auth/me', { withCredentials: true });
+      return response.data.user as User;
+    } catch (error: any) {
+      if (error?.response?.status === 401) return null;
+      throw error;
+    }
   },
 
   getProfile: async (): Promise<User> => {
@@ -21,16 +82,9 @@ export const authService = {
       const response = await api.get('/auth/me');
       return response.data.user;
     } catch (error: any) {
-      const backendMessage = error.response?.data?.message;
-      let message = 'Erro ao buscar perfil';
-
-      if (typeof backendMessage === 'string') {
-        message = backendMessage;
-      } else if (Array.isArray(backendMessage)) {
-        message = backendMessage.join(', ');
-      }
-
-      const rejected = new Error(message) as Error & { status?: number };
+      const rejected = new Error(extractMessage(error, 'Erro ao buscar perfil')) as Error & {
+        status?: number;
+      };
       rejected.status = error.response?.status;
       return Promise.reject(rejected);
     }
