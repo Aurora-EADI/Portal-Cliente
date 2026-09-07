@@ -24,6 +24,10 @@ services:
     container_name: aurora-db-dev
     ports:
       - "5432:5432"
+      # Segunda porta porque a 5432 do host costuma estar ocupada por um
+      # PostgreSQL nativo do Windows, e quem atende a conexao vira sorte.
+      # Pela 5433 o container responde sem ambiguidade.
+      - "5433:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
