@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { ModulesModule } from '../modules/modules.module';
 import { UserModuleAccessModule } from '../user-module-access/user-module-access.module';
+import { TiposDocumentoModule } from '../tipos-documento/tipos-documento.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UserModuleAccessModule } from '../user-module-access/user-module-access
     UsersModule,
     ModulesModule,
     UserModuleAccessModule,
+    TiposDocumentoModule,
   ],
 })
 export class AppModule {}

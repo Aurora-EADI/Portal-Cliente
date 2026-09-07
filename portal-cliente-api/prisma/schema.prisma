@@ -404,3 +404,38 @@ model PasswordResetToken {
 
   @@map("password_reset_tokens")
 }
+
+// ============================================================
+// AVERBAÇÃO ADUANEIRA — catálogo de tipos de documento
+//
+// Réplica do catálogo mantido no Portal Aurora, empurrada por
+// PUT /api/service/tipos-documento/batch. Aqui é somente leitura: o
+// Despachante só anexa o que estiver neste catálogo, e o upsert é por
+// auroraId — mesmo padrão de DiAverbada.nLote.
+// ============================================================
+
+enum Modalidade {
+  MARITIMO
+  AEREO
+  RODOVIARIO
+}
+
+model TipoDocumento {
+  id             String     @id @default(uuid())
+  /// Id do registro no Portal Aurora — chave natural da replicação.
+  auroraId       String     @unique @map("aurora_id")
+  modalidade     Modalidade
+  descricao      String
+  obrigatorio    Boolean    @default(true)
+  /// Etapa do fluxo: 1, 2 ou 3.
+  step           Int
+  ativo          Boolean    @default(true)
+  ordem          Int        @default(0)
+  sincronizadoEm DateTime   @default(now()) @map("sincronizado_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([modalidade, step])
+  @@map("tipos_documento")
+}
