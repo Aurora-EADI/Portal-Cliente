@@ -34,6 +34,7 @@ model User {
   cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
+  procuracoesEnviadas Procuracao[]
 
   @@map("users")
 }
@@ -116,6 +117,7 @@ model Cliente {
   transportadoras Transportadora[]
   users           User[]
   agendamentos    Agendamento[]
+  procuracoes     Procuracao[]
 
   @@map("clientes")
 }
@@ -289,6 +291,7 @@ model Despachante {
 
   users        User[]
   disAverbadas DiAverbada[]
+  procuracoes  Procuracao[]
 
   @@map("despachantes")
 }
@@ -438,4 +441,60 @@ model TipoDocumento {
 
   @@index([modalidade, step])
   @@map("tipos_documento")
+}
+
+// ============================================================
+// PROCURAÇÃO — autorização do Cliente para o Despachante operar
+// em seu nome. Aprovação é por cliente: liberar o Cliente A não
+// libera o Cliente B.
+// ============================================================
+
+enum ProcuracaoStatus {
+  PENDENTE_ENVIO
+  EM_ANALISE
+  APROVADA
+  REPROVADA
+}
+
+model Procuracao {
+  id String @id @default(uuid())
+
+  // Aponta para Despachante (a entidade de negócio, com codDespachante único)
+  // e não para User: a procuração é dada à empresa despachante, não a um login.
+  // Se o escritório tiver dois usuários, ambos operam sob a mesma procuração —
+  // com FK para User cada login precisaria da sua, e o mesmo documento seria
+  // analisado duas vezes.
+  despachanteId String      @map("despachante_id")
+  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
+
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  status ProcuracaoStatus @default(PENDENTE_ENVIO)
+
+  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
+  arquivoKey     String? @map("arquivo_key")
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+  arquivoMime    String? @map("arquivo_mime")
+
+  /// Obrigatório quando REPROVADA — é o que o Despachante lê para corrigir.
+  motivoRecusa String? @map("motivo_recusa")
+
+  /// Quem analisou no Portal Aurora. String e não FK: o analista é usuário do
+  /// banco do Aurora, que é outro banco.
+  analisadoPor String?   @map("analisado_por")
+  analisadoEm  DateTime? @map("analisado_em")
+
+  /// Qual login anexou o PDF, para auditoria.
+  enviadoPorUserId String?   @map("enviado_por_user_id")
+  enviadoPor       User?     @relation(fields: [enviadoPorUserId], references: [id], onDelete: SetNull)
+  enviadoEm        DateTime? @map("enviado_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([despachanteId, clienteId])
+  @@index([status])
+  @@map("procuracoes")
 }
