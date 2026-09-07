@@ -18,6 +18,7 @@ export interface RouteDefinition {
 // ===== Rotas de módulos (root) =====
 export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/agendamento', label: 'Agendamento FCL', icon: 'CalendarDays', isModuleRoot: true },
+  { path: '/averbacao', label: 'Averbação Aduaneira', icon: 'FileCheck', isModuleRoot: true },
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -29,6 +30,11 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/agendamento?tab=dis', label: 'DIs & Containers', icon: 'Package', parentPath: '/agendamento', isModuleRoot: false },
   { path: '/agendamento?tab=drivers', label: 'Motoristas', icon: 'Users', parentPath: '/agendamento', isModuleRoot: false },
   { path: '/agendamento?tab=config', label: 'Configurações', icon: 'SlidersHorizontal', parentPath: '/agendamento', isModuleRoot: false },
+
+  // Averbação Aduaneira — rotas por segmento, nao querystring
+  { path: '/averbacao', label: 'Processos', icon: 'ListChecks', parentPath: '/averbacao', isModuleRoot: false },
+  { path: '/averbacao/novo', label: 'Nova Averbação', icon: 'FilePlus2', parentPath: '/averbacao', isModuleRoot: false },
+  { path: '/procuracoes', label: 'Procurações', icon: 'FileSignature', parentPath: '/averbacao', isModuleRoot: false },
 ];
 
 // ===== Todas as rotas =====
