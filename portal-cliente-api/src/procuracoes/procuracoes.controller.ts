@@ -61,6 +61,13 @@ export class ProcuracoesController {
     return this.service.clientesAutorizados(req.user as User);
   }
 
+  /** Candidatos a nova procuração — ver comentário no service. */
+  @Get('clientes-disponiveis')
+  @Roles(UserRole.DESPACHANTE)
+  clientesDisponiveis(@Req() req: Request) {
+    return this.service.clientesDisponiveis(req.user as User);
+  }
+
   @Post()
   @Roles(UserRole.DESPACHANTE)
   @HttpCode(HttpStatus.CREATED)

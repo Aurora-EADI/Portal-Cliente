@@ -73,6 +73,51 @@ export class ProcuracoesService {
   }
 
   /**
+   * Clientes para os quais o Despachante ainda pode pedir procuração.
+   *
+   * Derivados das DIs em que ele já aparece como despachante — não a lista de
+   * clientes inteira. Devolver todos permitiria a qualquer despachante
+   * enumerar a base de clientes da Aurora, que não é dele.
+   *
+   * Cliente sem DI ainda não aparece aqui; nesse caso o pedido depende de a
+   * primeira DI chegar do SIAUM.
+   */
+  async clientesDisponiveis(user: User) {
+    const despachanteId = this.despachanteDo(user);
+
+    const despachante = await this.prisma.despachante.findUnique({
+      where: { id: despachanteId },
+      select: { codDespachante: true },
+    });
+    if (!despachante) return [];
+
+    const lotes = await this.prisma.diAverbada.findMany({
+      where: {
+        codDespachante: despachante.codDespachante,
+        cnpjCliente: { not: null },
+      },
+      select: { cnpjCliente: true },
+      distinct: ['cnpjCliente'],
+    });
+
+    const cnpjs = lotes
+      .map((l) => l.cnpjCliente)
+      .filter((c): c is string => Boolean(c));
+    if (!cnpjs.length) return [];
+
+    return this.prisma.cliente.findMany({
+      where: {
+        cnpj: { in: cnpjs },
+        ativo: true,
+        // Quem já tem procuração aparece na lista principal, não aqui.
+        procuracoes: { none: { despachanteId } },
+      },
+      select: { id: true, nome: true, cnpj: true },
+      orderBy: { nome: 'asc' },
+    });
+  }
+
+  /**
    * Anexa ou substitui o PDF.
    *
    * Um par (despachante, cliente) tem no máximo uma procuração — reenviar

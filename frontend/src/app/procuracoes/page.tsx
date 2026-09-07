@@ -2,7 +2,7 @@
 
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
-import { EmConstrucao } from '@/components/pages/averbacao/EmConstrucao';
+import { ProcuracoesPage } from '@/components/pages/procuracoes/ProcuracoesPage';
 import { UserRole } from '@/types';
 
 // Procuracao e a autorizacao de um Cliente para o Despachante operar em seu
@@ -14,10 +14,7 @@ export default function ProcuracoesRoute() {
         layout={{ maxWidth: 'full' }}
         header={{ pageTitle: 'Procurações' }}
       >
-        <EmConstrucao
-          titulo="Procurações"
-          descricao="Lista por cliente, envio e reenvio de PDF e motivo de recusa chegam na Fase 2."
-        />
+        <ProcuracoesPage />
       </ModuleRouteShell>
     </RoleGuard>
   );
