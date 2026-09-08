@@ -2,8 +2,22 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Container, CalendarDays } from 'lucide-react';
+import { Search, Container, CalendarDays, FileSignature } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
+
+/**
+ * Texto do bloqueio por procuração. Dizer só "bloqueado" faria o despachante
+ * abrir chamado; dizer em que pé está a procuração diz o que fazer.
+ */
+const MENSAGEM_BLOQUEIO: Record<string, string> = {
+  SEM: 'Operação bloqueada — não há procuração para este importador. Para operar em nome dele, envie uma procuração e aguarde a aprovação da equipe da Aurora.',
+  PENDENTE_ENVIO:
+    'Operação bloqueada — procuração pendente de envio. Anexe o documento assinado.',
+  EM_ANALISE:
+    'Operação bloqueada — procuração em análise pela equipe da Aurora.',
+  REPROVADA:
+    'Operação bloqueada — procuração reprovada. Veja o motivo e reenvie o documento.',
+};
 
 export function DIDirectoryView() {
   const router = useRouter();
@@ -90,7 +104,13 @@ export function DIDirectoryView() {
               <tbody className="divide-y divide-zinc-100">
                 {filteredDIs.map(di => {
                   const activeBooking = getDIActiveBooking(di.id);
-                  const canBook = di.status === 'liberada' && !activeBooking;
+                  // procuracaoStatus só vem para DESPACHANTE; undefined = a
+                  // regra não se aplica a este usuário.
+                  const bloqueadoPorProcuracao =
+                    di.procuracaoStatus !== undefined &&
+                    di.procuracaoStatus !== 'APROVADA';
+                  const canBook =
+                    di.status === 'liberada' && !activeBooking && !bloqueadoPorProcuracao;
                   return (
                     <tr key={di.id} className="hover:bg-zinc-50/60 transition-colors">
                       <td className="py-3 px-4">
@@ -114,8 +134,29 @@ export function DIDirectoryView() {
                         ) : (
                           <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Retido Receita</span>
                         )}
+                        {bloqueadoPorProcuracao && (
+                          <span
+                            title={MENSAGEM_BLOQUEIO[di.procuracaoStatus ?? 'SEM']}
+                            className="ml-1.5 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                          >
+                            <FileSignature className="w-3 h-3" />
+                            Sem procuração
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
+                        {/* Sem procuração aprovada a DI continua visível, mas a
+                            ação leva a resolver a procuração — não a agendar. */}
+                        {bloqueadoPorProcuracao && !activeBooking && (
+                          <button
+                            onClick={() => router.push('/procuracoes')}
+                            title={MENSAGEM_BLOQUEIO[di.procuracaoStatus ?? 'SEM']}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            <FileSignature className="w-3.5 h-3.5" />
+                            <span>Procuração</span>
+                          </button>
+                        )}
                         {canBook && (
                           <button
                             onClick={() => handleStartBooking(di)}

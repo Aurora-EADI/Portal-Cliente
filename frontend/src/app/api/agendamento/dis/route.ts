@@ -5,7 +5,45 @@ import { UserRole, AgendamentoStatus } from '@prisma/client';
 
 const STAFF = [UserRole.ADMIN, UserRole.EMPLOYEE];
 
-function mapDisAverbadas(disAverbadas: any[]) {
+/**
+ * Situação da procuração por CNPJ de cliente, para o despachante logado.
+ *
+ * A DI continua aparecendo na lista mesmo sem procuração — escondê-la deixaria
+ * o despachante sem entender por que a carga sumiu. O que muda é a ação: sem
+ * procuração APROVADA ele vê a DI, mas não opera em nome daquele importador.
+ *
+ * `null` = não existe procuração para o par, o que bloqueia igual.
+ */
+async function statusProcuracaoPorCnpj(
+  despachanteId: string,
+  cnpjs: string[],
+): Promise<Record<string, string | null>> {
+  if (!cnpjs.length) return {};
+
+  const clientes = await prisma.cliente.findMany({
+    where: { cnpj: { in: cnpjs } },
+    select: { id: true, cnpj: true },
+  });
+  if (!clientes.length) return {};
+
+  const procuracoes = await prisma.procuracao.findMany({
+    where: { despachanteId, clienteId: { in: clientes.map(c => c.id) } },
+    select: { clienteId: true, status: true },
+  });
+
+  const statusPorCliente = new Map(procuracoes.map(p => [p.clienteId, p.status as string]));
+
+  return Object.fromEntries(
+    clientes
+      .filter((c): c is { id: string; cnpj: string } => Boolean(c.cnpj))
+      .map(c => [c.cnpj, statusPorCliente.get(c.id) ?? null]),
+  );
+}
+
+function mapDisAverbadas(
+  disAverbadas: any[],
+  procuracaoPorCnpj?: Record<string, string | null>,
+) {
   return disAverbadas.map(da => ({
     id: da.id,
     numeroDI: da.documentoSaida || da.nLote,
@@ -26,6 +64,11 @@ function mapDisAverbadas(disAverbadas: any[]) {
     localizacao: da.localizacao,
     averbadoEm: da.averbadoEm,
     agendamentos: [],
+    // Só o despachante recebe isto; para os demais fica undefined e a tela
+    // não muda em nada.
+    procuracaoStatus: procuracaoPorCnpj
+      ? (da.cnpjCliente ? procuracaoPorCnpj[da.cnpjCliente] ?? null : null)
+      : undefined,
   }));
 }
 
@@ -48,7 +91,20 @@ export async function GET(request: NextRequest) {
       where: { codDespachante: despachante.codDespachante },
       orderBy: { sincronizadoEm: 'desc' },
     });
-    return NextResponse.json(mapDisAverbadas(disAverbadas));
+
+    const cnpjs = Array.from(
+      new Set(
+        disAverbadas
+          .map(da => da.cnpjCliente)
+          .filter((c): c is string => Boolean(c)),
+      ),
+    );
+    const procuracaoPorCnpj = await statusProcuracaoPorCnpj(
+      auth.user.despachanteId,
+      cnpjs,
+    );
+
+    return NextResponse.json(mapDisAverbadas(disAverbadas, procuracaoPorCnpj));
   }
 
   if (auth.user.role === UserRole.CLIENTE) {

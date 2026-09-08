@@ -3,6 +3,7 @@ import { requireAuth, requireExternalRole } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
+import { bloqueioPorProcuracao } from '@/lib/procuracao-guard';
 import { normalizeCnpj, ensureTransportadoraConvite, EnsureTransportadoraConviteResult } from '@/lib/convites';
 import { agendamentoEvents } from '@/lib/events';
 
@@ -102,6 +103,10 @@ async function handleLegacyPost(body: any, user: any) {
     if (!allowedIds.includes(di.clienteId)) {
       return NextResponse.json({ message: 'Sem permissão para agendar esta DI' }, { status: 403 });
     }
+    // Aparecer nas DIs do despachante não autoriza operar: a procuração é a
+    // autorização explícita do importador, e vale por cliente.
+    const bloqueio = await bloqueioPorProcuracao(user.despachanteId, di.clienteId);
+    if (bloqueio) return bloqueio;
   }
 
   const cleanedDate = data.replace(/-/g, '');
@@ -218,6 +223,8 @@ async function handleNewFormPost(body: any, user: any) {
         if (!allowedIds.includes(cliente.id)) {
           return NextResponse.json({ message: 'Sem permissão para agendar para este cliente' }, { status: 403 });
         }
+        const bloqueio = await bloqueioPorProcuracao(user.despachanteId, cliente.id);
+        if (bloqueio) return bloqueio;
         clienteId = cliente.id;
       }
     }

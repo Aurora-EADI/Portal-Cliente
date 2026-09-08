@@ -18,6 +18,17 @@ export interface DI {
   despachante?: string;
   localizacao?: string;
   averbadoEm?: string;
+  /**
+   * Situação da procuração deste despachante para o importador da DI.
+   * Só vem preenchido para DESPACHANTE; `null` = não existe procuração.
+   * Qualquer valor diferente de APROVADA bloqueia operar em nome do cliente.
+   */
+  procuracaoStatus?:
+    | 'PENDENTE_ENVIO'
+    | 'EM_ANALISE'
+    | 'APROVADA'
+    | 'REPROVADA'
+    | null;
 }
 
 export interface Motorista {
