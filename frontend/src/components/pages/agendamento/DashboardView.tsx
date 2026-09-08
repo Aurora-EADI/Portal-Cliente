@@ -154,13 +154,10 @@ export function DashboardView() {
           <h2 className="text-lg font-bold text-zinc-900">{selectedClient}</h2>
           <p className="text-xs text-zinc-500 mt-0.5">Painel de acompanhamento de agendamentos</p>
         </div>
-        <button
-          onClick={() => router.push('/agendamento?tab=wizard')}
-          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Novo Agendamento'}
-        </button>
+        {/* Sem atalho genérico para o wizard aqui: ele ignorava os bloqueios de
+            procuração e averbação, e a pessoa só descobria a pendência depois
+            de preencher tudo. O caminho é a ação da própria linha da DI, que
+            já sabe o que está travando. */}
       </div>
 
       {/* KPI cards */}
