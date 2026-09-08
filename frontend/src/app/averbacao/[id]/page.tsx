@@ -3,7 +3,7 @@
 import { use } from 'react';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
-import { EmConstrucao } from '@/components/pages/averbacao/EmConstrucao';
+import { AverbacaoDetalhePage } from '@/components/pages/averbacao/AverbacaoDetalhePage';
 import { UserRole } from '@/types';
 
 export default function AverbacaoDetalheRoute({
@@ -24,12 +24,9 @@ export default function AverbacaoDetalheRoute({
     >
       <ModuleRouteShell
         layout={{ maxWidth: 'full' }}
-        header={{ pageTitle: 'Detalhe da Averbação' }}
+        header={{ pageTitle: 'Processo de Averbação' }}
       >
-        <EmConstrucao
-          titulo={`Averbação ${id}`}
-          descricao="Status por documento, motivo de rejeição, substituição e histórico chegam na Fase 3."
-        />
+        <AverbacaoDetalhePage id={id} />
       </ModuleRouteShell>
     </RoleGuard>
   );

@@ -2,12 +2,15 @@
 
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
-import { EmConstrucao } from '@/components/pages/averbacao/EmConstrucao';
+import { AverbacoesListPage } from '@/components/pages/averbacao/AverbacoesListPage';
+import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 
 // RouteGuard nao serve aqui: ele libera CLIENTE, DESPACHANTE e TRANSPORTADORA
 // sem checar nada. Quem barra a TRANSPORTADORA e o RoleGuard.
 export default function AverbacaoRoute() {
+  const { currentUser } = useAuthContext();
+
   return (
     <RoleGuard
       allowedRoles={[
@@ -21,9 +24,8 @@ export default function AverbacaoRoute() {
         layout={{ maxWidth: 'full' }}
         header={{ pageTitle: 'Averbação Aduaneira' }}
       >
-        <EmConstrucao
-          titulo="Processos de Averbação"
-          descricao="A lista de processos chega na Fase 3. Por ora esta rota existe para fixar a navegação e as permissões."
+        <AverbacoesListPage
+          podeCriar={currentUser?.role === UserRole.DESPACHANTE}
         />
       </ModuleRouteShell>
     </RoleGuard>
