@@ -10,6 +10,7 @@ import { ModulesModule } from '../modules/modules.module';
 import { UserModuleAccessModule } from '../user-module-access/user-module-access.module';
 import { TiposDocumentoModule } from '../tipos-documento/tipos-documento.module';
 import { ProcuracoesModule } from '../procuracoes/procuracoes.module';
+import { AverbacoesModule } from '../averbacoes/averbacoes.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ProcuracoesModule } from '../procuracoes/procuracoes.module';
     UserModuleAccessModule,
     TiposDocumentoModule,
     ProcuracoesModule,
+    AverbacoesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

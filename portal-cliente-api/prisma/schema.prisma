@@ -35,6 +35,8 @@ model User {
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
   procuracoesEnviadas Procuracao[]
+  averbacoesCriadas   AverbacaoProcesso[]
+  historicoAverbacao  AverbacaoHistorico[] @relation("HistoricoAverbacaoAutor")
 
   @@map("users")
 }
@@ -118,6 +120,7 @@ model Cliente {
   users           User[]
   agendamentos    Agendamento[]
   procuracoes     Procuracao[]
+  averbacoes      AverbacaoProcesso[]
 
   @@map("clientes")
 }
@@ -292,6 +295,7 @@ model Despachante {
   users        User[]
   disAverbadas DiAverbada[]
   procuracoes  Procuracao[]
+  averbacoes   AverbacaoProcesso[]
 
   @@map("despachantes")
 }
@@ -436,6 +440,8 @@ model TipoDocumento {
   ordem          Int        @default(0)
   sincronizadoEm DateTime   @default(now()) @map("sincronizado_em")
 
+  documentos AverbacaoDocumento[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -497,4 +503,132 @@ model Procuracao {
   @@unique([despachanteId, clienteId])
   @@index([status])
   @@map("procuracoes")
+}
+
+// ============================================================
+// AVERBAÇÃO ADUANEIRA — processo documental
+//
+// O Despachante abre um processo por DI/DUIMP e anexa os documentos exigidos
+// pela modalidade. O time Aurora valida documento a documento; só quando todos
+// os obrigatórios estão VALIDADO o processo é liberado para agendamento.
+// ============================================================
+
+enum AverbacaoProcessoStatus {
+  RASCUNHO
+  EM_ANALISE
+  PENDENTE_CORRECAO
+  LIBERADO_AGENDAMENTO
+}
+
+enum AverbacaoDocumentoStatus {
+  NAO_ENVIADO
+  EM_ANALISE
+  VALIDADO
+  REJEITADO
+}
+
+enum AverbacaoHistoricoAcao {
+  ENVIO
+  APROVACAO
+  REJEICAO
+  SUBSTITUICAO
+}
+
+model AverbacaoProcesso {
+  id        String @id @default(uuid())
+  protocolo String @unique
+
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  // Mesma razão da Procuracao: o processo é do escritório despachante, não do
+  // login que o abriu.
+  despachanteId String      @map("despachante_id")
+  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
+
+  modalidade            Modalidade
+  diDuimp               String     @map("di_duimp")
+  containerConhecimento String     @map("container_conhecimento")
+
+  status AverbacaoProcessoStatus @default(RASCUNHO)
+
+  /// Lote da DI no SIAUM, preenchido quando o processo é liberado — é o que
+  /// liga a averbação documental ao agendamento (DiAverbada.nLote).
+  nLote String? @map("n_lote")
+
+  criadoPorUserId String? @map("criado_por_user_id")
+  criadoPor       User?   @relation(fields: [criadoPorUserId], references: [id], onDelete: SetNull)
+
+  documentos AverbacaoDocumento[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Índice, não unique: a mesma DI pode ter processo reaberto depois de um
+  // ciclo encerrado.
+  @@index([diDuimp])
+  @@index([despachanteId, status])
+  @@index([clienteId])
+  @@map("averbacao_processos")
+}
+
+model AverbacaoDocumento {
+  id String @id @default(uuid())
+
+  processoId String            @map("processo_id")
+  processo   AverbacaoProcesso @relation(fields: [processoId], references: [id], onDelete: Cascade)
+
+  tipoDocumentoId String        @map("tipo_documento_id")
+  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+
+  status AverbacaoDocumentoStatus @default(NAO_ENVIADO)
+
+  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
+  arquivoKey     String? @map("arquivo_key")
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+  arquivoMime    String? @map("arquivo_mime")
+
+  /// Obrigatório quando REJEITADO — é o que o Despachante lê para corrigir.
+  motivoRejeicao String? @map("motivo_rejeicao")
+
+  historico AverbacaoHistorico[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Um documento por tipo em cada processo: substituir atualiza a linha e o
+  // histórico guarda as versões.
+  @@unique([processoId, tipoDocumentoId])
+  @@index([status])
+  @@map("averbacao_documentos")
+}
+
+/// Append-only: nunca sofre update nem delete. É a rastreabilidade do processo,
+/// e reescrever o passado destruiria justamente o que ela serve para provar.
+model AverbacaoHistorico {
+  id String @id @default(uuid())
+
+  documentoId String             @map("documento_id")
+  documento   AverbacaoDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  acao AverbacaoHistoricoAcao
+
+  /// Nome de quem agiu. String e não FK porque o analista do Aurora é usuário
+  /// de outro banco; para ação do Despachante o userId também é guardado.
+  autorNome   String  @map("autor_nome")
+  autorUserId String? @map("autor_user_id")
+  autorUser   User?   @relation("HistoricoAverbacaoAutor", fields: [autorUserId], references: [id], onDelete: SetNull)
+
+  motivo String?
+
+  /// Versão do arquivo à qual esta entrada se refere, para o histórico de
+  /// envios continuar resolvendo depois de uma substituição.
+  arquivoKey  String? @map("arquivo_key")
+  arquivoNome String? @map("arquivo_nome")
+
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  @@index([documentoId, criadoEm])
+  @@map("averbacao_historico")
 }
