@@ -24,3 +24,8 @@ dist/
 .Docker.md
 .task.md
 *.md
+
+# Artefatos de build que escapavam do tsc antes do exclude de prisma/
+portal-cliente-api/prisma/*.js
+portal-cliente-api/prisma/*.d.ts
+portal-cliente-api/prisma/*.js.map
