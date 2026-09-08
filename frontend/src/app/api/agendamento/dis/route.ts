@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRoles, requireExternalRole } from '@/lib/auth-server';
 import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
+import { statusAverbacaoPorDi, statusDaDi } from '@/lib/averbacao-gate';
 
 const STAFF = [UserRole.ADMIN, UserRole.EMPLOYEE];
 
@@ -43,6 +44,7 @@ async function statusProcuracaoPorCnpj(
 function mapDisAverbadas(
   disAverbadas: any[],
   procuracaoPorCnpj?: Record<string, string | null>,
+  averbacaoPorDi?: Record<string, string>,
 ) {
   return disAverbadas.map(da => ({
     id: da.id,
@@ -68,6 +70,13 @@ function mapDisAverbadas(
     // não muda em nada.
     procuracaoStatus: procuracaoPorCnpj
       ? (da.cnpjCliente ? procuracaoPorCnpj[da.cnpjCliente] ?? null : null)
+      : undefined,
+    // null = não há processo documental para esta DI, e o fluxo legado vale.
+    averbacaoStatus: averbacaoPorDi
+      ? statusDaDi(averbacaoPorDi as any, {
+          nLote: da.nLote ?? null,
+          documentoSaida: da.documentoSaida ?? null,
+        })
       : undefined,
   }));
 }
@@ -103,8 +112,16 @@ export async function GET(request: NextRequest) {
       auth.user.despachanteId,
       cnpjs,
     );
+    const averbacaoPorDi = await statusAverbacaoPorDi(
+      disAverbadas.map(d => ({
+        nLote: d.nLote ?? null,
+        documentoSaida: d.documentoSaida ?? null,
+      })),
+    );
 
-    return NextResponse.json(mapDisAverbadas(disAverbadas, procuracaoPorCnpj));
+    return NextResponse.json(
+      mapDisAverbadas(disAverbadas, procuracaoPorCnpj, averbacaoPorDi),
+    );
   }
 
   if (auth.user.role === UserRole.CLIENTE) {

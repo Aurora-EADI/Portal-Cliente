@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { getDespachanteClienteIds } from '@/lib/despachante-utils';
 import { bloqueioPorProcuracao } from '@/lib/procuracao-guard';
+import { bloqueioPorAverbacao } from '@/lib/averbacao-gate';
 import { normalizeCnpj, ensureTransportadoraConvite, EnsureTransportadoraConviteResult } from '@/lib/convites';
 import { agendamentoEvents } from '@/lib/events';
 
@@ -108,6 +109,11 @@ async function handleLegacyPost(body: any, user: any) {
     const bloqueio = await bloqueioPorProcuracao(user.despachanteId, di.clienteId);
     if (bloqueio) return bloqueio;
   }
+
+  // Gate documental: vale para qualquer role, não só despachante — quem
+  // agenda não muda o fato de a documentação não estar liberada.
+  const gate = await bloqueioPorAverbacao([di.numeroDI]);
+  if (gate) return gate;
 
   const cleanedDate = data.replace(/-/g, '');
   const diCode = di.numeroDI.replace(/[^A-Z0-9]/gi, '').slice(2, 8).toUpperCase();
@@ -232,6 +238,14 @@ async function handleNewFormPost(body: any, user: any) {
     const cliente = await prisma.cliente.findFirst({ where: { nome: { contains: empresa, mode: 'insensitive' } } });
     clienteId = cliente?.id ?? null;
   }
+
+  // Gate documental, para qualquer role: a DI informada não pode ser agendada
+  // enquanto houver processo de averbação aberto e não liberado.
+  const disInformadas = (Array.isArray(diNumero) ? diNumero : diNumero ? [diNumero] : [])
+    .map((d: string) => String(d).trim())
+    .filter(Boolean);
+  const gateAverbacao = await bloqueioPorAverbacao(disInformadas);
+  if (gateAverbacao) return gateAverbacao;
 
   let transportadoraConvite: EnsureTransportadoraConviteResult | null = null;
   if (!transportadoraContaId && transportadoraCnpj) {

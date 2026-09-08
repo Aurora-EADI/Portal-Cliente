@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Container, CalendarDays, FileSignature } from 'lucide-react';
+import { Search, Container, CalendarDays, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 
 /**
@@ -17,6 +17,21 @@ const MENSAGEM_BLOQUEIO: Record<string, string> = {
     'Operação bloqueada — procuração em análise pela equipe da Aurora.',
   REPROVADA:
     'Operação bloqueada — procuração reprovada. Veja o motivo e reenvie o documento.',
+};
+
+/**
+ * Bloqueio pelo processo documental de averbação.
+ *
+ * Só aparece quando existe processo para a DI. DI sem processo segue pelo
+ * fluxo antigo, em que a averbação já foi feita no Portal Aurora.
+ */
+const MENSAGEM_AVERBACAO: Record<string, string> = {
+  RASCUNHO:
+    'Averbação pendente — o processo foi aberto mas os documentos ainda não foram enviados.',
+  EM_ANALISE:
+    'Averbação pendente — os documentos estão em análise pela equipe da Aurora.',
+  PENDENTE_CORRECAO:
+    'Averbação pendente — há documento rejeitado. Veja o motivo e reenvie.',
 };
 
 export function DIDirectoryView() {
@@ -109,8 +124,16 @@ export function DIDirectoryView() {
                   const bloqueadoPorProcuracao =
                     di.procuracaoStatus !== undefined &&
                     di.procuracaoStatus !== 'APROVADA';
+                  // Sem processo (null/undefined) não bloqueia: vale o fluxo
+                  // legado, em que a DI já chegou averbada do Portal Aurora.
+                  const bloqueadoPorAverbacao =
+                    Boolean(di.averbacaoStatus) &&
+                    di.averbacaoStatus !== 'LIBERADO_AGENDAMENTO';
                   const canBook =
-                    di.status === 'liberada' && !activeBooking && !bloqueadoPorProcuracao;
+                    di.status === 'liberada' &&
+                    !activeBooking &&
+                    !bloqueadoPorProcuracao &&
+                    !bloqueadoPorAverbacao;
                   return (
                     <tr key={di.id} className="hover:bg-zinc-50/60 transition-colors">
                       <td className="py-3 px-4">
@@ -143,6 +166,15 @@ export function DIDirectoryView() {
                             Sem procuração
                           </span>
                         )}
+                        {bloqueadoPorAverbacao && (
+                          <span
+                            title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''}
+                            className="ml-1.5 inline-flex items-center gap-1 bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                          >
+                            <FileCheck className="w-3 h-3" />
+                            Averbação pendente
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         {/* Sem procuração aprovada a DI continua visível, mas a
@@ -155,6 +187,18 @@ export function DIDirectoryView() {
                           >
                             <FileSignature className="w-3.5 h-3.5" />
                             <span>Procuração</span>
+                          </button>
+                        )}
+                        {/* Procuração vem primeiro: sem ela o despachante nem
+                            consegue abrir o processo de averbação. */}
+                        {!bloqueadoPorProcuracao && bloqueadoPorAverbacao && !activeBooking && (
+                          <button
+                            onClick={() => router.push('/averbacao')}
+                            title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            <FileCheck className="w-3.5 h-3.5" />
+                            <span>Averbação</span>
                           </button>
                         )}
                         {canBook && (

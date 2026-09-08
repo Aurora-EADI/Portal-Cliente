@@ -29,6 +29,17 @@ export interface DI {
     | 'APROVADA'
     | 'REPROVADA'
     | null;
+  /**
+   * Situação do processo documental de averbação desta DI.
+   * `null` = não há processo, e o fluxo legado vale — a DI já veio averbada
+   * do Portal Aurora. Só bloqueia quando há processo ainda não liberado.
+   */
+  averbacaoStatus?:
+    | 'RASCUNHO'
+    | 'EM_ANALISE'
+    | 'PENDENTE_CORRECAO'
+    | 'LIBERADO_AGENDAMENTO'
+    | null;
 }
 
 export interface Motorista {
