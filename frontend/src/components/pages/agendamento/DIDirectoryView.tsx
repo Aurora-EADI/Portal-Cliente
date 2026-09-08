@@ -4,35 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Container, CalendarDays, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
-
-/**
- * Texto do bloqueio por procuração. Dizer só "bloqueado" faria o despachante
- * abrir chamado; dizer em que pé está a procuração diz o que fazer.
- */
-const MENSAGEM_BLOQUEIO: Record<string, string> = {
-  SEM: 'Operação bloqueada — não há procuração para este importador. Para operar em nome dele, envie uma procuração e aguarde a aprovação da equipe da Aurora.',
-  PENDENTE_ENVIO:
-    'Operação bloqueada — procuração pendente de envio. Anexe o documento assinado.',
-  EM_ANALISE:
-    'Operação bloqueada — procuração em análise pela equipe da Aurora.',
-  REPROVADA:
-    'Operação bloqueada — procuração reprovada. Veja o motivo e reenvie o documento.',
-};
-
-/**
- * Bloqueio pelo processo documental de averbação.
- *
- * Só aparece quando existe processo para a DI. DI sem processo segue pelo
- * fluxo antigo, em que a averbação já foi feita no Portal Aurora.
- */
-const MENSAGEM_AVERBACAO: Record<string, string> = {
-  RASCUNHO:
-    'Averbação pendente — o processo foi aberto mas os documentos ainda não foram enviados.',
-  EM_ANALISE:
-    'Averbação pendente — os documentos estão em análise pela equipe da Aurora.',
-  PENDENTE_CORRECAO:
-    'Averbação pendente — há documento rejeitado. Veja o motivo e reenvie.',
-};
+import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 
 export function DIDirectoryView() {
   const router = useRouter();
@@ -159,7 +131,7 @@ export function DIDirectoryView() {
                         )}
                         {bloqueadoPorProcuracao && (
                           <span
-                            title={MENSAGEM_BLOQUEIO[di.procuracaoStatus ?? 'SEM']}
+                            title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']}
                             className="ml-1.5 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
                           >
                             <FileSignature className="w-3 h-3" />
@@ -182,7 +154,7 @@ export function DIDirectoryView() {
                         {bloqueadoPorProcuracao && !activeBooking && (
                           <button
                             onClick={() => router.push('/procuracoes')}
-                            title={MENSAGEM_BLOQUEIO[di.procuracaoStatus ?? 'SEM']}
+                            title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']}
                             className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                           >
                             <FileSignature className="w-3.5 h-3.5" />
