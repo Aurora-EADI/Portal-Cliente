@@ -45,33 +45,3 @@ export function StatusDocumento({ status }: { status: DocumentoStatus }) {
   );
 }
 
-/** Barra de obrigatórios validados — o que decide a liberação. */
-export function ProgressoObrigatorios({
-  validados,
-  total,
-}: {
-  validados: number;
-  total: number;
-}) {
-  const pct = total === 0 ? 0 : Math.round((validados / total) * 100);
-  return (
-    <div className="min-w-[140px]">
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>Obrigatórios validados</span>
-        <span className="font-mono">
-          {validados}/{total}
-        </span>
-      </div>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={
-            pct === 100
-              ? 'h-full rounded-full bg-emerald-500 transition-all'
-              : 'h-full rounded-full bg-primary transition-all'
-          }
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}

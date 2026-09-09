@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsEnum, IsString, IsUUID, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 import { Modalidade } from '@prisma/client';
 
 export class CriarAverbacaoDto {
@@ -35,4 +43,24 @@ export class CriarAverbacaoDto {
 
   @IsUUID()
   clienteId!: string;
+
+  // Os três campos abaixo são informativos e opcionais: situam a carga para
+  // quem analisa, mas nenhum muda a lista de documentos exigidos nem o gate de
+  // liberação. Exigi-los travaria a abertura do processo por um dado que o
+  // despachante nem sempre tem em mãos na hora.
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(200)
+  localOrigem?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(200)
+  recintoDestino?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  cargaEspecial?: boolean;
 }

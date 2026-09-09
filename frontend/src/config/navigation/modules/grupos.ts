@@ -98,12 +98,6 @@ export const grupoAverbacao: NavItem[] = [
         ],
       },
       {
-        label: 'Nova Averbação',
-        icon: FilePlus2,
-        path: '/averbacao/novo',
-        requiredRoles: [UserRole.DESPACHANTE],
-      },
-      {
         label: 'Procurações',
         icon: FileSignature,
         path: '/procuracoes',

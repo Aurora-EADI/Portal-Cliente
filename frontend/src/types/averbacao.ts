@@ -89,6 +89,12 @@ export interface AverbacaoProcessoResumo {
   modalidade: Modalidade;
   diDuimp: string;
   containerConhecimento: string;
+  /** Porto, aeroporto ou fronteira de origem. Informativo. */
+  localOrigem: string | null;
+  /** Recinto alfandegado de destino. Informativo. */
+  recintoDestino: string | null;
+  /** DTA, Anvisa, MAPA, Exército ou sobredimensão. Não muda o que é exigido. */
+  cargaEspecial: boolean;
   status: ProcessoStatus;
   nLote: string | null;
   createdAt: string;
@@ -108,6 +114,9 @@ export interface CriarAverbacaoDto {
   diDuimp: string;
   containerConhecimento: string;
   clienteId: string;
+  localOrigem?: string;
+  recintoDestino?: string;
+  cargaEspecial?: boolean;
 }
 
 /** Quantos obrigatórios já estão validados — alimenta a barra de progresso. */

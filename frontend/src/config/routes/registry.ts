@@ -33,7 +33,6 @@ export const SUB_ROUTES: RouteDefinition[] = [
 
   // Averbação Aduaneira — rotas por segmento, nao querystring
   { path: '/averbacao', label: 'Processos', icon: 'ListChecks', parentPath: '/averbacao', isModuleRoot: false },
-  { path: '/averbacao/novo', label: 'Nova Averbação', icon: 'FilePlus2', parentPath: '/averbacao', isModuleRoot: false },
   { path: '/procuracoes', label: 'Procurações', icon: 'FileSignature', parentPath: '/averbacao', isModuleRoot: false },
 ];
 

@@ -259,3 +259,23 @@ export function formatDocument(value: string): string {
   // Para CNPJ, usa unmaskCNPJ para preservar letras
   return formatCNPJ(value);
 }
+
+/**
+ * Formata número de container ISO 6346: 4 letras + 7 dígitos (ex.: MSKU1234567).
+ *
+ * Portado do Portal Aurora (lib/utils.ts), para os dois portais aceitarem o
+ * container exatamente do mesmo jeito. Descarta o que não couber na posição —
+ * dígito onde se espera letra, ou caractere além do 11º.
+ */
+export function formatContainer(value: string): string {
+  let letters = '';
+  let digits = '';
+  for (const ch of value.toUpperCase()) {
+    if (letters.length < 4 && /[A-Z]/.test(ch)) {
+      letters += ch;
+    } else if (letters.length === 4 && digits.length < 7 && /[0-9]/.test(ch)) {
+      digits += ch;
+    }
+  }
+  return letters + digits;
+}
