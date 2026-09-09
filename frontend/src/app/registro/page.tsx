@@ -134,13 +134,27 @@ function RegistroContent() {
   return (
     <div className="min-h-screen flex">
       <div className="hidden lg:block lg:w-1/2 h-screen sticky top-0 bg-[#0b1624] overflow-hidden flex-shrink-0">
-        <Image src="/cover-home.png" alt="Portal do Cliente" fill priority className="object-cover object-left" sizes="50vw" />
+        <Image src="/logo_Portal_Cliente.png" alt="Portal do Cliente" fill priority className="object-cover object-left" sizes="50vw" />
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex flex-col items-center gap-2">
-            <Image src="/cover-home.png" alt="Portal do Cliente" width={320} height={220} className="rounded-xl object-contain" priority />
+            <Image src="/logo_Portal_Cliente.png" alt="Portal do Cliente" width={320} height={220} className="rounded-xl object-contain" priority />
+          </div>
+
+          {/* Marca da Aurora acima do card: quem chega aqui vem de um convite
+              por e-mail e precisa reconhecer de quem é o cadastro. Some no
+              mobile, onde o logo do Portal do Cliente já cumpre esse papel. */}
+          <div className="hidden lg:flex justify-center mb-6">
+            <Image
+              src="/aurora-MANAUS_logo_principal.png"
+              alt="Aurora EADI Manaus"
+              width={220}
+              height={56}
+              className="h-14 w-auto object-contain"
+              priority
+            />
           </div>
 
           <Card className="p-8 shadow-lg border border-gray-100 rounded-2xl">
