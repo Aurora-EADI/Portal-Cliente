@@ -97,7 +97,7 @@ export function Login() {
     <div className="min-h-screen flex overflow-y-auto">
       {/* Painel esquerdo — imagem */}
       <div className="hidden lg:block lg:w-1/2 h-screen sticky top-0 bg-[#0b1624] overflow-hidden flex-shrink-0">
-        <Image src="/cover-home.png" alt="Portal do Cliente" fill priority className="object-cover object-left" sizes="50vw" />
+        <Image src="/logo_Portal_Cliente.png" alt="Portal do Cliente" fill priority className="object-cover object-left" sizes="50vw" />
       </div>
 
       {/* Painel direito — formulário */}
@@ -105,7 +105,18 @@ export function Login() {
         <div className="w-full max-w-md">
           {/* Logo mobile */}
           <div className="lg:hidden mb-8 flex flex-col items-center gap-2">
-            <img src="/cover-home.png" alt="Portal do Cliente" className="rounded-xl object-contain w-full max-w-[320px]" />
+            <img src="/logo_Portal_Cliente.png" alt="Portal do Cliente" className="rounded-xl object-contain w-full max-w-[320px]" />
+          </div>
+
+          {/* Marca da Aurora acima do card: diz de quem é o portal antes de
+              pedir credencial. Some no mobile porque ali o logo do Portal do
+              Cliente já ocupa esse papel logo acima. */}
+          <div className="hidden lg:flex justify-center mb-6">
+            <img
+              src="/aurora-MANAUS_logo_principal.png"
+              alt="Aurora EADI Manaus"
+              className="h-14 w-auto object-contain"
+            />
           </div>
 
           <Card className="p-8 shadow-lg border border-gray-100 rounded-2xl">

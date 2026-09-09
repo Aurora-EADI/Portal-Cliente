@@ -4,7 +4,6 @@ import React, { useCallback } from 'react';
 import { LogOut, Menu, ShieldCheck } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useAuthContext } from '@/context/AuthContext';
-import { UserRole } from '@/types/auth';
 
 interface HeaderProps {
   pageTitle?: string;
@@ -12,76 +11,77 @@ interface HeaderProps {
 }
 
 /**
- * Selo do perfil em uso.
+ * Identidade visual por perfil.
  *
  * O portal mostra dados diferentes para cada perfil, e o mesmo navegador troca
- * de sessão o tempo todo em suporte e homologação. Saber de relance quem está
- * logado evita a conclusão errada de que "sumiu uma DI" quando, na verdade, a
- * sessão é de outro perfil.
+ * de sessão o tempo todo em suporte e homologação. Sem sinal visível, é fácil
+ * concluir que "sumiu uma DI" quando, na verdade, a sessão é de outro perfil.
  *
- * Cada perfil tem cor própria — a distinção não pode depender de ler o texto,
- * senão o selo vira decoração. Todas as combinações são de fundo claro com
- * texto escuro, para manter contraste sobre o header laranja (produção) e
- * sobre o vermelho (desenvolvimento).
+ * A cor do header muda junto com o selo de propósito: cor se reconhece pela
+ * periferia da visão, texto exige leitura. Se todos os perfis dividissem a
+ * mesma cor, o selo viraria decoração.
  */
-const ROLE_ESTILO: Record<string, { rotulo: string; classe: string }> = {
-  [UserRole.ADMIN]: {
+const PERFIL = {
+  ADMIN: {
     rotulo: 'ADMINISTRADOR',
-    classe: 'bg-purple-100 text-purple-900 ring-purple-300/60',
+    header: 'from-purple-800 to-purple-700 border-purple-900/50',
+    selo: 'bg-purple-50 text-purple-900',
   },
-  [UserRole.EMPLOYEE]: {
+  EMPLOYEE: {
     rotulo: 'AURORA',
-    classe: 'bg-sky-100 text-sky-900 ring-sky-300/60',
+    // Laranja da marca para o time interno: é quem "é" a Aurora aqui dentro.
+    header: 'from-orange-600 to-orange-500 border-orange-700/40',
+    selo: 'bg-orange-50 text-orange-900',
   },
-  [UserRole.DESPACHANTE]: {
+  DESPACHANTE: {
     rotulo: 'DESPACHANTE',
-    classe: 'bg-emerald-100 text-emerald-900 ring-emerald-300/60',
+    header: 'from-emerald-800 to-emerald-700 border-emerald-900/50',
+    selo: 'bg-emerald-50 text-emerald-900',
   },
-  [UserRole.CLIENTE]: {
+  CLIENTE: {
     rotulo: 'CLIENTE',
-    classe: 'bg-amber-100 text-amber-900 ring-amber-300/60',
+    header: 'from-blue-800 to-blue-700 border-blue-900/50',
+    selo: 'bg-blue-50 text-blue-900',
   },
-  [UserRole.TRANSPORTADORA]: {
+  TRANSPORTADORA: {
     rotulo: 'TRANSPORTADORA',
-    classe: 'bg-cyan-100 text-cyan-900 ring-cyan-300/60',
+    header: 'from-teal-800 to-teal-700 border-teal-900/50',
+    selo: 'bg-teal-50 text-teal-900',
   },
-  [UserRole.SUPPLIER]: {
-    rotulo: 'FORNECEDOR',
-    classe: 'bg-slate-100 text-slate-900 ring-slate-300/60',
-  },
-};
+} as const;
 
 /** Perfil desconhecido aparece como está, em vez de sumir do header. */
-function estiloDoRole(role: string) {
-  return (
-    ROLE_ESTILO[role] ?? {
-      rotulo: role,
-      classe: 'bg-white/90 text-gray-900 ring-white/50',
-    }
-  );
+const PERFIL_PADRAO = {
+  rotulo: '',
+  header: 'from-slate-800 to-slate-700 border-slate-900/50',
+  selo: 'bg-slate-50 text-slate-900',
+};
+
+function perfilDe(role: string) {
+  const conhecido = PERFIL[role as keyof typeof PERFIL];
+  return conhecido ?? { ...PERFIL_PADRAO, rotulo: role };
 }
 
 export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) => {
   const { currentUser, logoutUser } = useAuthContext();
 
-  if (!currentUser) return null;
-
   const handleLogout = useCallback(() => logoutUser(), [logoutUser]);
 
-  const userDisplay = currentUser.name;
-  const role = estiloDoRole(currentUser.role);
+  if (!currentUser) return null;
+
+  const perfil = perfilDe(currentUser.role);
+  const ehDev = process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev';
 
   return (
     <header
       className={`
         w-full
-        ${process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev'
-          ? 'bg-gradient-to-r from-red-700 to-red-600 border-b border-red-800/50'
-          : 'bg-gradient-to-r from-orange-600 to-orange-500 border-b border-orange-700/40'
-        }
+        bg-gradient-to-r ${perfil.header}
+        border-b
         px-4 md:px-6 py-2.5
         sticky top-0 z-20
         shadow-sm
+        relative
       `}
     >
       <div className="flex items-center justify-between h-12">
@@ -101,37 +101,37 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) =
           <span className="text-white font-semibold tracking-wide hidden md:block">
             {pageTitle}
           </span>
-          {process.env.NEXT_PUBLIC_ENVIRONMENT === 'dev' && (
+          {ehDev && (
             <span className="bg-yellow-400 text-red-900 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wide shadow-lg">
               DESENVOLVIMENTO
             </span>
           )}
         </div>
 
-        {/* Usuário + perfil + logout */}
+        {/* Perfil + usuário + logout */}
         <div className="flex items-center gap-3">
           <span
             className={`
               hidden sm:inline-flex items-center gap-1.5
               px-2.5 py-1 rounded-md
               text-xs font-bold uppercase tracking-wide
-              ring-1 shadow-sm
-              ${role.classe}
+              shadow-sm
+              ${perfil.selo}
             `}
-            title={`Você está usando o portal como ${role.rotulo}`}
+            title={`Você está usando o portal como ${perfil.rotulo}`}
           >
             <ShieldCheck size={13} aria-hidden />
-            {role.rotulo}
+            {perfil.rotulo}
           </span>
 
           <div className="flex flex-col text-right leading-tight">
             <span className="text-white font-medium text-sm">
-              {userDisplay}
+              {currentUser.name}
             </span>
-            {/* Em telas pequenas o selo some, então o perfil aparece aqui —
-                é a informação que não pode faltar em nenhuma largura. */}
+            {/* Abaixo de sm o selo some, e o perfil ocupa este lugar: entre os
+                dois, quem está logado importa mais que a unidade, que é fixa. */}
             <span className="text-white/80 text-xs tracking-wider">
-              <span className="sm:hidden">{role.rotulo}</span>
+              <span className="sm:hidden">{perfil.rotulo}</span>
               <span className="hidden sm:inline">UNIDADE MATRIZ</span>
             </span>
           </div>
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) =
             onClick={handleLogout}
             className="
               p-2 rounded-full
-              text-white hover:text-red-500
+              text-white hover:text-white/70
               hover:bg-white/10
               transition-colors
             "
@@ -151,6 +151,17 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) =
         </div>
 
       </div>
+
+      {/* A cor do header passou a indicar o perfil, então o ambiente precisa de
+          sinal próprio: sem esta faixa, dev e produção ficariam idênticos para
+          o mesmo perfil — e confundir os dois custa mais caro que confundir
+          perfil. */}
+      {ehDev && (
+        <div
+          className="absolute inset-x-0 bottom-0 h-1 bg-red-600"
+          aria-hidden
+        />
+      )}
     </header>
   );
 };
