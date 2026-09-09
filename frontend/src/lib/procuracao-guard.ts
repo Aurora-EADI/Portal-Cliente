@@ -18,21 +18,48 @@ export async function bloqueioPorProcuracao(
 ): Promise<NextResponse | null> {
   const procuracao = await prisma.procuracao.findUnique({
     where: { despachanteId_clienteId: { despachanteId, clienteId } },
-    select: { status: true },
+    select: { status: true, validade: true },
   });
 
-  if (procuracao?.status === ProcuracaoStatus.APROVADA) return null;
+  if (procuracao && procuracaoVigente(procuracao)) return null;
+
+  // Vencida tem mensagem própria: mandar "aprove a procuração" para algo que
+  // já foi aprovado e caducou levaria a pessoa a reenviar o mesmo documento.
+  const vencida =
+    procuracao?.status === ProcuracaoStatus.APROVADA && !!procuracao.validade;
 
   return NextResponse.json(
     {
-      message:
-        'Operação bloqueada — procuração ' +
-        (procuracao ? descrever(procuracao.status) : 'não enviada') +
-        '. Para realizar esta operação em nome deste cliente, é necessário possuir uma procuração válida e aprovada pela equipe da Aurora.',
-      procuracaoStatus: procuracao?.status ?? null,
+      message: vencida
+        ? 'Operação bloqueada — a procuração deste cliente venceu. Envie uma procuração vigente e aguarde a aprovação da equipe da Aurora.'
+        : 'Operação bloqueada — procuração ' +
+          (procuracao ? descrever(procuracao.status) : 'não enviada') +
+          '. Para realizar esta operação em nome deste cliente, é necessário possuir uma procuração válida e aprovada pela equipe da Aurora.',
+      procuracaoStatus: vencida ? 'VENCIDA' : (procuracao?.status ?? null),
     },
     { status: 403 },
   );
+}
+
+/** Hoje à meia-noite: a procuração vale o dia inteiro do vencimento. */
+function inicioDeHoje(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Espelha `procuracaoVigente` do portal-cliente-api. Os dois runtimes leem o
+ * mesmo banco e precisam concordar: se divergirem, a tela mostra liberado e a
+ * API recusa, ou pior, o contrário.
+ */
+export function procuracaoVigente(p: {
+  status: ProcuracaoStatus;
+  validade: Date | null;
+}): boolean {
+  if (p.status !== ProcuracaoStatus.APROVADA) return false;
+  if (!p.validade) return true;
+  return p.validade >= inicioDeHoje();
 }
 
 function descrever(status: ProcuracaoStatus): string {
@@ -43,6 +70,8 @@ function descrever(status: ProcuracaoStatus): string {
       return 'em análise';
     case ProcuracaoStatus.REPROVADA:
       return 'reprovada';
+    case ProcuracaoStatus.REVOGADA:
+      return 'revogada';
     default:
       return 'não aprovada';
   }

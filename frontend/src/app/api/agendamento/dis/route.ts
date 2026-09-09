@@ -3,6 +3,7 @@ import { requireAuth, requireRoles, requireExternalRole } from '@/lib/auth-serve
 import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { statusAverbacaoPorDi, statusDaDi } from '@/lib/averbacao-gate';
+import { procuracaoVigente } from '@/lib/procuracao-guard';
 
 const STAFF = [UserRole.ADMIN, UserRole.EMPLOYEE];
 
@@ -29,10 +30,17 @@ async function statusProcuracaoPorCnpj(
 
   const procuracoes = await prisma.procuracao.findMany({
     where: { despachanteId, clienteId: { in: clientes.map(c => c.id) } },
-    select: { clienteId: true, status: true },
+    select: { clienteId: true, status: true, validade: true },
   });
 
-  const statusPorCliente = new Map(procuracoes.map(p => [p.clienteId, p.status as string]));
+  // Vencida entra como VENCIDA, não como APROVADA: a tela precisa bloquear
+  // igual e dizer o motivo certo.
+  const statusPorCliente = new Map(
+    procuracoes.map(p => [
+      p.clienteId,
+      procuracaoVigente(p) ? p.status : p.status === 'APROVADA' ? 'VENCIDA' : p.status,
+    ]),
+  );
 
   return Object.fromEntries(
     clientes

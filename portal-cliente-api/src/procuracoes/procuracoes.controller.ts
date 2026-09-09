@@ -31,6 +31,7 @@ import { CriarProcuracaoDto } from './dto/criar-procuracao.dto';
 import {
   AprovarProcuracaoDto,
   ReprovarProcuracaoDto,
+  RevogarProcuracaoDto,
 } from './dto/decidir-procuracao.dto';
 
 function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
@@ -68,6 +69,13 @@ export class ProcuracoesController {
     return this.service.clientesDisponiveis(req.user as User);
   }
 
+  /** Todos os representados, com a situação da procuração de cada um. */
+  @Get('representados')
+  @Roles(UserRole.DESPACHANTE)
+  representados(@Req() req: Request) {
+    return this.service.listarRepresentados(req.user as User);
+  }
+
   @Post()
   @Roles(UserRole.DESPACHANTE)
   @HttpCode(HttpStatus.CREATED)
@@ -91,7 +99,12 @@ export class ProcuracoesController {
     @Body() dto: CriarProcuracaoDto,
     @UploadedFile() arquivo?: Express.Multer.File,
   ) {
-    return this.service.enviar(req.user as User, dto.clienteId, arquivo);
+    return this.service.enviar(
+      req.user as User,
+      dto.clienteId,
+      arquivo,
+      dto.validade,
+    );
   }
 
   @Get(':id/arquivo')
@@ -151,5 +164,43 @@ export class ProcuracoesServiceController {
     @Body() dto: ReprovarProcuracaoDto,
   ) {
     return this.service.reprovar(id, dto.motivo, dto.analisadoPor);
+  }
+
+  @Patch(':id/revogar')
+  revogar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RevogarProcuracaoDto,
+  ) {
+    return this.service.revogar(id, dto.motivo, dto.analisadoPor);
+  }
+
+  /** PDF de uma entrada do histórico — a versão daquele momento. */
+  @Get('historico/:historicoId/arquivo')
+  async arquivoDoHistorico(
+    @Param('historicoId', ParseUUIDPipe) historicoId: string,
+    @Res() res: Response,
+  ) {
+    const { stream, nome } =
+      await this.service.abrirArquivoDoHistorico(historicoId);
+    enviarPdf(res, nome, stream);
+  }
+
+  /**
+   * Quantas procurações aguardam análise em cada despachante. O Aurora usa
+   * para marcar as linhas da Gestão de Acesso que precisam de atenção.
+   */
+  @Get('pendencias')
+  pendencias() {
+    return this.service.pendenciasPorDespachante();
+  }
+
+  /**
+   * Todos os clientes de um despachante e a situação da procuração de cada um.
+   * Aceita o código do despachante (D00175), que é o que a Gestão de Acesso do
+   * Aurora tem em mãos — lá não existe o id interno deste banco.
+   */
+  @Get('despachante/:codDespachante')
+  representados(@Param('codDespachante') codDespachante: string) {
+    return this.service.listarRepresentadosPorCodigo(codDespachante);
   }
 }

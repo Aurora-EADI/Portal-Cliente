@@ -1,11 +1,16 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ProcuracaoStatus, User } from '@prisma/client';
+import {
+  ProcuracaoHistoricoAcao,
+  ProcuracaoStatus,
+  User,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
@@ -14,6 +19,7 @@ import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 const SELECT_PUBLICO = {
   id: true,
   status: true,
+  validade: true,
   arquivoNome: true,
   arquivoTamanho: true,
   motivoRecusa: true,
@@ -24,6 +30,50 @@ const SELECT_PUBLICO = {
   updatedAt: true,
   cliente: { select: { id: true, nome: true, cnpj: true } },
 } as const;
+
+/**
+ * Trilha da procuração, do envio mais recente para o mais antigo.
+ *
+ * `arquivoKey` fica de fora como em SELECT_PUBLICO: o PDF de cada entrada sai
+ * por streaming autenticado, nunca por referência direta ao bucket.
+ */
+const SELECT_HISTORICO = {
+  select: {
+    id: true,
+    acao: true,
+    autorNome: true,
+    motivo: true,
+    arquivoNome: true,
+    arquivoTamanho: true,
+    validade: true,
+    criadoEm: true,
+  },
+  orderBy: { criadoEm: 'desc' },
+} as const;
+
+/** Hoje à meia-noite: a procuração vale o dia inteiro do vencimento. */
+function inicioDeHoje(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Vigente = aprovada e dentro do prazo.
+ *
+ * Mora aqui, e não espalhada pelas consultas, porque a mesma pergunta é feita
+ * em quatro lugares: listar clientes autorizados, abrir averbação, montar a
+ * lista de DIs e barrar o agendamento. Divergir num deles produziria tela que
+ * promete o que a API recusa.
+ */
+export function procuracaoVigente(p: {
+  status: ProcuracaoStatus;
+  validade: Date | null;
+}): boolean {
+  if (p.status !== ProcuracaoStatus.APROVADA) return false;
+  if (!p.validade) return true;
+  return p.validade >= inicioDeHoje();
+}
 
 @Injectable()
 export class ProcuracoesService {
@@ -64,6 +114,8 @@ export class ProcuracoesService {
       where: {
         despachanteId: this.despachanteDo(user),
         status: ProcuracaoStatus.APROVADA,
+        // Vencida não autoriza — a data no banco é o filtro, não a tela.
+        OR: [{ validade: null }, { validade: { gte: inicioDeHoje() } }],
       },
       select: { cliente: { select: { id: true, nome: true, cnpj: true } } },
       orderBy: { cliente: { nome: 'asc' } },
@@ -73,18 +125,52 @@ export class ProcuracoesService {
   }
 
   /**
-   * Clientes para os quais o Despachante ainda pode pedir procuração.
+   * Todos os clientes que o despachante representa, com a situação da
+   * procuração de cada um — inclusive quem ainda não tem nenhuma.
    *
-   * Derivados das DIs em que ele já aparece como despachante — não a lista de
-   * clientes inteira. Devolver todos permitiria a qualquer despachante
-   * enumerar a base de clientes da Aurora, que não é dele.
-   *
-   * Cliente sem DI ainda não aparece aqui; nesse caso o pedido depende de a
-   * primeira DI chegar do SIAUM.
+   * É a lista que a tela mostra. Listar só as procurações existentes escondia
+   * exatamente o cliente sobre o qual o despachante precisa agir.
    */
-  async clientesDisponiveis(user: User) {
+  async listarRepresentados(user: User) {
     const despachanteId = this.despachanteDo(user);
 
+    const [clientes, procuracoes, processos] = await Promise.all([
+      this.clientesDoDespachante(despachanteId),
+      this.prisma.procuracao.findMany({
+        where: { despachanteId },
+        select: SELECT_PUBLICO,
+      }),
+      this.prisma.averbacaoProcesso.groupBy({
+        by: ['clienteId'],
+        where: { despachanteId },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const porCliente = new Map(procuracoes.map((p) => [p.cliente.id, p]));
+    const contagem = new Map(
+      processos.map((p) => [p.clienteId, p._count._all]),
+    );
+
+    // Une os dois lados: cliente com procuração e cliente ainda sem.
+    const universo = new Map(clientes.map((c) => [c.id, c]));
+    for (const p of procuracoes) universo.set(p.cliente.id, p.cliente);
+
+    return Array.from(universo.values())
+      .map((cliente) => {
+        const procuracao = porCliente.get(cliente.id) ?? null;
+        return {
+          cliente,
+          procuracao,
+          vigente: procuracao ? procuracaoVigente(procuracao) : false,
+          processos: contagem.get(cliente.id) ?? 0,
+        };
+      })
+      .sort((a, b) => a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR'));
+  }
+
+  /** Clientes derivados das DIs em que este despachante já aparece. */
+  private async clientesDoDespachante(despachanteId: string) {
     const despachante = await this.prisma.despachante.findUnique({
       where: { id: despachanteId },
       select: { codDespachante: true },
@@ -106,15 +192,35 @@ export class ProcuracoesService {
     if (!cnpjs.length) return [];
 
     return this.prisma.cliente.findMany({
-      where: {
-        cnpj: { in: cnpjs },
-        ativo: true,
-        // Quem já tem procuração aparece na lista principal, não aqui.
-        procuracoes: { none: { despachanteId } },
-      },
+      where: { cnpj: { in: cnpjs }, ativo: true },
       select: { id: true, nome: true, cnpj: true },
-      orderBy: { nome: 'asc' },
     });
+  }
+
+  /**
+   * Clientes para os quais o Despachante ainda pode pedir procuração.
+   *
+   * Derivados das DIs em que ele já aparece como despachante — não a lista de
+   * clientes inteira. Devolver todos permitiria a qualquer despachante
+   * enumerar a base de clientes da Aurora, que não é dele.
+   *
+   * Cliente sem DI ainda não aparece aqui; nesse caso o pedido depende de a
+   * primeira DI chegar do SIAUM.
+   */
+  async clientesDisponiveis(user: User) {
+    const despachanteId = this.despachanteDo(user);
+    const clientes = await this.clientesDoDespachante(despachanteId);
+    if (!clientes.length) return [];
+
+    const jaTem = await this.prisma.procuracao.findMany({
+      where: { despachanteId, clienteId: { in: clientes.map((c) => c.id) } },
+      select: { clienteId: true },
+    });
+    const comProcuracao = new Set(jaTem.map((p) => p.clienteId));
+
+    return clientes
+      .filter((c) => !comProcuracao.has(c.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }
 
   /**
@@ -128,8 +234,24 @@ export class ProcuracoesService {
     user: User,
     clienteId: string,
     file: Express.Multer.File | undefined,
+    validadeIso?: string,
   ) {
     const despachanteId = this.despachanteDo(user);
+
+    // Data no passado seria uma procuração que já nasce vencida — recusa aqui
+    // em vez de aceitar e bloquear depois sem explicação.
+    let validade: Date | null = null;
+    if (validadeIso) {
+      validade = new Date(validadeIso);
+      if (Number.isNaN(validade.getTime())) {
+        throw new BadRequestException('Validade inválida');
+      }
+      if (validade < inicioDeHoje()) {
+        throw new BadRequestException(
+          'A validade informada já passou. Confira a data no documento.',
+        );
+      }
+    }
 
     const cliente = await this.prisma.cliente.findUnique({
       where: { id: clienteId },
@@ -162,6 +284,7 @@ export class ProcuracoesService {
       arquivoNome: nomeExibicao(file!.originalname),
       arquivoTamanho: file!.size,
       arquivoMime: 'application/pdf',
+      validade,
       motivoRecusa: null,
       analisadoPor: null,
       analisadoEm: null,
@@ -169,25 +292,36 @@ export class ProcuracoesService {
       enviadoEm: new Date(),
     };
 
-    const procuracao = await this.prisma.procuracao.upsert({
-      where: { despachanteId_clienteId: { despachanteId, clienteId } },
-      create: { despachanteId, clienteId, ...dados },
-      update: dados,
-      select: SELECT_PUBLICO,
+    // O envio e a entrada de histórico caem na mesma transação: um envio que
+    // não aparecesse na trilha seria pior que um envio que falhou, porque
+    // ninguém saberia procurar por ele.
+    const procuracao = await this.prisma.$transaction(async (tx) => {
+      const salva = await tx.procuracao.upsert({
+        where: { despachanteId_clienteId: { despachanteId, clienteId } },
+        create: { despachanteId, clienteId, ...dados },
+        update: dados,
+        select: SELECT_PUBLICO,
+      });
+
+      await tx.procuracaoHistorico.create({
+        data: {
+          procuracaoId: salva.id,
+          acao: ProcuracaoHistoricoAcao.ENVIO,
+          autorNome: user.name ?? user.email,
+          autorUserId: user.id,
+          arquivoKey: key,
+          arquivoNome: dados.arquivoNome,
+          arquivoTamanho: file!.size,
+          validade,
+        },
+      });
+
+      return salva;
     });
 
-    // O arquivo antigo só sai depois que o novo está gravado e referenciado —
-    // falhar aqui deixa um órfão no bucket, o que é melhor que perder o PDF.
-    if (existente?.arquivoKey) {
-      try {
-        await this.minio.deleteFile(existente.arquivoKey);
-      } catch (error: any) {
-        this.logger.warn(
-          `Arquivo antigo ${existente.arquivoKey} não removido: ${error.message}`,
-        );
-      }
-    }
-
+    // O PDF anterior NÃO é apagado: ele é o anexo da entrada de histórico do
+    // envio que o trouxe. Apagá-lo deixaria a trilha apontando para um arquivo
+    // que não existe mais — que é o mesmo que não ter trilha.
     return procuracao;
   }
 
@@ -225,6 +359,44 @@ export class ProcuracoesService {
     };
   }
 
+  /**
+   * Stream do PDF de uma entrada de histórico — a versão que estava valendo
+   * naquele momento, não a atual. É o que dá sentido à trilha: reler o
+   * documento que foi reprovado, e não o que veio depois dele.
+   *
+   * A checagem de dono é a mesma da procuração viva, feita pela procuração-pai.
+   */
+  async abrirArquivoDoHistorico(historicoId: string, user?: User) {
+    const entrada = await this.prisma.procuracaoHistorico.findUnique({
+      where: { id: historicoId },
+      select: {
+        arquivoKey: true,
+        arquivoNome: true,
+        procuracao: { select: { despachanteId: true, clienteId: true } },
+      },
+    });
+
+    if (!entrada?.arquivoKey) {
+      throw new NotFoundException('Esta entrada do histórico não tem arquivo');
+    }
+
+    if (user) {
+      const ehDoDespachante =
+        user.despachanteId &&
+        user.despachanteId === entrada.procuracao.despachanteId;
+      const ehDoCliente =
+        user.clienteId && user.clienteId === entrada.procuracao.clienteId;
+      if (!ehDoDespachante && !ehDoCliente) {
+        throw new ForbiddenException('Sem acesso a esta procuração');
+      }
+    }
+
+    return {
+      stream: await this.minio.getFileStream(entrada.arquivoKey),
+      nome: entrada.arquivoNome ?? 'procuracao.pdf',
+    };
+  }
+
   // ── Consumido pelo Portal Aurora (ServiceKeyGuard) ──────────────────
 
   async listarParaAnalise(status?: ProcuracaoStatus) {
@@ -240,34 +412,206 @@ export class ProcuracoesService {
     });
   }
 
+  /**
+   * A mesma visão de `listarRepresentados`, mas pedida pelo Portal Aurora para
+   * um despachante escolhido — lá não há JWT de despachante para derivar o
+   * escopo, e o analista precisa ver também os clientes ainda sem procuração:
+   * é sobre eles que ele cobra o envio.
+   */
+  async listarRepresentadosPorCodigo(codDespachante: string) {
+    const despachante = await this.prisma.despachante.findUnique({
+      where: { codDespachante },
+      select: { id: true, nome: true, codDespachante: true },
+    });
+
+    if (!despachante) {
+      throw new NotFoundException(
+        `Despachante ${codDespachante} não encontrado`,
+      );
+    }
+
+    const [clientes, procuracoes, processos] = await Promise.all([
+      this.clientesDoDespachante(despachante.id),
+      this.prisma.procuracao.findMany({
+        where: { despachanteId: despachante.id },
+        select: { ...SELECT_PUBLICO, historico: SELECT_HISTORICO },
+      }),
+      this.prisma.averbacaoProcesso.groupBy({
+        by: ['clienteId'],
+        where: { despachanteId: despachante.id },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const porCliente = new Map(procuracoes.map((p) => [p.cliente.id, p]));
+    const contagem = new Map(processos.map((p) => [p.clienteId, p._count._all]));
+
+    const universo = new Map(clientes.map((c) => [c.id, c]));
+    for (const p of procuracoes) universo.set(p.cliente.id, p.cliente);
+
+    const itens = Array.from(universo.values())
+      .map((cliente) => {
+        const procuracao = porCliente.get(cliente.id) ?? null;
+        return {
+          cliente,
+          procuracao,
+          vigente: procuracao ? procuracaoVigente(procuracao) : false,
+          processos: contagem.get(cliente.id) ?? 0,
+        };
+      })
+      .sort((a, b) => a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR'));
+
+    return {
+      despachante,
+      itens,
+      liberados: itens.filter((i) => i.vigente).length,
+      aguardandoAnalise: itens.filter(
+        (i) => i.procuracao?.status === ProcuracaoStatus.EM_ANALISE,
+      ).length,
+    };
+  }
+
+  /**
+   * Quantas procurações de cada despachante estão aguardando análise.
+   *
+   * Alimenta o contador no botão da Gestão de Acesso — sem ele, o analista
+   * teria de abrir um despachante de cada vez para descobrir onde há trabalho.
+   */
+  async pendenciasPorDespachante() {
+    const grupos = await this.prisma.procuracao.groupBy({
+      by: ['despachanteId'],
+      where: { status: ProcuracaoStatus.EM_ANALISE },
+      _count: { _all: true },
+    });
+
+    if (!grupos.length) return [];
+
+    const despachantes = await this.prisma.despachante.findMany({
+      where: { id: { in: grupos.map((g) => g.despachanteId) } },
+      select: { id: true, codDespachante: true },
+    });
+    const codigoPorId = new Map(
+      despachantes.map((d) => [d.id, d.codDespachante]),
+    );
+
+    return grupos
+      .map((g) => ({
+        codDespachante: codigoPorId.get(g.despachanteId) ?? null,
+        emAnalise: g._count._all,
+      }))
+      .filter(
+        (p): p is { codDespachante: string; emAnalise: number } =>
+          p.codDespachante !== null,
+      );
+  }
+
   async aprovar(id: string, analisadoPor?: string) {
     await this.exigirEmAnalise(id);
 
-    return this.prisma.procuracao.update({
-      where: { id },
-      data: {
-        status: ProcuracaoStatus.APROVADA,
-        motivoRecusa: null,
-        analisadoPor: analisadoPor ?? null,
-        analisadoEm: new Date(),
-      },
-      select: SELECT_PUBLICO,
-    });
+    return this.decidir(
+      id,
+      ProcuracaoStatus.APROVADA,
+      ProcuracaoHistoricoAcao.APROVACAO,
+      null,
+      analisadoPor,
+    );
   }
 
   async reprovar(id: string, motivo: string, analisadoPor?: string) {
     await this.exigirEmAnalise(id);
 
-    return this.prisma.procuracao.update({
-      where: { id },
-      data: {
-        status: ProcuracaoStatus.REPROVADA,
-        motivoRecusa: motivo.trim(),
-        analisadoPor: analisadoPor ?? null,
-        analisadoEm: new Date(),
-      },
-      select: SELECT_PUBLICO,
+    return this.decidir(
+      id,
+      ProcuracaoStatus.REPROVADA,
+      ProcuracaoHistoricoAcao.REJEICAO,
+      motivo.trim(),
+      analisadoPor,
+    );
+  }
+
+  /**
+   * Aplica a decisão e registra a entrada de histórico na mesma transação.
+   *
+   * A entrada copia o arquivo vigente no momento: é ele que foi julgado, e
+   * depois de uma substituição a procuração já apontaria para outro PDF.
+   */
+  private async decidir(
+    id: string,
+    status: ProcuracaoStatus,
+    acao: ProcuracaoHistoricoAcao,
+    motivo: string | null,
+    analisadoPor?: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const atual = await tx.procuracao.findUniqueOrThrow({
+        where: { id },
+        select: {
+          arquivoKey: true,
+          arquivoNome: true,
+          arquivoTamanho: true,
+          validade: true,
+        },
+      });
+
+      const salva = await tx.procuracao.update({
+        where: { id },
+        data: {
+          status,
+          motivoRecusa: motivo,
+          analisadoPor: analisadoPor ?? null,
+          analisadoEm: new Date(),
+        },
+        select: SELECT_PUBLICO,
+      });
+
+      await tx.procuracaoHistorico.create({
+        data: {
+          procuracaoId: id,
+          acao,
+          autorNome: analisadoPor ?? 'Equipe Aurora',
+          motivo,
+          arquivoKey: atual.arquivoKey,
+          arquivoNome: atual.arquivoNome,
+          arquivoTamanho: atual.arquivoTamanho,
+          validade: atual.validade,
+        },
+      });
+
+      return salva;
     });
+  }
+
+  /**
+   * Cassa uma procuração que já estava valendo.
+   *
+   * Não é reprovar: reprovar recusa o documento na análise, revogar retira um
+   * acesso concedido. Por isso status próprio — quem audita precisa saber se o
+   * despachante nunca pôde operar ou se deixou de poder, e quando.
+   *
+   * O efeito é imediato e não precisa de código novo: `procuracaoVigente` só
+   * aceita APROVADA, então o gate de averbação e de agendamento já barra.
+   */
+  async revogar(id: string, motivo: string, analisadoPor?: string) {
+    const procuracao = await this.prisma.procuracao.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!procuracao) throw new NotFoundException('Procuração não encontrada');
+
+    if (procuracao.status !== ProcuracaoStatus.APROVADA) {
+      throw new ConflictException(
+        `Só uma procuração aprovada pode ser revogada — esta está ${procuracao.status}`,
+      );
+    }
+
+    return this.decidir(
+      id,
+      ProcuracaoStatus.REVOGADA,
+      ProcuracaoHistoricoAcao.REVOGACAO,
+      motivo.trim(),
+      analisadoPor,
+    );
   }
 
   /**

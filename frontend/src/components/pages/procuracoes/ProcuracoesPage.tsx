@@ -3,310 +3,312 @@
 import { useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Ban,
+  CalendarDays,
   CheckCircle2,
   Clock,
   ExternalLink,
-  FileSignature,
-  Plus,
-  X,
+  FileUp,
+  RefreshCw,
+  Search,
+  Users,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { FileUpload } from '@/components/ui/FileUpload';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { procuracoesService } from '@/services/procuracoes.service';
+import { useRepresentados } from '@/hooks/useProcuracoes';
 import {
-  useClientesDisponiveis,
-  useEnviarProcuracao,
-  useProcuracoes,
-} from '@/hooks/useProcuracoes';
-import {
-  PROCURACAO_STATUS_LABEL,
-  Procuracao,
-  ProcuracaoStatus,
+  ClienteRepresentado,
+  SITUACAO_LABEL,
+  SituacaoRepresentado,
+  situacaoDe,
 } from '@/types/procuracao';
+import { AnexarProcuracaoModal } from './AnexarProcuracaoModal';
 
 const BADGE: Record<
-  ProcuracaoStatus,
+  SituacaoRepresentado,
   { variant: 'success' | 'warning' | 'danger' | 'secondary'; Icon: typeof Clock }
 > = {
-  [ProcuracaoStatus.APROVADA]: { variant: 'success', Icon: CheckCircle2 },
-  [ProcuracaoStatus.EM_ANALISE]: { variant: 'warning', Icon: Clock },
-  [ProcuracaoStatus.REPROVADA]: { variant: 'danger', Icon: AlertCircle },
-  [ProcuracaoStatus.PENDENTE_ENVIO]: { variant: 'secondary', Icon: Clock },
+  VIGENTE: { variant: 'success', Icon: CheckCircle2 },
+  EM_ANALISE: { variant: 'warning', Icon: Clock },
+  REPROVADA: { variant: 'danger', Icon: AlertCircle },
+  REVOGADA: { variant: 'danger', Icon: Ban },
+  VENCIDA: { variant: 'danger', Icon: CalendarDays },
+  SEM_PROCURACAO: { variant: 'secondary', Icon: FileUp },
 };
 
-function formatarData(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
+/** UTC porque a validade é uma data pura; converter por fuso mudaria o dia. */
+function formatarData(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 }
 
-function CartaoProcuracao({
-  procuracao,
-  onReenviar,
-}: {
-  procuracao: Procuracao;
-  onReenviar: (p: Procuracao) => void;
-}) {
-  const { variant, Icon } = BADGE[procuracao.status];
-  const podeReenviar =
-    procuracao.status === ProcuracaoStatus.REPROVADA ||
-    procuracao.status === ProcuracaoStatus.PENDENTE_ENVIO;
+/** Faltando 30 dias ou menos, a validade vira aviso em vez de dado neutro. */
+function diasAteVencer(iso: string | null): number | null {
+  if (!iso) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return Math.round((new Date(iso).getTime() - hoje.getTime()) / 86400000);
+}
+
+function Resumo({ itens }: { itens: ClienteRepresentado[] }) {
+  const contagem = useMemo(() => {
+    const por = (s: SituacaoRepresentado) =>
+      itens.filter((i) => situacaoDe(i) === s).length;
+    return {
+      clientes: itens.length,
+      aprovadas: por('VIGENTE'),
+      emAnalise: por('EM_ANALISE'),
+      pendentes:
+        por('SEM_PROCURACAO') +
+        por('REPROVADA') +
+        por('REVOGADA') +
+        por('VENCIDA'),
+    };
+  }, [itens]);
+
+  const cards = [
+    { label: 'Clientes', valor: contagem.clientes, Icon: Users, cor: 'text-sky-600 bg-sky-50' },
+    { label: 'Aprovadas', valor: contagem.aprovadas, Icon: CheckCircle2, cor: 'text-emerald-600 bg-emerald-50' },
+    { label: 'Em análise', valor: contagem.emAnalise, Icon: Clock, cor: 'text-amber-600 bg-amber-50' },
+    { label: 'Pendentes / Reprovadas', valor: contagem.pendentes, Icon: AlertCircle, cor: 'text-red-600 bg-red-50' },
+  ];
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 pt-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="truncate font-medium text-foreground">
-              {procuracao.cliente.nome}
-            </p>
-            {procuracao.cliente.cnpj && (
-              <p className="font-mono text-xs text-muted-foreground">
-                {procuracao.cliente.cnpj}
-              </p>
-            )}
-          </div>
-          <Badge variant={variant} className="shrink-0 gap-1">
-            <Icon className="h-3 w-3" />
-            {PROCURACAO_STATUS_LABEL[procuracao.status]}
-          </Badge>
-        </div>
-
-        {procuracao.status === ProcuracaoStatus.REPROVADA &&
-          procuracao.motivoRecusa && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
-              <p className="text-xs font-medium text-destructive">
-                Motivo da recusa
-              </p>
-              <p className="mt-1 text-sm text-foreground">
-                {procuracao.motivoRecusa}
-              </p>
-            </div>
-          )}
-
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <div>
-            <dt className="inline">Enviada em </dt>
-            <dd className="inline text-foreground">
-              {formatarData(procuracao.enviadoEm)}
-            </dd>
-          </div>
-          {procuracao.analisadoEm && (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(({ label, valor, Icon, cor }) => (
+        <Card key={label}>
+          <CardContent className="flex items-center justify-between gap-3 pt-6">
             <div>
-              <dt className="inline">Analisada em </dt>
-              <dd className="inline text-foreground">
-                {formatarData(procuracao.analisadoEm)}
-              </dd>
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{valor}</p>
             </div>
-          )}
-        </dl>
+            <span className={cn('flex h-9 w-9 items-center justify-center rounded-full', cor)}>
+              <Icon className="h-4 w-4" aria-hidden />
+            </span>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
-        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-          {procuracao.arquivoNome && (
+function LinhaRepresentado({
+  item,
+  onAnexar,
+}: {
+  item: ClienteRepresentado;
+  onAnexar: (clienteId: string) => void;
+}) {
+  const situacao = situacaoDe(item);
+  const { variant, Icon } = BADGE[situacao];
+  const validade = formatarData(item.procuracao?.validade ?? null);
+  const dias = diasAteVencer(item.procuracao?.validade ?? null);
+  const vencendo = situacao === 'VIGENTE' && dias !== null && dias <= 30;
+
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={variant} className="gap-1">
+            <Icon className="h-3 w-3" />
+            {SITUACAO_LABEL[situacao]}
+          </Badge>
+
+          {item.procuracao?.arquivoNome && (
             <a
-              href={procuracoesService.urlArquivo(procuracao.id)}
+              href={procuracoesService.urlArquivo(item.procuracao.id)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+              className="inline-flex max-w-[240px] items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs text-primary hover:bg-muted"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-              {procuracao.arquivoNome}
+              <ExternalLink className="h-3 w-3 shrink-0" />
+              <span className="truncate">{item.procuracao.arquivoNome}</span>
             </a>
           )}
-          <div className="flex-1" />
-          {podeReenviar && (
-            <Button size="sm" onClick={() => onReenviar(procuracao)}>
-              Reenviar documento
-            </Button>
+
+          {validade && (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 text-xs',
+                situacao === 'VENCIDA'
+                  ? 'font-medium text-destructive'
+                  : vencendo
+                    ? 'font-medium text-amber-700'
+                    : 'text-muted-foreground',
+              )}
+            >
+              <CalendarDays className="h-3 w-3" />
+              {situacao === 'VENCIDA' ? 'Venceu em' : 'Validade:'} {validade}
+              {vencendo && dias !== null && ` · faltam ${dias}d`}
+            </span>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        <p className="mt-1.5 font-semibold text-foreground">{item.cliente.nome}</p>
+        <p className="text-xs text-muted-foreground">
+          {item.cliente.cnpj && <span className="font-mono">CNPJ: {item.cliente.cnpj}</span>}
+          {item.processos > 0 && (
+            <>
+              {item.cliente.cnpj && ' • '}
+              {item.processos} processo{item.processos !== 1 ? 's' : ''} de averbação
+            </>
+          )}
+        </p>
+
+        {(situacao === 'REPROVADA' || situacao === 'REVOGADA') &&
+          item.procuracao?.motivoRecusa && (
+            <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+              <p className="text-xs font-medium text-destructive">
+                {situacao === 'REVOGADA'
+                  ? 'Motivo da revogação'
+                  : 'Motivo da recusa'}
+              </p>
+              <p className="mt-0.5 text-sm">{item.procuracao.motivoRecusa}</p>
+            </div>
+          )}
+      </div>
+
+      <div className="shrink-0">
+        {situacao === 'EM_ANALISE' ? (
+          <span className="text-xs text-muted-foreground">Aguardando a Aurora</span>
+        ) : (
+          <Button
+            size="sm"
+            variant={situacao === 'VIGENTE' ? 'outline' : 'default'}
+            className="gap-1.5"
+            onClick={() => onAnexar(item.cliente.id)}
+          >
+            {situacao === 'VIGENTE' ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5" />
+                Substituir
+              </>
+            ) : (
+              <>
+                <FileUp className="h-3.5 w-3.5" />
+                Anexar Procuração
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
 export function ProcuracoesPage() {
-  const { data: procuracoes, isLoading } = useProcuracoes();
-  const { data: disponiveis } = useClientesDisponiveis();
-  const { mutateAsync: enviar, isPending: enviando } = useEnviarProcuracao();
+  const { data, isLoading } = useRepresentados();
+  const [busca, setBusca] = useState('');
+  const [modalAberto, setModalAberto] = useState(false);
+  const [clienteAlvo, setClienteAlvo] = useState<string | null>(null);
 
-  const [formAberto, setFormAberto] = useState(false);
-  const [clienteId, setClienteId] = useState<string>('');
-  const [arquivo, setArquivo] = useState<File | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const itens = useMemo(() => data ?? [], [data]);
 
-  // No reenvio o cliente já está definido e não deve ser trocado — trocar
-  // criaria uma procuração para outro cliente sem a pessoa perceber.
-  const [reenviando, setReenviando] = useState<Procuracao | null>(null);
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return itens;
+    return itens.filter(
+      (i) =>
+        i.cliente.nome.toLowerCase().includes(termo) ||
+        (i.cliente.cnpj ?? '').toLowerCase().includes(termo),
+    );
+  }, [busca, itens]);
 
-  const opcoes = useMemo(() => disponiveis ?? [], [disponiveis]);
+  const liberados = itens.filter((i) => i.vigente).length;
 
-  const abrirNova = () => {
-    setReenviando(null);
-    setClienteId('');
-    setArquivo(null);
-    setErro(null);
-    setFormAberto(true);
+  const abrirModal = (clienteId?: string) => {
+    setClienteAlvo(clienteId ?? null);
+    setModalAberto(true);
   };
-
-  const abrirReenvio = (p: Procuracao) => {
-    setReenviando(p);
-    setClienteId(p.cliente.id);
-    setArquivo(null);
-    setErro(null);
-    setFormAberto(true);
-  };
-
-  const fechar = () => {
-    setFormAberto(false);
-    setReenviando(null);
-    setClienteId('');
-    setArquivo(null);
-    setErro(null);
-  };
-
-  const submeter = async () => {
-    if (!clienteId || !arquivo) return;
-    setErro(null);
-    try {
-      await enviar({ clienteId, arquivo });
-      toast.success('Procuração enviada para análise da equipe Aurora.');
-      fechar();
-    } catch (e: any) {
-      const mensagem =
-        e?.response?.data?.message || 'Falha ao enviar a procuração.';
-      setErro(Array.isArray(mensagem) ? mensagem.join(', ') : mensagem);
-    }
-  };
-
-  const semCandidatos = !reenviando && opcoes.length === 0;
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Procurações</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Autorização do importador para você operar em nome dele. A aprovação
-            é por cliente: liberar um não libera os demais.
-          </p>
-        </div>
-        <Button onClick={formAberto ? fechar : abrirNova} className="gap-2">
-          {formAberto ? (
-            <X className="h-4 w-4" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          {formAberto ? 'Cancelar' : 'Nova procuração'}
-        </Button>
-      </div>
-
-      {formAberto && (
-        <Card className="border-primary/40">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {reenviando
-                ? `Reenviar procuração — ${reenviando.cliente.nome}`
-                : 'Nova procuração'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!reenviando && (
-              <div>
-                <Label htmlFor="cliente">Importador</Label>
-                {semCandidatos ? (
-                  <p className="mt-1 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-                    Nenhum importador disponível. A lista vem dos clientes que
-                    já aparecem nas suas DIs — se o importador é novo, aguarde a
-                    primeira DI ser registrada.
-                  </p>
-                ) : (
-                  <Select value={clienteId} onValueChange={setClienteId}>
-                    <SelectTrigger id="cliente">
-                      <SelectValue placeholder="Selecione o importador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {opcoes.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
-                          {c.cnpj ? ` — ${c.cnpj}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
-
-            <FileUpload
-              value={arquivo}
-              onChange={(f) => {
-                setArquivo(f);
-                setErro(null);
-              }}
-              accept={['application/pdf']}
-              label="Anexar procuração"
-              hint="Arraste o PDF assinado ou clique para escolher"
-              error={erro}
-            />
-
-            <div className="flex justify-end gap-2 border-t pt-4">
-              <Button variant="outline" onClick={fechar}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={submeter}
-                disabled={!clienteId || !arquivo || enviando}
-              >
-                {enviando ? 'Enviando…' : 'Enviar para análise'}
-              </Button>
+    <div className="space-y-5 p-6">
+      <Card>
+        <CardContent className="flex flex-wrap items-start justify-between gap-4 pt-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="warning">Representação por Cliente</Badge>
+              {itens.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {liberados} de {itens.length} clientes liberados
+                </span>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <h1 className="mt-1.5 text-lg font-semibold">
+              Procurações dos Clientes Representados
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Anexe a procuração de cada cliente que você representa. As operações
+              em nome de um cliente só são liberadas após a aprovação da equipe Aurora.
+            </p>
+          </div>
+          <Button className="shrink-0 gap-1.5" onClick={() => abrirModal()}>
+            <FileUp className="h-4 w-4" />
+            Anexar Procuração
+          </Button>
+        </CardContent>
+      </Card>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
-      ) : procuracoes && procuracoes.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {procuracoes.map((p) => (
-            <CartaoProcuracao
-              key={p.id}
-              procuracao={p}
-              onReenviar={abrirReenvio}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-10 text-center">
-          <FileSignature className="h-8 w-8 text-muted-foreground" aria-hidden />
-          <p className="text-sm font-medium text-foreground">
-            Nenhuma procuração ainda
-          </p>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Sem procuração aprovada você consegue ver as DIs do importador, mas
-            não abrir processo, anexar documento nem agendar em nome dele.
-          </p>
-        </div>
-      )}
+      {itens.length > 0 && <Resumo itens={itens} />}
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <h2 className="font-semibold">Clientes Representados</h2>
+            <div className="relative w-full max-w-xs">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar cliente ou CNPJ..."
+                className="pl-8"
+                aria-label="Buscar cliente ou CNPJ"
+              />
+            </div>
+          </div>
+
+          {isLoading ? (
+            <p className="px-5 py-10 text-sm text-muted-foreground">Carregando…</p>
+          ) : filtrados.length === 0 ? (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm font-medium">
+                {itens.length === 0
+                  ? 'Nenhum cliente representado ainda'
+                  : 'Nenhum cliente encontrado'}
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                {itens.length === 0
+                  ? 'A lista vem dos clientes que já aparecem nas suas DIs. Se o importador é novo, aguarde a primeira DI ser registrada.'
+                  : 'Ajuste a busca.'}
+              </p>
+            </div>
+          ) : (
+            <div>
+              {filtrados.map((item) => (
+                <LinhaRepresentado
+                  key={item.cliente.id}
+                  item={item}
+                  onAnexar={abrirModal}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AnexarProcuracaoModal
+        aberto={modalAberto}
+        onClose={() => {
+          setModalAberto(false);
+          setClienteAlvo(null);
+        }}
+        representados={itens}
+        clienteInicial={clienteAlvo}
+      />
     </div>
   );
 }

@@ -17,6 +17,12 @@ export const MENSAGEM_PROCURACAO: Record<string, string> = {
     'Operação bloqueada — procuração em análise pela equipe da Aurora.',
   REPROVADA:
     'Operação bloqueada — procuração reprovada. Veja o motivo e reenvie o documento.',
+  // Revogada não é o mesmo que reprovada: aqui o acesso existia e foi retirado.
+  // Dizer "reprovada" faria o despachante procurar um erro no documento.
+  REVOGADA:
+    'Operação bloqueada — a equipe da Aurora revogou esta procuração. Veja o motivo; se o caso foi resolvido, envie uma procuração nova.',
+  VENCIDA:
+    'Operação bloqueada — a procuração deste cliente venceu. Envie uma procuração vigente.',
 };
 
 export const MENSAGEM_AVERBACAO: Record<string, string> = {

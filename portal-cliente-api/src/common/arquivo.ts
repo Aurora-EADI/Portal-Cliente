@@ -59,6 +59,34 @@ export function validarPdfEGerarKey(
 
 const LIMITE_CONTROLE = 0x1f;
 const DEL = 0x7f;
+const BYTE_ALTO = 0x80;
+const MAX_BYTE = 0xff;
+/** U+FFFD, o caractere que o decodificador põe onde os bytes não fecham. */
+const SUBSTITUICAO = String.fromCodePoint(0xfffd);
+
+/**
+ * Busboy (via multer) decodifica o `filename` do multipart como latin1, então
+ * um nome com acento chega com os bytes certos lidos na tabela errada — o
+ * clássico "Ã­" no lugar de "í". Reinterpretar como UTF-8 desfaz isso.
+ *
+ * A conversão só entra quando é seguramente esse caso: a string tem byte alto,
+ * nenhum codepoint passa de 0xFF (assinatura de texto latin1-decodificado), a
+ * releitura em UTF-8 não produz caractere de substituição, e re-encodá-la
+ * devolve exatamente os mesmos bytes. Um nome que já veio correto em UTF-8 —
+ * o caso do `filename*` da RFC 5987 — falha algum desses testes e passa intacto.
+ */
+function corrigirLatin1(nome: string): string {
+  const codigos = Array.from(nome, (caractere) => caractere.codePointAt(0) ?? 0);
+
+  if (!codigos.some((codigo) => codigo >= BYTE_ALTO)) return nome;
+  if (codigos.some((codigo) => codigo > MAX_BYTE)) return nome;
+
+  const bytes = Buffer.from(nome, 'latin1');
+  const comoUtf8 = bytes.toString('utf8');
+
+  if (comoUtf8.includes(SUBSTITUICAO)) return nome;
+  return Buffer.from(comoUtf8, 'utf8').equals(bytes) ? comoUtf8 : nome;
+}
 
 /**
  * Nome de exibição saneado: sem caminho, sem caractere de controle, curto.
@@ -67,7 +95,8 @@ const DEL = 0x7f;
  * controle no fonte deixaria bytes invisíveis no arquivo.
  */
 export function nomeExibicao(original: string): string {
-  const semCaminho = original.split(/[\\/]/).pop() ?? 'documento.pdf';
+  const semCaminho =
+    corrigirLatin1(original).split(/[\\/]/).pop() ?? 'documento.pdf';
 
   const limpo = Array.from(semCaminho)
     .filter((caractere) => {

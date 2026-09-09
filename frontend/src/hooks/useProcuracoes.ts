@@ -5,33 +5,32 @@ import { procuracoesService } from '@/services/procuracoes.service';
 
 export const PROCURACAO_KEYS = {
   all: ['procuracoes'] as const,
-  list: () => [...PROCURACAO_KEYS.all, 'list'] as const,
-  clientesDisponiveis: () =>
-    [...PROCURACAO_KEYS.all, 'clientes-disponiveis'] as const,
+  representados: () => [...PROCURACAO_KEYS.all, 'representados'] as const,
 };
 
-export function useProcuracoes() {
+export function useRepresentados() {
   return useQuery({
-    queryKey: PROCURACAO_KEYS.list(),
-    queryFn: () => procuracoesService.listar(),
-  });
-}
-
-export function useClientesDisponiveis() {
-  return useQuery({
-    queryKey: PROCURACAO_KEYS.clientesDisponiveis(),
-    queryFn: () => procuracoesService.clientesDisponiveis(),
+    queryKey: PROCURACAO_KEYS.representados(),
+    queryFn: () => procuracoesService.representados(),
   });
 }
 
 export function useEnviarProcuracao() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ clienteId, arquivo }: { clienteId: string; arquivo: File }) =>
-      procuracoesService.enviar(clienteId, arquivo),
+    mutationFn: ({
+      clienteId,
+      arquivo,
+      validade,
+    }: {
+      clienteId: string;
+      arquivo: File;
+      validade?: string;
+    }) => procuracoesService.enviar(clienteId, arquivo, validade),
     onSuccess: () => {
-      // Invalida as duas: enviar tira o cliente da lista de disponíveis.
+      // Enviar muda a situação do cliente e libera averbação: invalida tudo.
       queryClient.invalidateQueries({ queryKey: PROCURACAO_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['averbacoes'] });
     },
   });
 }

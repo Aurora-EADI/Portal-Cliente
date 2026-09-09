@@ -1,24 +1,24 @@
 import { apiNest } from '@/lib/apiNest';
-import type { ClienteResumo, Procuracao } from '@/types/procuracao';
+import type { ClienteRepresentado, Procuracao } from '@/types/procuracao';
 
 const BASE_PATH = '/procuracoes';
 
 export const procuracoesService = {
-  listar: async (): Promise<Procuracao[]> => {
-    const response = await apiNest.get(BASE_PATH);
+  /** Todos os representados, com ou sem procuração. É o que a tela lista. */
+  representados: async (): Promise<ClienteRepresentado[]> => {
+    const response = await apiNest.get(`${BASE_PATH}/representados`);
     return response.data;
   },
 
-  /** Clientes que ainda não têm procuração com este despachante. */
-  clientesDisponiveis: async (): Promise<ClienteResumo[]> => {
-    const response = await apiNest.get(`${BASE_PATH}/clientes-disponiveis`);
-    return response.data;
-  },
-
-  enviar: async (clienteId: string, arquivo: File): Promise<Procuracao> => {
+  enviar: async (
+    clienteId: string,
+    arquivo: File,
+    validade?: string,
+  ): Promise<Procuracao> => {
     const form = new FormData();
     form.append('clienteId', clienteId);
     form.append('arquivo', arquivo);
+    if (validade) form.append('validade', validade);
 
     const response = await apiNest.post(BASE_PATH, form, {
       // Deixa o browser montar o boundary do multipart. Herdar o
