@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -30,8 +31,10 @@ import { AverbacoesService } from './averbacoes.service';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 import {
   AprovarDocumentoDto,
+  DesvincularLoteDto,
   LiberarProcessoDto,
   RejeitarDocumentoDto,
+  VincularLoteDto,
 } from './dto/decidir-documento.dto';
 
 function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
@@ -121,6 +124,17 @@ export class AverbacoesServiceController {
     return this.service.listarParaValidacao(status);
   }
 
+  /**
+   * Fila de vinculação: processos que ainda não apontam para um lote do SIAUM.
+   *
+   * Declarado antes de `:id` de propósito — "sem-vinculo" casaria com o
+   * parâmetro e o ParseUUIDPipe o recusaria como UUID inválido.
+   */
+  @Get('sem-vinculo')
+  semVinculo() {
+    return this.service.listarSemVinculo();
+  }
+
   @Get(':id')
   detalhar(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.detalhar(id);
@@ -149,6 +163,28 @@ export class AverbacoesServiceController {
     @Body() dto: RejeitarDocumentoDto,
   ) {
     return this.service.rejeitarDocumento(docId, dto.motivo, dto.analisadoPor);
+  }
+
+  /** Amarra o processo ao registro do SIAUM. Decisão do analista, não busca. */
+  @Patch(':id/vinculo')
+  vincular(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VincularLoteDto,
+  ) {
+    return this.service.vincularLote(id, dto.nLote, dto.vinculadoPor);
+  }
+
+  /**
+   * Desfaz o vínculo. É DELETE com corpo porque o motivo é obrigatório — a
+   * alternativa seria mandá-lo na query string, onde ele acabaria em log de
+   * acesso e histórico de proxy.
+   */
+  @Delete(':id/vinculo')
+  desvincular(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DesvincularLoteDto,
+  ) {
+    return this.service.desvincularLote(id, dto.motivo, dto.vinculadoPor);
   }
 
   @Post(':id/liberar')

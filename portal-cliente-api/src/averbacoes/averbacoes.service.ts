@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -16,6 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
+import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 
 /** Sem arquivoKey: a key do MinIO não sai da API. */
@@ -45,6 +47,9 @@ const SELECT_PROCESSO = {
   modalidade: true,
   diDuimp: true,
   containerConhecimento: true,
+  localOrigem: true,
+  recintoDestino: true,
+  cargaEspecial: true,
   status: true,
   nLote: true,
   createdAt: true,
@@ -99,12 +104,19 @@ export class AverbacoesService {
       where: {
         despachanteId_clienteId: { despachanteId, clienteId: dto.clienteId },
       },
-      select: { status: true },
+      select: { status: true, validade: true },
     });
 
-    if (procuracao?.status !== ProcuracaoStatus.APROVADA) {
+    // Vencida não autoriza, e a mensagem diz qual dos dois casos é — "não
+    // aprovada" para uma procuração vencida mandaria a pessoa reenviar o
+    // documento errado.
+    if (!procuracao || !procuracaoVigente(procuracao)) {
+      const vencida =
+        procuracao?.status === ProcuracaoStatus.APROVADA && !!procuracao.validade;
       throw new ForbiddenException(
-        'Operação bloqueada — é necessário possuir procuração aprovada para este cliente.',
+        vencida
+          ? 'Operação bloqueada — a procuração deste cliente venceu. Envie uma procuração vigente.'
+          : 'Operação bloqueada — é necessário possuir procuração aprovada para este cliente.',
       );
     }
 
@@ -130,6 +142,9 @@ export class AverbacoesService {
           modalidade: dto.modalidade,
           diDuimp: dto.diDuimp,
           containerConhecimento: dto.containerConhecimento,
+          localOrigem: dto.localOrigem || null,
+          recintoDestino: dto.recintoDestino || null,
+          cargaEspecial: dto.cargaEspecial ?? false,
           status: AverbacaoProcessoStatus.RASCUNHO,
           criadoPorUserId: user.id,
           documentos: {
@@ -469,6 +484,125 @@ export class AverbacoesService {
    * Gate de agendamento, recalculado aqui e nunca confiado ao cliente:
    * todo documento obrigatório precisa estar VALIDADO.
    */
+  /**
+   * Amarra o processo documental ao registro do SIAUM.
+   *
+   * Existe separado de `liberar` porque lá o vínculo só podia ser gravado uma
+   * única vez: `liberar` recusa reexecução, então um processo liberado sem lote
+   * ficava permanentemente sem referência ao SIAUM, sem caminho de correção.
+   * Aqui o vínculo é um ato próprio, repetível enquanto o processo não foi
+   * liberado, e auditável.
+   *
+   * Quem decide qual lote é o certo é o analista no Portal Aurora — este
+   * método não busca nem adivinha nada, só registra a decisão.
+   */
+  async vincularLote(processoId: string, nLote: string, vinculadoPor?: string) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id: processoId },
+      select: { id: true, status: true, nLote: true, protocolo: true },
+    });
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+
+    // Liberado é terminal: mexer no lote depois disso deixaria a DI já
+    // empurrada para o agendamento apontando para outra operação.
+    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        'Processo já liberado para agendamento — o vínculo não pode mais mudar.',
+      );
+    }
+
+    const lote = nLote.trim().toUpperCase();
+    if (!lote) throw new BadRequestException('Informe o lote do SIAUM');
+
+    this.logger.log(
+      `Processo ${processo.protocolo} vinculado ao lote ${lote}` +
+        (processo.nLote ? ` (antes: ${processo.nLote})` : '') +
+        ` por ${vinculadoPor ?? 'Equipe Aurora'}`,
+    );
+
+    return this.prisma.averbacaoProcesso.update({
+      where: { id: processoId },
+      data: { nLote: lote },
+      select: SELECT_PROCESSO,
+    });
+  }
+
+  /** Desfaz o vínculo. Permitido só enquanto o processo não foi liberado. */
+  async desvincularLote(
+    processoId: string,
+    motivo: string,
+    vinculadoPor?: string,
+  ) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id: processoId },
+      select: { id: true, status: true, nLote: true, protocolo: true },
+    });
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+
+    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        'Processo já liberado para agendamento — desfaça a liberação antes.',
+      );
+    }
+
+    if (!processo.nLote) {
+      throw new ConflictException('Processo não tem vínculo para desfazer');
+    }
+
+    this.logger.log(
+      `Vínculo do processo ${processo.protocolo} com o lote ${processo.nLote} ` +
+        `desfeito por ${vinculadoPor ?? 'Equipe Aurora'}: ${motivo.trim()}`,
+    );
+
+    return this.prisma.averbacaoProcesso.update({
+      where: { id: processoId },
+      data: { nLote: null },
+      select: SELECT_PROCESSO,
+    });
+  }
+
+  /**
+   * Processos ainda sem lote — é a fila de vinculação do Portal Aurora.
+   *
+   * Devolve o que o Aurora precisa para procurar o registro no SIAUM
+   * (`diDuimp`, `containerConhecimento`) e para conferir se o candidato bate
+   * (CNPJ do cliente, código do despachante).
+   */
+  async listarSemVinculo() {
+    const processos = await this.prisma.averbacaoProcesso.findMany({
+      where: {
+        nLote: null,
+        // Liberado sem lote é o passivo do modelo antigo: não há como vincular
+        // depois, e listar aqui só encheria a fila com o que não tem ação.
+        status: { not: AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO },
+      },
+      select: {
+        ...SELECT_PROCESSO,
+        despachante: {
+          select: { id: true, nome: true, codDespachante: true },
+        },
+        documentos: {
+          select: {
+            status: true,
+            tipoDocumento: { select: { obrigatorio: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return processos.map(({ documentos, ...processo }) => {
+      const obrigatorios = documentos.filter((d) => d.tipoDocumento.obrigatorio);
+      return {
+        ...processo,
+        obrigatoriosTotal: obrigatorios.length,
+        obrigatoriosValidados: obrigatorios.filter(
+          (d) => d.status === AverbacaoDocumentoStatus.VALIDADO,
+        ).length,
+      };
+    });
+  }
+
   async liberar(processoId: string, analisadoPor?: string, nLote?: string) {
     const processo = await this.prisma.averbacaoProcesso.findUnique({
       where: { id: processoId },
@@ -511,7 +645,10 @@ export class AverbacoesService {
       where: { id: processoId },
       data: {
         status: AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO,
-        nLote: nLote ?? undefined,
+        // Compatibilidade com o Aurora atual, que ainda manda o lote aqui. O
+        // caminho novo é vincular antes; quando o Aurora migrar, este
+        // parâmetro sai e liberar passa a exigir vínculo prévio.
+        nLote: nLote?.trim().toUpperCase() || undefined,
       },
       select: SELECT_PROCESSO,
     });
