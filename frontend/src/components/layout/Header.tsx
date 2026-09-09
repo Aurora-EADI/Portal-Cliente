@@ -1,13 +1,64 @@
 'use client'
 
 import React, { useCallback } from 'react';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, ShieldCheck } from 'lucide-react';
 import { Logo } from '../ui/Logo';
 import { useAuthContext } from '@/context/AuthContext';
+import { UserRole } from '@/types/auth';
 
 interface HeaderProps {
   pageTitle?: string;
   onMenuClick?: () => void;
+}
+
+/**
+ * Selo do perfil em uso.
+ *
+ * O portal mostra dados diferentes para cada perfil, e o mesmo navegador troca
+ * de sessão o tempo todo em suporte e homologação. Saber de relance quem está
+ * logado evita a conclusão errada de que "sumiu uma DI" quando, na verdade, a
+ * sessão é de outro perfil.
+ *
+ * Cada perfil tem cor própria — a distinção não pode depender de ler o texto,
+ * senão o selo vira decoração. Todas as combinações são de fundo claro com
+ * texto escuro, para manter contraste sobre o header laranja (produção) e
+ * sobre o vermelho (desenvolvimento).
+ */
+const ROLE_ESTILO: Record<string, { rotulo: string; classe: string }> = {
+  [UserRole.ADMIN]: {
+    rotulo: 'ADMINISTRADOR',
+    classe: 'bg-purple-100 text-purple-900 ring-purple-300/60',
+  },
+  [UserRole.EMPLOYEE]: {
+    rotulo: 'AURORA',
+    classe: 'bg-sky-100 text-sky-900 ring-sky-300/60',
+  },
+  [UserRole.DESPACHANTE]: {
+    rotulo: 'DESPACHANTE',
+    classe: 'bg-emerald-100 text-emerald-900 ring-emerald-300/60',
+  },
+  [UserRole.CLIENTE]: {
+    rotulo: 'CLIENTE',
+    classe: 'bg-amber-100 text-amber-900 ring-amber-300/60',
+  },
+  [UserRole.TRANSPORTADORA]: {
+    rotulo: 'TRANSPORTADORA',
+    classe: 'bg-cyan-100 text-cyan-900 ring-cyan-300/60',
+  },
+  [UserRole.SUPPLIER]: {
+    rotulo: 'FORNECEDOR',
+    classe: 'bg-slate-100 text-slate-900 ring-slate-300/60',
+  },
+};
+
+/** Perfil desconhecido aparece como está, em vez de sumir do header. */
+function estiloDoRole(role: string) {
+  return (
+    ROLE_ESTILO[role] ?? {
+      rotulo: role,
+      classe: 'bg-white/90 text-gray-900 ring-white/50',
+    }
+  );
 }
 
 export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) => {
@@ -17,8 +68,8 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) =
 
   const handleLogout = useCallback(() => logoutUser(), [logoutUser]);
 
-  const userDisplay =
-    currentUser.role === 'ADMIN' ? currentUser.name : currentUser.name;
+  const userDisplay = currentUser.name;
+  const role = estiloDoRole(currentUser.role);
 
   return (
     <header
@@ -57,14 +108,31 @@ export const Header: React.FC<HeaderProps> = ({ pageTitle = '', onMenuClick }) =
           )}
         </div>
 
-        {/* Usuário + logout */}
-        <div className="flex items-center gap-4">
+        {/* Usuário + perfil + logout */}
+        <div className="flex items-center gap-3">
+          <span
+            className={`
+              hidden sm:inline-flex items-center gap-1.5
+              px-2.5 py-1 rounded-md
+              text-xs font-bold uppercase tracking-wide
+              ring-1 shadow-sm
+              ${role.classe}
+            `}
+            title={`Você está usando o portal como ${role.rotulo}`}
+          >
+            <ShieldCheck size={13} aria-hidden />
+            {role.rotulo}
+          </span>
+
           <div className="flex flex-col text-right leading-tight">
             <span className="text-white font-medium text-sm">
               {userDisplay}
             </span>
+            {/* Em telas pequenas o selo some, então o perfil aparece aqui —
+                é a informação que não pode faltar em nenhuma largura. */}
             <span className="text-white/80 text-xs tracking-wider">
-              UNIDADE MATRIZ
+              <span className="sm:hidden">{role.rotulo}</span>
+              <span className="hidden sm:inline">UNIDADE MATRIZ</span>
             </span>
           </div>
 
