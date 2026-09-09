@@ -7,8 +7,6 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    env_file:
-      - .env.prod
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -34,7 +32,6 @@ services:
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-      network: host
     environment:
       NODE_ENV: production
       PORT: 5001
@@ -54,11 +51,7 @@ services:
       MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-}
       MINIO_EXTERNAL_PORT: ${MINIO_EXTERNAL_PORT:-9000}
       MINIO_EXTERNAL_USE_SSL: ${MINIO_EXTERNAL_USE_SSL:-false}
-      # RabbitMQ já existente na portal_net (backend ainda não consome — preparado para implementação futura)
-      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/%2Fagendamento
       PROTHEUS_API_KEY: ${PROTHEUS_API_KEY:-}
-    env_file:
-      - .env.prod
     # Sem publicação de porta no host — roteado pelo Traefik via portal_net
     networks:
       - portal_net
@@ -100,13 +93,10 @@ services:
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-      network: host
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_TELEMETRY_DISABLED: 1
-    env_file:
-      - .env.prod
     # Sem publicação de porta no host — roteado pelo Traefik via portal_net
     networks:
       - portal_net
