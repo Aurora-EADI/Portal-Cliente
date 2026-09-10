@@ -1,0 +1,130 @@
+services:
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio-prod
+    # Sem publicação de porta no host — acesso apenas pela portal_net
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: always
+    networks:
+      - portal_net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  portal-cliente-api:
+    container_name: portal-cliente-api
+    build:
+      context: .
+      dockerfile: portal-cliente-api/Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    environment:
+      NODE_ENV: production
+      PORT: 3030
+      # PostgreSQL no host fixo da infraestrutura
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.68:${DB_PORT:-5432}/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      # MinIO interno via portal_net
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_EXTERNAL_ENDPOINT: ${MINIO_EXTERNAL_ENDPOINT:-}
+      MINIO_EXTERNAL_PORT: ${MINIO_EXTERNAL_PORT:-9000}
+      MINIO_EXTERNAL_USE_SSL: ${MINIO_EXTERNAL_USE_SSL:-false}
+      PROTHEUS_API_KEY: ${PROTHEUS_API_KEY:-}
+    # Sem publicação de porta no host — roteado pelo Traefik via portal_net
+    networks:
+      - portal_net
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3030/api/health', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portalcliente-api.rule=Host(`portalcliente.local`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.portalcliente-api.entrypoints=web"
+      - "traefik.http.services.portalcliente-api.loadbalancer.server.port=3030"
+
+  frontend:
+    container_name: portal-cliente-frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_TELEMETRY_DISABLED: 1
+    # Sem publicação de porta no host — roteado pelo Traefik via portal_net
+    networks:
+      - portal_net
+    depends_on:
+      portal-cliente-api:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portalcliente-front.rule=Host(`portalcliente.local`)"
+      - "traefik.http.routers.portalcliente-front.entrypoints=web"
+      - "traefik.http.services.portalcliente-front.loadbalancer.server.port=3000"
+
+networks:
+  portal_net:
+    external: true
+
+volumes:
+  minio_data:
+    driver: local

@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "skills": {
+    "audit-orion-codebase": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "bf72c149057c1c96943f9773679aa13a85d139a58479987a2142a7f9bddfba44"
+    },
+    "audit-trail-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "a6441a4362c45d3851f966db8f07a5f697feb16a182ba224157c9d40fc8d217f"
+    },
+    "expo-react-native-patterns": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "7ee7efd6d3a32e2a52c6f5c6f9e0f36fabf124efa6b07178dbab6de1f3c0a52e"
+    },
+    "feature-flags-growthbook-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "77a8113d9d6de354f47a38078b612aa3c07cb09b08de7e10d16f9400536a506c"
+    },
+    "feature-lifecycle-orchestrator-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "92de4181d63fa024c460c58802d6125d05bd1684ba6d1cf02fce8466b868b97e"
+    },
+    "idempotent-critical-mutation": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "9c9a5919512e1be592682ad2c8631834d6efeda13e30d6f77baee9ff7d7e3bf8"
+    },
+    "jwt-refresh-token-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "80bd44582778b1d92b756613607f0c8a2e135d91cf9f407793e632e5050f7f51"
+    },
+    "knowledge-graph-first-navigation": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "d67db6569a4377434baa58859d21ddde5c810882a957720d8fd208991a3ea72b"
+    },
+    "mobile-security-baseline": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "8ce6e79d362289eed1ba898ca4f0d29a6d0b16752fbe44ed9fe45ef661c27eee"
+    },
+    "nestjs-prisma-patterns": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "c36c58778a5cea5589f32826d34cc9e12ccff438a5ad332254dffa71e9d9ea70"
+    },
+    "new-portal": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "100510ef31b2966b201825094f1c1b4291049a76a83039fbc0873a7d7aa3340f"
+    },
+    "nextjs-app-router-patterns": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "d8e089d1b88d946d678808779b92435b26844974c30b391f928be60596793883"
+    },
+    "observability-otel-lgtm-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "af2943c0a8ce6e197b92db8f7f6088578be4038957fdeb3f053dbc468d53869d"
+    },
+    "orion-architecture": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "0beed34f086ffb4faa4ed5e17e184a111d0c85090fa88b5d573bdde4efc54e03"
+    },
+    "orion-design-system-adoption": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "8ddd30e277319ff2a636885d2550cfdf72eaf87ba48b95016faf24629df05f5a"
+    },
+    "orion-design-system-guardian": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "707bc38b62c57075a6d779e0b36acf848651ac8354b1663acb9cf337df661469"
+    },
+    "orion-engineering-experience": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "be30333c765adedf20e66bb5691cc58313c04c6a6de6f63bf875cb547edc4157"
+    },
+    "orion-frontend": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "ed740810da549eacb8807c37e9c919e2c946a062acf1c38f2bce659e7ea9d70c"
+    },
+    "orion-observability": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "7d1c2f7c10fdbae761d139d34111c8eee59c0790f3767599eeb244877449c1f3"
+    },
+    "orion-platform": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "be8a259458e1e800d932c800ccfa644448abb687d45c1fa83ded227641345834"
+    },
+    "orion-quality": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "ad4d74824c61e5152872be1bb7eca38c7cbb77ebe15ca9ee9e895e8714a82218"
+    },
+    "orion-security": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "c4af6ad78098a244f935815cf5b09b61bff61e7f887681283d228995f8c5d7b9"
+    },
+    "permission-catalog-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "8b8870a102119e18be0188c59c04e28b80ec68dfcbb72a397a146a3771cb81c4"
+    },
+    "pre-deploy-check": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "88351bbce1881e333b132ad81df5d36fcd1618f0cc1c5b1326cd8787881d42f8"
+    },
+    "prisma-schema-change": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "446a41a450bb80578c6b5b7cf3abdb303e22ee7b2a96076b2eec1e750a89462d"
+    },
+    "rabbitmq-outbox-worker-pattern": {
+      "source": "../../Users/marce/AppData/Local/npm-cache/_npx/18d00bdba6396876/node_modules/@skills-portais-orion/skills",
+      "sourceType": "local",
+      "computedHash": "0d016690bb5fae7c27280c40f64242e3863f99f195deaf837e5f8c3f6f1d47d5"
+    }
+  }
+}

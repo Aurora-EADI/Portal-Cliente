@@ -147,10 +147,12 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
       api.get('/agendamento/motoristas', { params }).then(r => setMotoristas(r.data)).catch(() => {}),
       api.get('/agendamento/veiculos', { params }).then(r => setVeiculos(r.data)).catch(() => {}),
       api.get('/agendamento/transportadoras', { params }).then(r => setTransportadoras(r.data)).catch(() => {}),
-      api.get('/agendamento/transportadoras-conta').then(r => setTransportadorasConta(r.data)).catch(() => {}),
+      currentUser && [UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA].includes(currentUser.role)
+        ? api.get('/agendamento/transportadoras-conta').then(r => setTransportadorasConta(r.data)).catch(() => {})
+        : Promise.resolve(setTransportadorasConta([])),
       api.get('/agendamento/agendamentos', { params }).then(r => setActiveBookings(r.data.map(mapApiBooking))).catch(() => {}),
     ]).finally(() => setIsLoadingData(false));
-  }, [clienteId]);
+  }, [clienteId, currentUser?.role]);
 
   const upsertDi = (di: DI) => {
     setDis(prev => {

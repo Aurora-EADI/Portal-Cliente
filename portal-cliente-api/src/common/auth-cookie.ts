@@ -29,6 +29,14 @@ export function setAuthCookie(res: Response, token: string): void {
   });
 }
 
+export function setRefreshCookie(res: Response, token: string): void {
+  res.cookie('refresh_token', token, {
+    ...baseOptions(),
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
 export function clearAuthCookie(res: Response): void {
   res.clearCookie(AUTH_COOKIE, baseOptions());
+  res.clearCookie('refresh_token', baseOptions());
 }

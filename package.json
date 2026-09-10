@@ -1,9 +1,31 @@
 {
+  "name": "portal-cliente",
+  "private": true,
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=22.13.0",
+    "pnpm": "11.3.0"
+  },
   "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=aurora-eadi-nextjs",
+    "dev:api": "turbo run dev --filter=portal-cliente-api",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=aurora-eadi-nextjs",
+    "build:api": "turbo run build --filter=portal-cliente-api",
+    "start": "turbo run start",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "prisma:generate": "turbo run prisma:generate",
+    "prisma": "pnpm --filter portal-cliente-api exec prisma",
+    "prisma:web": "pnpm --filter aurora-eadi-nextjs exec prisma",
+    "db:migrate": "pnpm --filter portal-cliente-api exec prisma migrate dev",
+    "db:migrate:web": "pnpm --filter aurora-eadi-nextjs exec prisma migrate dev",
+    "db:studio": "pnpm --filter portal-cliente-api exec prisma studio",
     "prisma:sync": "node scripts/sync-prisma.mjs",
     "prisma:check": "node scripts/sync-prisma.mjs --check"
   },
-  "dependencies": {
-    "date-fns": "^4.1.0"
+  "devDependencies": {
+    "turbo": "^2.8.0"
   }
 }

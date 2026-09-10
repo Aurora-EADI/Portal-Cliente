@@ -44,4 +44,3 @@ export function StatusDocumento({ status }: { status: DocumentoStatus }) {
     </Badge>
   );
 }
-

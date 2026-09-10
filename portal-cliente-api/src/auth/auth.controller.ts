@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,8 +17,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import {
   clearAuthCookie,
-  sessionExpiresAt,
   setAuthCookie,
+  setRefreshCookie,
 } from '../common/auth-cookie';
 
 @Controller('auth')
@@ -30,11 +31,12 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, token } = await this.authService.login(dto.email, dto.password);
+    const { user, token, refreshToken, expires_at } = await this.authService.login(dto.email, dto.password);
 
     // O token sai apenas no cookie httpOnly, nunca no corpo da resposta.
     setAuthCookie(res, token);
-    return { user, expires_at: sessionExpiresAt() };
+    setRefreshCookie(res, refreshToken);
+    return { user, expires_at };
   }
 
   @Public()
@@ -43,6 +45,17 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     clearAuthCookie(res);
     return { ok: true };
+  }
+
+  @Public()
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refresh_token;
+    if (!refreshToken) throw new BadRequestException('refreshToken é obrigatório');
+    const result = await this.authService.refresh(refreshToken);
+    setAuthCookie(res, result.token);
+    setRefreshCookie(res, result.refreshToken);
+    return { user: result.user, expires_at: result.expires_at };
   }
 
   @UseGuards(JwtAuthGuard)

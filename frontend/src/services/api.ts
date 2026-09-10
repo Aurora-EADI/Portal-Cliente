@@ -1,4 +1,4 @@
-import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { api } from '@/lib/api';
 import type { User } from '@/types';
 
@@ -63,13 +63,14 @@ export const authService = {
   },
 
   /**
-   * Sonda a sessao na carga da pagina. Usa um axios cru de proposito: um 401
-   * aqui e resposta normal para visitante anonimo e nao deve disparar o
-   * redirect de sessao expirada do interceptor de `lib/api`.
+   * Sonda a mesma API usada no login, com renovacao por cookie quando disponivel.
+   * Um visitante anonimo nao deve ser redirecionado durante essa sondagem.
    */
   restoreSession: async (): Promise<User | null> => {
     try {
-      const response = await axios.get('/api/auth/me', { withCredentials: true });
+      const response = await api.get('/auth/me', {
+        _sessionProbe: true,
+      } as AxiosRequestConfig & { _sessionProbe: boolean });
       return response.data.user as User;
     } catch (error: any) {
       if (error?.response?.status === 401) return null;

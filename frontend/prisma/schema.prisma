@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  url = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -34,6 +34,7 @@ model User {
   cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
+  tokens       UserToken[]
   procuracoesEnviadas Procuracao[]
   averbacoesCriadas   AverbacaoProcesso[]
   historicoAverbacao  AverbacaoHistorico[] @relation("HistoricoAverbacaoAutor")
@@ -41,6 +42,25 @@ model User {
 
   @@map("users")
 }
+
+model UserToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  type      String    // e.g. "REFRESH"
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, token, expiresAt])
+  @@map("user_tokens")
+}
+
+// ============================================================
+// MODULES / ACCESS CONTROL
+// ============================================================
 
 model Module {
   id          Int      @id @default(autoincrement())
@@ -53,6 +73,7 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  activities Activity[]
   userAccess  UserModuleAccess[]
   sharedItems ModuleSharedItem[]
 
@@ -81,6 +102,8 @@ model UserModuleAccess {
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  activityAccess UserActivityAccess[]
 
   @@unique([userId, moduleId])
   @@map("user_module_access")
@@ -162,16 +185,16 @@ model DI {
 }
 
 model Motorista {
-  id                     String   @id @default(uuid())
-  clienteId              String?
-  transportadoraContaId  String?  @map("transportadora_conta_id")
-  nome                   String
-  cpf                    String
-  cnh                    String
-  telefone               String
-  ativo                  Boolean  @default(true)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  clienteId             String?
+  transportadoraContaId String?  @map("transportadora_conta_id")
+  nome                  String
+  cpf                   String
+  cnh                   String
+  telefone              String
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
@@ -183,15 +206,15 @@ model Motorista {
 }
 
 model Veiculo {
-  id                     String   @id @default(uuid())
-  clienteId              String?
-  transportadoraContaId  String?  @map("transportadora_conta_id")
-  placa                  String
-  modelo                 String
-  tipo                   String
-  ativo                  Boolean  @default(true)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  clienteId             String?
+  transportadoraContaId String?  @map("transportadora_conta_id")
+  placa                 String
+  modelo                String
+  tipo                  String
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
@@ -201,6 +224,8 @@ model Veiculo {
   @@unique([transportadoraContaId, placa])
   @@map("veiculos")
 }
+
+
 
 model JanelaAtendimento {
   id                String   @id @default(uuid())
@@ -231,48 +256,48 @@ model Agendamento {
   criadoEm    DateTime          @default(now())
 
   // Campos do novo formulário de agendamento
-  operacao       String?
-  subOperacao    String?
-  cargaEspecial  Boolean  @default(false)
-  servicos       String[]
-  tipoVeiculo    String?
-  cpfMotorista   String?
-  nomeMotorista  String?
-  placaVeiculo   String?
-  transportadora String?
-  empresa        String?
-  awbMawb        String?
-  diNumero       String?
-  dta            String?
-  hawb           String?
-  numeroVoo      String?
-  volumes        String?
-  peso           String?
-  consignatario  String?
-  container      String?
-  criadoPorNome  String?   @map("criado_por_nome")
-  criadoPorRole  String?   @map("criado_por_role")
-  transportadoraContaId String? @map("transportadora_conta_id")
+  operacao              String?
+  subOperacao           String?
+  cargaEspecial         Boolean  @default(false)
+  servicos              String[]
+  tipoVeiculo           String?
+  cpfMotorista          String?
+  nomeMotorista         String?
+  placaVeiculo          String?
+  transportadora        String?
+  empresa               String?
+  awbMawb               String?
+  diNumero              String?
+  dta                   String?
+  hawb                  String?
+  numeroVoo             String?
+  volumes               String?
+  peso                  String?
+  consignatario         String?
+  container             String?
+  criadoPorNome         String?  @map("criado_por_nome")
+  criadoPorRole         String?  @map("criado_por_role")
+  transportadoraContaId String?  @map("transportadora_conta_id")
 
   // Dados de contato/endereço do cliente e transportadora, snapshot no momento do agendamento (fonte: SIAUM)
-  cnpjCliente             String? @map("cnpj_cliente")
-  enderecoCliente         String? @map("endereco_cliente")
-  telefoneCliente         String? @map("telefone_cliente")
-  emailCliente            String? @map("email_cliente")
-  cnpjTransportadora      String? @map("cnpj_transportadora")
-  enderecoTransportadora  String? @map("endereco_transportadora")
-  telefoneTransportadora  String? @map("telefone_transportadora")
-  emailTransportadora     String? @map("email_transportadora")
+  cnpjCliente            String? @map("cnpj_cliente")
+  enderecoCliente        String? @map("endereco_cliente")
+  telefoneCliente        String? @map("telefone_cliente")
+  emailCliente           String? @map("email_cliente")
+  cnpjTransportadora     String? @map("cnpj_transportadora")
+  enderecoTransportadora String? @map("endereco_transportadora")
+  telefoneTransportadora String? @map("telefone_transportadora")
+  emailTransportadora    String? @map("email_transportadora")
 
   // Notificação WhatsApp (enviada pelo Aurora via n8n, ver /api/service/whatsapp-pendentes)
-  whatsapp              String?
-  notificarWhatsapp     Boolean   @default(false)
-  whatsappNotificadoEm  DateTime?
+  whatsapp             String?
+  notificarWhatsapp    Boolean   @default(false)
+  whatsappNotificadoEm DateTime?
 
-  di        DI?        @relation(fields: [diId], references: [id])
-  motorista Motorista? @relation(fields: [motoristaId], references: [id])
-  veiculo   Veiculo?   @relation(fields: [veiculoId], references: [id])
-  cliente   Cliente?   @relation(fields: [clienteId], references: [id])
+  di                  DI?                  @relation(fields: [diId], references: [id])
+  motorista           Motorista?           @relation(fields: [motoristaId], references: [id])
+  veiculo             Veiculo?             @relation(fields: [veiculoId], references: [id])
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id])
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
 
   @@map("agendamentos")
@@ -327,7 +352,7 @@ model DiAverbada {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
+  despachanteRef Despachante?                 @relation(fields: [codDespachante], references: [codDespachante])
   atribuicoes    DiTransportadoraAtribuicao[]
 
   @@index([cnpjCliente])
@@ -385,19 +410,19 @@ model DiTransportadoraAtribuicao {
 // ============================================================
 
 model ConviteRegistro {
-  id             String    @id @default(uuid())
-  token          String    @unique @default(uuid())
-  tipo           UserRole
-  codDespachante String?   @map("cod_despachante")
-  cnpjCliente    String?   @map("cnpj_cliente")
-  cnpjTransportadora String? @map("cnpj_transportadora")
-  codTransp      String?   @map("cod_transp")
-  nome           String
-  email          String?
-  expiresAt      DateTime  @map("expires_at")
-  usedAt         DateTime? @map("used_at")
-  usedByUserId   String?   @map("used_by_user_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  token              String    @unique @default(uuid())
+  tipo               UserRole
+  codDespachante     String?   @map("cod_despachante")
+  cnpjCliente        String?   @map("cnpj_cliente")
+  cnpjTransportadora String?   @map("cnpj_transportadora")
+  codTransp          String?   @map("cod_transp")
+  nome               String
+  email              String?
+  expiresAt          DateTime  @map("expires_at")
+  usedAt             DateTime? @map("used_at")
+  usedByUserId       String?   @map("used_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   @@map("convites_registro")
 }
@@ -719,4 +744,65 @@ model AverbacaoHistorico {
 
   @@index([documentoId, criadoEm])
   @@map("averbacao_historico")
+}
+
+model Activity {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  moduleId    Int
+  isMandatory Boolean @default(false)
+
+  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  permissions    ActivityPermission[]
+  activityAccess UserActivityAccess[]
+
+  @@unique([name, moduleId])
+  @@map("activities")
+}
+
+model Permission {
+  id          Int    @id @default(autoincrement())
+  key         String @unique
+  description String
+  category    String
+
+  activities ActivityPermission[]
+
+  @@map("permissions")
+}
+
+model ActivityPermission {
+  activityId   Int
+  permissionId Int
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, permissionId])
+  @@map("activity_permissions")
+}
+
+model UserActivityAccess {
+  id                 String  @id @default(uuid())
+  userModuleAccessId String
+  activityId         Int
+  isEnabled          Boolean @default(false)
+
+  userModuleAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
+  activity         Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userModuleAccessId, activityId])
+  @@map("user_activity_access")
+}
+
+model SlotReserva {
+  id       String   @id @default(uuid())
+  data     String
+  horario  String
+  diId     String
+  expiraEm DateTime
+  criadaEm DateTime @default(now())
+
+  @@map("slot_reservas")
 }

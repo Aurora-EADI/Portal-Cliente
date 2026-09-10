@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/*.tsbuildinfo
+.git
+.agents
+.claude
+.npm-cache
+.pnpm-store
+**/.env*
+!**/.env.example
+**/*debug.log*
+frontend/error.log

@@ -1,4 +1,6 @@
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+
+type SessionRequest = InternalAxiosRequestConfig & { _retry?: boolean; _sessionProbe?: boolean };
 
 // Rotas onde um 401 e resposta esperada para visitante anonimo — redirecionar
 // dali jogaria quem esta se cadastrando para fora do fluxo.
@@ -25,11 +27,30 @@ export function createHttpClient(baseURL: string): AxiosInstance {
     },
   });
 
+  let refresh: Promise<unknown> | null = null;
   client.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+      const request = error.config as SessionRequest | undefined;
+      const isAuthRequest = /^\/auth\/(login|logout|refresh)$/.test(request?.url || '');
+      if (error.response?.status === 401 && request && !isAuthRequest && !request._retry) {
+        request._retry = true;
+        try {
+          if (!refresh) {
+            refresh = client.post('/auth/refresh').finally(() => { refresh = null; });
+          }
+          await refresh;
+          return client(request);
+        } catch (refreshError) {
+          const status = (refreshError as AxiosError).response?.status;
+          // The Next auth routes have no refresh endpoint; Nest uses an httpOnly cookie.
+          if (![400, 401, 403, 404, 405].includes(status || 0)) {
+            return Promise.reject(refreshError);
+          }
+        }
+      }
       if (error.response?.status === 401 && typeof window !== 'undefined') {
-        if (!PUBLIC_PATHS.has(window.location.pathname)) {
+        if (!isAuthRequest && !request?._sessionProbe && !PUBLIC_PATHS.has(window.location.pathname)) {
           window.location.href = '/session-expired';
         }
       }

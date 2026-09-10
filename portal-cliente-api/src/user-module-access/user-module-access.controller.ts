@@ -14,7 +14,7 @@ export class UserModuleAccessController {
   @Roles(UserRole.ADMIN)
   getStats() { return this.service.getModuleUsageStats(); }
 
-  @Get(':userId')
+  @Get([':userId', 'user/:userId/modules'])
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   getUserModules(@Param('userId') userId: string) {
     return this.service.getUserModulesWithAccessStatus(userId);

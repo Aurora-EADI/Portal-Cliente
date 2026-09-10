@@ -20,7 +20,11 @@ const TARGET = resolve(root, 'frontend/prisma/schema.prisma');
 
 const check = process.argv.includes('--check');
 
-const source = readFileSync(SOURCE, 'utf8');
+// Prisma 7 keeps datasource URLs in prisma.config.ts; frontend uses Prisma 6.
+const source = readFileSync(SOURCE, 'utf8').replace(
+  /(datasource db \{\s*provider\s*=\s*"postgresql")/,
+  '$1\n  url = env("DATABASE_URL")\n  directUrl = env("DIRECT_URL")',
+);
 let target = null;
 try {
   target = readFileSync(TARGET, 'utf8');

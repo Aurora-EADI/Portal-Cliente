@@ -8,6 +8,13 @@ import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { ModulesModule } from '../modules/modules.module';
 import { UserModuleAccessModule } from '../user-module-access/user-module-access.module';
+import { AgendamentoModule } from '../agendamento/agendamento.module';
+import { ClientesModule } from '../clientes/clientes.module';
+import { DisModule } from '../dis/dis.module';
+import { MotoristasModule } from '../motoristas/motoristas.module';
+import { VeiculosModule } from '../veiculos/veiculos.module';
+import { TransportadorasModule } from '../transportadoras/transportadoras.module';
+import { JanelasModule } from '../janelas/janelas.module';
 import { TiposDocumentoModule } from '../tipos-documento/tipos-documento.module';
 import { ProcuracoesModule } from '../procuracoes/procuracoes.module';
 import { AverbacoesModule } from '../averbacoes/averbacoes.module';
@@ -24,6 +31,13 @@ import { AverbacoesModule } from '../averbacoes/averbacoes.module';
     UsersModule,
     ModulesModule,
     UserModuleAccessModule,
+    AgendamentoModule,
+    ClientesModule,
+    DisModule,
+    MotoristasModule,
+    VeiculosModule,
+    TransportadorasModule,
+    JanelasModule,
     TiposDocumentoModule,
     ProcuracoesModule,
     AverbacoesModule,

@@ -75,7 +75,7 @@ export function DashboardView() {
   const [atribuicoesPorLote, setAtribuicoesPorLote] = useState<Record<string, AtribuicaoResumo[]>>({});
 
   useEffect(() => {
-    if (isTransportadora) return;
+    if (isAdmin || isTransportadora) return;
     api.get<AtribuicaoResumo[]>('/agendamento/atribuicoes')
       .then(({ data }) => {
         const map: Record<string, AtribuicaoResumo[]> = {};
@@ -83,7 +83,7 @@ export function DashboardView() {
         setAtribuicoesPorLote(map);
       })
       .catch(() => {});
-  }, [isTransportadora]);
+  }, [isAdmin, isTransportadora]);
 
   if (isAdmin) return <AdminAgendamentoDashboard />;
 
