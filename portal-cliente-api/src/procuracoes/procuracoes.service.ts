@@ -13,6 +13,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
+import { MailService } from '../mail/mail.service';
+import { procuracaoDecidida } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 
 /** Campos seguros para devolver ao usuário externo — sem a key do MinIO. */
@@ -82,6 +84,7 @@ export class ProcuracoesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly minio: MinioService,
+    private readonly mail: MailService,
   ) {}
 
   /**
@@ -542,7 +545,7 @@ export class ProcuracoesService {
     motivo: string | null,
     analisadoPor?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const salva = await this.prisma.$transaction(async (tx) => {
       const atual = await tx.procuracao.findUniqueOrThrow({
         where: { id },
         select: {
@@ -579,6 +582,58 @@ export class ProcuracoesService {
 
       return salva;
     });
+
+    // Fora da transação e sem await: a decisão já está gravada e o email é
+    // consequência dela, não parte dela. Segurar o commit esperando o Office
+    // 365 só transformaria lentidão da Microsoft em lentidão do portal.
+    void this.notificarDecisao(id, status, motivo, analisadoPor);
+
+    return salva;
+  }
+
+  /**
+   * Avisa quem depende da decisão: o login que enviou o PDF e a caixa do
+   * escritório despachante.
+   *
+   * Engole os próprios erros — inclusive os da consulta ao banco. Uma falha ao
+   * montar a notificação não pode escapar para o `void` que a dispara e virar
+   * unhandled rejection derrubando o processo do Node.
+   */
+  private async notificarDecisao(
+    id: string,
+    status: ProcuracaoStatus,
+    motivo: string | null,
+    analisadoPor?: string,
+  ) {
+    try {
+      const procuracao = await this.prisma.procuracao.findUnique({
+        where: { id },
+        select: {
+          cliente: { select: { nome: true, cnpj: true } },
+          despachante: { select: { nome: true, email: true } },
+          enviadoPor: { select: { email: true } },
+        },
+      });
+      if (!procuracao) return;
+
+      const corpo = procuracaoDecidida({
+        despachanteNome: procuracao.despachante.nome,
+        clienteNome: procuracao.cliente.nome,
+        clienteCnpj: procuracao.cliente.cnpj,
+        status: status as 'APROVADA' | 'REPROVADA' | 'REVOGADA',
+        motivo,
+        analisadoPor,
+      });
+
+      await this.mail.enviar({
+        para: [procuracao.enviadoPor?.email, procuracao.despachante.email],
+        ...corpo,
+      });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar decisão da procuração ${id} — ${(erro as Error).message}`,
+      );
+    }
   }
 
   /**

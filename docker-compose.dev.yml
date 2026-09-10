@@ -74,6 +74,17 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-averbacao}
+      # SMTP das notificacoes (procuracao decidida, documento decidido,
+      # processo liberado). Sem HOST/USER/PASS o MailService sobe desligado e
+      # so registra aviso no log — a API funciona igual, sem email.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      # false porque a 587 do Office 365 e STARTTLS; "true" so vale na 465.
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      PORTAL_URL: ${PORTAL_URL:-http://localhost:3002}
     volumes:
       - ./portal-cliente-api:/app
       - /app/node_modules
