@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Container, CalendarDays } from 'lucide-react';
+import { Search, Container, CalendarDays, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
+import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 
 export function DIDirectoryView() {
   const router = useRouter();
@@ -90,7 +91,21 @@ export function DIDirectoryView() {
               <tbody className="divide-y divide-zinc-100">
                 {filteredDIs.map(di => {
                   const activeBooking = getDIActiveBooking(di.id);
-                  const canBook = di.status === 'liberada' && !activeBooking;
+                  // procuracaoStatus só vem para DESPACHANTE; undefined = a
+                  // regra não se aplica a este usuário.
+                  const bloqueadoPorProcuracao =
+                    di.procuracaoStatus !== undefined &&
+                    di.procuracaoStatus !== 'APROVADA';
+                  // Sem processo (null/undefined) não bloqueia: vale o fluxo
+                  // legado, em que a DI já chegou averbada do Portal Aurora.
+                  const bloqueadoPorAverbacao =
+                    Boolean(di.averbacaoStatus) &&
+                    di.averbacaoStatus !== 'LIBERADO_AGENDAMENTO';
+                  const canBook =
+                    di.status === 'liberada' &&
+                    !activeBooking &&
+                    !bloqueadoPorProcuracao &&
+                    !bloqueadoPorAverbacao;
                   return (
                     <tr key={di.id} className="hover:bg-zinc-50/60 transition-colors">
                       <td className="py-3 px-4">
@@ -114,8 +129,50 @@ export function DIDirectoryView() {
                         ) : (
                           <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Retido Receita</span>
                         )}
+                        {bloqueadoPorProcuracao && (
+                          <span
+                            title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']}
+                            className="ml-1.5 inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                          >
+                            <FileSignature className="w-3 h-3" />
+                            Sem procuração
+                          </span>
+                        )}
+                        {bloqueadoPorAverbacao && (
+                          <span
+                            title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''}
+                            className="ml-1.5 inline-flex items-center gap-1 bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                          >
+                            <FileCheck className="w-3 h-3" />
+                            Averbação pendente
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
+                        {/* Sem procuração aprovada a DI continua visível, mas a
+                            ação leva a resolver a procuração — não a agendar. */}
+                        {bloqueadoPorProcuracao && !activeBooking && (
+                          <button
+                            onClick={() => router.push('/procuracoes')}
+                            title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            <FileSignature className="w-3.5 h-3.5" />
+                            <span>Procuração</span>
+                          </button>
+                        )}
+                        {/* Procuração vem primeiro: sem ela o despachante nem
+                            consegue abrir o processo de averbação. */}
+                        {!bloqueadoPorProcuracao && bloqueadoPorAverbacao && !activeBooking && (
+                          <button
+                            onClick={() => router.push('/averbacao')}
+                            title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            <FileCheck className="w-3.5 h-3.5" />
+                            <span>Averbação</span>
+                          </button>
+                        )}
                         {canBook && (
                           <button
                             onClick={() => handleStartBooking(di)}

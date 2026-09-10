@@ -4,6 +4,7 @@
 # ===========================================
 
 stages:
+  - check
   - build
   - migrate
   - deploy
@@ -12,6 +13,23 @@ stages:
 variables:
   PROJECT_DIR: 'C:\Users\administrator\Documents\Portal_Prod\Portal-Aurora'
   COMPOSE_FILE: docker-compose.prod.yml
+
+# -----------------------------------------------
+# Stage: check - Verificacoes que nao precisam de build
+# -----------------------------------------------
+# A fonte de verdade do schema Prisma e portal-cliente-api/prisma/schema.prisma;
+# frontend/prisma/schema.prisma e copia gerada. Quem editar so a copia quebra
+# aqui, antes de gerar dois clients divergentes.
+prisma-schema-sync:
+  stage: check
+  tags:
+    - shell
+  script:
+    - node scripts/sync-prisma.mjs --check
+  rules:
+    - changes:
+        - portal-cliente-api/prisma/schema.prisma
+        - frontend/prisma/schema.prisma
 
 # -----------------------------------------------
 # Stage: build - Build das imagens Docker

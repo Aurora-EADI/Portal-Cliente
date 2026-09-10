@@ -1,5 +1,3 @@
-import Cookies from 'js-cookie';
-
 export function connectEventStream<T>(path: string, onEvent: (data: T) => void): () => void {
   let source: EventSource | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -11,12 +9,7 @@ export function connectEventStream<T>(path: string, onEvent: (data: T) => void):
   };
   const connect = () => {
     if (stopped) return;
-    const token = Cookies.get('access_token');
-    if (!token) {
-      scheduleRetry();
-      return;
-    }
-    source = new EventSource(`${path}?token=${encodeURIComponent(token)}`);
+    source = new EventSource(path);
     source.onmessage = event => {
       try {
         const data = JSON.parse(event.data) as T;

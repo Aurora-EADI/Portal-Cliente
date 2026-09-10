@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Backend do Portal do Cliente - Agendamento FCL",
   "private": true,
-  "files": ["dist", "prisma"],
+  "files": [
+    "dist",
+    "prisma"
+  ],
   "scripts": {
     "build": "nest build",
     "typecheck": "tsc --noEmit",
@@ -11,9 +14,9 @@
     "start:prod": "node dist/main",
     "dev": "nest start --watch --preserveWatchOutput",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -26,11 +29,14 @@
     "@nestjs/swagger": "^11.0.3",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@nestjs/throttler": "^6.5.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.3.1",
+    "minio": "^8.0.7",
+    "nodemailer": "^6.10.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.23.0",
@@ -44,7 +50,9 @@
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^6.4.24",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.23.1",
     "prisma": "^7.10.0",

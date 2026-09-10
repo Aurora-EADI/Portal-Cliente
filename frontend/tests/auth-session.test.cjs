@@ -8,8 +8,12 @@ const axios = require('axios');
 
 // Run the real services/interceptors with an isolated browser cookie jar and HTTP adapter.
 function session(adapter, jar = new Map()) {
-  const http = axios.create({ adapter });
-  http.create = (config) => axios.create({ ...config, adapter });
+  const browserAdapter = config => {
+    if (config.withCredentials) config.headers.Cookie = [...jar].map(([k, v]) => `${k}=${v}`).join('; ');
+    return adapter(config);
+  };
+  const http = axios.create({ adapter: browserAdapter });
+  http.create = (config) => axios.create({ ...config, adapter: browserAdapter });
   const location = { pathname: '/dashboard', href: '/dashboard' };
   const cache = new Map();
   function load(name) {
@@ -30,6 +34,7 @@ function session(adapter, jar = new Map()) {
           remove: (key) => jar.delete(key),
         };
         if (id.startsWith('@/')) return load(id.slice(2));
+        if (id.startsWith('./')) return load(path.posix.join(path.posix.dirname(name), id));
         throw new Error(`Unexpected dependency: ${id}`);
       },
     }, { filename });
@@ -50,9 +55,10 @@ test('login and page reload use the same API and preserve the session', async ()
   const adapter = async (config) => {
     const target = axios.getUri(config);
     if (target === 'http://localhost:3030/api/auth/login') {
-      return response(config, 200, { user: { id: 'user-1' }, token: 'valid', refreshToken: 'renew', expires_at: 'later' });
+      jar.set('access_token', 'valid'); jar.set('refresh_token', 'renew');
+      return response(config, 200, { user: { id: 'user-1' }, expires_at: 'later' });
     }
-    if (target === 'http://localhost:3030/api/auth/me' && config.headers.Authorization === 'Bearer valid') {
+    if (target === 'http://localhost:3030/api/auth/me' && config.headers.Cookie?.includes('access_token=valid')) {
       return response(config, 200, { user: { id: 'user-1' } });
     }
     return response(config, 401, { message: 'Wrong auth authority' });
@@ -90,9 +96,10 @@ test('concurrent unauthorized requests renew once and retry successfully', async
     if (config.url.endsWith('/auth/refresh')) {
       refreshes++;
       await new Promise(resolve => setTimeout(resolve, 10));
-      return response(config, 200, { token: 'new', refreshToken: 'new-refresh' });
+      client.jar.set('access_token', 'new'); client.jar.set('refresh_token', 'new-refresh');
+      return response(config, 200, { expires_at: 'later' });
     }
-    return response(config, config.headers.Authorization === 'Bearer new' ? 200 : 401, { user: { id: 'user-1' } });
+    return response(config, config.headers.Cookie?.includes('access_token=new') ? 200 : 401, { user: { id: 'user-1' } });
   }, new Map([['access_token', 'old'], ['refresh_token', 'renew']]));
   const users = await Promise.all([client.auth.getProfile(), client.auth.getProfile()]);
   assert.equal(users.length, 2);
@@ -103,19 +110,20 @@ test('concurrent unauthorized requests renew once and retry successfully', async
 test('profile can renew when only the refresh cookie remains', async () => {
   const client = session(async (config) => {
     if (config.url === '/auth/refresh') {
-      return response(config, 200, { token: 'new', refreshToken: 'rotated' });
+      client.jar.set('access_token', 'new'); client.jar.set('refresh_token', 'rotated');
+      return response(config, 200, { expires_at: 'later' });
     }
-    return response(config, config.headers.Authorization === 'Bearer new' ? 200 : 401, { user: { id: 'user-1' } });
+    return response(config, config.headers.Cookie?.includes('access_token=new') ? 200 : 401, { user: { id: 'user-1' } });
   }, new Map([['refresh_token', 'renew']]));
   assert.equal((await client.auth.getProfile()).id, 'user-1');
   assert.equal(client.jar.get('access_token'), 'new');
 });
 
-test('rejected refresh clears credentials and redirects to expired session', async () => {
+test('rejected refresh redirects without manipulating httpOnly credentials', async () => {
   const client = session(async (config) => response(config, 401, {}),
     new Map([['access_token', 'old'], ['refresh_token', 'revoked']]));
   await assert.rejects(client.auth.getProfile());
-  assert.equal(client.jar.size, 0);
+  assert.equal(client.jar.get('refresh_token'), 'revoked'); // JS cannot clear httpOnly cookies.
   assert.equal(client.location.href, '/session-expired');
 });
 
@@ -132,4 +140,19 @@ test('retried concurrent requests cannot start another renewal loop', async () =
   const results = await Promise.allSettled([client.auth.getProfile(), client.auth.getProfile()]);
   assert.ok(results.every(result => result.status === 'rejected'));
   assert.equal(refreshes, 1);
+});
+
+
+test('anonymous session probe stays on the current page', async () => {
+  const client = session(async config => response(config, 401, {}));
+  assert.equal(await client.auth.restoreSession(), null);
+  assert.equal(client.location.href, '/dashboard');
+});
+
+test('logout calls the configured auth server with credentials', async () => {
+  let request;
+  const client = session(async config => { request = config; return response(config, 200, { ok: true }); });
+  await client.auth.logout();
+  assert.equal(request.url, '/auth/logout');
+  assert.equal(request.withCredentials, true);
 });

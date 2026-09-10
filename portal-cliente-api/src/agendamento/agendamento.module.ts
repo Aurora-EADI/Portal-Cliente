@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AgendamentoController } from './agendamento.controller';
 import { AgendamentoService } from './agendamento.service';
 

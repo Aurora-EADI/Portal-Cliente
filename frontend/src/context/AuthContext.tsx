@@ -1,7 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import Cookies from 'js-cookie';
 import { User } from '../types';
 import { useRouter } from "next/navigation";
 import { authService } from '@/services/api';
@@ -26,18 +25,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const restoreSession = async () => {
+      // O cookie e httpOnly, entao nao da mais para checar a sessao no cliente
+      // antes de perguntar: quem responde se ha sessao valida e o servidor.
       const maxAttempts = 3;
       try {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           try {
-            if (Cookies.get('access_token') || Cookies.get('refresh_token')) {
-              const user = await authService.getProfile();
-              setCurrentUser(user);
-            }
+            const user = await authService.restoreSession();
+            if (user) setCurrentUser(user);
             return;
-          } catch (err: any) {
+          } catch {
             const isLastAttempt = attempt === maxAttempts - 1;
-            if (isLastAttempt || err?.status === 401) return;
+            if (isLastAttempt) return;
             await new Promise(r => setTimeout(r, 1500));
           }
         }
@@ -54,8 +53,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logoutUser = async () => {
-    Cookies.remove('access_token');
-    Cookies.remove('refresh_token');
+    // Cookie httpOnly so o servidor apaga.
+    await authService.logout();
     clearDraft();
     setCurrentUser(null);
     queryClient.clear();

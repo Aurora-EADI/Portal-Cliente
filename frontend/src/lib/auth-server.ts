@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from './prisma';
 import { verifyToken } from './jwt';
+import { AUTH_COOKIE } from './auth-cookie';
 import type { User, UserRole } from '@prisma/client';
 
 type AuthSuccess = { user: User; error: null };
@@ -24,10 +25,24 @@ export async function resolveUserFromToken(token: string | null): Promise<AuthSu
   return { user, error: null };
 }
 
-export async function requireAuth(request: NextRequest): Promise<AuthSuccess | AuthFailure> {
+/**
+ * Cookie httpOnly primeiro; header Bearer como fallback.
+ *
+ * O fallback existe por dois motivos: sessoes abertas antes da migracao para
+ * cookie httpOnly continuam valendo ate expirarem, e clientes nao-browser
+ * (Swagger, scripts) nao tem cookie jar. Quando nao houver mais nenhum dos
+ * dois, o fallback pode sair.
+ */
+export function extractToken(request: NextRequest): string | null {
+  const fromCookie = request.cookies.get(AUTH_COOKIE)?.value;
+  if (fromCookie) return fromCookie;
+
   const authHeader = request.headers.get('authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  return resolveUserFromToken(token);
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+}
+
+export async function requireAuth(request: NextRequest): Promise<AuthSuccess | AuthFailure> {
+  return resolveUserFromToken(extractToken(request));
 }
 
 export function requireRoles(user: User, roles: UserRole[]): NextResponse | null {

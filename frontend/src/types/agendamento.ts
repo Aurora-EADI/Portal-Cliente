@@ -18,6 +18,30 @@ export interface DI {
   despachante?: string;
   localizacao?: string;
   averbadoEm?: string;
+  /**
+   * Situação da procuração deste despachante para o importador da DI.
+   * Só vem preenchido para DESPACHANTE; `null` = não existe procuração.
+   * Qualquer valor diferente de APROVADA bloqueia operar em nome do cliente.
+   * `VENCIDA` é derivado: aprovada, mas com a validade já passada.
+   */
+  procuracaoStatus?:
+    | 'PENDENTE_ENVIO'
+    | 'EM_ANALISE'
+    | 'APROVADA'
+    | 'REPROVADA'
+    | 'VENCIDA'
+    | null;
+  /**
+   * Situação do processo documental de averbação desta DI.
+   * `null` = não há processo, e o fluxo legado vale — a DI já veio averbada
+   * do Portal Aurora. Só bloqueia quando há processo ainda não liberado.
+   */
+  averbacaoStatus?:
+    | 'RASCUNHO'
+    | 'EM_ANALISE'
+    | 'PENDENTE_CORRECAO'
+    | 'LIBERADO_AGENDAMENTO'
+    | null;
 }
 
 export interface Motorista {

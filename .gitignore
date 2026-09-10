@@ -4,6 +4,13 @@ data/
 *.xl.meta
 .minio.sys/
 
+# Build
+dist/
+*.tsbuildinfo
+
+# Ferramentas locais
+.claude/
+
 # Variáveis de ambiente
 .env
 .env.dev
@@ -38,3 +45,9 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.md
+
+# Artefatos de build que escapavam do tsc antes do exclude de prisma/
+portal-cliente-api/prisma/*.js
+portal-cliente-api/prisma/*.d.ts
+portal-cliente-api/prisma/*.js.map

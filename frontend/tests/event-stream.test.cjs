@@ -18,7 +18,7 @@ function setup() {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
   }).outputText, {
     module, exports: module.exports, EventSource,
-    require: () => ({ get: () => 'test-token' }),
+    require: () => { throw new Error('SSE must not read cookies from JavaScript'); },
     setTimeout(fn, ms) { const id = ++nextId; timers.set(id, fn); delays.push(ms); return id; },
     clearTimeout(id) { timers.delete(id); },
   });
@@ -62,4 +62,12 @@ test('valid events are delivered and reset consecutive retry delays', () => {
   env.sources[1].onerror();
   assert.deepEqual(received, ['di-1']);
   assert.deepEqual(env.delays, [5000, 5000]);
+});
+
+
+test('httpOnly session connects without a readable token or token in the URL', () => {
+  const env = setup();
+  const stop = env.connectEventStream('/api/agendamento/stream', () => {});
+  assert.equal(env.sources[0].url, '/api/agendamento/stream');
+  stop();
 });

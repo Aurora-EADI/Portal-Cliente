@@ -5,10 +5,13 @@ import { NavItem, NavigationContext } from './types';
 export type { NavItem, NavigationContext } from './types';
 import { mainNavigation } from './modules/main';
 import { agendamentoFCLNavigation } from './modules/agendamento';
+import { averbacaoNavigation, procuracoesNavigation } from './modules/averbacao';
 
 // Navegação estática (fallback)
 export const allNavigationContexts: NavigationContext[] = [
     agendamentoFCLNavigation,
+    averbacaoNavigation,
+    procuracoesNavigation,
     mainNavigation,
 ];
 

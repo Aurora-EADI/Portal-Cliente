@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle, Truck } from 'lucide-react';
+import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
+import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 import { api } from '@/lib/api';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 import { StatusBadge } from './StatusBadge';
@@ -153,13 +154,10 @@ export function DashboardView() {
           <h2 className="text-lg font-bold text-zinc-900">{selectedClient}</h2>
           <p className="text-xs text-zinc-500 mt-0.5">Painel de acompanhamento de agendamentos</p>
         </div>
-        <button
-          onClick={() => router.push('/agendamento?tab=wizard')}
-          className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors shadow-sm self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Novo Agendamento'}
-        </button>
+        {/* Sem atalho genérico para o wizard aqui: ele ignorava os bloqueios de
+            procuração e averbação, e a pessoa só descobria a pendência depois
+            de preencher tudo. O caminho é a ação da própria linha da DI, que
+            já sabe o que está travando. */}
       </div>
 
       {/* KPI cards */}
@@ -258,6 +256,13 @@ export function DashboardView() {
                 {pendingRows.map(({ di, container, key }) => {
                   const atribuicoesDoLote = atribuicoesPorLote[di.nLote ?? ''] ?? [];
                   const atribuicoes = atribuicoesDoLote.filter(a => a.container === container || a.container === '');
+                  // Mesmas travas da lista de DIs: sem procuração aprovada, ou
+                  // com processo de averbação em aberto, a linha continua
+                  // visível mas a ação leva a resolver a pendência.
+                  const bloqueadoPorProcuracao =
+                    di.procuracaoStatus !== undefined && di.procuracaoStatus !== 'APROVADA';
+                  const bloqueadoPorAverbacao =
+                    Boolean(di.averbacaoStatus) && di.averbacaoStatus !== 'LIBERADO_AGENDAMENTO';
                   return (
                   <tr key={key} className={`hover:bg-zinc-50 transition-colors ${atribuicoes.length > 0 ? 'bg-sky-50/40' : 'bg-emerald-50/30'}`}>
                     <td className="px-4 py-3 font-mono font-semibold text-zinc-800 whitespace-nowrap">{di.numeroDI}</td>
@@ -278,6 +283,16 @@ export function DashboardView() {
                           Atribuída à {atribuicoes[0].transportadora.nome}
                           {atribuicoes.length > 1 && ` +${atribuicoes.length - 1}`}
                         </span>
+                      ) : bloqueadoPorProcuracao ? (
+                        <span title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']} className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                          <FileSignature className="w-3 h-3" />
+                          Sem procuração
+                        </span>
+                      ) : bloqueadoPorAverbacao ? (
+                        <span title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''} className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                          <FileCheck className="w-3 h-3" />
+                          Averbação pendente
+                        </span>
                       ) : (
                         <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Disponível</span>
                       )}
@@ -289,12 +304,30 @@ export function DashboardView() {
                     <td className="px-4 py-3 text-zinc-400">—</td>
                     <td className="px-4 py-3 text-zinc-400">—</td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => router.push(`/agendamento?tab=wizard&diNumero=${encodeURIComponent(di.numeroDI)}&container=${encodeURIComponent(container)}`)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-md transition-colors"
-                      >
-                        <Plus className="w-3 h-3" /> {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Agendar'}
-                      </button>
+                      {bloqueadoPorProcuracao ? (
+                        <button
+                          onClick={() => router.push('/procuracoes')}
+                          title={MENSAGEM_PROCURACAO[di.procuracaoStatus ?? 'SEM']}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md transition-colors"
+                        >
+                          <FileSignature className="w-3 h-3" /> Procuração
+                        </button>
+                      ) : bloqueadoPorAverbacao ? (
+                        <button
+                          onClick={() => router.push('/averbacao')}
+                          title={MENSAGEM_AVERBACAO[di.averbacaoStatus ?? ''] ?? ''}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-300 rounded-md transition-colors"
+                        >
+                          <FileCheck className="w-3 h-3" /> Averbação
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => router.push(`/agendamento?tab=wizard&diNumero=${encodeURIComponent(di.numeroDI)}&container=${encodeURIComponent(container)}`)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-white bg-[#ED6A23] hover:bg-[#D45917] rounded-md transition-colors"
+                        >
+                          <Plus className="w-3 h-3" /> {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Agendar'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                   );

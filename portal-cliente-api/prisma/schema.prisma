@@ -6,10 +6,6 @@ datasource db {
   provider  = "postgresql"
 }
 
-// ============================================================
-// AUTH & USERS
-// ============================================================
-
 enum UserRole {
   ADMIN
   EMPLOYEE
@@ -37,6 +33,10 @@ model User {
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
   tokens       UserToken[]
+  procuracoesEnviadas Procuracao[]
+  averbacoesCriadas   AverbacaoProcesso[]
+  historicoAverbacao  AverbacaoHistorico[] @relation("HistoricoAverbacaoAutor")
+  historicoProcuracao ProcuracaoHistorico[] @relation("HistoricoProcuracaoAutor")
 
   @@map("users")
 }
@@ -71,7 +71,7 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  activities  Activity[]
+  activities Activity[]
   userAccess  UserModuleAccess[]
   sharedItems ModuleSharedItem[]
 
@@ -91,42 +91,6 @@ model ModuleSharedItem {
   @@map("module_shared_items")
 }
 
-model Activity {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  moduleId    Int
-  isMandatory Boolean @default(false)
-
-  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  permissions    ActivityPermission[]
-  activityAccess UserActivityAccess[]
-
-  @@unique([name, moduleId])
-  @@map("activities")
-}
-
-model Permission {
-  id          Int    @id @default(autoincrement())
-  key         String @unique
-  description String
-  category    String
-
-  activities ActivityPermission[]
-
-  @@map("permissions")
-}
-
-model ActivityPermission {
-  activityId   Int
-  permissionId Int
-
-  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([activityId, permissionId])
-  @@map("activity_permissions")
-}
 
 model UserModuleAccess {
   id        String  @id @default(uuid())
@@ -136,28 +100,13 @@ model UserModuleAccess {
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
   activityAccess UserActivityAccess[]
 
   @@unique([userId, moduleId])
   @@map("user_module_access")
 }
 
-model UserActivityAccess {
-  id                 String  @id @default(uuid())
-  userModuleAccessId String
-  activityId         Int
-  isEnabled          Boolean @default(false)
-
-  userModuleAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
-  activity         Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
-
-  @@unique([userModuleAccessId, activityId])
-  @@map("user_activity_access")
-}
-
-// ============================================================
-// FCL — PORTAL DO CLIENTE
-// ============================================================
 
 enum DIStatus {
   liberada
@@ -192,8 +141,26 @@ model Cliente {
   transportadoras Transportadora[]
   users           User[]
   agendamentos    Agendamento[]
+  procuracoes     Procuracao[]
+  averbacoes      AverbacaoProcesso[]
 
   @@map("clientes")
+}
+
+model Transportadora {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cnpj      String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, nome])
+  @@map("transportadoras")
 }
 
 model DI {
@@ -256,21 +223,7 @@ model Veiculo {
   @@map("veiculos")
 }
 
-model Transportadora {
-  id        String   @id @default(uuid())
-  clienteId String
-  nome      String
-  cnpj      String?
-  telefone  String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  @@unique([clienteId, nome])
-  @@map("transportadoras")
-}
 
 model JanelaAtendimento {
   id                String   @id @default(uuid())
@@ -286,16 +239,6 @@ model JanelaAtendimento {
   @@map("janelas_atendimento")
 }
 
-model SlotReserva {
-  id       String   @id @default(uuid())
-  data     String
-  horario  String
-  diId     String
-  expiraEm DateTime
-  criadaEm DateTime @default(now())
-
-  @@map("slot_reservas")
-}
 
 model Agendamento {
   id          String            @id @default(uuid())
@@ -375,6 +318,8 @@ model Despachante {
 
   users        User[]
   disAverbadas DiAverbada[]
+  procuracoes  Procuracao[]
+  averbacoes   AverbacaoProcesso[]
 
   @@map("despachantes")
 }
@@ -441,6 +386,8 @@ model TransportadoraConta {
 model DiTransportadoraAtribuicao {
   id                    String    @id @default(uuid())
   nLote                 String    @map("n_lote")
+  // "" = DI inteira (legado / atribuição feita sem container especifico).
+  // Qualquer outro valor = container especifico atribuido a essa transportadora.
   container             String    @default("") @map("container")
   transportadoraContaId String    @map("transportadora_conta_id")
   atribuidoPorUserId    String?   @map("atribuido_por_user_id")
@@ -487,4 +434,373 @@ model PasswordResetToken {
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@map("password_reset_tokens")
+}
+
+// ============================================================
+// AVERBAÇÃO ADUANEIRA — catálogo de tipos de documento
+//
+// Réplica do catálogo mantido no Portal Aurora, empurrada por
+// PUT /api/service/tipos-documento/batch. Aqui é somente leitura: o
+// Despachante só anexa o que estiver neste catálogo, e o upsert é por
+// auroraId — mesmo padrão de DiAverbada.nLote.
+// ============================================================
+
+enum Modalidade {
+  MARITIMO
+  AEREO
+  RODOVIARIO
+}
+
+model TipoDocumento {
+  id             String     @id @default(uuid())
+  /// Id do registro no Portal Aurora — chave natural da replicação.
+  auroraId       String     @unique @map("aurora_id")
+  modalidade     Modalidade
+  descricao      String
+  obrigatorio    Boolean    @default(true)
+  /// Etapa do fluxo: 1, 2 ou 3.
+  step           Int
+  ativo          Boolean    @default(true)
+  ordem          Int        @default(0)
+  sincronizadoEm DateTime   @default(now()) @map("sincronizado_em")
+
+  documentos AverbacaoDocumento[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([modalidade, step])
+  @@map("tipos_documento")
+}
+
+// ============================================================
+// PROCURAÇÃO — autorização do Cliente para o Despachante operar
+// em seu nome. Aprovação é por cliente: liberar o Cliente A não
+// libera o Cliente B.
+// ============================================================
+
+enum ProcuracaoStatus {
+  PENDENTE_ENVIO
+  EM_ANALISE
+  APROVADA
+  REPROVADA
+  /// Aprovada e depois cassada pela Aurora. Separada de REPROVADA de propósito:
+  /// reprovar é recusar o documento na análise, revogar é retirar um acesso que
+  /// já valia — e quem audita precisa distinguir os dois.
+  REVOGADA
+}
+
+model Procuracao {
+  id String @id @default(uuid())
+
+  // Aponta para Despachante (a entidade de negócio, com codDespachante único)
+  // e não para User: a procuração é dada à empresa despachante, não a um login.
+  // Se o escritório tiver dois usuários, ambos operam sob a mesma procuração —
+  // com FK para User cada login precisaria da sua, e o mesmo documento seria
+  // analisado duas vezes.
+  despachanteId String      @map("despachante_id")
+  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
+
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  status ProcuracaoStatus @default(PENDENTE_ENVIO)
+
+  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
+  arquivoKey     String? @map("arquivo_key")
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+  arquivoMime    String? @map("arquivo_mime")
+
+  /**
+   * Data em que a procuração deixa de valer. Nula = sem prazo declarado.
+   *
+   * Não é decorativa: uma procuração vencida deixa de autorizar operações em
+   * nome do cliente, do mesmo jeito que uma não aprovada. Guardar a data e
+   * ignorá-la daria a impressão de controle sem exercê-lo.
+   */
+  validade DateTime? @map("validade") @db.Date
+
+  /// Obrigatório quando REPROVADA — é o que o Despachante lê para corrigir.
+  motivoRecusa String? @map("motivo_recusa")
+
+  /// Quem analisou no Portal Aurora. String e não FK: o analista é usuário do
+  /// banco do Aurora, que é outro banco.
+  analisadoPor String?   @map("analisado_por")
+  analisadoEm  DateTime? @map("analisado_em")
+
+  /// Qual login anexou o PDF, para auditoria.
+  enviadoPorUserId String?   @map("enviado_por_user_id")
+  enviadoPor       User?     @relation(fields: [enviadoPorUserId], references: [id], onDelete: SetNull)
+  enviadoEm        DateTime? @map("enviado_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  historico ProcuracaoHistorico[]
+
+  @@unique([despachanteId, clienteId])
+  @@index([status])
+  @@map("procuracoes")
+}
+
+enum ProcuracaoHistoricoAcao {
+  ENVIO
+  APROVACAO
+  REJEICAO
+  REVOGACAO
+}
+
+/**
+ * Trilha append-only de tudo que aconteceu com uma procuração.
+ *
+ * Existe porque `Procuracao` guarda só o estado atual: um par
+ * (despachante, cliente) tem uma linha, e reenviar sobrescreve o arquivo. Sem
+ * esta tabela, "a procuração foi reprovada em março e a nova aprovada em abril"
+ * seria uma informação perdida — junto com o PDF que motivou a recusa.
+ *
+ * Por isso cada entrada carrega a sua própria arquivoKey: o PDF de cada envio
+ * continua existindo no MinIO e resolvível depois de qualquer substituição.
+ * Nada aqui é atualizado ou apagado — não há endpoint de update nem delete.
+ */
+model ProcuracaoHistorico {
+  id String @id @default(uuid())
+
+  procuracaoId String     @map("procuracao_id")
+  procuracao   Procuracao @relation(fields: [procuracaoId], references: [id], onDelete: Cascade)
+
+  acao ProcuracaoHistoricoAcao
+
+  /// Nome de quem agiu. String e não FK porque o analista do Aurora é usuário
+  /// de outro banco; para ação do Despachante o userId também é guardado.
+  autorNome   String  @map("autor_nome")
+  autorUserId String? @map("autor_user_id")
+  autorUser   User?   @relation("HistoricoProcuracaoAutor", fields: [autorUserId], references: [id], onDelete: SetNull)
+
+  /// Motivo da recusa ou da revogação. Nulo em envio e aprovação.
+  motivo String?
+
+  /// O arquivo vigente no momento desta entrada. Guardado por entrada, e não
+  /// lido da procuração, justamente para sobreviver à substituição.
+  arquivoKey     String?   @map("arquivo_key")
+  arquivoNome    String?   @map("arquivo_nome")
+  arquivoTamanho Int?      @map("arquivo_tamanho")
+  validade       DateTime? @map("validade") @db.Date
+
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  @@index([procuracaoId, criadoEm])
+  @@map("procuracao_historico")
+}
+
+// ============================================================
+// AVERBAÇÃO ADUANEIRA — processo documental
+//
+// O Despachante abre um processo por DI/DUIMP e anexa os documentos exigidos
+// pela modalidade. O time Aurora valida documento a documento; só quando todos
+// os obrigatórios estão VALIDADO o processo é liberado para agendamento.
+// ============================================================
+
+enum AverbacaoProcessoStatus {
+  RASCUNHO
+  EM_ANALISE
+  PENDENTE_CORRECAO
+  LIBERADO_AGENDAMENTO
+}
+
+enum AverbacaoDocumentoStatus {
+  NAO_ENVIADO
+  EM_ANALISE
+  VALIDADO
+  REJEITADO
+}
+
+enum AverbacaoHistoricoAcao {
+  ENVIO
+  APROVACAO
+  REJEICAO
+  SUBSTITUICAO
+}
+
+model AverbacaoProcesso {
+  id        String @id @default(uuid())
+  protocolo String @unique
+
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  // Mesma razão da Procuracao: o processo é do escritório despachante, não do
+  // login que o abriu.
+  despachanteId String      @map("despachante_id")
+  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
+
+  modalidade            Modalidade
+  diDuimp               String     @map("di_duimp")
+  containerConhecimento String     @map("container_conhecimento")
+
+  /// Porto, aeroporto ou fronteira de origem. Informativo, preenchido pelo
+  /// despachante — o sistema não valida contra tabela de recintos.
+  localOrigem String? @map("local_origem")
+
+  /// Recinto alfandegado de destino da carga. Mesmo caráter informativo.
+  recintoDestino String? @map("recinto_destino")
+
+  /// DTA, Anvisa, MAPA, Exército ou sobredimensão. Não muda a lista de
+  /// documentos exigidos: serve para o analista saber que o processo pode
+  /// depender de anuência de terceiro antes de liberar.
+  cargaEspecial Boolean @default(false) @map("carga_especial")
+
+  status AverbacaoProcessoStatus @default(RASCUNHO)
+
+  /// Lote da DI no SIAUM (doc_conhecimento.n_lote) — o que liga a averbação
+  /// documental ao registro da operação e ao agendamento (DiAverbada.nLote).
+  ///
+  /// Gravado pelo Portal Aurora quando um analista confirma o vínculo, num ato
+  /// próprio (PATCH /vinculo) e não mais dentro do `liberar`: liberar recusa
+  /// reexecução, então um processo liberado sem lote ficava permanentemente
+  /// órfão, sem caminho de correção.
+  ///
+  /// Não é unique: um lote pode ter um ciclo reaberto depois de encerrado, e a
+  /// unicidade "um lote, um processo vivo" é garantida do lado do Aurora.
+  nLote String? @map("n_lote")
+
+  criadoPorUserId String? @map("criado_por_user_id")
+  criadoPor       User?   @relation(fields: [criadoPorUserId], references: [id], onDelete: SetNull)
+
+  documentos AverbacaoDocumento[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Índice, não unique: a mesma DI pode ter processo reaberto depois de um
+  // ciclo encerrado.
+  @@index([diDuimp])
+  // O gate de agendamento consulta por `nLote OR diDuimp` a cada listagem de
+  // DIs; sem este índice o braço do lote faz varredura da tabela.
+  @@index([nLote])
+  @@index([despachanteId, status])
+  @@index([clienteId])
+  @@map("averbacao_processos")
+}
+
+model AverbacaoDocumento {
+  id String @id @default(uuid())
+
+  processoId String            @map("processo_id")
+  processo   AverbacaoProcesso @relation(fields: [processoId], references: [id], onDelete: Cascade)
+
+  tipoDocumentoId String        @map("tipo_documento_id")
+  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+
+  status AverbacaoDocumentoStatus @default(NAO_ENVIADO)
+
+  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
+  arquivoKey     String? @map("arquivo_key")
+  arquivoNome    String? @map("arquivo_nome")
+  arquivoTamanho Int?    @map("arquivo_tamanho")
+  arquivoMime    String? @map("arquivo_mime")
+
+  /// Obrigatório quando REJEITADO — é o que o Despachante lê para corrigir.
+  motivoRejeicao String? @map("motivo_rejeicao")
+
+  historico AverbacaoHistorico[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Um documento por tipo em cada processo: substituir atualiza a linha e o
+  // histórico guarda as versões.
+  @@unique([processoId, tipoDocumentoId])
+  @@index([status])
+  @@map("averbacao_documentos")
+}
+
+/// Append-only: nunca sofre update nem delete. É a rastreabilidade do processo,
+/// e reescrever o passado destruiria justamente o que ela serve para provar.
+model AverbacaoHistorico {
+  id String @id @default(uuid())
+
+  documentoId String             @map("documento_id")
+  documento   AverbacaoDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  acao AverbacaoHistoricoAcao
+
+  /// Nome de quem agiu. String e não FK porque o analista do Aurora é usuário
+  /// de outro banco; para ação do Despachante o userId também é guardado.
+  autorNome   String  @map("autor_nome")
+  autorUserId String? @map("autor_user_id")
+  autorUser   User?   @relation("HistoricoAverbacaoAutor", fields: [autorUserId], references: [id], onDelete: SetNull)
+
+  motivo String?
+
+  /// Versão do arquivo à qual esta entrada se refere, para o histórico de
+  /// envios continuar resolvendo depois de uma substituição.
+  arquivoKey  String? @map("arquivo_key")
+  arquivoNome String? @map("arquivo_nome")
+
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  @@index([documentoId, criadoEm])
+  @@map("averbacao_historico")
+}
+
+model Activity {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  moduleId    Int
+  isMandatory Boolean @default(false)
+
+  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  permissions    ActivityPermission[]
+  activityAccess UserActivityAccess[]
+
+  @@unique([name, moduleId])
+  @@map("activities")
+}
+
+model Permission {
+  id          Int    @id @default(autoincrement())
+  key         String @unique
+  description String
+  category    String
+
+  activities ActivityPermission[]
+
+  @@map("permissions")
+}
+
+model ActivityPermission {
+  activityId   Int
+  permissionId Int
+
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([activityId, permissionId])
+  @@map("activity_permissions")
+}
+
+model UserActivityAccess {
+  id                 String  @id @default(uuid())
+  userModuleAccessId String
+  activityId         Int
+  isEnabled          Boolean @default(false)
+
+  userModuleAccess UserModuleAccess @relation(fields: [userModuleAccessId], references: [id], onDelete: Cascade)
+  activity         Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([userModuleAccessId, activityId])
+  @@map("user_activity_access")
+}
+
+model SlotReserva {
+  id       String   @id @default(uuid())
+  data     String
+  horario  String
+  diId     String
+  expiraEm DateTime
+  criadaEm DateTime @default(now())
+
+  @@map("slot_reservas")
 }

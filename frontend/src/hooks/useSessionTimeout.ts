@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react';
-import Cookies from 'js-cookie';
 import { useAuthContext } from '@/context/AuthContext';
+import { getSessionExpiresAt } from '@/services/api';
 
+// O token e httpOnly e nao pode mais ser decodificado no cliente. O login
+// devolve `expires_at`, que fica no sessionStorage — ver services/api.ts.
 function getTokenExpiresAt(): number | null {
-  const token = Cookies.get('access_token');
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return typeof payload.exp === 'number' ? payload.exp : null;
-  } catch {
-    return null;
-  }
+  const expiresAt = getSessionExpiresAt();
+  if (!expiresAt) return null;
+  const parsed = Date.parse(expiresAt);
+  return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
 }
 
 export function useSessionTimeout() {
