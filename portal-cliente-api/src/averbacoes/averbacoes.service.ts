@@ -21,6 +21,7 @@ import { documentoDecidido, processoLiberado } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
+import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
 
 /** Sem arquivoKey: a key do MinIO não sai da API. */
 const SELECT_DOCUMENTO = {
@@ -162,6 +163,168 @@ export class AverbacoesService {
     });
   }
 
+  /**
+   * Corrige os dados de identificação de um processo aberto com engano.
+   *
+   * Existe porque `diDuimp` e `containerConhecimento` só eram gravados na
+   * criação: quem digitava o container errado não tinha saída — não havia
+   * edição, cancelamento nem exclusão, e o processo seguia para a fila de
+   * vínculo com o dado errado, derrubando a conferência do analista.
+   *
+   * A janela de edição fecha no VÍNCULO, não antes. É o vínculo que amarra
+   * esta documentação a uma operação do SIAUM; até ele existir, estes campos
+   * são só o que o despachante digitou. Documento já validado NÃO bloqueia de
+   * propósito — travar aí devolveria a pessoa ao mesmo beco sem saída por um
+   * erro de digitação, que é justamente o que este método resolve. O caso fica
+   * registrado no log para a auditoria enxergar.
+   */
+  async editar(id: string, user: User, dto: EditarAverbacaoDto) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        protocolo: true,
+        despachanteId: true,
+        status: true,
+        nLote: true,
+        diDuimp: true,
+        containerConhecimento: true,
+        documentos: { select: { status: true } },
+      },
+    });
+
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+
+    // Só o despachante dono corrige. ADMIN/EMPLOYEE não editam dado que o
+    // despachante declarou — se está errado, quem declarou corrige.
+    if (processo.despachanteId !== this.despachanteDo(user)) {
+      throw new ForbiddenException('Processo pertence a outro despachante');
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} já foi liberado para agendamento e não pode mais ser alterado.`,
+      );
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} está cancelado. Abra um novo processo.`,
+      );
+    }
+
+    if (processo.nLote) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} já está vinculado ao lote ${processo.nLote}. ` +
+          'Peça à Aurora para desfazer o vínculo antes de corrigir estes dados.',
+      );
+    }
+
+    const dados = {
+      ...(dto.diDuimp !== undefined && { diDuimp: dto.diDuimp }),
+      ...(dto.containerConhecimento !== undefined && {
+        containerConhecimento: dto.containerConhecimento,
+      }),
+      ...(dto.localOrigem !== undefined && {
+        localOrigem: dto.localOrigem || null,
+      }),
+      ...(dto.recintoDestino !== undefined && {
+        recintoDestino: dto.recintoDestino || null,
+      }),
+      ...(dto.cargaEspecial !== undefined && {
+        cargaEspecial: dto.cargaEspecial,
+      }),
+    };
+
+    if (!Object.keys(dados).length) {
+      throw new BadRequestException('Nenhum campo para alterar');
+    }
+
+    const atualizado = await this.prisma.averbacaoProcesso.update({
+      where: { id },
+      data: dados,
+      select: SELECT_PROCESSO,
+    });
+
+    const validados = processo.documentos.filter(
+      (d) => d.status === AverbacaoDocumentoStatus.VALIDADO,
+    ).length;
+
+    this.logger.log(
+      `Processo ${processo.protocolo} corrigido por ${user.name ?? user.email}: ` +
+        `DI ${processo.diDuimp} → ${atualizado.diDuimp}, ` +
+        `container ${processo.containerConhecimento} → ${atualizado.containerConhecimento}` +
+        (validados ? ` (atenção: ${validados} documento(s) já validado(s))` : ''),
+    );
+
+    return atualizado;
+  }
+
+  /**
+   * Descarta um processo aberto por engano.
+   *
+   * Não apaga: marca CANCELADO com data e motivo. Apagar levaria junto o
+   * histórico dos documentos já enviados e o rastro de quem abriu o quê — e
+   * um processo aberto por engano é exatamente o que a auditoria quer ver.
+   *
+   * A janela fecha no vínculo, como na edição: depois que o analista amarrou
+   * a documentação a um lote do SIAUM, sumir com o processo deixaria o lote
+   * apontando para nada. Nesse ponto o caminho é desfazer o vínculo primeiro.
+   */
+  async cancelar(id: string, user: User, motivo: string) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        protocolo: true,
+        despachanteId: true,
+        status: true,
+        nLote: true,
+      },
+    });
+
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+
+    if (processo.despachanteId !== this.despachanteDo(user)) {
+      throw new ForbiddenException('Processo pertence a outro despachante');
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} já está cancelado.`,
+      );
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} já foi liberado para agendamento e não pode ser cancelado.`,
+      );
+    }
+
+    if (processo.nLote) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} está vinculado ao lote ${processo.nLote}. ` +
+          'Peça à Aurora para desfazer o vínculo antes de cancelar.',
+      );
+    }
+
+    const atualizado = await this.prisma.averbacaoProcesso.update({
+      where: { id },
+      data: {
+        status: AverbacaoProcessoStatus.CANCELADO,
+        canceladoEm: new Date(),
+        motivoCancelamento: motivo,
+      },
+      select: SELECT_PROCESSO,
+    });
+
+    this.logger.log(
+      `Processo ${processo.protocolo} cancelado por ${user.name ?? user.email}: ${motivo}`,
+    );
+
+    return atualizado;
+  }
+
   async listar(user: User) {
     const where = this.escopoDoUsuario(user);
     return this.prisma.averbacaoProcesso.findMany({
@@ -272,6 +435,11 @@ export class AverbacoesService {
     ) {
       throw new ConflictException(
         'Processo já liberado para agendamento — não aceita novos documentos.',
+      );
+    }
+    if (documento.processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        'Processo cancelado — não aceita novos documentos.',
       );
     }
     // Reenviar por cima de um documento já validado o devolveria para análise
@@ -575,7 +743,12 @@ export class AverbacoesService {
       where: { id: processoId },
       select: { status: true },
     });
-    if (processo?.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+    // Os dois estados terminais não são derivados dos documentos: recalcular
+    // aqui devolveria um processo cancelado para EM_ANALISE no próximo upload.
+    if (
+      processo?.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO ||
+      processo?.status === AverbacaoProcessoStatus.CANCELADO
+    ) {
       return;
     }
 
@@ -625,6 +798,12 @@ export class AverbacoesService {
     ) {
       throw new ConflictException(
         `Processo já liberado e vinculado ao lote ${processo.nLote} — o vínculo não pode mais mudar.`,
+      );
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} foi cancelado pelo despachante e não pode ser vinculado.`,
       );
     }
 
@@ -690,7 +869,15 @@ export class AverbacoesService {
       // Inclui processo liberado sem lote: agora ele PODE ser vinculado (o
       // preenchimento é conserto, não troca), e deixá-lo fora da fila seria
       // escondê-lo justamente de quem precisa consertá-lo.
-      where: { nLote: null },
+      //
+      // Cancelado, por outro lado, sai: o despachante já disse que o processo
+      // não deve existir, e mantê-lo na fila daria trabalho ao analista para
+      // vincular algo que ninguém vai liberar — que é o problema que o
+      // cancelamento veio resolver.
+      where: {
+        nLote: null,
+        status: { not: AverbacaoProcessoStatus.CANCELADO },
+      },
       select: {
         ...SELECT_PROCESSO,
         despachante: {
@@ -738,6 +925,12 @@ export class AverbacoesService {
 
     if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
       throw new ConflictException('Processo já está liberado para agendamento');
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} foi cancelado pelo despachante e não pode ser liberado.`,
+      );
     }
 
     // Liberar sem lote produz um processo órfão: a operação fica liberada sem

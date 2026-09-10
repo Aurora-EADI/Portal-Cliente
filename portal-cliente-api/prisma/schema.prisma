@@ -583,6 +583,13 @@ enum AverbacaoProcessoStatus {
   EM_ANALISE
   PENDENTE_CORRECAO
   LIBERADO_AGENDAMENTO
+
+  /// Descartado pelo despachante antes de qualquer vínculo com o SIAUM.
+  /// Terminal como LIBERADO_AGENDAMENTO: `recalcularProcesso` não o
+  /// sobrescreve e ele sai da fila de vínculo do Aurora. O registro
+  /// permanece — descartar não apaga, para a auditoria continuar enxergando
+  /// o que foi aberto, por quem e por quê.
+  CANCELADO
 }
 
 enum AverbacaoDocumentoStatus {
@@ -643,6 +650,12 @@ model AverbacaoProcesso {
 
   criadoPorUserId String? @map("criado_por_user_id")
   criadoPor       User?   @relation(fields: [criadoPorUserId], references: [id], onDelete: SetNull)
+
+  /// Quando e por que o processo foi descartado. Preenchidos junto com o
+  /// status CANCELADO — descartar não apaga a linha, e sem o motivo o registro
+  /// que sobra não explica nada a quem for auditar depois.
+  canceladoEm        DateTime? @map("cancelado_em")
+  motivoCancelamento String?   @map("motivo_cancelamento")
 
   documentos AverbacaoDocumento[]
 

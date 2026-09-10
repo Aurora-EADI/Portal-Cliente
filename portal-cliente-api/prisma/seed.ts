@@ -55,16 +55,33 @@ async function main() {
     create: { userId: admin.id, moduleId: fcl.id, isEnabled: true },
   });
 
-  // Janelas de atendimento padrão
-  const janelas = [
-    { descricao: 'Agendamento DTA', horaInicio: '08:00', horaFim: '12:00', intervaloMinutos: 60, vagasSimultaneas: 5 },
-    { descricao: 'Agendamento', horaInicio: '13:00', horaFim: '17:00', intervaloMinutos: 60, vagasSimultaneas: 3 },
-  ];
-
-  for (const j of janelas) {
-    await prisma.janelaAtendimento.create({ data: j }).catch(() => {});
+  // Janela de atendimento padrão.
+  //
+  // O seed roda a cada boot do container, e isto era um `create` num laço, sem
+  // upsert e com o erro engolido por `.catch(() => {})`. Como a tabela não tem
+  // constraint de unicidade, cada reinício criava duas janelas novas — o
+  // ambiente acumulou 49 duplicatas e a tela de configuração ficou ilegível.
+  //
+  // Agora só cria com a tabela vazia: o seed existe para dar um ponto de
+  // partida a um banco novo, não para reimpor configuração em ambiente em uso.
+  // Quem apagar a janela de propósito não a vê voltar no próximo boot.
+  const janelasExistentes = await prisma.janelaAtendimento.count();
+  if (janelasExistentes === 0) {
+    await prisma.janelaAtendimento.create({
+      data: {
+        descricao: 'Agendamento',
+        horaInicio: '08:00',
+        horaFim: '18:00',
+        intervaloMinutos: 60,
+        vagasSimultaneas: 5,
+      },
+    });
+    console.log('Janela de atendimento padrão criada');
+  } else {
+    console.log(
+      `Janelas de atendimento: ${janelasExistentes} já cadastradas, seed ignorado`,
+    );
   }
-  console.log('Janelas de atendimento criadas');
 
   // Clientes de exemplo
   const cliente1 = await prisma.cliente.upsert({

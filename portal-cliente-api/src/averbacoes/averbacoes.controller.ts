@@ -29,6 +29,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { TAMANHO_MAXIMO_BYTES } from '../common/arquivo';
 import { AverbacoesService } from './averbacoes.service';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
+import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
+import { CancelarAverbacaoDto } from './dto/cancelar-averbacao.dto';
 import {
   AprovarDocumentoDto,
   DesvincularLoteDto,
@@ -68,6 +70,28 @@ export class AverbacoesController {
   @HttpCode(HttpStatus.CREATED)
   criar(@Req() req: Request, @Body() dto: CriarAverbacaoDto) {
     return this.service.criar(req.user as User, dto);
+  }
+
+  /** Corrige dados de identificação digitados errado na abertura. */
+  @Patch(':id')
+  @Roles(UserRole.DESPACHANTE)
+  editar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+    @Body() dto: EditarAverbacaoDto,
+  ) {
+    return this.service.editar(id, req.user as User, dto);
+  }
+
+  /** Descarta um processo aberto por engano. Não apaga: marca CANCELADO. */
+  @Delete(':id')
+  @Roles(UserRole.DESPACHANTE)
+  cancelar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+    @Body() dto: CancelarAverbacaoDto,
+  ) {
+    return this.service.cancelar(id, req.user as User, dto.motivo);
   }
 
   @Post(':id/documentos/:tipoId')
