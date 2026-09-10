@@ -14,3 +14,7 @@ export type { AppShellProps, AppShellSidebar, AppShellSidebarSlotProps } from '@
 export { Breadcrumbs } from '@design-systems-orion/blocks/breadcrumbs';
 export type { BreadcrumbsProps } from '@design-systems-orion/blocks/breadcrumbs';
 export type { BreadcrumbItem } from '@design-systems-orion/blocks/navigation';
+export { SearchBar } from '@design-systems-orion/blocks/search-bar';
+export type { SearchBarProps } from '@design-systems-orion/blocks/search-bar';
+export { StatusCards } from '@design-systems-orion/blocks/status-cards';
+export type { StatusCardsProps } from '@design-systems-orion/blocks/status-cards';

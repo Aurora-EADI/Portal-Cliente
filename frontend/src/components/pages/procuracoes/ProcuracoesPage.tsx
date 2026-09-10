@@ -10,13 +10,10 @@ import {
   ExternalLink,
   FileUp,
   RefreshCw,
-  Search,
   Users,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { PageHeader, StatusCards, SearchBar, EmptyState } from '@/components/orion/blocks';
+import { Badge, Button, Card, CardContent, Spinner } from '@/components/orion/ui';
 import { cn } from '@/lib/utils';
 import { procuracoesService } from '@/services/procuracoes.service';
 import { useRepresentados } from '@/hooks/useProcuracoes';
@@ -30,13 +27,13 @@ import { AnexarProcuracaoModal } from './AnexarProcuracaoModal';
 
 const BADGE: Record<
   SituacaoRepresentado,
-  { variant: 'success' | 'warning' | 'danger' | 'secondary'; Icon: typeof Clock }
+  { variant: 'success' | 'warning' | 'destructive' | 'secondary'; Icon: typeof Clock }
 > = {
   VIGENTE: { variant: 'success', Icon: CheckCircle2 },
   EM_ANALISE: { variant: 'warning', Icon: Clock },
-  REPROVADA: { variant: 'danger', Icon: AlertCircle },
-  REVOGADA: { variant: 'danger', Icon: Ban },
-  VENCIDA: { variant: 'danger', Icon: CalendarDays },
+  REPROVADA: { variant: 'destructive', Icon: AlertCircle },
+  REVOGADA: { variant: 'destructive', Icon: Ban },
+  VENCIDA: { variant: 'destructive', Icon: CalendarDays },
   SEM_PROCURACAO: { variant: 'secondary', Icon: FileUp },
 };
 
@@ -70,29 +67,40 @@ function Resumo({ itens }: { itens: ClienteRepresentado[] }) {
     };
   }, [itens]);
 
-  const cards = [
-    { label: 'Clientes', valor: contagem.clientes, Icon: Users, cor: 'text-sky-600 bg-sky-50' },
-    { label: 'Aprovadas', valor: contagem.aprovadas, Icon: CheckCircle2, cor: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Em análise', valor: contagem.emAnalise, Icon: Clock, cor: 'text-amber-600 bg-amber-50' },
-    { label: 'Pendentes / Reprovadas', valor: contagem.pendentes, Icon: AlertCircle, cor: 'text-red-600 bg-red-50' },
-  ];
-
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(({ label, valor, Icon, cor }) => (
-        <Card key={label}>
-          <CardContent className="flex items-center justify-between gap-3 pt-6">
-            <div>
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{valor}</p>
-            </div>
-            <span className={cn('flex h-9 w-9 items-center justify-center rounded-full', cor)}>
-              <Icon className="h-4 w-4" aria-hidden />
-            </span>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <StatusCards columns={4}>
+      <StatusCards.Item tone="info">
+        <StatusCards.Icon as={Users} />
+        <StatusCards.Content>
+          <StatusCards.Label>Clientes</StatusCards.Label>
+          <StatusCards.Value>{contagem.clientes}</StatusCards.Value>
+        </StatusCards.Content>
+      </StatusCards.Item>
+
+      <StatusCards.Item tone="success">
+        <StatusCards.Icon as={CheckCircle2} />
+        <StatusCards.Content>
+          <StatusCards.Label>Aprovadas</StatusCards.Label>
+          <StatusCards.Value>{contagem.aprovadas}</StatusCards.Value>
+        </StatusCards.Content>
+      </StatusCards.Item>
+
+      <StatusCards.Item tone="warning">
+        <StatusCards.Icon as={Clock} />
+        <StatusCards.Content>
+          <StatusCards.Label>Em análise</StatusCards.Label>
+          <StatusCards.Value>{contagem.emAnalise}</StatusCards.Value>
+        </StatusCards.Content>
+      </StatusCards.Item>
+
+      <StatusCards.Item tone="danger">
+        <StatusCards.Icon as={AlertCircle} />
+        <StatusCards.Content>
+          <StatusCards.Label>Pendentes / Reprovadas</StatusCards.Label>
+          <StatusCards.Value>{contagem.pendentes}</StatusCards.Value>
+        </StatusCards.Content>
+      </StatusCards.Item>
+    </StatusCards>
   );
 }
 
@@ -226,65 +234,60 @@ export function ProcuracoesPage() {
   };
 
   return (
-    <div className="space-y-5 p-6">
-      <Card>
-        <CardContent className="flex flex-wrap items-start justify-between gap-4 pt-6">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="warning">Representação por Cliente</Badge>
-              {itens.length > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  {liberados} de {itens.length} clientes liberados
-                </span>
-              )}
-            </div>
-            <h1 className="mt-1.5 text-lg font-semibold">
-              Procurações dos Clientes Representados
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Anexe a procuração de cada cliente que você representa. As operações
-              em nome de um cliente só são liberadas após a aprovação da equipe Aurora.
-            </p>
+    <div className="space-y-6 p-6">
+      <PageHeader
+        title="Procurações dos Clientes Representados"
+        description="Anexe a procuração de cada cliente que você representa. As operações em nome de um cliente só são liberadas após a aprovação da equipe Aurora."
+        eyebrow="Representação por Cliente"
+        actions={
+          <div className="flex items-center gap-3">
+            {itens.length > 0 && (
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {liberados} de {itens.length} clientes liberados
+              </span>
+            )}
+            <Button className="shrink-0 gap-1.5" onClick={() => abrirModal()}>
+              <FileUp className="h-4 w-4" />
+              Anexar Procuração
+            </Button>
           </div>
-          <Button className="shrink-0 gap-1.5" onClick={() => abrirModal()}>
-            <FileUp className="h-4 w-4" />
-            Anexar Procuração
-          </Button>
-        </CardContent>
-      </Card>
+        }
+      />
 
       {itens.length > 0 && <Resumo itens={itens} />}
 
       <Card>
         <CardContent className="p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-            <h2 className="font-semibold">Clientes Representados</h2>
-            <div className="relative w-full max-w-xs">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+            <h2 className="font-semibold text-foreground">Clientes Representados</h2>
+            <div className="w-full max-w-xs">
+              <SearchBar
                 value={busca}
-                onChange={(e) => setBusca(e.target.value)}
+                onChange={setBusca}
                 placeholder="Buscar cliente ou CNPJ..."
-                className="pl-8"
-                aria-label="Buscar cliente ou CNPJ"
               />
             </div>
           </div>
 
           {isLoading ? (
-            <p className="px-5 py-10 text-sm text-muted-foreground">Carregando…</p>
+            <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
+              <Spinner size="sm" />
+              <span>Carregando representados...</span>
+            </div>
           ) : filtrados.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <p className="text-sm font-medium">
-                {itens.length === 0
-                  ? 'Nenhum cliente representado ainda'
-                  : 'Nenhum cliente encontrado'}
-              </p>
-              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-                {itens.length === 0
-                  ? 'A lista vem dos clientes que já aparecem nas suas DIs. Se o importador é novo, aguarde a primeira DI ser registrada.'
-                  : 'Ajuste a busca.'}
-              </p>
+            <div className="p-6">
+              <EmptyState
+                title={
+                  itens.length === 0
+                    ? 'Nenhum cliente representado ainda'
+                    : 'Nenhum cliente encontrado'
+                }
+                description={
+                  itens.length === 0
+                    ? 'A lista vem dos clientes que já aparecem nas suas DIs. Se o importador é novo, aguarde a primeira DI ser registrada.'
+                    : 'Ajuste a busca para encontrar o cliente desejado.'
+                }
+              />
             </div>
           ) : (
             <div>
