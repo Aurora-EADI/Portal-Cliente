@@ -16,6 +16,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
+import { MailService } from '../mail/mail.service';
+import { documentoDecidido, processoLiberado } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
@@ -64,6 +66,7 @@ export class AverbacoesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly minio: MinioService,
+    private readonly mail: MailService,
   ) {}
 
   private despachanteDo(user: User): string {
@@ -414,8 +417,8 @@ export class AverbacoesService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const atualizado = await tx.averbacaoDocumento.update({
+    const atualizado = await this.prisma.$transaction(async (tx) => {
+      const doc = await tx.averbacaoDocumento.update({
         where: { id: documentoId },
         data: {
           status: novoStatus,
@@ -434,8 +437,116 @@ export class AverbacoesService {
       });
 
       await this.recalcularProcesso(tx, documento.processoId);
-      return atualizado;
+      return doc;
     });
+
+    // Fora da transação e sem await, pela mesma razão da procuração: a decisão
+    // já está gravada e o email não pode segurar o commit nem derrubá-lo.
+    void this.notificarDocumento(
+      documentoId,
+      novoStatus === AverbacaoDocumentoStatus.VALIDADO,
+      motivo,
+      analisadoPor,
+    );
+
+    return atualizado;
+  }
+
+  /**
+   * Avisa o despachante do processo e quem abriu a averbação.
+   *
+   * Engole os próprios erros: é disparada por `void`, então uma exceção aqui
+   * viraria unhandled rejection.
+   */
+  private async notificarDocumento(
+    documentoId: string,
+    aprovado: boolean,
+    motivo?: string,
+    analisadoPor?: string,
+  ) {
+    try {
+      const documento = await this.prisma.averbacaoDocumento.findUnique({
+        where: { id: documentoId },
+        select: {
+          tipoDocumento: { select: { descricao: true } },
+          processo: {
+            select: {
+              protocolo: true,
+              cliente: { select: { nome: true } },
+              despachante: { select: { email: true } },
+              criadoPor: { select: { email: true } },
+            },
+          },
+        },
+      });
+      if (!documento) return;
+
+      const corpo = documentoDecidido({
+        protocolo: documento.processo.protocolo,
+        tipoDescricao: documento.tipoDocumento.descricao,
+        clienteNome: documento.processo.cliente.nome,
+        aprovado,
+        motivo,
+        analisadoPor,
+      });
+
+      await this.mail.enviar({
+        para: [
+          documento.processo.criadoPor?.email,
+          documento.processo.despachante.email,
+        ],
+        ...corpo,
+      });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar decisão do documento ${documentoId} — ${(erro as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Avisa da liberação. Aqui o email do cliente entra junto: a liberação é a
+   * informação que o importador espera para agendar, diferente das decisões
+   * documento a documento, que são trabalho do despachante.
+   */
+  private async notificarLiberacao(processoId: string, liberadoPor?: string) {
+    try {
+      const processo = await this.prisma.averbacaoProcesso.findUnique({
+        where: { id: processoId },
+        select: {
+          protocolo: true,
+          nLote: true,
+          diDuimp: true,
+          cliente: { select: { nome: true, email: true } },
+          despachante: { select: { nome: true, email: true } },
+          criadoPor: { select: { email: true } },
+        },
+      });
+      if (!processo) return;
+
+      const corpo = processoLiberado({
+        protocolo: processo.protocolo,
+        clienteNome: processo.cliente.nome,
+        despachanteNome: processo.despachante.nome,
+        // Nunca nulo neste ponto: `liberar` recusa processo sem lote.
+        nLote: processo.nLote ?? '',
+        diDuimp: processo.diDuimp,
+        liberadoPor,
+      });
+
+      await this.mail.enviar({
+        para: [
+          processo.criadoPor?.email,
+          processo.despachante.email,
+          processo.cliente.email,
+        ],
+        ...corpo,
+      });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar liberação do processo ${processoId} — ${(erro as Error).message}`,
+      );
+    }
   }
 
   /**
@@ -503,11 +614,17 @@ export class AverbacoesService {
     });
     if (!processo) throw new NotFoundException('Processo não encontrado');
 
-    // Liberado é terminal: mexer no lote depois disso deixaria a DI já
-    // empurrada para o agendamento apontando para outra operação.
-    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+    // Depois de liberado, TROCAR o lote deixaria a DI já empurrada para o
+    // agendamento apontando para outra operação. Mas PREENCHER um lote vazio é
+    // conserto, não troca: é a única saída para um processo liberado sem
+    // vínculo, que de outro modo ficaria órfão para sempre — sem caminho nem
+    // pela interface nem pela API.
+    if (
+      processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO &&
+      processo.nLote
+    ) {
       throw new ConflictException(
-        'Processo já liberado para agendamento — o vínculo não pode mais mudar.',
+        `Processo já liberado e vinculado ao lote ${processo.nLote} — o vínculo não pode mais mudar.`,
       );
     }
 
@@ -570,12 +687,10 @@ export class AverbacoesService {
    */
   async listarSemVinculo() {
     const processos = await this.prisma.averbacaoProcesso.findMany({
-      where: {
-        nLote: null,
-        // Liberado sem lote é o passivo do modelo antigo: não há como vincular
-        // depois, e listar aqui só encheria a fila com o que não tem ação.
-        status: { not: AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO },
-      },
+      // Inclui processo liberado sem lote: agora ele PODE ser vinculado (o
+      // preenchimento é conserto, não troca), e deixá-lo fora da fila seria
+      // escondê-lo justamente de quem precisa consertá-lo.
+      where: { nLote: null },
       select: {
         ...SELECT_PROCESSO,
         despachante: {
@@ -609,6 +724,8 @@ export class AverbacoesService {
       select: {
         id: true,
         status: true,
+        nLote: true,
+        protocolo: true,
         documentos: {
           select: {
             status: true,
@@ -621,6 +738,19 @@ export class AverbacoesService {
 
     if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
       throw new ConflictException('Processo já está liberado para agendamento');
+    }
+
+    // Liberar sem lote produz um processo órfão: a operação fica liberada sem
+    // que ninguém saiba a que registro do SIAUM ela pertence, e o gate de
+    // agendamento não tem como cruzar os dois lados. O lote pode vir no corpo
+    // (compatibilidade) ou já estar gravado pelo vínculo — mas um dos dois tem
+    // de existir.
+    const lote = nLote?.trim().toUpperCase() || processo.nLote;
+    if (!lote) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} não está vinculado a um lote do SIAUM. ` +
+          'Faça o vínculo em Averbação Aduaneira › Validação › Aguardando vínculo antes de liberar.',
+      );
     }
 
     const pendentes = processo.documentos
@@ -641,16 +771,20 @@ export class AverbacoesService {
       `Processo ${processoId} liberado para agendamento por ${analisadoPor ?? 'Equipe Aurora'}`,
     );
 
-    return this.prisma.averbacaoProcesso.update({
+    const liberado = await this.prisma.averbacaoProcesso.update({
       where: { id: processoId },
       data: {
         status: AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO,
-        // Compatibilidade com o Aurora atual, que ainda manda o lote aqui. O
-        // caminho novo é vincular antes; quando o Aurora migrar, este
-        // parâmetro sai e liberar passa a exigir vínculo prévio.
-        nLote: nLote?.trim().toUpperCase() || undefined,
+        // `lote` já resolveu a origem: o corpo da requisição (compatibilidade)
+        // ou o vínculo feito antes. Nunca é nulo aqui — a checagem acima
+        // recusaria.
+        nLote: lote,
       },
       select: SELECT_PROCESSO,
     });
+
+    void this.notificarLiberacao(processoId, analisadoPor);
+
+    return liberado;
   }
 }
