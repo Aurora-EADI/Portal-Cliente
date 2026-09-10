@@ -5,11 +5,6 @@ const nextConfig: NextConfig = {
   // Docker opts into standalone; local Windows builds avoid privileged symlinks.
   output: process.env.NEXT_STANDALONE === 'true' ? 'standalone' : undefined,
   outputFileTracingRoot: path.join(__dirname, '..'),
-  transpilePackages: [
-    '@design-systems-orion/tokens',
-    '@design-systems-orion/ui',
-    '@design-systems-orion/blocks',
-  ],
   reactStrictMode: true,
 
   serverExternalPackages: ['@prisma/client', 'prisma'],
@@ -32,10 +27,10 @@ const nextConfig: NextConfig = {
   webpack: (config, { dev }) => {
     // Workaround para instabilidades de cache em alguns ambientes Windows/FS
     if (dev) {
-      config.cache = false
+      config.cache = false;
     }
-    return config
+    return config;
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
