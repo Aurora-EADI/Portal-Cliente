@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================
@@ -30,14 +28,32 @@ model User {
   active     Boolean   @default(true)
   clienteId      String?
   despachanteId  String?
+  transportadoraContaId String? @map("transportadora_conta_id")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   moduleAccess UserModuleAccess[]
   cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
   despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
+  tokens       UserToken[]
 
   @@map("users")
+}
+
+model UserToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  type      String    // e.g. "REFRESH"
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, token, expiresAt])
+  @@map("user_tokens")
 }
 
 // ============================================================
@@ -152,6 +168,12 @@ enum DIStatus {
 enum AgendamentoStatus {
   ATIVO
   CANCELADO
+  CHEGOU
+  NO_SHOW
+  ON_TIME
+  ATRASADO
+  AG_CHEGADA
+  CONCLUIDO
 }
 
 model Cliente {
@@ -169,6 +191,7 @@ model Cliente {
   veiculos        Veiculo[]
   transportadoras Transportadora[]
   users           User[]
+  agendamentos    Agendamento[]
 
   @@map("clientes")
 }
@@ -193,37 +216,43 @@ model DI {
 }
 
 model Motorista {
-  id        String   @id @default(uuid())
-  clienteId String
-  nome      String
-  cpf       String
-  cnh       String
-  telefone  String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  clienteId             String?
+  transportadoraContaId String?  @map("transportadora_conta_id")
+  nome                  String
+  cpf                   String
+  cnh                   String
+  telefone              String
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  agendamentos        Agendamento[]
 
   @@unique([clienteId, cpf])
+  @@unique([transportadoraContaId, cpf])
   @@map("motoristas")
 }
 
 model Veiculo {
-  id        String   @id @default(uuid())
-  clienteId String
-  placa     String
-  modelo    String
-  tipo      String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  clienteId             String?
+  transportadoraContaId String?  @map("transportadora_conta_id")
+  placa                 String
+  modelo                String
+  tipo                  String
+  ativo                 Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  agendamentos        Agendamento[]
 
   @@unique([clienteId, placa])
+  @@unique([transportadoraContaId, placa])
   @@map("veiculos")
 }
 
@@ -237,8 +266,7 @@ model Transportadora {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@unique([clienteId, nome])
   @@map("transportadoras")
@@ -270,22 +298,62 @@ model SlotReserva {
 }
 
 model Agendamento {
-  id              String            @id @default(uuid())
-  diId            String
-  motoristaId     String
-  veiculoId       String
-  transportadoraId String?
-  data            String
-  horario         String
-  protocolo       String            @unique
-  status          AgendamentoStatus @default(ATIVO)
-  observacao      String?
-  criadoEm        DateTime          @default(now())
+  id          String            @id @default(uuid())
+  diId        String?
+  motoristaId String?
+  veiculoId   String?
+  clienteId   String?
+  data        String
+  horario     String
+  protocolo   String            @unique
+  status      AgendamentoStatus @default(ATIVO)
+  observacao  String?
+  criadoEm    DateTime          @default(now())
 
-  di             DI              @relation(fields: [diId], references: [id])
-  motorista      Motorista       @relation(fields: [motoristaId], references: [id])
-  veiculo        Veiculo         @relation(fields: [veiculoId], references: [id])
-  transportadora Transportadora? @relation(fields: [transportadoraId], references: [id])
+  // Campos do novo formulário de agendamento
+  operacao              String?
+  subOperacao           String?
+  cargaEspecial         Boolean  @default(false)
+  servicos              String[]
+  tipoVeiculo           String?
+  cpfMotorista          String?
+  nomeMotorista         String?
+  placaVeiculo          String?
+  transportadora        String?
+  empresa               String?
+  awbMawb               String?
+  diNumero              String?
+  dta                   String?
+  hawb                  String?
+  numeroVoo             String?
+  volumes               String?
+  peso                  String?
+  consignatario         String?
+  container             String?
+  criadoPorNome         String?  @map("criado_por_nome")
+  criadoPorRole         String?  @map("criado_por_role")
+  transportadoraContaId String?  @map("transportadora_conta_id")
+
+  // Dados de contato/endereço do cliente e transportadora, snapshot no momento do agendamento (fonte: SIAUM)
+  cnpjCliente            String? @map("cnpj_cliente")
+  enderecoCliente        String? @map("endereco_cliente")
+  telefoneCliente        String? @map("telefone_cliente")
+  emailCliente           String? @map("email_cliente")
+  cnpjTransportadora     String? @map("cnpj_transportadora")
+  enderecoTransportadora String? @map("endereco_transportadora")
+  telefoneTransportadora String? @map("telefone_transportadora")
+  emailTransportadora    String? @map("email_transportadora")
+
+  // Notificação WhatsApp (enviada pelo Aurora via n8n, ver /api/service/whatsapp-pendentes)
+  whatsapp             String?
+  notificarWhatsapp    Boolean   @default(false)
+  whatsappNotificadoEm DateTime?
+
+  di                  DI?                  @relation(fields: [diId], references: [id])
+  motorista           Motorista?           @relation(fields: [motoristaId], references: [id])
+  veiculo             Veiculo?             @relation(fields: [veiculoId], references: [id])
+  cliente             Cliente?             @relation(fields: [clienteId], references: [id])
+  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
 
   @@map("agendamentos")
 }
@@ -337,10 +405,55 @@ model DiAverbada {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
+  despachanteRef Despachante?                 @relation(fields: [codDespachante], references: [codDespachante])
+  atribuicoes    DiTransportadoraAtribuicao[]
 
   @@index([cnpjCliente])
+  @@index([codDespachante])
   @@map("dis_averbadas")
+}
+
+// ============================================================
+// TRANSPORTADORA — acesso externo para transportadoras
+// ============================================================
+
+model TransportadoraConta {
+  id        String   @id @default(uuid())
+  cnpj      String   @unique
+  nome      String
+  codTransp String?  @map("cod_transp")
+  email     String?
+  telefone  String?
+  whatsapp  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  atribuicoes  DiTransportadoraAtribuicao[]
+  agendamentos Agendamento[]
+  motoristas   Motorista[]
+  veiculos     Veiculo[]
+
+  @@map("transportadora_contas")
+}
+
+model DiTransportadoraAtribuicao {
+  id                    String    @id @default(uuid())
+  nLote                 String    @map("n_lote")
+  container             String    @default("") @map("container")
+  transportadoraContaId String    @map("transportadora_conta_id")
+  atribuidoPorUserId    String?   @map("atribuido_por_user_id")
+  atribuidoPorRole      String?   @map("atribuido_por_role")
+  atribuidoEm           DateTime  @default(now()) @map("atribuido_em")
+  whatsappNotificadoEm  DateTime? @map("whatsapp_notificado_em")
+
+  diAverbada     DiAverbada          @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
+  transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+
+  @@unique([nLote, transportadoraContaId, container])
+  @@index([transportadoraContaId])
+  @@map("di_transportadora_atribuicoes")
 }
 
 // ============================================================
@@ -348,17 +461,19 @@ model DiAverbada {
 // ============================================================
 
 model ConviteRegistro {
-  id             String    @id @default(uuid())
-  token          String    @unique @default(uuid())
-  tipo           UserRole
-  codDespachante String?   @map("cod_despachante")
-  cnpjCliente    String?   @map("cnpj_cliente")
-  nome           String
-  email          String?
-  expiresAt      DateTime  @map("expires_at")
-  usedAt         DateTime? @map("used_at")
-  usedByUserId   String?   @map("used_by_user_id")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  token              String    @unique @default(uuid())
+  tipo               UserRole
+  codDespachante     String?   @map("cod_despachante")
+  cnpjCliente        String?   @map("cnpj_cliente")
+  cnpjTransportadora String?   @map("cnpj_transportadora")
+  codTransp          String?   @map("cod_transp")
+  nome               String
+  email              String?
+  expiresAt          DateTime  @map("expires_at")
+  usedAt             DateTime? @map("used_at")
+  usedByUserId       String?   @map("used_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   @@map("convites_registro")
 }

@@ -31,7 +31,7 @@ async function bootstrap() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 5001);
+  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 3030);
   await app.listen(port, '0.0.0.0');
   console.log(`Portal do Cliente API rodando em http://localhost:${port}`);
 }

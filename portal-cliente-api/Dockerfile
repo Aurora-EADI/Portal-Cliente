@@ -5,22 +5,28 @@ FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
+RUN npm install --global pnpm@11.3.0
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
-COPY prisma ./prisma
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY frontend/package.json ./frontend/package.json
+COPY portal-cliente-api/package.json ./portal-cliente-api/package.json
 
-RUN npm ci
-RUN npx prisma generate
+RUN pnpm --filter portal-cliente-api --filter portal-cliente install --frozen-lockfile
 
-COPY . .
+COPY portal-cliente-api ./portal-cliente-api
 
-RUN npm run build
-RUN npm prune --omit=dev
+RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" pnpm build:api
+RUN pnpm --filter portal-cliente-api deploy --legacy --prod /prod/api
+# Generate inside the portable dependency tree rather than the build workspace.
+RUN cd /prod/api && \
+    node /app/portal-cliente-api/node_modules/prisma/build/index.js generate --schema=prisma/schema.prisma && \
+    node -e "require('@prisma/client'); require('bcrypt')"
 
 
 # =========================
@@ -31,7 +37,7 @@ FROM node:22-bookworm-slim AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=5001
+ENV PORT=3030
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -39,13 +45,10 @@ RUN apt-get update && \
     ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /prod/api ./
 
 USER node
 
-EXPOSE 5001
+EXPOSE 3030
 
 CMD ["node", "dist/main"]

@@ -22,8 +22,7 @@ Antes de alterar o schema:
 2. Inspecione o model Prisma existente e as migrations relacionadas.
 3. Busque usos do model/campo afetado em todo o repositório.
 4. Determine se a mudança é aditiva, destrutiva, ou exige migração de dados.
-5. Não use `db push` como atalho para uma mudança que precisa ser representada em migration
-   versionada.
+5. **REGRA MANDATÓRIA**: NUNCA use `db push` em nenhuma circunstância. SEMPRE use `prisma migrate dev` (dev) ou `prisma migrate deploy` (prod). Toda e qualquer alteração de schema DEVE ser uma migration versionada em código.
 
 ## Procedimento
 

@@ -19,8 +19,12 @@ data/
 
 # Dependencies
 node_modules/
+.npm-cache/
+.pnpm-store/
 
 # Build outputs
+.turbo/
+*.tsbuildinfo
 .next/
 dist/
 build/

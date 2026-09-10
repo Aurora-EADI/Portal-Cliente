@@ -2,8 +2,9 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  outputFileTracingRoot: path.join(__dirname),
+  // Docker opts into standalone; local Windows builds avoid privileged symlinks.
+  output: process.env.NEXT_STANDALONE === 'true' ? 'standalone' : undefined,
+  outputFileTracingRoot: path.join(__dirname, '..'),
   transpilePackages: [
     '@design-systems-orion/tokens',
     '@design-systems-orion/ui',

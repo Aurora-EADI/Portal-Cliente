@@ -1,17 +1,21 @@
-import axios from 'axios';
 import Cookies from 'js-cookie';
 import { api } from '@/lib/api';
 import type { User } from '@/types';
 
 export const authService = {
   login: async (email: string, password: string) => {
-    const response = await axios.post('/api/auth/login', { email, password }).catch((error) => {
+    const response = await api.post('/auth/login', { email, password }).catch((error) => {
       const message = error.response?.data?.message || 'Erro ao autenticar';
       throw new Error(message);
     });
 
-    const { user, token, expires_at } = response.data;
+    const { user, token, refreshToken, expires_at } = response.data;
     Cookies.set('access_token', token, { sameSite: 'lax', expires: 1 });
+    if (refreshToken) {
+      Cookies.set('refresh_token', refreshToken, { sameSite: 'lax', expires: 7 });
+    } else {
+      Cookies.remove('refresh_token');
+    }
 
     return { user, expires_at };
   },

@@ -8,6 +8,12 @@ import { ModulesModule } from '../modules/modules.module';
 import { ActivitiesModule } from '../activities/activities.module';
 import { UserModuleAccessModule } from '../user-module-access/user-module-access.module';
 import { AgendamentoModule } from '../agendamento/agendamento.module';
+import { ClientesModule } from '../clientes/clientes.module';
+import { DisModule } from '../dis/dis.module';
+import { MotoristasModule } from '../motoristas/motoristas.module';
+import { VeiculosModule } from '../veiculos/veiculos.module';
+import { TransportadorasModule } from '../transportadoras/transportadoras.module';
+import { JanelasModule } from '../janelas/janelas.module';
 
 @Module({
   imports: [
@@ -20,6 +26,12 @@ import { AgendamentoModule } from '../agendamento/agendamento.module';
     ActivitiesModule,
     UserModuleAccessModule,
     AgendamentoModule,
+    ClientesModule,
+    DisModule,
+    MotoristasModule,
+    VeiculosModule,
+    TransportadorasModule,
+    JanelasModule,
   ],
 })
 export class AppModule {}

@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -210,6 +209,16 @@ model JanelaAtendimento {
   @@map("janelas_atendimento")
 }
 
+model SlotReserva {
+  id       String   @id @default(uuid())
+  data     String
+  horario  String
+  diId     String
+  expiraEm DateTime
+  criadaEm DateTime @default(now())
+
+  @@map("slot_reservas")
+}
 
 model Agendamento {
   id          String            @id @default(uuid())

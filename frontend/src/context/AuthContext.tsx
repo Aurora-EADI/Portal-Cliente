@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           try {
-            if (Cookies.get('access_token')) {
+            if (Cookies.get('access_token') || Cookies.get('refresh_token')) {
               const user = await authService.getProfile();
               setCurrentUser(user);
             }
@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logoutUser = async () => {
     Cookies.remove('access_token');
+    Cookies.remove('refresh_token');
     clearDraft();
     setCurrentUser(null);
     queryClient.clear();

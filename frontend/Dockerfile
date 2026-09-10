@@ -5,6 +5,8 @@ FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
+RUN npm install --global pnpm@11.3.0
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -19,12 +21,14 @@ ENV HTTP_PROXY=${HTTP_PROXY}
 ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV NO_PROXY=${NO_PROXY}
 
-COPY package.json package-lock.json ./
-COPY prisma ./prisma
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY frontend/package.json ./frontend/package.json
+COPY portal-cliente-api/package.json ./portal-cliente-api/package.json
+COPY frontend/prisma ./frontend/prisma
 
-RUN npm ci --legacy-peer-deps
+RUN pnpm --filter aurora-eadi-nextjs --filter portal-cliente install --frozen-lockfile
 
-COPY . .
+COPY frontend ./frontend
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_API_KEY
@@ -32,10 +36,11 @@ ARG NEXT_PUBLIC_API_KEY
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_STANDALONE=true
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV DIRECT_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
-RUN npm run build
+RUN pnpm build:web
 
 
 # =========================
@@ -55,12 +60,12 @@ RUN apt-get update && \
     ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/frontend/.next/standalone ./
+COPY --from=builder /app/frontend/public ./frontend/public
+COPY --from=builder /app/frontend/.next/static ./frontend/.next/static
 
 USER node
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "frontend/server.js"]
