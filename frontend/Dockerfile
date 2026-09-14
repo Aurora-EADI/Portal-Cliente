@@ -32,9 +32,13 @@ COPY frontend ./frontend
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_API_KEY
+# Averbacao entra no bundle no momento do build: sem este ARG a flag nao chega
+# na imagem e o modulo fica desligado independente da env de runtime.
+ARG NEXT_PUBLIC_AVERBACAO_ATIVA=false
 
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
+ENV NEXT_PUBLIC_AVERBACAO_ATIVA=${NEXT_PUBLIC_AVERBACAO_ATIVA}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STANDALONE=true
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"

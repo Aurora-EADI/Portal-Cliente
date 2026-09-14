@@ -139,6 +139,9 @@ services:
       # E o valor visto pelo BROWSER, entao usa a porta publicada no host
       # (5001), nao a interna do container (5000).
       NEXT_PUBLIC_NEST_API_URL: ${NEST_API_URL:-http://localhost:5001/api}
+      # Averbacao Aduaneira. Aqui roda "npm run dev", entao env de runtime basta
+      # — o build de producao precisa do build arg equivalente.
+      NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
       # DB_PASSWORD_URLENC, nao DB_PASSWORD: a senha entra numa URL, e caractere
       # como "@" precisa vir percent-encoded (admin@123 -> admin%40123). Cru, a
       # URL vira postgresql://postgres:admin@123@db:5432/... e o parse quebra.

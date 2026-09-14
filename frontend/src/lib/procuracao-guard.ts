@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ProcuracaoStatus } from '@prisma/client';
 import { prisma } from './prisma';
+import { AVERBACAO_ATIVA } from '@/config/features';
 
 /**
  * Trava de procuração no servidor.
@@ -16,6 +17,10 @@ export async function bloqueioPorProcuracao(
   despachanteId: string,
   clienteId: string,
 ): Promise<NextResponse | null> {
+  // Procuracao entra junto com a averbacao: enquanto o modulo nao opera, a tela
+  // de envio nem existe, entao exigir procuracao travaria o agendamento sem saida.
+  if (!AVERBACAO_ATIVA) return null;
+
   const procuracao = await prisma.procuracao.findUnique({
     where: { despachanteId_clienteId: { despachanteId, clienteId } },
     select: { status: true, validade: true },

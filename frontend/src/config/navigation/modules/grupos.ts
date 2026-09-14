@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { NavItem } from '../types';
 import { UserRole } from '@/types';
+import { AVERBACAO_ATIVA } from '@/config/features';
 
 /**
  * Grupos de menu compartilhados entre os módulos de Agendamento e Averbação.
@@ -107,8 +108,14 @@ export const grupoAverbacao: NavItem[] = [
   },
 ];
 
-/** Os dois grupos, na ordem em que aparecem na sidebar. */
+/**
+ * Os grupos na ordem em que aparecem na sidebar.
+ *
+ * Averbação entra só com a flag ligada. Como este array é o que
+ * agendamentoFCLNavigation, averbacaoNavigation e procuracoesNavigation
+ * consomem, condicionar aqui tira o grupo de todos os contextos de uma vez.
+ */
 export const gruposOperacao: NavItem[] = [
   ...grupoAgendamento,
-  ...grupoAverbacao,
+  ...(AVERBACAO_ATIVA ? grupoAverbacao : []),
 ];

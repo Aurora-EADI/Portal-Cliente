@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/context/AuthContext';
+import { AVERBACAO_ATIVA } from '@/config/features';
 import {
   Truck,
   FileText,
@@ -53,6 +54,9 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   Calculator,
 };
 
+/** Rotas do módulo de averbação, escondidas enquanto a regra não entra. */
+const ROTAS_AVERBACAO = ['/averbacao', '/procuracoes'];
+
 export function ModulesPage() {
   const router = useRouter();
   const { currentUser } = useAuthContext();
@@ -68,7 +72,13 @@ export function ModulesPage() {
         setError(null);
         if (currentUser?.id) {
           const data = await userModuleAccessService.getUserModulesWithAccessStatus(currentUser.id);
-          const activeModules = data.modules.filter((module) => module.isEnabled === true);
+          // Os tiles vêm do banco, não do registry estático — sem este descarte
+          // um registro antigo de ModuleAccess ressuscitaria a averbação.
+          const activeModules = data.modules.filter(
+            (module) =>
+              module.isEnabled === true &&
+              (AVERBACAO_ATIVA || !ROTAS_AVERBACAO.includes(module.route ?? '')),
+          );
           setModules(activeModules);
         }
       } catch (err: unknown) {

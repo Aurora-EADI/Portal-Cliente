@@ -18,9 +18,12 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
 
+  // "Início" aponta para /agendamento: e a tela inicial do portal, nao /modules.
+  const HOME_HREF = '/agendamento';
+
   if (pathname.startsWith('/modules')) {
     return [
-      { label: 'Início', href: '/modules' },
+      { label: 'Início', href: HOME_HREF },
       { label: 'Módulos', current: true },
     ];
   }
@@ -28,16 +31,17 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   if (pathname.startsWith('/agendamento')) {
     const currentTabLabel = tab ? (TAB_LABELS[tab] ?? tab) : 'Dashboard';
 
+    // Sem crumb "Agendamento FCL": ele apontaria para /agendamento, o mesmo
+    // destino do "Início", e dois crumbs seguidos para a mesma rota confundem.
     return [
-      { label: 'Início', href: '/modules' },
-      { label: 'Agendamento FCL', href: '/agendamento' },
+      { label: 'Início', href: HOME_HREF },
       { label: currentTabLabel, current: true },
     ];
   }
 
   // Fallback genérico para outras rotas
   const parts = pathname.split('/').filter(Boolean);
-  const items: BreadcrumbItem[] = [{ label: 'Início', href: '/modules' }];
+  const items: BreadcrumbItem[] = [{ label: 'Início', href: HOME_HREF }];
 
   let accumulated = '';
   parts.forEach((part, index) => {

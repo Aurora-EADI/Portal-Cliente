@@ -7,6 +7,8 @@
  * - Validação frontend de rotas válidas
  */
 
+import { AVERBACAO_ATIVA } from '@/config/features';
+
 export interface RouteDefinition {
   path: string;
   label: string;
@@ -16,9 +18,13 @@ export interface RouteDefinition {
 }
 
 // ===== Rotas de módulos (root) =====
+// Averbação só entra com a flag ligada: é daqui que sai o dropdown do cadastro
+// de módulos, e sem a entrada ninguém consegue apontar um módulo para /averbacao.
 export const MODULE_ROUTES: RouteDefinition[] = [
   { path: '/agendamento', label: 'Agendamento FCL', icon: 'CalendarDays', isModuleRoot: true },
-  { path: '/averbacao', label: 'Averbação Aduaneira', icon: 'FileCheck', isModuleRoot: true },
+  ...(AVERBACAO_ATIVA
+    ? [{ path: '/averbacao', label: 'Averbação Aduaneira', icon: 'FileCheck', isModuleRoot: true }]
+    : []),
 ];
 
 // ===== Sub-rotas (páginas internas dos módulos) =====
@@ -32,8 +38,12 @@ export const SUB_ROUTES: RouteDefinition[] = [
   { path: '/agendamento?tab=config', label: 'Configurações', icon: 'SlidersHorizontal', parentPath: '/agendamento', isModuleRoot: false },
 
   // Averbação Aduaneira — rotas por segmento, nao querystring
-  { path: '/averbacao', label: 'Processos', icon: 'ListChecks', parentPath: '/averbacao', isModuleRoot: false },
-  { path: '/procuracoes', label: 'Procurações', icon: 'FileSignature', parentPath: '/averbacao', isModuleRoot: false },
+  ...(AVERBACAO_ATIVA
+    ? [
+        { path: '/averbacao', label: 'Processos', icon: 'ListChecks', parentPath: '/averbacao', isModuleRoot: false },
+        { path: '/procuracoes', label: 'Procurações', icon: 'FileSignature', parentPath: '/averbacao', isModuleRoot: false },
+      ]
+    : []),
 ];
 
 // ===== Todas as rotas =====

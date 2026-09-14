@@ -1,33 +1,14 @@
-'use client';
+// Server Component de proposito: notFound() so devolve status 404 de verdade
+// quando corre no servidor. Em 'use client' a tela de 404 aparece, mas a
+// resposta sai 200. O corpo, que depende de useAuthContext, fica no
+// AverbacaoRouteClient ao lado.
+import { notFound } from 'next/navigation';
+import { AVERBACAO_ATIVA } from '@/config/features';
+import { AverbacaoRouteClient } from './AverbacaoRouteClient';
 
-import { RoleGuard } from '@/components/guards/RoleGuard';
-import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
-import { AverbacoesListPage } from '@/components/pages/averbacao/AverbacoesListPage';
-import { useAuthContext } from '@/context/AuthContext';
-import { UserRole } from '@/types';
-
-// RouteGuard nao serve aqui: ele libera CLIENTE, DESPACHANTE e TRANSPORTADORA
-// sem checar nada. Quem barra a TRANSPORTADORA e o RoleGuard.
 export default function AverbacaoRoute() {
-  const { currentUser } = useAuthContext();
+  // Averbacao ainda nao entrou em operacao: para o produto a rota nao existe.
+  if (!AVERBACAO_ATIVA) notFound();
 
-  return (
-    <RoleGuard
-      allowedRoles={[
-        UserRole.ADMIN,
-        UserRole.EMPLOYEE,
-        UserRole.CLIENTE,
-        UserRole.DESPACHANTE,
-      ]}
-    >
-      <ModuleRouteShell
-        layout={{ maxWidth: 'full' }}
-        header={{ pageTitle: 'Averbação Aduaneira' }}
-      >
-        <AverbacoesListPage
-          podeCriar={currentUser?.role === UserRole.DESPACHANTE}
-        />
-      </ModuleRouteShell>
-    </RoleGuard>
-  );
+  return <AverbacaoRouteClient />;
 }

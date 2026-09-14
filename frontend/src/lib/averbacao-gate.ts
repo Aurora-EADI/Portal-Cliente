@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AverbacaoProcessoStatus } from '@prisma/client';
 import { prisma } from './prisma';
+import { AVERBACAO_ATIVA } from '@/config/features';
 
 /**
  * Gate documental de agendamento.
@@ -66,6 +67,10 @@ export function statusDaDi(
 export async function bloqueioPorAverbacao(
   identificadores: string[],
 ): Promise<NextResponse | null> {
+  // A trava vive aqui e nao nos call sites: um unico ponto cobre as quatro
+  // chamadas em /api/agendamento/agendamentos e qualquer chamador futuro.
+  if (!AVERBACAO_ATIVA) return null;
+
   const limpos = identificadores.filter(Boolean);
   if (!limpos.length) return null;
 

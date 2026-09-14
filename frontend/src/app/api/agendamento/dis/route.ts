@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { UserRole, AgendamentoStatus } from '@prisma/client';
 import { statusAverbacaoPorDi, statusDaDi } from '@/lib/averbacao-gate';
 import { procuracaoVigente } from '@/lib/procuracao-guard';
+import { AVERBACAO_ATIVA } from '@/config/features';
 
 const STAFF = [UserRole.ADMIN, UserRole.EMPLOYEE];
 
@@ -108,6 +109,17 @@ export async function GET(request: NextRequest) {
       where: { codDespachante: despachante.codDespachante },
       orderBy: { sincronizadoEm: 'desc' },
     });
+
+    // Com a averbação desligada o despachante recebe a DI sem os dois campos de
+    // situação, exatamente como os demais papéis já recebem. As telas tratam
+    // ausência como "a regra não se aplica", então nada bloqueia.
+    //
+    // Não dá para resolver isso devolvendo {} dos lookups: `procuracaoPorCnpj`
+    // truthy faz o mapeamento mandar `procuracaoStatus: null`, e null passa no
+    // teste `!== undefined && !== 'APROVADA'` — bloquearia TODAS as DIs.
+    if (!AVERBACAO_ATIVA) {
+      return NextResponse.json(mapDisAverbadas(disAverbadas));
+    }
 
     const cnpjs = Array.from(
       new Set(

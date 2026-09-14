@@ -89,12 +89,16 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${API_URL}
+        # Averbacao Aduaneira: precisa ser build arg porque o Next inlina
+        # NEXT_PUBLIC_* no bundle. Env de runtime sozinha nao liga o modulo.
+        NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
       NEXT_TELEMETRY_DISABLED: 1
     # Sem publicação de porta no host — roteado pelo Traefik via portal_net
     networks:

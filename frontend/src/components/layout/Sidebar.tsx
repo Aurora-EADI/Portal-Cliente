@@ -122,14 +122,12 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
     [mobile, onClose]
   );
 
-  // Módulo ativo e ação de troca
+  // Módulo ativo. Sem switchHref o link "Trocar módulo" nao e renderizado.
   const activeModule: SidebarModule = useMemo(() => {
     const isAgendamento = pathname.startsWith('/agendamento');
     return {
       name: isAgendamento ? 'Agendamento FCL' : 'Módulos',
       icon: isAgendamento ? Calendar : LayoutGrid,
-      switchHref: '/modules',
-      switchLabel: 'Trocar módulo',
     };
   }, [pathname]);
 
