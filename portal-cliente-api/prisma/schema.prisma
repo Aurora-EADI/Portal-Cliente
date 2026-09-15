@@ -143,6 +143,7 @@ model Cliente {
   agendamentos    Agendamento[]
   procuracoes     Procuracao[]
   averbacoes      AverbacaoProcesso[]
+  despachantes    DespachanteCliente[]
 
   @@map("clientes")
 }
@@ -320,8 +321,37 @@ model Despachante {
   disAverbadas DiAverbada[]
   procuracoes  Procuracao[]
   averbacoes   AverbacaoProcesso[]
+  clientes     DespachanteCliente[]
 
   @@map("despachantes")
+}
+
+/// Carteira do despachante: clientes com quem ele tem DI no SIAUM.
+///
+/// Espelhada pelo Portal Aurora — sempre de lá para cá — a partir das DIs com
+/// carga no terminal, que chegam ao SIAUM antes da averbação. É espelho do
+/// estoque: quando o lote sai, o vínculo sai junto. Quem já tem procuração
+/// continua visível ao despachante pela própria procuração.
+///
+/// Não autoriza nada. Decide só quem aparece na lista de representados; quem
+/// autoriza operar em nome do cliente continua sendo a Procuracao.
+model DespachanteCliente {
+  id String @id @default(uuid())
+
+  despachanteId String      @map("despachante_id")
+  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
+
+  clienteId String  @map("cliente_id")
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  /// Data da DI mais recente que ligou os dois no SIAUM.
+  ultimaDiEm     DateTime? @map("ultima_di_em")
+  sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@unique([despachanteId, clienteId])
+  @@index([clienteId])
+  @@map("despachante_clientes")
 }
 
 // ============================================================

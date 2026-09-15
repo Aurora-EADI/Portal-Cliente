@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -33,6 +34,10 @@ import {
   ReprovarProcuracaoDto,
   RevogarProcuracaoDto,
 } from './dto/decidir-procuracao.dto';
+import {
+  ConcluirReplicacaoDto,
+  ReplicarRepresentacoesDto,
+} from './dto/replicar-representacoes.dto';
 
 function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
   res.setHeader('Content-Type', 'application/pdf');
@@ -202,5 +207,22 @@ export class ProcuracoesServiceController {
   @Get('despachante/:codDespachante')
   representados(@Param('codDespachante') codDespachante: string) {
     return this.service.listarRepresentadosPorCodigo(codDespachante);
+  }
+
+  /**
+   * Remessa da carteira despachante ↔ cliente lida do estoque do SIAUM pelo
+   * Portal Aurora — ver ProcuracoesService.replicarRepresentacoes.
+   */
+  @Put('representacoes/batch')
+  @HttpCode(HttpStatus.OK)
+  replicarRepresentacoes(@Body() dto: ReplicarRepresentacoesDto) {
+    return this.service.replicarRepresentacoes(dto.representacoes);
+  }
+
+  /** Fecha a execução e remove o que saiu do estoque. */
+  @Post('representacoes/concluir')
+  @HttpCode(HttpStatus.OK)
+  concluirReplicacao(@Body() dto: ConcluirReplicacaoDto) {
+    return this.service.concluirReplicacao(new Date(dto.desde));
   }
 }
