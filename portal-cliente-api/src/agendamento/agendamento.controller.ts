@@ -48,7 +48,9 @@ export class AgendamentoController {
 
   @Post('agendamentos')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
-  createAgendamento(@Body() body: any) { return this.fcl.createAgendamento(body); }
+  createAgendamento(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.createAgendamento(request.user as User, body);
+  }
 
   @Patch('agendamentos/:id/cancelar')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
