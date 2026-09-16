@@ -671,9 +671,18 @@ model AverbacaoProcesso {
   despachanteId String      @map("despachante_id")
   despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
 
-  modalidade            Modalidade
-  diDuimp               String     @map("di_duimp")
-  containerConhecimento String     @map("container_conhecimento")
+  modalidade Modalidade
+  diDuimp    String     @map("di_duimp")
+
+  /// Container (marítimo) ou conhecimento de transporte (demais modalidades).
+  /// Derivado de `containers`: é sempre o primeiro da lista. Continua existindo
+  /// porque listagem, busca e a fila de vínculo do Aurora leem este campo.
+  containerConhecimento String @map("container_conhecimento")
+
+  /// Todos os containers declarados. No marítimo a carga costuma ter mais de um
+  /// (62 de 101 lotes em estoque no SIAUM, o maior com 16), e declarar só um
+  /// fazia o analista ver "container confere" sem saber dos demais.
+  containers String[] @default([])
 
   /// Porto, aeroporto ou fronteira de origem. Informativo, preenchido pelo
   /// despachante — o sistema não valida contra tabela de recintos.

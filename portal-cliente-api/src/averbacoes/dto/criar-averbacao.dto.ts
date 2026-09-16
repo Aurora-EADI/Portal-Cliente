@@ -1,5 +1,7 @@
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEnum,
   IsOptional,
@@ -9,6 +11,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Modalidade } from '@prisma/client';
+import { MAX_CONTAINERS } from '../../common/containers';
 
 export class CriarAverbacaoDto {
   @IsEnum(Modalidade)
@@ -29,9 +32,15 @@ export class CriarAverbacaoDto {
   })
   diDuimp!: string;
 
-  // Normaliza antes de validar: o usuário digita em minúsculas e com espaço, e
-  // recusar por isso seria atrito sem motivo. O que não dá para aceitar é
-  // caractere fora de [A-Z0-9], que não existe em container nem conhecimento.
+  /**
+   * Forma antiga: um container ou conhecimento só.
+   *
+   * Continua aceita para o front que ainda não envia `containers` — a API pode
+   * subir antes dele. O serviço normaliza os dois caminhos no mesmo lugar
+   * (`resolverContainers`), que é quem valida ISO 6346 e a regra por
+   * modalidade; aqui só barramos caractere que não existe em nenhum dos dois.
+   */
+  @IsOptional()
   @Transform(({ value }) =>
     typeof value === 'string' ? value.toUpperCase().replace(/\s+/g, '') : value,
   )
@@ -39,7 +48,25 @@ export class CriarAverbacaoDto {
   @Matches(/^[A-Z0-9]+$/, {
     message: 'Container/Conhecimento aceita apenas letras e números',
   })
-  containerConhecimento!: string;
+  containerConhecimento?: string;
+
+  /** Marítimo costuma ter mais de um container; as demais modalidades, um só. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_CONTAINERS)
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value.map((v) =>
+          typeof v === 'string' ? v.toUpperCase().replace(/[^A-Z0-9]/g, '') : v,
+        )
+      : value,
+  )
+  @IsString({ each: true })
+  @Matches(/^[A-Z0-9]+$/, {
+    each: true,
+    message: 'Container aceita apenas letras e números',
+  })
+  containers?: string[];
 
   @IsUUID()
   clienteId!: string;
