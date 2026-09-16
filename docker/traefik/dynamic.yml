@@ -1,6 +1,3 @@
-# TLS material supplied by infrastructure/TI.
-# Do not create placeholder certificate files in the repository.
-tls:
-  certificates:
-    - certFile: /etc/traefik/certs/portal.seudominio.com/fullchain.pem
-      keyFile: /etc/traefik/certs/portal.seudominio.com/privkey.pem
+# Certificate resolution is static configuration in traefik.prod.yml.
+# ACME state lives only in the server-side /letsencrypt/acme.json mount.
+tls: {}

@@ -154,17 +154,28 @@ Produção usa `docker-compose.yml` como stack oficial. O serviço `migrate` apl
 somente migrations versionadas com `prisma migrate deploy`; `prisma db push` não
 faz parte do pipeline. API, frontend e migrator são imagens publicadas no GHCR;
 o servidor não faz build. O Traefik fica separado da stack, usa Docker provider
-na rede externa `portal_net`, redireciona `web` para `websecure` e recebe o
-certificado da infraestrutura. O domínio de produção é
+na rede externa `portal_net`, redireciona `web` para `websecure` e emite o
+certificado ACME/Let's Encrypt. O domínio de produção é
 `portal-cliente.auroramanaus.com.br`.
 
 ## Deploy de produção
 
-O pipeline oficial é `.github/workflows/deploy.yml`, acionado por push em `main`
-ou manualmente. Quality, build e push rodam em GitHub-hosted runners. O deploy
-roda somente em um runner Linux self-hosted com as labels
-`self-hosted`, `linux` e `portal-eadi`, dentro da rede EADI; um runner público
-não tem acesso presumido ao `SRVPORTALEADI`.
+O primeiro deploy é manual no `SRVPORTALEADI`. `.github/workflows/deploy.yml`
+aceita somente `workflow_dispatch`; push em `main` não publica nem aplica
+migrations. O Compose oficial permanece preparado para GHCR. O override
+`docker-compose.manual.yml` constrói localmente API, migrator e frontend.
+
+No clone em `/opt/portaleadi/app`, valide, construa, migre e só então suba:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.manual.yml --env-file .env.prod config
+docker compose -f docker-compose.yml -f docker-compose.manual.yml --env-file .env.prod build --pull
+docker compose -f docker-compose.yml -f docker-compose.manual.yml --env-file .env.prod run --rm migrate
+docker compose -f docker-compose.yml -f docker-compose.manual.yml --env-file .env.prod up -d --remove-orphans
+```
+
+Não use `prisma db push`. Falha na migration encerra o procedimento; não suba a
+aplicação até corrigi-la.
 
 O build publica estas imagens, com tags SHA, `latest` e `production`:
 
@@ -191,21 +202,9 @@ deploy.
 
 ### Ativação e secrets
 
-Configure no GitHub, preferencialmente no environment `production`:
-
-```text
-SSH_HOST
-SSH_USER
-SSH_PORT
-SSH_PRIVATE_KEY
-SSH_KNOWN_HOSTS
-```
-
-`SSH_PRIVATE_KEY` deve ser uma chave dedicada de deploy. `SSH_KNOWN_HOSTS`
-mantém a verificação da identidade do host; não desative
-`StrictHostKeyChecking`. O usuário SSH deve ter somente o acesso necessário ao
-diretório `/opt/portaleadi/app` e ao Docker; se precisar de `sudo`, documente
-uma regra restrita para os comandos Docker.
+Clone o repositório privado no servidor com uma Deploy Key read-only. Mantenha
+o `.env.prod` somente no servidor, com permissão `0600`. Não são necessários
+GitHub Actions secrets nem runner self-hosted para o deploy manual.
 
 Mantenha no servidor, nunca no GitHub, os secrets de runtime:
 
@@ -215,12 +214,13 @@ BETTER_AUTH_SECRET
 BETTER_AUTH_PROVISIONING_SECRET
 SERVICE_API_KEY
 MINIO_ROOT_PASSWORD
+RABBITMQ_URL
 ```
 
-Se os pacotes GHCR forem privados, configure no servidor uma credencial
-read-only para `ghcr.io` no usuário que executa o Docker. Não coloque token de
-pull no Compose nem em argumentos de build. Pacotes públicos dispensam esse
-login.
+Quando o fluxo GHCR for habilitado, configure a credencial read-only para
+`ghcr.io` no usuário que executa o Docker. Não coloque token de pull no Compose,
+em `.env.prod` ou em argumentos de build. O build manual não faz pull de imagens
+da aplicação.
 
 ### Rollback manual
 

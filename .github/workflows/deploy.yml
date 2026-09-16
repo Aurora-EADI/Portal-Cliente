@@ -1,9 +1,6 @@
 name: Deploy Portal Cliente
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       image_tag:
@@ -23,7 +20,7 @@ env:
   PNPM_VERSION: 11.3.0
   REGISTRY: ghcr.io
   GHCR_OWNER: ${{ vars.GHCR_OWNER || github.repository_owner }}
-  PORTAL_HOST: ${{ vars.PORTAL_HOST || 'portal-cliente.auroramanaus.com.br' }}
+  PORTAL_HOST: ${{ vars.PORTAL_HOST || 'portal-cliente.auroraeadi.com.br' }}
 
 jobs:
   quality:
@@ -90,7 +87,7 @@ jobs:
             build_args: |
               NEXT_PUBLIC_API_URL=/api
               NEXT_PUBLIC_NEST_API_URL=/api
-              NEXT_PUBLIC_APP_URL=https://${{ vars.PORTAL_HOST || 'portal-cliente.auroramanaus.com.br' }}
+              NEXT_PUBLIC_APP_URL=https://${{ vars.PORTAL_HOST || 'portal-cliente.auroraeadi.com.br' }}
               NEXT_PUBLIC_AVERBACAO_ATIVA=${{ vars.AVERBACAO_ATIVA || 'false' }}
           - image: portal-cliente-migrator
             dockerfile: portal-cliente-api/Dockerfile
@@ -171,39 +168,12 @@ jobs:
               ;;
           esac
 
-      - name: Deploy over native SSH
+      # The runner is installed on SRVPORTALEADI, the same host that owns the
+      # production Compose project. Do not SSH back into this host: its runner
+      # service executes the deployment locally with the github-runner account.
+      - name: Deploy local Compose project
         shell: bash
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
-          set -euo pipefail
-          key_file="${RUNNER_TEMP}/portal-eadi-deploy-key"
-          known_hosts_file="${RUNNER_TEMP}/portal-eadi-known-hosts"
-          trap 'rm -f "$key_file" "$known_hosts_file"' EXIT
-
-          test -n "$SSH_HOST"
-          test -n "$SSH_USER"
-          test -n "$SSH_PORT"
-          test -n "$SSH_PRIVATE_KEY"
-          test -n "$SSH_KNOWN_HOSTS"
-
-          umask 077
-          printf '%s\n' "$SSH_PRIVATE_KEY" > "$key_file"
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$known_hosts_file"
-
-          ssh \
-            -i "$key_file" \
-            -p "$SSH_PORT" \
-            -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
-            -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$known_hosts_file" \
-            "$SSH_USER@$SSH_HOST" \
-            "IMAGE_TAG='$IMAGE_TAG' GHCR_OWNER='$GHCR_OWNER' DEPLOY_MODE='$DEPLOY_MODE' bash -s" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
           cd /opt/portaleadi/app
           test -f .env.prod
@@ -219,7 +189,6 @@ jobs:
           fi
 
           docker compose --env-file .env.prod ps
-          REMOTE_SCRIPT
 
       - name: Verify HTTPS healthcheck
         shell: bash

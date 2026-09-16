@@ -16,26 +16,27 @@ Requisitos da instância externa:
 /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
-O arquivo [traefik.prod.yml](./traefik.prod.yml) é a configuração estática.
-O arquivo [dynamic.yml](./dynamic.yml) contém somente a declaração opcional de
-certificados TLS; não contém routers nem serviços da aplicação.
+O arquivo [traefik.prod.yml](./traefik.prod.yml) é a configuração estática e
+configura o resolver ACME `letsencrypt`. O arquivo [dynamic.yml](./dynamic.yml)
+não contém certificados, routers ou serviços da aplicação.
 
-## Certificado fornecido pela TI
+## Certificado ACME / Let's Encrypt
 
-Arquivos necessários, em PEM:
-
-```text
-fullchain.pem  certificado do domínio com cadeia intermediária
-privkey.pem    chave privada correspondente
-```
-
-Ponto de montagem somente leitura esperado:
+O Traefik externo deve montar armazenamento persistente fora do repositório:
 
 ```text
-/etc/traefik/certs/portal.seudominio.com/fullchain.pem
-/etc/traefik/certs/portal.seudominio.com/privkey.pem
+/opt/traefik/letsencrypt:/letsencrypt
 ```
 
-Não criar arquivos fictícios, self-signed ou vazios como certificado de
-produção. O domínio e o caminho final devem ser substituídos pela TI quando
-forem definidos.
+No servidor, crie o arquivo com acesso restrito antes de iniciar Traefik:
+
+```sh
+install -d -m 700 /opt/traefik/letsencrypt
+install -m 600 /dev/null /opt/traefik/letsencrypt/acme.json
+```
+
+Não monte `acme.json` a partir do repositório nem o versione: ele contém o
+estado e as chaves privadas ACME. Execute uma única réplica de Traefik usando
+esse storage. A porta pública `80` precisa alcançar o entrypoint `web`; o
+redirect global para HTTPS é compatível com HTTP-01. Os routers da aplicação
+selecionam o resolver `letsencrypt` nas labels do Compose.
