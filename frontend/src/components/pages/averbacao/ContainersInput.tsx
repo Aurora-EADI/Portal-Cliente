@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatContainer } from '@/lib/utils';
 import {
@@ -18,61 +19,112 @@ import {
  * 101 lotes em estoque no SIAUM, o maior com 16 — e declarar um só escondia o
  * resto da carga na conferência do analista.
  *
- * Colar a lista inteira é o caminho principal: ela chega pronta do agente ou do
- * armador, e digitar 16 containers à mão é onde o erro aparece.
+ * O caminho principal é adicionar um a um, com botão visível: sem ele a pessoa
+ * digita o container e não sabe o que fazer em seguida. Colar a lista inteira
+ * continua funcionando, porque ela costuma chegar pronta do agente ou do
+ * armador, e digitar 16 à mão é onde o erro aparece.
  */
 export function ContainersInput({
+  id,
   valores,
   onChange,
   desabilitado,
 }: {
+  id?: string;
   valores: string[];
   onChange: (containers: string[]) => void;
   desabilitado?: boolean;
 }) {
   const [rascunho, setRascunho] = useState('');
+  const [aviso, setAviso] = useState<string | null>(null);
 
-  const adicionar = (entrada: string) => {
-    const novos = separarContainers(entrada).filter(
-      (c) => !valores.includes(c),
-    );
+  const cheio = valores.length >= MAX_CONTAINERS;
+
+  const adicionarVarios = (texto: string) => {
+    const novos = separarContainers(texto).filter((c) => !valores.includes(c));
     if (!novos.length) return;
     onChange([...valores, ...novos].slice(0, MAX_CONTAINERS));
-  };
-
-  const confirmarRascunho = () => {
-    if (!rascunho.trim()) return;
-    adicionar(rascunho);
     setRascunho('');
+    setAviso(null);
   };
 
-  const remover = (container: string) =>
-    onChange(valores.filter((c) => c !== container));
+  const adicionar = () => {
+    const container = normalizarContainer(rascunho);
+    if (!container) return;
 
-  const invalidos = valores.filter((c) => !ehContainerIso6346(c));
+    if (valores.includes(container)) {
+      setAviso(`${container} já está na lista.`);
+      setRascunho('');
+      return;
+    }
+    // Recusar na entrada evita a lista com item vermelho que trava o avanço
+    // sem a pessoa entender qual dos 16 está errado.
+    if (!ehContainerIso6346(container)) {
+      setAviso(
+        `${container} não confere: verifique o dígito verificador (ISO 6346).`,
+      );
+      return;
+    }
+
+    onChange([...valores, container]);
+    setRascunho('');
+    setAviso(null);
+  };
+
+  const remover = (container: string) => {
+    onChange(valores.filter((c) => c !== container));
+    setAviso(null);
+  };
+
+  const prontoParaAdicionar = normalizarContainer(rascunho).length === 11;
 
   return (
-    <div>
-      <div
-        className={cn(
-          'mt-1 flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input p-1.5',
-          desabilitado && 'opacity-60',
-        )}
-      >
-        {valores.map((container) => {
-          const valido = ehContainerIso6346(container);
-          return (
+    <div className="mt-1 space-y-2">
+      <div className="flex gap-2">
+        <Input
+          id={id}
+          value={rascunho}
+          disabled={desabilitado || cheio}
+          onChange={(e) => {
+            setRascunho(formatContainer(e.target.value));
+            setAviso(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+              // Enter aqui adiciona; sem isto submeteria o formulário.
+              e.preventDefault();
+              adicionar();
+            }
+          }}
+          onPaste={(e) => {
+            const texto = e.clipboardData.getData('text');
+            if (!texto) return;
+            e.preventDefault();
+            adicionarVarios(texto);
+          }}
+          placeholder="Ex: MSKU1234567"
+          maxLength={11}
+          className="font-mono uppercase"
+          aria-label="Número do container"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 gap-1.5"
+          disabled={desabilitado || cheio || !prontoParaAdicionar}
+          onClick={adicionar}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Adicionar
+        </Button>
+      </div>
+
+      {valores.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/30 p-2">
+          {valores.map((container) => (
             <span
               key={container}
-              className={cn(
-                'inline-flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs',
-                valido
-                  ? 'border-transparent bg-muted'
-                  : 'border-destructive/40 bg-destructive/10 text-destructive',
-              )}
-              // O inválido fica visível em vez de ser recusado na entrada: a
-              // pessoa vê qual dos 16 está errado, em vez de perder a lista.
-              title={valido ? container : 'Dígito verificador não confere'}
+              className="inline-flex items-center gap-1 rounded border bg-background px-2 py-0.5 font-mono text-xs"
             >
               {container}
               <button
@@ -80,63 +132,29 @@ export function ContainersInput({
                 onClick={() => remover(container)}
                 disabled={desabilitado}
                 aria-label={`Remover ${container}`}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-destructive"
               >
                 <X className="h-3 w-3" />
               </button>
             </span>
-          );
-        })}
-
-        <Input
-          value={rascunho}
-          disabled={desabilitado || valores.length >= MAX_CONTAINERS}
-          onChange={(e) => setRascunho(formatContainer(e.target.value))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === 'Tab' || e.key === ',') {
-              if (!rascunho.trim()) return;
-              // Enter aqui não pode submeter o formulário nem pular o campo.
-              e.preventDefault();
-              confirmarRascunho();
-            }
-            if (e.key === 'Backspace' && !rascunho && valores.length) {
-              remover(valores[valores.length - 1]);
-            }
-          }}
-          onPaste={(e) => {
-            const texto = e.clipboardData.getData('text');
-            if (!texto) return;
-            e.preventDefault();
-            adicionar(texto);
-            setRascunho('');
-          }}
-          onBlur={confirmarRascunho}
-          placeholder={valores.length ? '' : 'Ex: MSKU1234567'}
-          className="h-6 flex-1 border-0 px-1 font-mono shadow-none focus-visible:ring-0"
-          aria-label="Adicionar container"
-        />
-      </div>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        {valores.length
-          ? `${valores.length} container${valores.length > 1 ? 's' : ''}`
-          : 'Padrão ISO 6346: 4 letras + 7 dígitos.'}
-        {' · '}
-        Cole a lista inteira (separada por espaço, vírgula ou &quot;/&quot;) ou
-        confirme cada um com Enter.
-      </p>
-
-      {invalidos.length > 0 && (
-        <p className="mt-1 text-xs text-destructive">
-          Dígito verificador não confere em: {invalidos.join(', ')}. Corrija ou
-          remova antes de continuar.
-        </p>
+          ))}
+          <span className="ml-auto text-xs text-muted-foreground">
+            {valores.length} container{valores.length > 1 ? 's' : ''}
+          </span>
+        </div>
       )}
+
+      <p
+        className={cn(
+          'text-xs',
+          aviso ? 'text-destructive' : 'text-muted-foreground',
+        )}
+      >
+        {aviso ??
+          (cheio
+            ? `Limite de ${MAX_CONTAINERS} containers atingido.`
+            : 'Digite o container e clique em Adicionar (ou tecle Enter). Para vários de uma vez, cole a lista inteira.')}
+      </p>
     </div>
   );
-}
-
-/** Normaliza o que veio de um campo de texto simples (conhecimento). */
-export function comoConhecimento(valor: string): string {
-  return normalizarContainer(valor);
 }

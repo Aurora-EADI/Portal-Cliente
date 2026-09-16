@@ -406,6 +406,7 @@ export function NovaAverbacaoModal({
                 </Label>
                 {ehMaritimo ? (
                   <ContainersInput
+                    id="container"
                     valores={containers}
                     onChange={setContainers}
                   />
