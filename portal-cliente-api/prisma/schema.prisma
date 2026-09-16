@@ -160,6 +160,12 @@ enum AgendamentoStatus {
   CONCLUIDO
 }
 
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+}
+
 model Cliente {
   id        String   @id @default(uuid())
   nome      String
@@ -329,6 +335,7 @@ model Agendamento {
   veiculo             Veiculo?             @relation(fields: [veiculoId], references: [id])
   cliente             Cliente?             @relation(fields: [clienteId], references: [id])
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
+  historicoStatus     AgendamentoStatusHistorico[]
 
   @@map("agendamentos")
 }
@@ -379,15 +386,79 @@ model DiAverbada {
   averbadoEm     DateTime  @map("averbado_em")
   sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
   status         DIStatus  @default(liberada)
+  auroraDiId     String?   @unique @map("aurora_di_id")
+  numeroDI       String?   @map("numero_di")
+  cpfMotorista   String?   @map("cpf_motorista")
+  placaVeiculo   String?   @map("placa_veiculo")
+  dtAverbacao    DateTime? @map("dt_averbacao")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   despachanteRef Despachante?                 @relation(fields: [codDespachante], references: [codDespachante])
   atribuicoes    DiTransportadoraAtribuicao[]
+  containerIds   DiAverbadaContainer[]
 
   @@index([cnpjCliente])
   @@index([codDespachante])
   @@map("dis_averbadas")
+}
+
+/// Identificadores de containers recebidos do Aurora. O identificador externo
+/// fica separado do campo legado `DiAverbada.containers`, sem descartar dados
+/// que chegaram por sincronizações anteriores.
+model DiAverbadaContainer {
+  id       String @id @default(uuid())
+  nLote    String @map("n_lote")
+  externalId String @map("external_id")
+
+  diAverbada DiAverbada @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
+
+  @@unique([nLote, externalId])
+  @@map("di_averbada_containers")
+}
+
+model ProcessedEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique @map("event_id")
+  eventType   String   @map("event_type")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([eventType, processedAt])
+  @@map("processed_events")
+}
+
+model OutboxEvent {
+  id            String            @id @default(uuid())
+  eventId       String            @unique @map("event_id")
+  eventType     String            @map("event_type")
+  aggregateType String            @map("aggregate_type")
+  aggregateId   String            @map("aggregate_id")
+  payload       Json
+  status        OutboxEventStatus @default(PENDING)
+  attempts      Int               @default(0)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  publishedAt   DateTime?         @map("published_at")
+  nextAttemptAt DateTime          @default(now()) @map("next_attempt_at")
+  lastError     String?           @map("last_error")
+  leaseToken    String?           @map("lease_token")
+  lockedAt      DateTime?         @map("locked_at")
+
+  @@index([status, nextAttemptAt])
+  @@map("outbox_events")
+}
+
+model AgendamentoStatusHistorico {
+  id               String            @id @default(uuid())
+  agendamentoId    String            @map("agendamento_id")
+  status           AgendamentoStatus
+  previousStatus   AgendamentoStatus? @map("previous_status")
+  operadorId       String?           @map("operador_id")
+  dtAlteracao      DateTime          @default(now()) @map("dt_alteracao")
+
+  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  @@index([agendamentoId, dtAlteracao])
+  @@map("agendamento_status_historico")
 }
 
 // ============================================================

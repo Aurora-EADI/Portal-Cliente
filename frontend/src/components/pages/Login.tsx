@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { getUserFriendlyError } from '@/lib/error-message';
 
 export function Login() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export function Login() {
     }
     setError('');
     login({ email, password }, {
-      onError: (loginError: Error) => setError(loginError.message || 'E-mail ou senha incorretos.'),
+      onError: (loginError: Error) => setError(getUserFriendlyError(loginError, 'E-mail ou senha incorretos.')),
     });
   };
 

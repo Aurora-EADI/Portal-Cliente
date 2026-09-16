@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { getUserFriendlyError } from '@/lib/error-message';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function ForgotPasswordPage() {
     });
     setLoading(false);
     if (result.error) setError(result.error.message || 'Não foi possível enviar o e-mail.');
+    if (result.error) setError(getUserFriendlyError(result.error, 'Não foi possível enviar o e-mail.'));
     else setMessage('Se o e-mail estiver cadastrado, você receberá as instruções para redefinir a senha.');
   }
 

@@ -1,13 +1,13 @@
 import { apiNest } from '@/lib/apiNest';
 import { authClient } from '@/lib/auth-client';
 import type { User } from '@/types';
-import { getErrorMessage, getErrorStatus } from '@/lib/error-message';
+import { getErrorMessage, getErrorStatus, normalizeAuthError } from '@/lib/error-message';
 
 export const authService = {
   login: async (email: string, password: string) => {
     const result = await authClient.signIn.email({ email, password });
     if (result.error) {
-      throw new Error(result.error.message || 'Erro ao autenticar');
+      throw normalizeAuthError(result.error);
     }
     const user = await authService.getProfile();
     return { user };

@@ -40,6 +40,7 @@ function RegistroContent() {
         if (data.tipo) setConviteTipo(data.tipo);
       })
       .catch((error) => setConviteInvalid(error.response?.data?.message || 'Erro ao validar convite'))
+      .catch((error) => setConviteInvalid(getErrorMessage(error, 'Convite inválido ou expirado.')))
       .finally(() => setLoadingConvite(false));
   }, [token]);
 

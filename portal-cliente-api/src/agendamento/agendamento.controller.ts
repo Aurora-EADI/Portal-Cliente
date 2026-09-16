@@ -7,6 +7,10 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+type AuthenticatedRequest = Request & {
+  user?: User;
+};
+
 @Controller('agendamento')
 @UseGuards(BetterAuthDomainGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
@@ -15,8 +19,20 @@ export class AgendamentoController {
 
   @Get('atribuicoes')
   @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
-  findAtribuicoes(@Req() request: Request, @Query('nLote') nLote?: string) {
-    return this.fcl.findAtribuicoes((request as any).user as User, nLote);
+  findAtribuicoes(@Req() request: AuthenticatedRequest, @Query('nLote') nLote?: string) {
+    return this.fcl.findAtribuicoes(request.user as User, nLote);
+  }
+
+  @Post('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  criarAtribuicao(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.criarAtribuicao(request.user as User, body);
+  }
+
+  @Delete('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  removerAtribuicao(@Req() request: AuthenticatedRequest, @Query() query: any) {
+    return this.fcl.removerAtribuicao(request.user as User, query);
   }
 
   @Get('transportadoras-conta')

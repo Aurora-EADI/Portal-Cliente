@@ -184,3 +184,4 @@ module.exports = {
   normalizeAuthError,
   getUserFriendlyError,
 };
+

@@ -60,6 +60,70 @@ Migrações não fazem parte de `build`, `dev` ou instalação. Após migrar,
 não gera o cliente automaticamente em `migrate dev`. Para inspecionar comandos
 sem alterar banco, use `pnpm db:migrate --help`.
 
+## Integração Aurora por RabbitMQ
+
+Não existe sincronização REST entre Portal Aurora e Portal do Cliente para DI
+averbada ou status de agendamento. A ponte obrigatória é RabbitMQ:
+
+```text
+Portal Aurora
+     │ dis.averbada.created
+     ▼
+  RabbitMQ
+     ▼
+Portal Cliente
+     │ agendamento.status-changed
+     ▼
+  RabbitMQ
+     ▼
+Portal Aurora
+```
+
+`amqplib` 2.x é usado diretamente para manter ACK manual, ConfirmChannel,
+publisher confirms e topology explícita. `RABBITMQ_URL` é a única credencial de
+broker; use `amqps://` em produção e nunca a registre em logs.
+
+| Recurso | Default configurável |
+| --- | --- |
+| Exchange principal topic/durável | `portal.integration.events` |
+| Exchange retry topic/durável | `portal.integration.retry` |
+| DLX topic/durável | `portal.integration.dlx` |
+| Fila DI Portal Cliente | `portal-cliente.dis-averbada.created` |
+| Retry DI TTL 30 s | `portal-cliente.dis-averbada.created.retry.30s` |
+| DLQ DI | `portal-cliente.dis-averbada.created.dlq` |
+
+Contrato `dis.averbada.created` v1: envelope contém `eventId` UUID,
+`eventType`, `version: 1`, `occurredAt`, `source`, `correlationId` e `payload`.
+O payload exige `nLote` autoritativo, `diId`, `numeroDI`, `cpfMotorista`,
+`placaVeiculo`, `dtAverbacao` e `idContainers`. O portal não deriva `nLote`.
+
+Inbox (`ProcessedEvent.eventId` único), DI e containers são gravados na mesma
+transação; somente então a mensagem recebe ACK. Payload inválido vai direto à
+DLQ. Falha transitória é republicada com confirm para retry TTL; cinco tentativas
+encerram na DLQ. Não há `nack(requeue=true)` em loop.
+
+Mudança de status grava `AgendamentoStatusHistorico` e `OutboxEvent` na mesma
+transação. Worker seleciona eventos com `FOR UPDATE SKIP LOCKED`, publica com
+mensagem persistente e confirm, e só então preenche `publishedAt`. Falha mantém
+o evento pendente com backoff. `/api/health` permanece liveness; `/api/health/ready`
+reporta API, PostgreSQL, MinIO e RabbitMQ sem dados sensíveis.
+
+### Teste local descartável
+
+```sh
+docker compose -f docker-compose.rabbitmq.test.yml up -d
+# usar PostgreSQL local descartável já migrado
+$env:RABBITMQ_TEST_URL='amqp://127.0.0.1:5672'
+$env:DATABASE_URL='postgresql://.../portal_cliente_test'
+pnpm --filter portal-cliente-api test -- tests/rabbitmq.integration.test.cjs
+docker compose -f docker-compose.rabbitmq.test.yml down -v
+```
+
+Variáveis: `RABBITMQ_URL`, `RABBITMQ_EXCHANGE`, `RABBITMQ_RETRY_EXCHANGE`,
+`RABBITMQ_DLX_EXCHANGE`, `RABBITMQ_DI_AVERBADA_QUEUE`,
+`RABBITMQ_DI_AVERBADA_RETRY_QUEUE`, `RABBITMQ_DI_AVERBADA_DLQ`,
+`RABBITMQ_RETRY_DELAY_MS` e `RABBITMQ_MAX_RETRIES`.
+
 Para adicionar dependências:
 
 ```sh

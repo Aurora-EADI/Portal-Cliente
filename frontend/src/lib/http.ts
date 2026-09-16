@@ -4,7 +4,13 @@ type SessionRequest = InternalAxiosRequestConfig & { _sessionProbe?: boolean };
 
 // Rotas onde um 401 e resposta esperada para visitante anonimo — redirecionar
 // dali jogaria quem esta se cadastrando para fora do fluxo.
-const PUBLIC_PATHS = new Set(['/', '/registro', '/session-expired']);
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/registro',
+  '/session-expired',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+]);
 
 /**
  * Fabrica os clients HTTP do portal. Existem dois destinos hoje — as Route
@@ -32,7 +38,9 @@ export function createHttpClient(baseURL: string): AxiosInstance {
     async (error: AxiosError) => {
       const request = error.config as SessionRequest | undefined;
       if (error.response?.status === 401 && typeof window !== 'undefined') {
-        if (!request?._sessionProbe && !PUBLIC_PATHS.has(window.location.pathname)) {
+        const url = String(request?.url || '');
+        const isAuthEndpoint = url.includes('/auth') || url.includes('/sign-in') || url.includes('/login');
+        if (!request?._sessionProbe && !isAuthEndpoint && !PUBLIC_PATHS.has(window.location.pathname)) {
           window.location.href = '/session-expired';
         }
       }

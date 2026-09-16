@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { getUserFriendlyError } from '@/lib/error-message';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function ResetPasswordPage() {
     const result = await authClient.resetPassword({ newPassword: password, token });
     setLoading(false);
     if (result.error) setError(result.error.message || 'Não foi possível redefinir a senha.');
+    if (result.error) setError(getUserFriendlyError(result.error, 'Não foi possível redefinir a senha.'));
     else setMessage('Senha redefinida com sucesso.');
   }
 

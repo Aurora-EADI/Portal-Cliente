@@ -71,6 +71,16 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       PROTHEUS_API_KEY: ${PROTHEUS_API_KEY:-}
+      # Broker e operado fora desta stack; a URL vem somente do .env.prod.
+      RABBITMQ_URL: ${RABBITMQ_URL:-}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-portal.integration.events}
+      RABBITMQ_RETRY_EXCHANGE: ${RABBITMQ_RETRY_EXCHANGE:-portal.integration.retry}
+      RABBITMQ_DLX_EXCHANGE: ${RABBITMQ_DLX_EXCHANGE:-portal.integration.dlx}
+      RABBITMQ_DI_AVERBADA_QUEUE: ${RABBITMQ_DI_AVERBADA_QUEUE:-portal-cliente.dis-averbada.created}
+      RABBITMQ_DI_AVERBADA_RETRY_QUEUE: ${RABBITMQ_DI_AVERBADA_RETRY_QUEUE:-portal-cliente.dis-averbada.created.retry.30s}
+      RABBITMQ_DI_AVERBADA_DLQ: ${RABBITMQ_DI_AVERBADA_DLQ:-portal-cliente.dis-averbada.created.dlq}
+      RABBITMQ_RETRY_DELAY_MS: ${RABBITMQ_RETRY_DELAY_MS:-30000}
+      RABBITMQ_MAX_RETRIES: ${RABBITMQ_MAX_RETRIES:-5}
     # Sem publicação de porta no host — roteado pelo Traefik via portal_net
     networks:
       - portal_net

@@ -1,5 +1,6 @@
 import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { betterAuth } from 'better-auth';
+import type { BetterAuthPlugin } from 'better-auth/types';
 import { APIError } from 'better-auth/api';
 import { i18n } from '@better-auth/i18n';
 import { PrismaClient } from '@prisma/client';
@@ -65,7 +66,7 @@ export const auth = betterAuth({
           USER_INACTIVE: 'Usuário inativo. Entre em contato com o administrador.',
         },
       },
-    }),
+    }) as unknown as BetterAuthPlugin,
   ],
   emailAndPassword: {
     enabled: true,

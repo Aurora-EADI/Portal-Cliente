@@ -16,6 +16,7 @@
     },
     "start": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
     "lint": { "outputs": [] },
-    "typecheck": { "dependsOn": [], "outputs": [] }
+    "typecheck": { "dependsOn": [], "outputs": [] },
+    "test": { "dependsOn": [], "outputs": [] }
   }
 }

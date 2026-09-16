@@ -61,6 +61,10 @@ export class MinioService implements OnModuleInit {
     }
   }
 
+  async isHealthy(): Promise<boolean> {
+    try { return await this.minioClient.bucketExists(this.bucketName); } catch { return false; }
+  }
+
   private async ensureBucketExists(bucket: string) {
     if (this.ensuredBuckets.has(bucket)) {
       return;

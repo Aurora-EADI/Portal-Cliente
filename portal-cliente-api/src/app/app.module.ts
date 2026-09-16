@@ -19,6 +19,8 @@ import { TiposDocumentoModule } from '../tipos-documento/tipos-documento.module'
 import { ProcuracoesModule } from '../procuracoes/procuracoes.module';
 import { AverbacoesModule } from '../averbacoes/averbacoes.module';
 import { ServiceModule } from '../service/service.module';
+import { RabbitMqModule } from '../rabbitmq/rabbitmq.module';
+import { HealthModule } from '../health/health.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { ServiceModule } from '../service/service.module';
     // @Throttle. O portal e exposto, entao o padrao e limitar, nao liberar.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
+    RabbitMqModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     ModulesModule,

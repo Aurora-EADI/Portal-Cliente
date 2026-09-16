@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { userModuleAccessService } from '@/services/access/user-module-access.service';
 import { ModuleAccess } from '@/types/access-control';
+import { getUserFriendlyError } from '@/lib/error-message';
 import { useAuthContext } from './AuthContext';
 
 interface ModuleAccessContextType {
@@ -71,6 +72,7 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
     } catch (err: unknown) {
       console.error('Erro ao carregar módulos:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar módulos');
+      setError(getUserFriendlyError(err, 'Erro ao carregar módulos'));
       setModules([]);
     } finally {
       setIsLoading(false);

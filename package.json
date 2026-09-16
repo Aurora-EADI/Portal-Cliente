@@ -16,6 +16,7 @@
     "start": "turbo run start",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "prisma": "pnpm --filter portal-cliente-api exec prisma",
     "db:migrate": "pnpm --filter portal-cliente-api exec prisma migrate dev",
     "db:studio": "pnpm --filter portal-cliente-api exec prisma studio",

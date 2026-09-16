@@ -2,12 +2,13 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { AgendamentoStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { OutboxService } from '../rabbitmq/publishers/outbox.service';
 
 const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO, AgendamentoStatus.AG_CHEGADA, AgendamentoStatus.CHEGOU, AgendamentoStatus.ON_TIME, AgendamentoStatus.ATRASADO, AgendamentoStatus.CONCLUIDO];
 
 @Injectable()
 export class ServiceIntegrationService {
-  constructor(private readonly prisma: PrismaService, private readonly mail: MailService) {}
+  constructor(private readonly prisma: PrismaService, private readonly mail: MailService, private readonly outbox: OutboxService) {}
 
   listAgendamentos(query: any) {
     const status = query.status && Object.values(AgendamentoStatus).includes(query.status) ? query.status : undefined;
@@ -30,7 +31,17 @@ export class ServiceIntegrationService {
     return { protocolo: agendamento.protocolo, id: agendamento.id, agendamento };
   }
 
-  async updateAgendamentoStatus(id: string, status: string) { if (!Object.values(AgendamentoStatus).includes(status as AgendamentoStatus)) throw new BadRequestException('Status inválido'); const existing = await this.prisma.agendamento.findUnique({ where: { id } }); if (!existing) throw new NotFoundException('Agendamento não encontrado'); return this.prisma.agendamento.update({ where: { id }, data: { status: status as AgendamentoStatus }, include: { motorista: true, veiculo: true, cliente: { select: { id: true, nome: true } } } }); }
+  async updateAgendamentoStatus(id: string, status: string, operadorId: string | null = null) {
+    if (!Object.values(AgendamentoStatus).includes(status as AgendamentoStatus)) throw new BadRequestException('Status inválido');
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.agendamento.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundException('Agendamento não encontrado');
+      const updated = await tx.agendamento.update({ where: { id }, data: { status: status as AgendamentoStatus }, include: { motorista: true, veiculo: true, cliente: { select: { id: true, nome: true } } } });
+      await tx.agendamentoStatusHistorico.create({ data: { agendamentoId: id, status: updated.status, previousStatus: existing.status, operadorId } });
+      await this.outbox.createAgendamentoStatusChanged(tx, updated, existing.status, operadorId);
+      return updated;
+    });
+  }
   listWhatsappAssignments() { return this.prisma.diTransportadoraAtribuicao.findMany({ where: { whatsappNotificadoEm: null, transportadora: { whatsapp: { not: null } } }, include: { transportadora: { select: { nome: true, whatsapp: true } }, diAverbada: { select: { documentoSaida: true, cliente: true } } }, orderBy: { atribuidoEm: 'asc' }, take: 100 }).then((rows) => ({ data: rows.map((a) => ({ id: a.id, nLote: a.nLote, documentoSaida: a.diAverbada?.documentoSaida ?? null, cliente: a.diAverbada?.cliente ?? null, transportadora: a.transportadora.nome, whatsapp: a.transportadora.whatsapp, atribuidoEm: a.atribuidoEm })), total: rows.length })); }
   listWhatsappBookings() { return this.prisma.agendamento.findMany({ where: { notificarWhatsapp: true, whatsappNotificadoEm: null, whatsapp: { not: null } }, select: { id: true, protocolo: true, data: true, horario: true, operacao: true, placaVeiculo: true, transportadora: true, whatsapp: true, nomeMotorista: true, diNumero: true, container: true, empresa: true }, orderBy: { criadoEm: 'asc' }, take: 100 }).then((data) => ({ data, total: data.length })); }
 
@@ -46,7 +57,4 @@ export class ServiceIntegrationService {
   async setBookingWhatsapp(id: string) { const updated = await this.prisma.agendamento.update({ where: { id }, data: { whatsappNotificadoEm: new Date() } }); return { id: updated.id, whatsappNotificadoEm: updated.whatsappNotificadoEm }; }
   async setAssignmentWhatsapp(id: string) { const updated = await this.prisma.diTransportadoraAtribuicao.update({ where: { id }, data: { whatsappNotificadoEm: new Date() } }); return { id: updated.id, whatsappNotificadoEm: updated.whatsappNotificadoEm }; }
   syncTransportadoras(items: any[]) { return Promise.all(items.map(async (item) => { const cnpj = String(item.cnpj_cpf ?? '').replace(/\D/g, ''); const nome = item.nomefantasia ?? item.razaosocial; if (cnpj.length !== 14 || !nome) return 'skipped'; await this.prisma.transportadoraConta.upsert({ where: { cnpj }, create: { cnpj, nome, codTransp: item.cod_transp ? String(item.cod_transp) : null, email: item.emails ?? null, telefone: item.telefones_contato ?? null }, update: { nome, ...(item.cod_transp ? { codTransp: String(item.cod_transp) } : {}) } }); return 'synced'; })).then((results) => ({ synced: results.filter((v) => v === 'synced').length, skipped: results.filter((v) => v === 'skipped').length, failed: 0 })); }
-  listDis(query: any) { return this.prisma.diAverbada.findMany({ where: query.codDespachante ? { codDespachante: query.codDespachante } : undefined, orderBy: { sincronizadoEm: 'desc' } }).then((data) => ({ data, total: data.length })); }
-  async deleteDis(nLote: string) { try { await this.prisma.diAverbada.delete({ where: { nLote } }); return { message: 'DI averbada removed', nLote }; } catch { throw new NotFoundException('DI not found'); } }
-  syncDis(items: any[]) { return this.prisma.$transaction(async (tx) => { for (const item of items) { await tx.diAverbada.upsert({ where: { nLote: item.n_lote }, create: { nLote: item.n_lote, nConhecimento: item.n_conhecimento ?? null, dta: item.dta ?? null, documentoSaida: item.documento_saida ?? null, tipoDocumento: item.tipo_documento ?? null, modalidade: item.modalidade ?? null, cliente: item.cliente ?? null, cnpjCliente: item.cnpj_cliente ?? null, codDespachante: item.cod_despachante ? String(item.cod_despachante) : null, despachante: item.despachante ?? null, saldo: item.saldo == null ? null : Number(item.saldo), dtEntrada: item.dt_entrada ? new Date(item.dt_entrada) : null, localizacao: item.localizacao ?? null, containers: item.containers ?? null, averbadoEm: item.averbadoEm ? new Date(item.averbadoEm) : new Date(), status: 'liberada' }, update: { sincronizadoEm: new Date(), saldo: item.saldo == null ? null : Number(item.saldo), documentoSaida: item.documento_saida ?? null, localizacao: item.localizacao ?? null } }); } return { synced: items.length }; }); }
 }

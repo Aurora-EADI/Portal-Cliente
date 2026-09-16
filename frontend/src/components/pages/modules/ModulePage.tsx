@@ -29,6 +29,7 @@ import { userModuleAccessService } from '@/services/access/user-module-access.se
 import { ModuleAccess } from '@/types/access-control';
 import { PageHeader, LauncherCard, EmptyState, ErrorState } from '@/components/orion/blocks';
 import { Spinner } from '@/components/orion/ui';
+import { getUserFriendlyError } from '@/lib/error-message';
 
 // Map de ícones movido para escopo do módulo
 // Evita recriação do objeto em cada render (~5-10ms de economia)
@@ -82,7 +83,7 @@ export function ModulesPage() {
           setModules(activeModules);
         }
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Erro ao carregar módulos';
+        const message = getUserFriendlyError(err, 'Erro ao carregar módulos');
         setError(message);
       } finally {
         setIsLoading(false);

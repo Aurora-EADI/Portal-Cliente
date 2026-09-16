@@ -142,10 +142,6 @@ type ErrorWithResponse = {
   message?: string;
 };
 
-function hasResponse(error: unknown): error is ErrorWithResponse {
-  return typeof error === 'object' && error !== null && ('response' in error || 'status' in error);
-}
-
 export function getUserFriendlyError(error: unknown, fallback?: string): string {
   if (!error) return fallback || APP_ERROR_MESSAGES.INTERNAL_ERROR;
 
@@ -159,7 +155,6 @@ export function getUserFriendlyError(error: unknown, fallback?: string): string 
   if (appCode && APP_ERROR_MESSAGES[appCode]) {
     return APP_ERROR_MESSAGES[appCode];
   }
-
   // 2. Erros de rede ou conexão
   const rawMessage = String(err.message || '');
   if (
