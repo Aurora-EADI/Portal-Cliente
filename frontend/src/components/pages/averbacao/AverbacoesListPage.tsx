@@ -97,7 +97,9 @@ export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
       itens = itens.filter((p) =>
         [
           p.diDuimp,
-          p.containerConhecimento,
+          // Busca por qualquer um dos containers, não só pelo primeiro: quem
+          // procura tem em mãos o número que recebeu, que pode ser o 12º.
+          (p.containers ?? [p.containerConhecimento]).join(' '),
           p.protocolo,
           p.cliente.nome,
           p.cliente.cnpj ?? '',
@@ -126,13 +128,24 @@ export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
         // O ícone carrega a modalidade, que por isso não precisa de coluna
         // própria — é o que o desenho pede e economiza uma coluna de texto.
         const Icon = ICONE_MODALIDADE[p.modalidade];
+        const lista = p.containers?.length
+          ? p.containers
+          : [p.containerConhecimento];
+        const restantes = lista.length - 1;
         return (
           <span
             className="flex items-center gap-2 font-mono text-sm"
-            title={MODALIDADE_LABEL[p.modalidade]}
+            // A lista inteira no title: a coluna não comporta 16 containers,
+            // mas quem passa o mouse precisa conseguir conferir.
+            title={`${MODALIDADE_LABEL[p.modalidade]} · ${lista.join(', ')}`}
           >
             <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            {p.containerConhecimento}
+            {lista[0]}
+            {restantes > 0 && (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                +{restantes}
+              </span>
+            )}
           </span>
         );
       },

@@ -88,7 +88,10 @@ export interface AverbacaoProcessoResumo {
   protocolo: string;
   modalidade: Modalidade;
   diDuimp: string;
+  /** Primeiro item de `containers` — mantido para telas e busca antigas. */
   containerConhecimento: string;
+  /** Todos os containers declarados; no marítimo costuma ser mais de um. */
+  containers: string[];
   /** Porto, aeroporto ou fronteira de origem. Informativo. */
   localOrigem: string | null;
   /** Recinto alfandegado de destino. Informativo. */
@@ -112,7 +115,8 @@ export interface AverbacaoProcessoDetalhe extends AverbacaoProcessoResumo {
 export interface CriarAverbacaoDto {
   modalidade: Modalidade;
   diDuimp: string;
-  containerConhecimento: string;
+  /** Marítimo manda a lista; as demais modalidades, um conhecimento só. */
+  containers: string[];
   clienteId: string;
   localOrigem?: string;
   recintoDestino?: string;

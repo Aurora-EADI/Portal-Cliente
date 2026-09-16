@@ -72,8 +72,17 @@ export function CabecalhoProcesso({
           {processo.cliente.nome}
         </span>
         {processo.cliente.cnpj && <> · CNPJ: {processo.cliente.cnpj}</>}
-        {' · Conhecimento: '}
-        <span className="font-mono">{processo.containerConhecimento}</span>
+        {(() => {
+          const lista = processo.containers?.length
+            ? processo.containers
+            : [processo.containerConhecimento];
+          return (
+            <>
+              {lista.length > 1 ? ` · ${lista.length} containers: ` : ' · Conhecimento: '}
+              <span className="font-mono">{lista.join(' · ')}</span>
+            </>
+          );
+        })()}
         {processo.cargaEspecial && (
           <> · <span className="text-amber-700">Carga especial</span></>
         )}
