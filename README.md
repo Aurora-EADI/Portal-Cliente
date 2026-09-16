@@ -177,6 +177,42 @@ docker compose -f docker-compose.yml -f docker-compose.manual.yml --env-file .en
 Não use `prisma db push`. Falha na migration encerra o procedimento; não suba a
 aplicação até corrigi-la.
 
+### Bootstrap do primeiro administrador
+
+Use este procedimento uma única vez, depois de aplicar as migrations e antes de
+subir a API. A rotina não expõe endpoint HTTP, consulta `users` antes de mudar
+o banco e só continua se a contagem for exatamente zero. Com qualquer usuário
+existente, ela encerra com código diferente de zero sem criar credencial.
+
+No servidor, informe os dados de forma interativa. A senha não deve ser passada
+como argumento, colocada em arquivo Compose ou registrada no Git:
+
+```sh
+read -r -p 'Nome do administrador: ' BOOTSTRAP_ADMIN_NAME
+read -r -p 'E-mail do administrador: ' BOOTSTRAP_ADMIN_EMAIL
+read -r -s -p 'Senha: ' BOOTSTRAP_ADMIN_PASSWORD
+printf '\n'
+export BOOTSTRAP_ADMIN_NAME BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
+
+docker compose --env-file .env.prod run --rm --no-deps \
+  -e BOOTSTRAP_ADMIN_NAME \
+  -e BOOTSTRAP_ADMIN_EMAIL \
+  -e BOOTSTRAP_ADMIN_PASSWORD \
+  portal-cliente-api node dist/scripts/bootstrap-first-admin.js
+
+unset BOOTSTRAP_ADMIN_NAME BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
+```
+
+O comando usa a imagem já publicada da API e o mesmo mecanismo interno de
+provisionamento Better Auth usado por convites e por `/users`; não cria hash nem
+manipula tabelas de autenticação diretamente. Em sucesso, a única saída é:
+
+```text
+Primeiro administrador criado com sucesso.
+E-mail: <email-normalizado>
+Role: ADMIN
+```
+
 O build publica estas imagens, com tags SHA, `latest` e `production`:
 
 ```text

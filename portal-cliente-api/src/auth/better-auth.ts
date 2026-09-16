@@ -135,3 +135,8 @@ export function betterAuthProvisioningHeaders(): Headers {
     [BETTER_AUTH_PROVISIONING_HEADER]: provisioningSecret,
   });
 }
+
+export async function disconnectBetterAuthDatabase(): Promise<void> {
+  await authPrisma.$disconnect();
+  await authPool.end();
+}
