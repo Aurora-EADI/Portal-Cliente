@@ -63,9 +63,9 @@ npm run build                # Compile TypeScript
 npm run start:prod           # Production mode
 npm run lint                 # ESLint with auto-fix
 
-# Database
+# Database (IMPORTANT: NEVER use db push, ALWAYS use migrate)
 npm run prisma:generate:pg   # Generate Prisma client
-npm run prisma:migrate:pg    # Run migrations
+npm run prisma:migrate:pg    # Run migrations (prisma migrate dev)
 npm run prisma:seed          # Seed database
 npm run studio               # Prisma Studio GUI
 

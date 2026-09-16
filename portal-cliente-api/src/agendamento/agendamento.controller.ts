@@ -1,87 +1,43 @@
-﻿import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import type { User } from '@prisma/client';
 import { AgendamentoService } from './agendamento.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+type AuthenticatedRequest = Request & {
+  user?: User;
+};
+
 @Controller('agendamento')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
 export class AgendamentoController {
   constructor(private fcl: AgendamentoService) {}
 
-  // CLIENTES
-  @Get('clientes')
-  findAllClientes() { return this.fcl.findAllClientes(); }
+  @Get('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  findAtribuicoes(@Req() request: AuthenticatedRequest, @Query('nLote') nLote?: string) {
+    return this.fcl.findAtribuicoes(request.user as User, nLote);
+  }
 
-  @Post('clientes')
-  createCliente(@Body() body: any) { return this.fcl.createCliente(body); }
+  @Post('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  criarAtribuicao(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.criarAtribuicao(request.user as User, body);
+  }
 
-  @Patch('clientes/:id')
-  updateCliente(@Param('id') id: string, @Body() body: any) { return this.fcl.updateCliente(id, body); }
+  @Delete('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  removerAtribuicao(@Req() request: AuthenticatedRequest, @Query() query: any) {
+    return this.fcl.removerAtribuicao(request.user as User, query);
+  }
 
-  // DIs
-  @Get('dis')
-  findAllDIs(@Query('clienteId') clienteId?: string) { return this.fcl.findAllDIs(clienteId); }
-
-  @Post('dis')
-  createDI(@Body() body: any) { return this.fcl.createDI(body); }
-
-  @Patch('dis/:id')
-  updateDI(@Param('id') id: string, @Body() body: any) { return this.fcl.updateDI(id, body); }
-
-  // MOTORISTAS
-  @Get('motoristas')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
-  findAllMotoristas(@Query('clienteId') clienteId?: string) { return this.fcl.findAllMotoristas(clienteId); }
-
-  @Post('motoristas')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE)
-  createMotorista(@Body() body: any) { return this.fcl.createMotorista(body); }
-
-  @Patch('motoristas/:id')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
-  updateMotorista(@Param('id') id: string, @Body() body: any) { return this.fcl.updateMotorista(id, body); }
-
-  // VEÍCULOS
-  @Get('veiculos')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
-  findAllVeiculos(@Query('clienteId') clienteId?: string) { return this.fcl.findAllVeiculos(clienteId); }
-
-  @Post('veiculos')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE)
-  createVeiculo(@Body() body: any) { return this.fcl.createVeiculo(body); }
-
-  @Patch('veiculos/:id')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
-  updateVeiculo(@Param('id') id: string, @Body() body: any) { return this.fcl.updateVeiculo(id, body); }
-
-  // TRANSPORTADORAS
-  @Get('transportadoras')
-  findAllTransportadoras(@Query('clienteId') clienteId?: string) { return this.fcl.findAllTransportadoras(clienteId); }
-
-  @Post('transportadoras')
-  createTransportadora(@Body() body: any) { return this.fcl.createTransportadora(body); }
-
-  @Patch('transportadoras/:id')
-  updateTransportadora(@Param('id') id: string, @Body() body: any) { return this.fcl.updateTransportadora(id, body); }
-
-  // JANELAS
-  @Get('janelas')
-  findAllJanelas() { return this.fcl.findAllJanelas(); }
-
-  @Post('janelas')
-  @Roles(UserRole.ADMIN)
-  createJanela(@Body() body: any) { return this.fcl.createJanela(body); }
-
-  @Patch('janelas/:id')
-  @Roles(UserRole.ADMIN)
-  updateJanela(@Param('id') id: string, @Body() body: any) { return this.fcl.updateJanela(id, body); }
-
-  @Delete('janelas/:id')
-  @Roles(UserRole.ADMIN)
-  deleteJanela(@Param('id') id: string) { return this.fcl.deleteJanela(id); }
+  @Get('transportadoras-conta')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
+  findTransportadorasConta() { return this.fcl.findTransportadorasConta(); }
 
   // AGENDAMENTOS
   @Get('agendamentos')

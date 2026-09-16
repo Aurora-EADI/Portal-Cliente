@@ -15,6 +15,8 @@ import { useAuthContext } from '@/context/AuthContext';
 import { usersService } from '@/services/users/users.service';
 import { toast } from 'sonner';
 import { Loader2, User, Mail, Lock } from 'lucide-react';
+import type { UpdateUserDto } from '@/types/user';
+import { getErrorMessage } from '@/lib/error-message';
 
 interface UserProfileModalProps {
     isOpen: boolean;
@@ -58,7 +60,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
         setLoading(true);
         try {
-            const updateData: any = {
+            const updateData: UpdateUserDto = {
                 name: formData.name,
                 email: formData.email,
             };
@@ -74,9 +76,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
             toast.success('Perfil atualizado com sucesso!');
             onClose();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Erro ao atualizar perfil:', error);
-            toast.error(error.response?.data?.message || 'Erro ao atualizar perfil');
+            toast.error(getErrorMessage(error, 'Erro ao atualizar perfil'));
         } finally {
             setLoading(false);
         }

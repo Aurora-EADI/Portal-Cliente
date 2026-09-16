@@ -1,15 +1,15 @@
 'use client'
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import Cookies from 'js-cookie';
 import { User } from '../types';
 import { useRouter } from "next/navigation";
 import { authService } from '@/services/api';
+import { authClient } from '@/lib/auth-client';
 import { clearDraft } from '@/lib/wizard-draft';
 
 interface AuthContextType {
   currentUser: User | null;
-  loginUser: (user: User, expiresAt: string) => Promise<void>;
+  loginUser: (user: User) => Promise<void>;
   logoutUser: () => Promise<void>;
   isLoading: boolean;
   updateCurrentUser: (user: User) => void;
@@ -23,38 +23,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
 
   useEffect(() => {
-    const restoreSession = async () => {
-      const maxAttempts = 3;
-      try {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          try {
-            if (Cookies.get('access_token')) {
-              const user = await authService.getProfile();
-              setCurrentUser(user);
-            }
-            return;
-          } catch (err: any) {
-            const isLastAttempt = attempt === maxAttempts - 1;
-            if (isLastAttempt || err?.status === 401) return;
-            await new Promise(r => setTimeout(r, 1500));
-          }
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (isSessionPending) return;
+    if (!session) {
+      setCurrentUser(null);
+      setIsLoading(false);
+      return;
+    }
 
-    restoreSession();
-  }, []);
+    let cancelled = false;
+    setIsLoading(true);
+    authService.getProfile()
+      .then((user) => { if (!cancelled) setCurrentUser(user); })
+      .catch(() => { if (!cancelled) setCurrentUser(null); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
 
-  const loginUser = async (user: User, _expiresAt: string) => {
+    return () => { cancelled = true; };
+  }, [isSessionPending, session]);
+
+  const loginUser = async (user: User) => {
     setCurrentUser(user);
   };
 
   const logoutUser = async () => {
-    Cookies.remove('access_token');
+    // Cookie httpOnly so o servidor apaga.
+    await authService.logout();
     clearDraft();
     setCurrentUser(null);
     queryClient.clear();

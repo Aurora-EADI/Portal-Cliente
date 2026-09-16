@@ -1,118 +1,114 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DIStatus, AgendamentoStatus } from '@prisma/client';
+import { DIStatus, AgendamentoStatus, UserRole } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { MailService } from '../mail/mail.service';
 
 const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
 
 @Injectable()
 export class AgendamentoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly mail: MailService) {}
 
-  // ---- CLIENTES ----
-  findAllClientes() {
-    return this.prisma.cliente.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } });
-  }
+  async findAtribuicoes(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, nLote?: string) {
+    let ownership: Prisma.DiAverbadaWhereInput | null = null;
+    if (user.role === 'CLIENTE' && user.clienteId) {
+      const cliente = await this.prisma.cliente.findUnique({
+        where: { id: user.clienteId }, select: { cnpj: true },
+      });
+      if (cliente?.cnpj) ownership = { cnpjCliente: cliente.cnpj };
+    } else if (user.role === 'DESPACHANTE' && user.despachanteId) {
+      const despachante = await this.prisma.despachante.findUnique({
+        where: { id: user.despachanteId }, select: { codDespachante: true },
+      });
+      if (despachante) ownership = { codDespachante: despachante.codDespachante };
+    }
+    if (!ownership) return [];
 
-  createCliente(data: { nome: string; cnpj?: string; email?: string; telefone?: string }) {
-    return this.prisma.cliente.create({ data });
-  }
-
-  updateCliente(id: string, data: Partial<{ nome: string; cnpj: string; email: string; telefone: string; ativo: boolean }>) {
-    return this.prisma.cliente.update({ where: { id }, data });
-  }
-
-  // ---- DIs ----
-  findAllDIs(clienteId?: string) {
-    return this.prisma.dI.findMany({
-      where: clienteId ? { clienteId } : undefined,
-      include: {
-        cliente: { select: { id: true, nome: true } },
-        agendamentos: {
-          where: { status: { in: ACTIVE_STATUSES } },
-          select: { id: true, data: true, horario: true, protocolo: true, status: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+    return this.prisma.diTransportadoraAtribuicao.findMany({
+      where: { ...(nLote ? { nLote } : {}), diAverbada: ownership },
+      include: { transportadora: { select: { id: true, nome: true, cnpj: true } } },
+      orderBy: { atribuidoEm: 'desc' },
     });
   }
 
-  createDI(data: {
-    numeroDI: string; clienteId: string; container: string;
-    tipoContainer: string; status?: DIStatus; pesoBruto?: number;
-    mercadoria: string; transportadora: string;
-  }) {
-    return this.prisma.dI.create({ data });
+  private async ownership(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>) {
+    if (user.role === UserRole.CLIENTE && user.clienteId) {
+      const cliente = await this.prisma.cliente.findUnique({ where: { id: user.clienteId }, select: { cnpj: true } });
+      return cliente?.cnpj ? { cnpjCliente: cliente.cnpj } : null;
+    }
+    if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
+      const despachante = await this.prisma.despachante.findUnique({ where: { id: user.despachanteId }, select: { codDespachante: true } });
+      return despachante ? { codDespachante: despachante.codDespachante } : null;
+    }
+    return null;
   }
 
-  updateDI(id: string, data: Partial<{ status: DIStatus; pesoBruto: number; mercadoria: string }>) {
-    return this.prisma.dI.update({ where: { id }, data });
+  async criarAtribuicao(user: User, body: any) {
+    const nLote = String(body.nLote ?? '').trim();
+    const cnpj = String(body.cnpj ?? '').replace(/\D/g, '');
+    const container = typeof body.container === 'string' ? body.container.trim() : '';
+    if (!nLote || cnpj.length !== 14) throw new BadRequestException('nLote e CNPJ válido são obrigatórios');
+    const where = await this.ownership(user);
+    if (!where) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const di = await this.prisma.diAverbada.findFirst({ where: { nLote, ...where } });
+    if (!di) throw new NotFoundException('DI não encontrada ou sem permissão');
+    if (container && !(di.containers ?? '').split('/').map((v) => v.trim()).includes(container)) {
+      throw new BadRequestException('Container não pertence a esta DI');
+    }
+    let transportadora = await this.prisma.transportadoraConta.findUnique({ where: { cnpj } });
+    if (!transportadora) {
+      if (!body.nome) throw new BadRequestException('nome é obrigatório para nova transportadora');
+      transportadora = await this.prisma.transportadoraConta.create({ data: { cnpj, nome: body.nome, whatsapp: body.whatsapp || null } });
+    } else if (body.whatsapp && body.whatsapp !== transportadora.whatsapp) {
+      transportadora = await this.prisma.transportadoraConta.update({ where: { id: transportadora.id }, data: { whatsapp: body.whatsapp } });
+      await this.prisma.diTransportadoraAtribuicao.updateMany({ where: { transportadoraContaId: transportadora.id, whatsappNotificadoEm: null }, data: { whatsappNotificadoEm: new Date() } });
+    }
+    const existente = await this.prisma.diTransportadoraAtribuicao.findFirst({ where: { nLote, container }, include: { transportadora: { select: { nome: true } } } });
+    if (existente) throw new ConflictException('Esta DI/container já possui uma atribuição');
+    const convite = await this.ensureTransportadoraInvite(transportadora, body.email);
+    const atribuicao = await this.prisma.diTransportadoraAtribuicao.create({
+      data: { nLote, container, transportadoraContaId: transportadora.id, atribuidoPorUserId: user.id, atribuidoPorRole: user.role },
+      include: { transportadora: { select: { id: true, nome: true, cnpj: true } } },
+    });
+    return { ...atribuicao, convite };
   }
 
-  // ---- MOTORISTAS ----
-  findAllMotoristas(clienteId?: string) {
-    return this.prisma.motorista.findMany({
-      where: { ...(clienteId ? { clienteId } : {}), ativo: true },
+  private async ensureTransportadoraInvite(transportadora: { id: string; cnpj: string; nome: string; email: string | null; codTransp: string | null }, emailOverride?: string) {
+    const active = await this.prisma.user.findFirst({ where: { transportadoraContaId: transportadora.id, active: true }, select: { id: true } });
+    if (active) return { status: 'has_access' as const };
+    const pending = await this.prisma.conviteRegistro.findFirst({ where: { tipo: UserRole.TRANSPORTADORA, cnpjTransportadora: transportadora.cnpj, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' } });
+    if (pending) return { status: 'pending' as const, link: `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${pending.token}` };
+    const email = emailOverride?.trim() || transportadora.email;
+    const convite = await this.prisma.conviteRegistro.create({ data: { tipo: UserRole.TRANSPORTADORA, nome: transportadora.nome, email, cnpjTransportadora: transportadora.cnpj, codTransp: transportadora.codTransp, expiresAt: new Date(Date.now() + 36500 * 86400000) } });
+    const link = `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${convite.token}`;
+    if (email) await this.mail.enviar({ para: [email], assunto: 'Convite — Portal do Cliente Aurora EADI', texto: `Acesse ${link} para concluir seu cadastro.`, html: `<p>Acesse <a href="${link}">${link}</a> para concluir seu cadastro.</p>` });
+    return { status: 'created' as const, link, emailSent: Boolean(email) };
+  }
+
+  async removerAtribuicao(user: User, query: any) {
+    const nLote = String(query.nLote ?? '').trim();
+    const transportadoraContaId = String(query.transportadoraContaId ?? '').trim();
+    const container = query.container === undefined ? undefined : String(query.container);
+    if (!nLote || !transportadoraContaId) throw new BadRequestException('nLote e transportadoraContaId são obrigatórios');
+    const where = await this.ownership(user);
+    if (!where) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const di = await this.prisma.diAverbada.findFirst({ where: { nLote, ...where }, select: { nLote: true } });
+    if (!di) throw new NotFoundException('DI não encontrada ou sem permissão');
+    const deleted = await this.prisma.diTransportadoraAtribuicao.deleteMany({ where: { nLote, transportadoraContaId, ...(container === undefined ? {} : { container }) } });
+    if (!deleted.count) throw new NotFoundException('Atribuição não encontrada');
+    return { message: 'Atribuição removida' };
+  }
+
+  findTransportadorasConta() {
+    return this.prisma.transportadoraConta.findMany({
+      where: { ativo: true, cnpj: { not: '' } },
       orderBy: { nome: 'asc' },
     });
   }
 
-  createMotorista(data: { clienteId: string; nome: string; cpf: string; cnh: string; telefone: string }) {
-    return this.prisma.motorista.create({ data });
-  }
 
-  updateMotorista(id: string, data: Partial<{ nome: string; cnh: string; telefone: string; ativo: boolean }>) {
-    return this.prisma.motorista.update({ where: { id }, data });
-  }
-
-  // ---- VEICULOS ----
-  findAllVeiculos(clienteId?: string) {
-    return this.prisma.veiculo.findMany({
-      where: { ...(clienteId ? { clienteId } : {}), ativo: true },
-      orderBy: { placa: 'asc' },
-    });
-  }
-
-  createVeiculo(data: { clienteId: string; placa: string; modelo: string; tipo: string }) {
-    return this.prisma.veiculo.create({ data });
-  }
-
-  updateVeiculo(id: string, data: Partial<{ modelo: string; tipo: string; ativo: boolean }>) {
-    return this.prisma.veiculo.update({ where: { id }, data });
-  }
-
-  // ---- TRANSPORTADORAS ----
-  findAllTransportadoras(clienteId?: string) {
-    return this.prisma.transportadora.findMany({
-      where: { ...(clienteId ? { clienteId } : {}), ativo: true },
-      orderBy: { nome: 'asc' },
-    });
-  }
-
-  createTransportadora(data: { clienteId: string; nome: string; cnpj?: string; telefone?: string }) {
-    return this.prisma.transportadora.create({ data });
-  }
-
-  updateTransportadora(id: string, data: Partial<{ nome: string; cnpj: string; telefone: string; ativo: boolean }>) {
-    return this.prisma.transportadora.update({ where: { id }, data });
-  }
-
-  // ---- JANELAS ----
-  findAllJanelas() {
-    return this.prisma.janelaAtendimento.findMany({ where: { ativo: true }, orderBy: { horaInicio: 'asc' } });
-  }
-
-  createJanela(data: { descricao: string; horaInicio: string; horaFim: string; intervaloMinutos?: number; vagasSimultaneas?: number }) {
-    return this.prisma.janelaAtendimento.create({ data });
-  }
-
-  updateJanela(id: string, data: Partial<{ descricao: string; horaInicio: string; horaFim: string; intervaloMinutos: number; vagasSimultaneas: number; ativo: boolean }>) {
-    return this.prisma.janelaAtendimento.update({ where: { id }, data });
-  }
-
-  deleteJanela(id: string) {
-    return this.prisma.janelaAtendimento.update({ where: { id }, data: { ativo: false } });
-  }
 
   // ---- AGENDAMENTOS ----
   findAllAgendamentos(clienteId?: string) {

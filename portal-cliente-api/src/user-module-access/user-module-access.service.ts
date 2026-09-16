@@ -16,39 +16,17 @@ export class UserModuleAccessService {
       where: { active: true },
       include: {
         sharedItems: { orderBy: { sortOrder: 'asc' } },
-        activities: true,
-        userAccess: {
-          where: { userId },
-          take: 1,
-          include: {
-            activityAccess: { include: { activity: true } },
-          },
-        },
+        userAccess: { where: { userId }, take: 1 },
       },
       orderBy: { sortOrder: 'asc' },
     });
 
-    let totalActivities = 0;
-    let activeActivities = 0;
-
+    // Activities/permissions foram removidas deste portal — a visibilidade e
+    // por role + Module.sharedItems. Os campos continuam no payload, sempre
+    // vazios, porque o frontend ainda os le (ver a Route Handler equivalente
+    // em src/app/api/user-module-access/user/[userId]/modules/route.ts).
     const mappedModules = modules.map((mod) => {
       const access = mod.userAccess[0];
-      const actMap = new Map((access?.activityAccess ?? []).map((a) => [a.activityId, a.isEnabled]));
-
-      const activities = mod.activities.map((act) => {
-        const enabled = act.isMandatory || (actMap.get(act.id) ?? false);
-        return {
-          id: act.id,
-          name: act.name,
-          isMandatory: act.isMandatory,
-          isActive: enabled,
-          permissions: [],
-          sortOrder: 0,
-        };
-      });
-
-      totalActivities += activities.length;
-      if (access?.isEnabled) activeActivities += activities.filter((a) => a.isActive).length;
 
       return {
         id: mod.id,
@@ -56,9 +34,9 @@ export class UserModuleAccessService {
         description: mod.description ?? '',
         isEnabled: access?.isEnabled ?? false,
         userModuleAccessId: access?.id ?? null,
-        activities,
-        totalActivities: activities.length,
-        activeActivities: activities.filter((a) => a.isActive).length,
+        activities: [] as never[],
+        totalActivities: 0,
+        activeActivities: 0,
         route: mod.route,
         icon: mod.icon,
         sharedItems: mod.sharedItems,
@@ -73,8 +51,8 @@ export class UserModuleAccessService {
       summary: {
         totalModules: modules.length,
         enabledModules,
-        totalActivities,
-        activeActivities,
+        totalActivities: 0,
+        activeActivities: 0,
       },
     };
   }
@@ -124,26 +102,5 @@ export class UserModuleAccessService {
       orderBy: { sortOrder: 'asc' },
     });
     return modules.map((m) => ({ moduleId: m.id, moduleName: m.name, userCount: m._count.userAccess }));
-  }
-
-  async syncMandatoryActivities(moduleId: number) {
-    const mod = await this.prisma.module.findUnique({
-      where: { id: moduleId },
-      include: { activities: { where: { isMandatory: true } }, userAccess: true },
-    });
-    if (!mod) throw new NotFoundException('Módulo não encontrado');
-
-    let synced = 0;
-    for (const access of mod.userAccess) {
-      for (const act of mod.activities) {
-        await this.prisma.userActivityAccess.upsert({
-          where: { userModuleAccessId_activityId: { userModuleAccessId: access.id, activityId: act.id } },
-          create: { userModuleAccessId: access.id, activityId: act.id, isEnabled: true },
-          update: { isEnabled: true },
-        });
-        synced++;
-      }
-    }
-    return { message: 'Sincronizado', synced, module: mod.name };
   }
 }

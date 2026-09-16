@@ -4,7 +4,7 @@ import React from 'react';
 import { Agendamento } from '@/types/agendamento';
 import {
   CheckCircle2, Printer, Download, AlertCircle,
-  CornerDownLeft, CalendarDays, User, Truck, Package, Clock,
+  CornerDownLeft, CalendarDays, User, Truck, Package,
 } from 'lucide-react';
 
 interface SuccessVoucherProps {

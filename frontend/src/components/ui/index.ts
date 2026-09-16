@@ -29,6 +29,9 @@ export {
 
 export { ConfirmDialog } from './ConfirmDialog';
 
+export { FileUpload, formatFileSize } from './FileUpload';
+export type { FileUploadProps } from './FileUpload';
+
 export { Input } from './input';
 export { Label } from './label';
 export { Logo } from './Logo';

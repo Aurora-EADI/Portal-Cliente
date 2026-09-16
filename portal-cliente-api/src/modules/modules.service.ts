@@ -9,7 +9,6 @@ export class ModulesService {
     return this.prisma.module.findMany({
       where: { active: true },
       include: {
-        activities: { include: { permissions: { include: { permission: true } } } },
         sharedItems: { orderBy: { sortOrder: 'asc' } },
         _count: { select: { userAccess: true } },
       },
@@ -21,7 +20,6 @@ export class ModulesService {
     return this.prisma.module.findUnique({
       where: { id },
       include: {
-        activities: { include: { permissions: { include: { permission: true } } } },
         sharedItems: { orderBy: { sortOrder: 'asc' } },
       },
     });

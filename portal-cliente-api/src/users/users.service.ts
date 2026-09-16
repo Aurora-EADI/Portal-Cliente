@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuthService } from '../auth/auth.service';
+import { UserRole } from '@prisma/client';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private authService: AuthService,
+  ) {}
 
   async findAll(params?: { page?: number; limit?: number; search?: string; roles?: string }) {
     const page = params?.page ?? 1;
@@ -63,7 +68,7 @@ export class UsersService {
       select: {
         id: true, name: true, email: true, role: true,
         position: true, active: true, createdAt: true, updatedAt: true,
-        moduleAccess: { include: { module: true, activityAccess: { include: { activity: true } } } },
+        moduleAccess: { include: { module: true } },
       },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
@@ -71,14 +76,30 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto) {
-    const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const email = dto.email.trim().toLowerCase();
+    const exists = await this.prisma.user.findUnique({ where: { email } });
     if (exists) throw new ConflictException('Email já cadastrado');
 
-    const user = await this.prisma.user.create({
-      data: { ...dto, name: dto.name.toUpperCase() },
-      select: { id: true, name: true, email: true, role: true, position: true, active: true, createdAt: true, updatedAt: true },
+    const identity = await this.authService.provisionCredential({
+      name: dto.name.trim().toUpperCase(),
+      email,
+      password: dto.password,
     });
-    return user;
+
+    try {
+      return await this.prisma.user.update({
+        where: { id: identity.id },
+        data: {
+          role: dto.role ?? UserRole.EMPLOYEE,
+          position: dto.position,
+          active: true,
+        },
+        select: { id: true, name: true, email: true, role: true, position: true, active: true, createdAt: true, updatedAt: true },
+      });
+    } catch (error) {
+      await this.authService.removeCredential(identity.id).catch(() => undefined);
+      throw error;
+    }
   }
 
   async update(id: string, dto: UpdateUserDto) {
