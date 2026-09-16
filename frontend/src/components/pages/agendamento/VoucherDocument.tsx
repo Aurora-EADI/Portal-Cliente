@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { CheckCircle } from 'lucide-react';
 import { Agendamento } from '@/types/agendamento';
 
@@ -57,7 +56,7 @@ export const VoucherDocument = React.forwardRef<HTMLDivElement, { booking: Agend
     <div ref={ref} className="bg-white border border-zinc-300 overflow-hidden shadow-xl">
       {/* Cabeçalho */}
       <div className="px-4 sm:px-8 py-5 border-b-2 border-zinc-800 flex items-center justify-between flex-wrap gap-3">
-        <Image src="/logo-aurora.png" alt="Aurora" width={130} height={44} className="object-contain shrink-0" />
+        <img src="/logo-aurora.png" alt="Aurora" width={130} height={44} className="object-contain shrink-0" />
         <div className="text-right">
           <p className="text-base sm:text-lg font-black text-zinc-900 uppercase tracking-wide leading-tight">Ordem de Coleta Agendada</p>
           <p className="text-[11px] text-zinc-400">Portal do Cliente · Aurora EADI</p>

@@ -123,7 +123,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst portalUrl = String($env.PORTAL_CLIENTE_URL || '').replace(/\\/+$/, '');\nif (!portalUrl) throw new Error('PORTAL_CLIENTE_URL não configurada');\n\nconst di = $json.body.documentoSaida || $json.body.nLote;\nconst text = `Olá! A transportadora *${$json.body.transportadora}* foi atribuída para a retirada da DI ${di}.\\n\\n` +\n  ($json.body.cliente ? `Cliente: ${$json.body.cliente}\\n` : '') +\n  `\\nAcesse o Portal do Cliente Aurora EADI para agendar a retirada:\\n${portalUrl}/\\n\\n` +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
+        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst di = $json.body.documentoSaida || $json.body.nLote;\nconst text = `Olá! A transportadora *${$json.body.transportadora}* foi atribuída para a retirada da DI ${di}.\\n\\n` +\n  ($json.body.cliente ? `Cliente: ${$json.body.cliente}\\n` : '') +\n  `\\nAcesse o Portal do Cliente Aurora EADI para agendar a retirada:\\nhttp://host.docker.internal:3002/\\n\\n` +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
       },
       "id": "315d84c7-90ef-431c-818c-99d77b982da6",
       "name": "Montar mensagem (atribuição)",
@@ -149,7 +149,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst portalUrl = String($env.PORTAL_CLIENTE_URL || '').replace(/\\/+$/, '');\nif (!portalUrl) throw new Error('PORTAL_CLIENTE_URL não configurada');\n\nconst lotes = $json.body.lotes || [];\nconst plural = lotes.length > 1 ? 's' : '';\nconst listaLotes = lotes\n  .map(l => `• Lote ${l.nLote}${l.documento ? ` (Doc: ${l.documento})` : ''}`)\n  .join('\\n');\n\nconst text = `Olá, ${$json.body.nome}!\\n\\n` +\n  `A averbação do${plural} lote${plural} abaixo foi concluída:\\n\\n` +\n  `${listaLotes}\\n\\n` +\n  `Já está disponível para agendamento no Portal do Cliente Aurora EADI:\\n` +\n  `${portalUrl}/\\n\\n` +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
+        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst lotes = $json.body.lotes || [];\nconst plural = lotes.length > 1 ? 's' : '';\nconst listaLotes = lotes\n  .map(l => `• Lote ${l.nLote}${l.documento ? ` (Doc: ${l.documento})` : ''}`)\n  .join('\\n');\n\nconst text = `Olá, ${$json.body.nome}!\\n\\n` +\n  `A averbação do${plural} lote${plural} abaixo foi concluída:\\n\\n` +\n  `${listaLotes}\\n\\n` +\n  `Já está disponível para agendamento no Portal do Cliente Aurora EADI:\\n` +\n  `http://host.docker.internal:3002/\\n\\n` +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
       },
       "id": "ac5bee55-29a7-4957-b292-8e6b7805e83a",
       "name": "Montar mensagem (averbação)",
@@ -186,13 +186,13 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.EVOLUTION_API_URL + '/instance/connectionState/wtsp' }}",
+        "url": "http://evolution_api:8080/instance/connectionState/wtsp",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },
@@ -241,13 +241,13 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.EVOLUTION_API_URL + '/instance/connect/wtsp' }}",
+        "url": "http://evolution_api:8080/instance/connect/wtsp",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },
@@ -292,13 +292,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL + '/chat/whatsappNumbers/wtsp' }}",
+        "url": "http://evolution_api:8080/chat/whatsappNumbers/wtsp",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },
@@ -364,13 +364,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL + '/message/sendText/wtsp' }}",
+        "url": "http://evolution_api:8080/message/sendText/wtsp",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },

@@ -1,19 +1,12 @@
-import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { AppModule } from './app/app.module';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // O adaptador Better Auth precisa receber o body bruto da requisição.
-    // A integração reinstala os parsers Express depois de montar o handler.
-    bodyParser: false,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.use(cookieParser());
 
@@ -26,30 +19,19 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false,
       transform: true,
     }),
   );
 
-  app.useGlobalFilters(new GlobalExceptionFilter());
-
   app.setGlobalPrefix('api');
-
-  const config = new DocumentBuilder()
-    .setTitle('Portal do Cliente API')
-    .setDescription('Documentação da API do Portal do Cliente')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 3030);
+  const port = Number(process.env.PORT || process.env.BACKEND_PORT || 5001);
   await app.listen(port, '0.0.0.0');
   console.log(`Portal do Cliente API rodando em http://localhost:${port}`);
 }

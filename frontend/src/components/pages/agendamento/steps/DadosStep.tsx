@@ -5,7 +5,7 @@ import { Plus, Search, X, UserPlus, Truck, ChevronLeft, ChevronRight, Clock, Use
 import { useSearchParams } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { useAuthContext } from '@/context/AuthContext';
-import { DI, Motorista, Veiculo } from '@/types/agendamento';
+import { Motorista, Veiculo } from '@/types/agendamento';
 import { formatCPF, formatPhone, formatPlaca, gerarSlotsDeJanela } from '@/lib/agendamento';
 import { JanelaAtendimento } from '@/types/agendamento';
 import { TransportadoraCnpjPicker } from '../TransportadoraCnpjPicker';
@@ -543,7 +543,7 @@ function ModalVeiculo({
 
 // ─── DadosStep principal ───────────────────────────────────────────────────
 export function DadosStep({ data, onChange, disabled = false, section }: DadosStepProps) {
-  const { motoristas, veiculos, transportadorasConta, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, janelasAtendimento, selectedJanelaId } = useAgendamento();
+  const { motoristas, veiculos, transportadorasConta, handleAddMotorista, handleAddVeiculo, activeBookings, visibleDis, isDespachante, janelasAtendimento, selectedJanelaId } = useAgendamento();
   const janelasAtivas = useMemo(
     () => selectedJanelaId === 'all' ? janelasAtendimento : janelasAtendimento.filter(j => j.id === selectedJanelaId),
     [janelasAtendimento, selectedJanelaId]
@@ -561,7 +561,7 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
     if (isTransportadoraUser && transportadoraContaNome && !data.transportadora) {
       onChange(prev => prev.transportadora ? prev : { ...prev, transportadora: transportadoraContaNome, transportadoraCnpj: transportadoraContaCnpj });
     }
-  }, [isTransportadoraUser, transportadoraContaNome, transportadoraContaCnpj, data.transportadora, onChange]);
+  }, [isTransportadoraUser, transportadoraContaNome, transportadoraContaCnpj, data.transportadora]);
 
   const busySlots = useMemo(() => {
     if (!data.dataAgendamento) return {};
@@ -576,10 +576,10 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
     if (userEmpresa && !data.empresa) {
       onChange(prev => prev.empresa ? prev : { ...prev, empresa: userEmpresa });
     }
-  }, [userEmpresa, data.empresa, onChange]);
+  }, [userEmpresa]);
 
   const searchParams = useSearchParams();
-  const [selectedDiObj, setSelectedDiObj] = useState<DI | null>(null);
+  const [selectedDiObj, setSelectedDiObj] = useState<any>(null);
   const [selectedContainer, setSelectedContainer] = useState('');
   const diContainers = selectedDiObj ? parseContainers(selectedDiObj.container) : [];
   const [autoFilled, setAutoFilled] = useState(false);
@@ -589,7 +589,7 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
     if (autoFilled || !isExternalUser || availableDis.length === 0 || data.di?.length > 0) return;
     const diNumero = searchParams.get('diNumero');
     if (!diNumero) return;
-    const di = availableDis.find(d => d.numeroDI === diNumero);
+    const di = availableDis.find(d => d.numeroDI === diNumero) as any;
     if (!di) return;
     setSelectedDiObj(di);
     const urlContainer = searchParams.get('container') || '';
@@ -608,14 +608,14 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
       container: resolvedContainer,
     }));
     setAutoFilled(true);
-  }, [availableDis, searchParams, autoFilled, isExternalUser, data.di, onChange]);
+  }, [availableDis, searchParams, autoFilled, isExternalUser]);
 
   // Rascunho restaurado (refresh): `data.di`/`data.container` voltam preenchidos, mas
   // o estado local de UI não. Re-deriva a DI e trava o autofill por query param para
   // que ele não reescreva campos que o usuário editou à mão.
   useEffect(() => {
     if (selectedDiObj || !data.di?.[0] || visibleDis.length === 0) return;
-    const di = visibleDis.find(d => d.numeroDI === data.di[0]);
+    const di = visibleDis.find(d => d.numeroDI === data.di[0]) as any;
     if (!di) return;
     setSelectedDiObj(di);
     if (data.container) setSelectedContainer(data.container);
@@ -702,7 +702,7 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
     if (veiculoMatch && data.tipoVeiculo !== veiculoMatch.tipo) {
       onChange({ ...data, tipoVeiculo: veiculoMatch.tipo });
     }
-  }, [veiculoMatch, data, onChange]);
+  }, [veiculoMatch?.id]);
 
   const motoristaLocked = !!motoristaMatch;
   const cpfLocked = motoristaLocked && data.nomeMotorista.length > 0;
@@ -796,7 +796,7 @@ export function DadosStep({ data, onChange, disabled = false, section }: DadosSt
                     onChange={e => {
                       const val = e.target.value;
                       if (!val) return;
-                      const di = availableDis.find(d => d.numeroDI === val);
+                      const di = availableDis.find(d => d.numeroDI === val) as any;
                       setSelectedDiObj(di ?? null);
                       setSelectedContainer('');
                       const modalSub = di?.modalidade ? MODALIDADE_TO_SUB[di.modalidade] ?? '' : '';

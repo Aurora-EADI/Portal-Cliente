@@ -12,8 +12,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && currentUser) {
-      // Perfis operacionais e ADMIN iniciam no dashboard de agendamento.
-      if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CLIENTE || currentUser.role === UserRole.DESPACHANTE || currentUser.role === UserRole.TRANSPORTADORA) {
+      // CLIENTE vai direto para o portal de agendamento
+      if (currentUser.role === UserRole.CLIENTE || currentUser.role === UserRole.DESPACHANTE || currentUser.role === UserRole.TRANSPORTADORA) {
         router.push('/agendamento')
       } else {
         router.push('/modules')

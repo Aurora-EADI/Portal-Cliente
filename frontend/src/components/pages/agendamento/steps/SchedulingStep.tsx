@@ -8,7 +8,6 @@ import {
 import { DI, Motorista, Veiculo, Agendamento, JanelaAtendimento } from '@/types/agendamento';
 import { TIME_SLOTS, gerarSlotsDeJanela } from '@/lib/agendamento';
 import { api } from '@/lib/api';
-import { getErrorMessage } from '@/lib/error-message';
 
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
@@ -62,7 +61,7 @@ export function SchedulingStep({
     const s = dynamicSlots.find(x => x.horario === m[1]);
     if (s) { const n = `${s.horario} (${s.descricao})`; if (selectedHour !== n) setSelectedHour(n); }
     else setSelectedHour('');
-  }, [dynamicSlots, selectedHour]);
+  }, [dynamicSlots]);
 
   /* countdown */
   useEffect(() => {
@@ -73,7 +72,7 @@ export function SchedulingStep({
       if (d === 0) { onLiberarReserva(); setSelectedHour(''); setSlotError('Tempo esgotado! Selecione outro horário.'); }
     };
     tick(); const iv = setInterval(tick, 1000); return () => clearInterval(iv);
-  }, [reservaAtiva, onLiberarReserva]);
+  }, [reservaAtiva]);
 
   /* disponibilidade real-time ao selecionar data */
   useEffect(() => {
@@ -133,7 +132,7 @@ export function SchedulingStep({
       setSelectedHour(hourAndDesc);
       setShowModal(true);
     }
-    catch (err: unknown) { setSlotError(getErrorMessage(err, 'Erro ao reservar horário')); }
+    catch (err:any) { setSlotError(err?.response?.data?.message ?? 'Erro ao reservar horário'); }
   }, [selectedDate, onReservarSlot]);
 
   const prevMonth = () => {

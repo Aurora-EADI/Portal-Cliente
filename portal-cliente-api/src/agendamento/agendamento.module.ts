@@ -1,10 +1,8 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { AgendamentoController } from './agendamento.controller';
 import { AgendamentoService } from './agendamento.service';
-import { MailModule } from '../mail/mail.module';
 
 @Module({
-  imports: [MailModule],
   controllers: [AgendamentoController],
   providers: [AgendamentoService],
   exports: [AgendamentoService],

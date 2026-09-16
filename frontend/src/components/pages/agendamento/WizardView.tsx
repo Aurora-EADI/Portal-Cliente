@@ -13,7 +13,6 @@ import { NotificacoesStep, NotificacoesFormData } from './steps/NotificacoesStep
 import { AtribuirTransportadoraForm } from './AtribuirTransportadoraForm';
 import { VoucherDocument, downloadVoucherPdf } from './VoucherDocument';
 import { loadDraft, saveDraft, clearDraft } from '@/lib/wizard-draft';
-import { getErrorMessage } from '@/lib/error-message';
 
 const WIZARD_STEPS = [
   { number: 1, title: 'Dados',         subtitle: 'Informações da carga' },
@@ -188,8 +187,9 @@ export function WizardView() {
       const booking = await handleSaveNovoAgendamento(dados, notificacoes);
       clearDraft();
       setSavedBooking(booking);
-    } catch (err: unknown) {
-      setSubmitError(getErrorMessage(err, 'Erro ao salvar agendamento.'));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Erro ao salvar agendamento.';
+      setSubmitError(msg);
     } finally {
       setSaving(false);
     }

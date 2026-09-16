@@ -1,21 +1,11 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate"; // ✨ Importe o plugin aqui
 
-function withColorMix(variableName: string): any {
-    return ({ opacityValue }: { opacityValue?: string }) => {
-        if (opacityValue !== undefined) {
-            return `color-mix(in srgb, var(${variableName}) calc(${opacityValue} * 100%), transparent)`;
-        }
-        return `var(${variableName})`;
-    };
-}
-
 const config: Config = {
     darkMode: ["class"],
     content: [
         "./src/**/*.{js,ts,jsx,tsx,mdx}",
         "./components/**/*.{js,ts,jsx,tsx,mdx}", 
-        "./node_modules/@design-systems-orion/**/*.{js,mjs}",
     ],
     theme: {
         extend: {
@@ -32,23 +22,9 @@ const config: Config = {
                     '800': '#9a3412',
                     '900': '#7c2d12',
 
-                    DEFAULT: withColorMix('--primary'),
-                    foreground: withColorMix('--primary-foreground')
+                    DEFAULT: 'var(--primary)',
+                    foreground: 'var(--primary-foreground)'
                 },
-                sidebar: {
-                    DEFAULT: withColorMix('--sidebar'),
-                    foreground: withColorMix('--sidebar-foreground'),
-                    primary: withColorMix('--sidebar-primary'),
-                    'primary-foreground': withColorMix('--sidebar-primary-foreground'),
-                    accent: withColorMix('--sidebar-accent'),
-                    'accent-foreground': withColorMix('--sidebar-accent-foreground'),
-                    border: withColorMix('--sidebar-border'),
-                    ring: withColorMix('--sidebar-ring'),
-                },
-                'brand-primary': withColorMix('--brand-primary'),
-                'brand-hover': withColorMix('--brand-hover'),
-                'brand-accent': withColorMix('--brand-accent'),
-                'primary-hover': withColorMix('--primary-hover'),
                 background: 'hsl(var(--background))',
                 foreground: 'hsl(var(--foreground))',
                 card: {

@@ -3,8 +3,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
+
+// ============================================================
+// AUTH & USERS
+// ============================================================
 
 enum UserRole {
   ADMIN
@@ -15,82 +21,23 @@ enum UserRole {
 }
 
 model User {
-  id                    String   @id @default(uuid())
-  name                  String
-  email                 String   @unique
-  emailVerified         Boolean  @default(false)
-  image                 String?
-  role                  UserRole @default(EMPLOYEE)
-  position              String?
-  active                Boolean  @default(true)
-  clienteId             String?
-  despachanteId         String?
-  transportadoraContaId String?  @map("transportadora_conta_id")
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id         String    @id @default(uuid())
+  name       String
+  email      String    @unique
+  password   String?
+  role       UserRole  @default(EMPLOYEE)
+  position   String?
+  active     Boolean   @default(true)
+  clienteId      String?
+  despachanteId  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  sessions            Session[]
-  accounts            Account[]
-  moduleAccess        UserModuleAccess[]
-  cliente             Cliente?              @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  despachante         Despachante?          @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
-  transportadoraConta TransportadoraConta?  @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
-  procuracoesEnviadas Procuracao[]
-  averbacoesCriadas   AverbacaoProcesso[]
-  historicoAverbacao  AverbacaoHistorico[]  @relation("HistoricoAverbacaoAutor")
-  historicoProcuracao ProcuracaoHistorico[] @relation("HistoricoProcuracaoAutor")
+  moduleAccess UserModuleAccess[]
+  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
 
   @@map("users")
-}
-
-model Session {
-  id        String   @id
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("sessions")
-}
-
-model Account {
-  id                    String    @id
-  userId                String    @map("user_id")
-  accountId             String    @map("account_id")
-  providerId            String    @map("provider_id")
-  password              String?
-  accessToken           String?   @map("access_token")
-  refreshToken          String?   @map("refresh_token")
-  idToken               String?   @map("id_token")
-  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
-  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
-  scope                 String?
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([providerId, accountId])
-  @@index([userId])
-  @@map("accounts")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime @map("expires_at")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@index([identifier])
-  @@map("verifications")
 }
 
 // ============================================================
@@ -116,734 +63,16 @@ model Module {
 }
 
 model ModuleSharedItem {
-  id          Int     @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   moduleId    Int
   targetRoute String
   label       String
   icon        String?
-  sortOrder   Int     @default(0)
+  sortOrder   Int    @default(0)
 
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@map("module_shared_items")
-}
-
-model UserModuleAccess {
-  id        String  @id @default(uuid())
-  userId    String
-  moduleId  Int
-  isEnabled Boolean @default(false)
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-
-  activityAccess UserActivityAccess[]
-
-  @@unique([userId, moduleId])
-  @@map("user_module_access")
-}
-
-enum DIStatus {
-  liberada
-  bloqueada
-  retirado
-}
-
-enum AgendamentoStatus {
-  ATIVO
-  CANCELADO
-  CHEGOU
-  NO_SHOW
-  ON_TIME
-  ATRASADO
-  AG_CHEGADA
-  CONCLUIDO
-}
-
-enum OutboxEventStatus {
-  PENDING
-  PROCESSING
-  PUBLISHED
-}
-
-model Cliente {
-  id        String   @id @default(uuid())
-  nome      String
-  cnpj      String?  @unique
-  email     String?
-  telefone  String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  dis             DI[]
-  motoristas      Motorista[]
-  veiculos        Veiculo[]
-  transportadoras Transportadora[]
-  users           User[]
-  agendamentos    Agendamento[]
-  procuracoes     Procuracao[]
-  averbacoes      AverbacaoProcesso[]
-
-  @@map("clientes")
-}
-
-model Transportadora {
-  id        String   @id @default(uuid())
-  clienteId String
-  nome      String
-  cnpj      String?
-  telefone  String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  @@unique([clienteId, nome])
-  @@map("transportadoras")
-}
-
-model DI {
-  id             String   @id @default(uuid())
-  numeroDI       String   @unique
-  clienteId      String
-  container      String
-  tipoContainer  String
-  status         DIStatus @default(bloqueada)
-  pesoBruto      Float    @default(0)
-  mercadoria     String
-  transportadora String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  agendamentos Agendamento[]
-
-  @@map("dis")
-}
-
-model Motorista {
-  id                    String   @id @default(uuid())
-  clienteId             String?
-  transportadoraContaId String?  @map("transportadora_conta_id")
-  nome                  String
-  cpf                   String
-  cnh                   String
-  telefone              String
-  ativo                 Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
-  agendamentos        Agendamento[]
-
-  @@unique([clienteId, cpf])
-  @@unique([transportadoraContaId, cpf])
-  @@map("motoristas")
-}
-
-model Veiculo {
-  id                    String   @id @default(uuid())
-  clienteId             String?
-  transportadoraContaId String?  @map("transportadora_conta_id")
-  placa                 String
-  modelo                String
-  tipo                  String
-  ativo                 Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
-  agendamentos        Agendamento[]
-
-  @@unique([clienteId, placa])
-  @@unique([transportadoraContaId, placa])
-  @@map("veiculos")
-}
-
-model JanelaAtendimento {
-  id               String   @id @default(uuid())
-  descricao        String
-  horaInicio       String
-  horaFim          String
-  intervaloMinutos Int      @default(60)
-  vagasSimultaneas Int      @default(3)
-  ativo            Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@map("janelas_atendimento")
-}
-
-model Agendamento {
-  id          String            @id @default(uuid())
-  diId        String?
-  motoristaId String?
-  veiculoId   String?
-  clienteId   String?
-  data        String
-  horario     String
-  protocolo   String            @unique
-  status      AgendamentoStatus @default(ATIVO)
-  observacao  String?
-  criadoEm    DateTime          @default(now())
-
-  // Campos do novo formulário de agendamento
-  operacao              String?
-  subOperacao           String?
-  cargaEspecial         Boolean  @default(false)
-  servicos              String[]
-  tipoVeiculo           String?
-  cpfMotorista          String?
-  nomeMotorista         String?
-  placaVeiculo          String?
-  transportadora        String?
-  empresa               String?
-  awbMawb               String?
-  diNumero              String?
-  dta                   String?
-  hawb                  String?
-  numeroVoo             String?
-  volumes               String?
-  peso                  String?
-  consignatario         String?
-  container             String?
-  criadoPorNome         String?  @map("criado_por_nome")
-  criadoPorRole         String?  @map("criado_por_role")
-  transportadoraContaId String?  @map("transportadora_conta_id")
-
-  // Dados de contato/endereço do cliente e transportadora, snapshot no momento do agendamento (fonte: SIAUM)
-  cnpjCliente            String? @map("cnpj_cliente")
-  enderecoCliente        String? @map("endereco_cliente")
-  telefoneCliente        String? @map("telefone_cliente")
-  emailCliente           String? @map("email_cliente")
-  cnpjTransportadora     String? @map("cnpj_transportadora")
-  enderecoTransportadora String? @map("endereco_transportadora")
-  telefoneTransportadora String? @map("telefone_transportadora")
-  emailTransportadora    String? @map("email_transportadora")
-
-  // Notificação WhatsApp (enviada pelo Aurora via n8n, ver /api/service/whatsapp-pendentes)
-  whatsapp             String?
-  notificarWhatsapp    Boolean   @default(false)
-  whatsappNotificadoEm DateTime?
-
-  di                  DI?                  @relation(fields: [diId], references: [id])
-  motorista           Motorista?           @relation(fields: [motoristaId], references: [id])
-  veiculo             Veiculo?             @relation(fields: [veiculoId], references: [id])
-  cliente             Cliente?             @relation(fields: [clienteId], references: [id])
-  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
-  historicoStatus     AgendamentoStatusHistorico[]
-
-  @@map("agendamentos")
-}
-
-// ============================================================
-// DESPACHANTE — acesso externo para despachantes
-// ============================================================
-
-model Despachante {
-  id             String   @id @default(uuid())
-  codDespachante String   @unique @map("cod_despachante")
-  nome           String
-  email          String?  @unique
-  cnpj           String?  @unique
-  telefone       String?
-  ativo          Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  users        User[]
-  disAverbadas DiAverbada[]
-  procuracoes  Procuracao[]
-  averbacoes   AverbacaoProcesso[]
-
-  @@map("despachantes")
-}
-
-// ============================================================
-// DIs AVERBADAS — sincronizadas do Portal Aurora (intranet)
-// ============================================================
-
-model DiAverbada {
-  id             String    @id @default(uuid())
-  nLote          String    @unique @map("n_lote")
-  nConhecimento  String?   @map("n_conhecimento")
-  dta            String?
-  documentoSaida String?   @map("documento_saida")
-  tipoDocumento  String?   @map("tipo_documento")
-  modalidade     String?
-  cliente        String?
-  cnpjCliente    String?   @map("cnpj_cliente")
-  codDespachante String?   @map("cod_despachante")
-  despachante    String?
-  saldo          Float?
-  dtEntrada      DateTime? @map("dt_entrada")
-  localizacao    String?
-  containers     String?
-  averbadoEm     DateTime  @map("averbado_em")
-  sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
-  status         DIStatus  @default(liberada)
-  auroraDiId     String?   @unique @map("aurora_di_id")
-  numeroDI       String?   @map("numero_di")
-  cpfMotorista   String?   @map("cpf_motorista")
-  placaVeiculo   String?   @map("placa_veiculo")
-  dtAverbacao    DateTime? @map("dt_averbacao")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  despachanteRef Despachante?                 @relation(fields: [codDespachante], references: [codDespachante])
-  atribuicoes    DiTransportadoraAtribuicao[]
-  containerIds   DiAverbadaContainer[]
-
-  @@index([cnpjCliente])
-  @@index([codDespachante])
-  @@map("dis_averbadas")
-}
-
-/// Identificadores de containers recebidos do Aurora. O identificador externo
-/// fica separado do campo legado `DiAverbada.containers`, sem descartar dados
-/// que chegaram por sincronizações anteriores.
-model DiAverbadaContainer {
-  id       String @id @default(uuid())
-  nLote    String @map("n_lote")
-  externalId String @map("external_id")
-
-  diAverbada DiAverbada @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
-
-  @@unique([nLote, externalId])
-  @@map("di_averbada_containers")
-}
-
-model ProcessedEvent {
-  id          String   @id @default(uuid())
-  eventId     String   @unique @map("event_id")
-  eventType   String   @map("event_type")
-  processedAt DateTime @default(now()) @map("processed_at")
-
-  @@index([eventType, processedAt])
-  @@map("processed_events")
-}
-
-model OutboxEvent {
-  id            String            @id @default(uuid())
-  eventId       String            @unique @map("event_id")
-  eventType     String            @map("event_type")
-  aggregateType String            @map("aggregate_type")
-  aggregateId   String            @map("aggregate_id")
-  payload       Json
-  status        OutboxEventStatus @default(PENDING)
-  attempts      Int               @default(0)
-  createdAt     DateTime          @default(now()) @map("created_at")
-  publishedAt   DateTime?         @map("published_at")
-  nextAttemptAt DateTime          @default(now()) @map("next_attempt_at")
-  lastError     String?           @map("last_error")
-  leaseToken    String?           @map("lease_token")
-  lockedAt      DateTime?         @map("locked_at")
-
-  @@index([status, nextAttemptAt])
-  @@map("outbox_events")
-}
-
-model AgendamentoStatusHistorico {
-  id               String            @id @default(uuid())
-  agendamentoId    String            @map("agendamento_id")
-  status           AgendamentoStatus
-  previousStatus   AgendamentoStatus? @map("previous_status")
-  operadorId       String?           @map("operador_id")
-  dtAlteracao      DateTime          @default(now()) @map("dt_alteracao")
-
-  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
-
-  @@index([agendamentoId, dtAlteracao])
-  @@map("agendamento_status_historico")
-}
-
-// ============================================================
-// TRANSPORTADORA — acesso externo para transportadoras
-// ============================================================
-
-model TransportadoraConta {
-  id        String   @id @default(uuid())
-  cnpj      String   @unique
-  nome      String
-  codTransp String?  @map("cod_transp")
-  email     String?
-  telefone  String?
-  whatsapp  String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users        User[]
-  atribuicoes  DiTransportadoraAtribuicao[]
-  agendamentos Agendamento[]
-  motoristas   Motorista[]
-  veiculos     Veiculo[]
-
-  @@map("transportadora_contas")
-}
-
-model DiTransportadoraAtribuicao {
-  id                    String    @id @default(uuid())
-  nLote                 String    @map("n_lote")
-  // "" = DI inteira (legado / atribuição feita sem container especifico).
-  // Qualquer outro valor = container especifico atribuido a essa transportadora.
-  container             String    @default("") @map("container")
-  transportadoraContaId String    @map("transportadora_conta_id")
-  atribuidoPorUserId    String?   @map("atribuido_por_user_id")
-  atribuidoPorRole      String?   @map("atribuido_por_role")
-  atribuidoEm           DateTime  @default(now()) @map("atribuido_em")
-  whatsappNotificadoEm  DateTime? @map("whatsapp_notificado_em")
-
-  diAverbada     DiAverbada          @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
-  transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
-
-  @@unique([nLote, transportadoraContaId, container])
-  @@index([transportadoraContaId])
-  @@map("di_transportadora_atribuicoes")
-}
-
-// ============================================================
-// CONVITES DE REGISTRO — gerados pelo Portal Aurora
-// ============================================================
-
-model ConviteRegistro {
-  id                 String    @id @default(uuid())
-  token              String    @unique @default(uuid())
-  tipo               UserRole
-  codDespachante     String?   @map("cod_despachante")
-  cnpjCliente        String?   @map("cnpj_cliente")
-  cnpjTransportadora String?   @map("cnpj_transportadora")
-  codTransp          String?   @map("cod_transp")
-  nome               String
-  email              String?
-  expiresAt          DateTime  @map("expires_at")
-  usedAt             DateTime? @map("used_at")
-  usedByUserId       String?   @map("used_by_user_id")
-  createdAt          DateTime  @default(now()) @map("created_at")
-
-  @@map("convites_registro")
-}
-
-// ============================================================
-// AVERBAÇÃO ADUANEIRA — catálogo de tipos de documento
-//
-// Réplica do catálogo mantido no Portal Aurora, empurrada por
-// PUT /api/service/tipos-documento/batch. Aqui é somente leitura: o
-// Despachante só anexa o que estiver neste catálogo, e o upsert é por
-// auroraId — mesmo padrão de DiAverbada.nLote.
-// ============================================================
-
-enum Modalidade {
-  MARITIMO
-  AEREO
-  RODOVIARIO
-}
-
-model TipoDocumento {
-  id             String     @id @default(uuid())
-  /// Id do registro no Portal Aurora — chave natural da replicação.
-  auroraId       String     @unique @map("aurora_id")
-  modalidade     Modalidade
-  descricao      String
-  obrigatorio    Boolean    @default(true)
-  /// Etapa do fluxo: 1, 2 ou 3.
-  step           Int
-  ativo          Boolean    @default(true)
-  ordem          Int        @default(0)
-  sincronizadoEm DateTime   @default(now()) @map("sincronizado_em")
-
-  documentos AverbacaoDocumento[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([modalidade, step])
-  @@map("tipos_documento")
-}
-
-// ============================================================
-// PROCURAÇÃO — autorização do Cliente para o Despachante operar
-// em seu nome. Aprovação é por cliente: liberar o Cliente A não
-// libera o Cliente B.
-// ============================================================
-
-enum ProcuracaoStatus {
-  PENDENTE_ENVIO
-  EM_ANALISE
-  APROVADA
-  REPROVADA
-  /// Aprovada e depois cassada pela Aurora. Separada de REPROVADA de propósito:
-  /// reprovar é recusar o documento na análise, revogar é retirar um acesso que
-  /// já valia — e quem audita precisa distinguir os dois.
-  REVOGADA
-}
-
-model Procuracao {
-  id String @id @default(uuid())
-
-  // Aponta para Despachante (a entidade de negócio, com codDespachante único)
-  // e não para User: a procuração é dada à empresa despachante, não a um login.
-  // Se o escritório tiver dois usuários, ambos operam sob a mesma procuração —
-  // com FK para User cada login precisaria da sua, e o mesmo documento seria
-  // analisado duas vezes.
-  despachanteId String      @map("despachante_id")
-  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
-
-  clienteId String  @map("cliente_id")
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-
-  status ProcuracaoStatus @default(PENDENTE_ENVIO)
-
-  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
-  arquivoKey     String? @map("arquivo_key")
-  arquivoNome    String? @map("arquivo_nome")
-  arquivoTamanho Int?    @map("arquivo_tamanho")
-  arquivoMime    String? @map("arquivo_mime")
-
-  /**
-   * Data em que a procuração deixa de valer. Nula = sem prazo declarado.
-   * Não é decorativa: uma procuração vencida deixa de autorizar operações em
-   * nome do cliente, do mesmo jeito que uma não aprovada. Guardar a data e
-   * ignorá-la daria a impressão de controle sem exercê-lo.
-   */
-  validade DateTime? @map("validade") @db.Date
-
-  /// Obrigatório quando REPROVADA — é o que o Despachante lê para corrigir.
-  motivoRecusa String? @map("motivo_recusa")
-
-  /// Quem analisou no Portal Aurora. String e não FK: o analista é usuário do
-  /// banco do Aurora, que é outro banco.
-  analisadoPor String?   @map("analisado_por")
-  analisadoEm  DateTime? @map("analisado_em")
-
-  /// Qual login anexou o PDF, para auditoria.
-  enviadoPorUserId String?   @map("enviado_por_user_id")
-  enviadoPor       User?     @relation(fields: [enviadoPorUserId], references: [id], onDelete: SetNull)
-  enviadoEm        DateTime? @map("enviado_em")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  historico ProcuracaoHistorico[]
-
-  @@unique([despachanteId, clienteId])
-  @@index([status])
-  @@map("procuracoes")
-}
-
-enum ProcuracaoHistoricoAcao {
-  ENVIO
-  APROVACAO
-  REJEICAO
-  REVOGACAO
-}
-
-/**
- * Trilha append-only de tudo que aconteceu com uma procuração.
- * Existe porque `Procuracao` guarda só o estado atual: um par
- * (despachante, cliente) tem uma linha, e reenviar sobrescreve o arquivo. Sem
- * esta tabela, "a procuração foi reprovada em março e a nova aprovada em abril"
- * seria uma informação perdida — junto com o PDF que motivou a recusa.
- * Por isso cada entrada carrega a sua própria arquivoKey: o PDF de cada envio
- * continua existindo no MinIO e resolvível depois de qualquer substituição.
- * Nada aqui é atualizado ou apagado — não há endpoint de update nem delete.
- */
-model ProcuracaoHistorico {
-  id String @id @default(uuid())
-
-  procuracaoId String     @map("procuracao_id")
-  procuracao   Procuracao @relation(fields: [procuracaoId], references: [id], onDelete: Cascade)
-
-  acao ProcuracaoHistoricoAcao
-
-  /// Nome de quem agiu. String e não FK porque o analista do Aurora é usuário
-  /// de outro banco; para ação do Despachante o userId também é guardado.
-  autorNome   String  @map("autor_nome")
-  autorUserId String? @map("autor_user_id")
-  autorUser   User?   @relation("HistoricoProcuracaoAutor", fields: [autorUserId], references: [id], onDelete: SetNull)
-
-  /// Motivo da recusa ou da revogação. Nulo em envio e aprovação.
-  motivo String?
-
-  /// O arquivo vigente no momento desta entrada. Guardado por entrada, e não
-  /// lido da procuração, justamente para sobreviver à substituição.
-  arquivoKey     String?   @map("arquivo_key")
-  arquivoNome    String?   @map("arquivo_nome")
-  arquivoTamanho Int?      @map("arquivo_tamanho")
-  validade       DateTime? @map("validade") @db.Date
-
-  criadoEm DateTime @default(now()) @map("criado_em")
-
-  @@index([procuracaoId, criadoEm])
-  @@map("procuracao_historico")
-}
-
-// ============================================================
-// AVERBAÇÃO ADUANEIRA — processo documental
-//
-// O Despachante abre um processo por DI/DUIMP e anexa os documentos exigidos
-// pela modalidade. O time Aurora valida documento a documento; só quando todos
-// os obrigatórios estão VALIDADO o processo é liberado para agendamento.
-// ============================================================
-
-enum AverbacaoProcessoStatus {
-  RASCUNHO
-  EM_ANALISE
-  PENDENTE_CORRECAO
-  LIBERADO_AGENDAMENTO
-
-  /// Descartado pelo despachante antes de qualquer vínculo com o SIAUM.
-  /// Terminal como LIBERADO_AGENDAMENTO: `recalcularProcesso` não o
-  /// sobrescreve e ele sai da fila de vínculo do Aurora. O registro
-  /// permanece — descartar não apaga, para a auditoria continuar enxergando
-  /// o que foi aberto, por quem e por quê.
-  CANCELADO
-}
-
-enum AverbacaoDocumentoStatus {
-  NAO_ENVIADO
-  EM_ANALISE
-  VALIDADO
-  REJEITADO
-}
-
-enum AverbacaoHistoricoAcao {
-  ENVIO
-  APROVACAO
-  REJEICAO
-  SUBSTITUICAO
-}
-
-model AverbacaoProcesso {
-  id        String @id @default(uuid())
-  protocolo String @unique
-
-  clienteId String  @map("cliente_id")
-  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
-
-  // Mesma razão da Procuracao: o processo é do escritório despachante, não do
-  // login que o abriu.
-  despachanteId String      @map("despachante_id")
-  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
-
-  modalidade            Modalidade
-  diDuimp               String     @map("di_duimp")
-  containerConhecimento String     @map("container_conhecimento")
-
-  /// Porto, aeroporto ou fronteira de origem. Informativo, preenchido pelo
-  /// despachante — o sistema não valida contra tabela de recintos.
-  localOrigem String? @map("local_origem")
-
-  /// Recinto alfandegado de destino da carga. Mesmo caráter informativo.
-  recintoDestino String? @map("recinto_destino")
-
-  /// DTA, Anvisa, MAPA, Exército ou sobredimensão. Não muda a lista de
-  /// documentos exigidos: serve para o analista saber que o processo pode
-  /// depender de anuência de terceiro antes de liberar.
-  cargaEspecial Boolean @default(false) @map("carga_especial")
-
-  status AverbacaoProcessoStatus @default(RASCUNHO)
-
-  /// Lote da DI no SIAUM (doc_conhecimento.n_lote) — o que liga a averbação
-  /// documental ao registro da operação e ao agendamento (DiAverbada.nLote).
-  ///
-  /// Gravado pelo Portal Aurora quando um analista confirma o vínculo, num ato
-  /// próprio (PATCH /vinculo) e não mais dentro do `liberar`: liberar recusa
-  /// reexecução, então um processo liberado sem lote ficava permanentemente
-  /// órfão, sem caminho de correção.
-  ///
-  /// Não é unique: um lote pode ter um ciclo reaberto depois de encerrado, e a
-  /// unicidade "um lote, um processo vivo" é garantida do lado do Aurora.
-  nLote String? @map("n_lote")
-
-  criadoPorUserId String? @map("criado_por_user_id")
-  criadoPor       User?   @relation(fields: [criadoPorUserId], references: [id], onDelete: SetNull)
-
-  /// Quando e por que o processo foi descartado. Preenchidos junto com o
-  /// status CANCELADO — descartar não apaga a linha, e sem o motivo o registro
-  /// que sobra não explica nada a quem for auditar depois.
-  canceladoEm        DateTime? @map("cancelado_em")
-  motivoCancelamento String?   @map("motivo_cancelamento")
-
-  documentos AverbacaoDocumento[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Índice, não unique: a mesma DI pode ter processo reaberto depois de um
-  // ciclo encerrado.
-  @@index([diDuimp])
-  // O gate de agendamento consulta por `nLote OR diDuimp` a cada listagem de
-  // DIs; sem este índice o braço do lote faz varredura da tabela.
-  @@index([nLote])
-  @@index([despachanteId, status])
-  @@index([clienteId])
-  @@map("averbacao_processos")
-}
-
-model AverbacaoDocumento {
-  id String @id @default(uuid())
-
-  processoId String            @map("processo_id")
-  processo   AverbacaoProcesso @relation(fields: [processoId], references: [id], onDelete: Cascade)
-
-  tipoDocumentoId String        @map("tipo_documento_id")
-  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
-
-  status AverbacaoDocumentoStatus @default(NAO_ENVIADO)
-
-  // Key do objeto no MinIO — nunca URL. Acesso é por streaming autenticado.
-  arquivoKey     String? @map("arquivo_key")
-  arquivoNome    String? @map("arquivo_nome")
-  arquivoTamanho Int?    @map("arquivo_tamanho")
-  arquivoMime    String? @map("arquivo_mime")
-
-  /// Obrigatório quando REJEITADO — é o que o Despachante lê para corrigir.
-  motivoRejeicao String? @map("motivo_rejeicao")
-
-  historico AverbacaoHistorico[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Um documento por tipo em cada processo: substituir atualiza a linha e o
-  // histórico guarda as versões.
-  @@unique([processoId, tipoDocumentoId])
-  @@index([status])
-  @@map("averbacao_documentos")
-}
-
-/// Append-only: nunca sofre update nem delete. É a rastreabilidade do processo,
-/// e reescrever o passado destruiria justamente o que ela serve para provar.
-model AverbacaoHistorico {
-  id String @id @default(uuid())
-
-  documentoId String             @map("documento_id")
-  documento   AverbacaoDocumento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
-
-  acao AverbacaoHistoricoAcao
-
-  /// Nome de quem agiu. String e não FK porque o analista do Aurora é usuário
-  /// de outro banco; para ação do Despachante o userId também é guardado.
-  autorNome   String  @map("autor_nome")
-  autorUserId String? @map("autor_user_id")
-  autorUser   User?   @relation("HistoricoAverbacaoAutor", fields: [autorUserId], references: [id], onDelete: SetNull)
-
-  motivo String?
-
-  /// Versão do arquivo à qual esta entrada se refere, para o histórico de
-  /// envios continuar resolvendo depois de uma substituição.
-  arquivoKey  String? @map("arquivo_key")
-  arquivoNome String? @map("arquivo_nome")
-
-  criadoEm DateTime @default(now()) @map("criado_em")
-
-  @@index([documentoId, criadoEm])
-  @@map("averbacao_historico")
 }
 
 model Activity {
@@ -853,7 +82,7 @@ model Activity {
   moduleId    Int
   isMandatory Boolean @default(false)
 
-  module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   permissions    ActivityPermission[]
   activityAccess UserActivityAccess[]
 
@@ -883,6 +112,20 @@ model ActivityPermission {
   @@map("activity_permissions")
 }
 
+model UserModuleAccess {
+  id        String  @id @default(uuid())
+  userId    String
+  moduleId  Int
+  isEnabled Boolean @default(false)
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  activityAccess UserActivityAccess[]
+
+  @@unique([userId, moduleId])
+  @@map("user_module_access")
+}
+
 model UserActivityAccess {
   id                 String  @id @default(uuid())
   userModuleAccessId String
@@ -896,6 +139,125 @@ model UserActivityAccess {
   @@map("user_activity_access")
 }
 
+// ============================================================
+// FCL — PORTAL DO CLIENTE
+// ============================================================
+
+enum DIStatus {
+  liberada
+  bloqueada
+  retirado
+}
+
+enum AgendamentoStatus {
+  ATIVO
+  CANCELADO
+}
+
+model Cliente {
+  id        String   @id @default(uuid())
+  nome      String
+  cnpj      String?  @unique
+  email     String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dis             DI[]
+  motoristas      Motorista[]
+  veiculos        Veiculo[]
+  transportadoras Transportadora[]
+  users           User[]
+
+  @@map("clientes")
+}
+
+model DI {
+  id             String   @id @default(uuid())
+  numeroDI       String   @unique
+  clienteId      String
+  container      String
+  tipoContainer  String
+  status         DIStatus @default(bloqueada)
+  pesoBruto      Float    @default(0)
+  mercadoria     String
+  transportadora String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@map("dis")
+}
+
+model Motorista {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cpf       String
+  cnh       String
+  telefone  String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, cpf])
+  @@map("motoristas")
+}
+
+model Veiculo {
+  id        String   @id @default(uuid())
+  clienteId String
+  placa     String
+  modelo    String
+  tipo      String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, placa])
+  @@map("veiculos")
+}
+
+model Transportadora {
+  id        String   @id @default(uuid())
+  clienteId String
+  nome      String
+  cnpj      String?
+  telefone  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  agendamentos Agendamento[]
+
+  @@unique([clienteId, nome])
+  @@map("transportadoras")
+}
+
+model JanelaAtendimento {
+  id                String   @id @default(uuid())
+  descricao         String
+  horaInicio        String
+  horaFim           String
+  intervaloMinutos  Int      @default(60)
+  vagasSimultaneas  Int      @default(3)
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("janelas_atendimento")
+}
+
 model SlotReserva {
   id       String   @id @default(uuid())
   data     String
@@ -905,4 +267,109 @@ model SlotReserva {
   criadaEm DateTime @default(now())
 
   @@map("slot_reservas")
+}
+
+model Agendamento {
+  id              String            @id @default(uuid())
+  diId            String
+  motoristaId     String
+  veiculoId       String
+  transportadoraId String?
+  data            String
+  horario         String
+  protocolo       String            @unique
+  status          AgendamentoStatus @default(ATIVO)
+  observacao      String?
+  criadoEm        DateTime          @default(now())
+
+  di             DI              @relation(fields: [diId], references: [id])
+  motorista      Motorista       @relation(fields: [motoristaId], references: [id])
+  veiculo        Veiculo         @relation(fields: [veiculoId], references: [id])
+  transportadora Transportadora? @relation(fields: [transportadoraId], references: [id])
+
+  @@map("agendamentos")
+}
+
+// ============================================================
+// DESPACHANTE — acesso externo para despachantes
+// ============================================================
+
+model Despachante {
+  id             String   @id @default(uuid())
+  codDespachante String   @unique @map("cod_despachante")
+  nome           String
+  email          String?  @unique
+  cnpj           String?  @unique
+  telefone       String?
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users        User[]
+  disAverbadas DiAverbada[]
+
+  @@map("despachantes")
+}
+
+// ============================================================
+// DIs AVERBADAS — sincronizadas do Portal Aurora (intranet)
+// ============================================================
+
+model DiAverbada {
+  id             String    @id @default(uuid())
+  nLote          String    @unique @map("n_lote")
+  nConhecimento  String?   @map("n_conhecimento")
+  dta            String?
+  documentoSaida String?   @map("documento_saida")
+  tipoDocumento  String?   @map("tipo_documento")
+  modalidade     String?
+  cliente        String?
+  cnpjCliente    String?   @map("cnpj_cliente")
+  codDespachante String?   @map("cod_despachante")
+  despachante    String?
+  saldo          Float?
+  dtEntrada      DateTime? @map("dt_entrada")
+  localizacao    String?
+  containers     String?
+  averbadoEm     DateTime  @map("averbado_em")
+  sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
+  status         DIStatus  @default(liberada)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  despachanteRef Despachante? @relation(fields: [codDespachante], references: [codDespachante])
+
+  @@index([cnpjCliente])
+  @@map("dis_averbadas")
+}
+
+// ============================================================
+// CONVITES DE REGISTRO — gerados pelo Portal Aurora
+// ============================================================
+
+model ConviteRegistro {
+  id             String    @id @default(uuid())
+  token          String    @unique @default(uuid())
+  tipo           UserRole
+  codDespachante String?   @map("cod_despachante")
+  cnpjCliente    String?   @map("cnpj_cliente")
+  nome           String
+  email          String?
+  expiresAt      DateTime  @map("expires_at")
+  usedAt         DateTime? @map("used_at")
+  usedByUserId   String?   @map("used_by_user_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("convites_registro")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique @default(uuid())
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("password_reset_tokens")
 }

@@ -5,14 +5,10 @@ import { NavItem, NavigationContext } from './types';
 export type { NavItem, NavigationContext } from './types';
 import { mainNavigation } from './modules/main';
 import { agendamentoFCLNavigation } from './modules/agendamento';
-import { averbacaoNavigation, procuracoesNavigation } from './modules/averbacao';
-import { AVERBACAO_ATIVA } from '@/config/features';
 
-// Navegação estática (fallback). Com a averbação desligada os dois contextos
-// dela ficam de fora: sem eles nao sobra basePath resolvendo rota que responde 404.
+// Navegação estática (fallback)
 export const allNavigationContexts: NavigationContext[] = [
     agendamentoFCLNavigation,
-    ...(AVERBACAO_ATIVA ? [averbacaoNavigation, procuracoesNavigation] : []),
     mainNavigation,
 ];
 

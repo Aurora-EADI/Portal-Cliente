@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
-import { DI, Motorista, Veiculo, Transportadora, Agendamento, AgendamentoStatus, JanelaAtendimento } from '@/types/agendamento';
+import { DI, Motorista, Veiculo, Transportadora, Agendamento, JanelaAtendimento } from '@/types/agendamento';
 import { DadosFormData } from '@/components/pages/agendamento/steps/DadosStep';
 import { NotificacoesFormData } from '@/components/pages/agendamento/steps/NotificacoesStep';
 import { useAuthContext } from '@/context/AuthContext';
@@ -59,78 +59,25 @@ interface AgendamentoContextValue {
 
 const AgendamentoContext = createContext<AgendamentoContextValue | undefined>(undefined);
 
-const VALID_STATUSES = ['ATIVO','CANCELADO','CHEGOU','NO_SHOW','ON_TIME','ATRASADO','AG_CHEGADA','CONCLUIDO'] as const satisfies readonly AgendamentoStatus[];
+const VALID_STATUSES = ['ATIVO','CANCELADO','CHEGOU','NO_SHOW','ON_TIME','ATRASADO','AG_CHEGADA','CONCLUIDO'] as const;
 const ACTIVE_BOOKING_STATUSES = new Set(['ATIVO','AG_CHEGADA','CHEGOU','ON_TIME','ATRASADO']);
 
-type ApiRelation = string | { nome?: string | null } | null | undefined;
-type ApiBooking = {
-  id?: string;
-  status?: string;
-  diId?: string | null;
-  diNumero?: string | null;
-  di?: { numeroDI?: string | null; container?: string | null; cliente?: ApiRelation } | null;
-  cliente?: ApiRelation;
-  empresa?: string | null;
-  diCliente?: string | null;
-  container?: string | null;
-  motorista?: Motorista;
-  veiculo?: Veiculo;
-  nomeMotorista?: string;
-  cpfMotorista?: string;
-  placaVeiculo?: string;
-  tipoVeiculo?: string;
-  data?: string;
-  horario?: string;
-  protocolo?: string;
-  observacao?: string | null;
-  criadoEm?: string;
-  operacao?: string | null;
-  subOperacao?: string | null;
-  cargaEspecial?: boolean | null;
-  servicos?: string[] | null;
-  awbMawb?: string | string[] | null;
-  dta?: string | string[] | null;
-  hawb?: string | string[] | null;
-  numeroVoo?: string | null;
-  volumes?: string | null;
-  peso?: string | null;
-  consignatario?: string | null;
-  transportadora?: string | null;
-  criadoPorNome?: string | null;
-  criadoPorRole?: string | null;
-  cnpjCliente?: string | null;
-  enderecoCliente?: string | null;
-  telefoneCliente?: string | null;
-  emailCliente?: string | null;
-  cnpjTransportadora?: string | null;
-  enderecoTransportadora?: string | null;
-  telefoneTransportadora?: string | null;
-  emailTransportadora?: string | null;
-};
-
-type ApiDI = Omit<DI, 'cliente'> & { cliente?: ApiRelation };
-
-function relationName(value: ApiRelation): string | undefined {
-  if (typeof value === 'string') return value;
-  return value?.nome ?? undefined;
-}
-
-function mapApiBooking(b: ApiBooking): Agendamento {
-  const status = VALID_STATUSES.find(value => value === b.status) ?? 'ATIVO';
+function mapApiBooking(b: any): Agendamento {
+  const status = VALID_STATUSES.includes(b.status) ? b.status : 'ATIVO';
   return {
-    id: b.id ?? '',
+    id: b.id,
     diId: b.diId ?? '',
     diNumero: b.di?.numeroDI ?? b.diNumero ?? '',
-    diCliente: relationName(b.di?.cliente) ?? relationName(b.cliente) ?? b.empresa ?? b.diCliente ?? '',
+    diCliente: b.di?.cliente?.nome ?? b.cliente?.nome ?? b.empresa ?? b.diCliente ?? '',
     container: b.di?.container ?? b.container ?? '',
     motorista: b.motorista ?? { id: '', nome: b.nomeMotorista ?? '', cpf: b.cpfMotorista ?? '', cnh: '', telefone: '' },
     veiculo: b.veiculo ?? { id: '', placa: b.placaVeiculo ?? '', modelo: b.tipoVeiculo ?? '', tipo: b.tipoVeiculo ?? '' },
-    data: b.data ?? '',
-    horario: b.horario ?? '',
-    protocolo: b.protocolo ?? '',
+    data: b.data,
+    horario: b.horario,
+    protocolo: b.protocolo,
     status,
     observacao: b.observacao ?? undefined,
-    criadoEm: b.criadoEm ?? '',
+    criadoEm: b.criadoEm,
     operacao: b.operacao ?? undefined,
     subOperacao: b.subOperacao ?? undefined,
     cargaEspecial: b.cargaEspecial ?? undefined,
@@ -196,16 +143,14 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     const params = clienteId ? { clienteId } : {};
     Promise.all([
       api.get('/agendamento/janelas').then(r => setJanelasAtendimento(r.data)).catch(() => {}),
-      api.get('/agendamento/dis', { params }).then(r => setDis(r.data.map((d: ApiDI) => ({ ...d, cliente: relationName(d.cliente) ?? '' })))).catch(() => {}),
+      api.get('/agendamento/dis', { params }).then(r => setDis(r.data.map((d: any) => ({ ...d, cliente: d.cliente?.nome ?? d.cliente })))).catch(() => {}),
       api.get('/agendamento/motoristas', { params }).then(r => setMotoristas(r.data)).catch(() => {}),
       api.get('/agendamento/veiculos', { params }).then(r => setVeiculos(r.data)).catch(() => {}),
       api.get('/agendamento/transportadoras', { params }).then(r => setTransportadoras(r.data)).catch(() => {}),
-      currentUser && [UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA].includes(currentUser.role)
-        ? api.get('/agendamento/transportadoras-conta').then(r => setTransportadorasConta(r.data)).catch(() => {})
-        : Promise.resolve(setTransportadorasConta([])),
+      api.get('/agendamento/transportadoras-conta').then(r => setTransportadorasConta(r.data)).catch(() => {}),
       api.get('/agendamento/agendamentos', { params }).then(r => setActiveBookings(r.data.map(mapApiBooking))).catch(() => {}),
     ]).finally(() => setIsLoadingData(false));
-  }, [clienteId, currentUser]);
+  }, [clienteId]);
 
   const upsertDi = (di: DI) => {
     setDis(prev => {
@@ -225,19 +170,17 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const handleAgendamentoEvent = (payload: unknown) => {
-    if (typeof payload !== 'object' || payload === null) return;
-    const event = payload as ApiBooking & { deleted?: boolean };
-    if (event.deleted) {
-      setActiveBookings(prev => prev.filter(b => b.id !== event.id));
+  const handleAgendamentoEvent = (payload: any) => {
+    if (payload?.deleted) {
+      setActiveBookings(prev => prev.filter(b => b.id !== payload.id));
       return;
     }
-    const isActive = typeof event.status === 'string' && ACTIVE_BOOKING_STATUSES.has(event.status);
+    const isActive = ACTIVE_BOOKING_STATUSES.has(payload.status);
     if (!isActive) {
-      setActiveBookings(prev => prev.filter(b => b.id !== event.id));
+      setActiveBookings(prev => prev.filter(b => b.id !== payload.id));
       return;
     }
-    upsertBooking(mapApiBooking(event));
+    upsertBooking(mapApiBooking(payload));
   };
 
   useAgendamentoStream(!!currentUser, handleAgendamentoEvent);
@@ -323,6 +266,45 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSaveNovoAgendamento = async (dados: DadosFormData, notificacoes: NotificacoesFormData): Promise<Agendamento> => {
+    const cpfDigits = dados.cpfMotorista.replace(/\D/g, '');
+    const motorista: Motorista =
+      motoristas.find(m => m.cpf.replace(/\D/g, '') === cpfDigits) ??
+      { id: `mot-${Date.now()}`, nome: dados.nomeMotorista, cpf: dados.cpfMotorista, cnh: '', telefone: '' };
+
+    const veiculo: Veiculo =
+      veiculos.find(v => v.placa.replace(/\s/g, '').toUpperCase() === dados.placaVeiculo.replace(/\s/g, '').toUpperCase()) ??
+      { id: `veic-${Date.now()}`, placa: dados.placaVeiculo, modelo: dados.tipoVeiculo, tipo: dados.tipoVeiculo };
+
+    const protocolo = `AG-${Date.now().toString(36).toUpperCase()}`;
+    const localBooking: Agendamento = {
+      id: `bk-${Date.now()}`,
+      diId: '',
+      diNumero: Array.isArray(dados.di) ? dados.di.join(', ') : (dados.di ?? ''),
+      diCliente: (isAdmin ? selectedClient : (userClienteNome ?? dados.empresa)) || dados.empresa,
+      container: dados.container || '',
+      motorista,
+      veiculo,
+      data: dados.dataAgendamento,
+      horario: dados.inicio,
+      protocolo,
+      status: 'ATIVO',
+      observacao: dados.observacoes || undefined,
+      criadoEm: new Date().toISOString(),
+      operacao: dados.operacao,
+      subOperacao: dados.subOperacao,
+      cargaEspecial: dados.cargaEspecial,
+      servicos: dados.servicos,
+      empresa: dados.empresa,
+      awbMawb: dados.awbMawb,
+      dta: dados.dta,
+      hawb: dados.hawb,
+      numeroVoo: dados.numeroVoo,
+      volumes: dados.volumes,
+      peso: dados.peso,
+      consignatario: dados.consignatario,
+      transportadora: dados.transportadora,
+    };
+
     const { data: created } = await api.post('/agendamento/agendamentos', {
       ...dados,
       notificarWhatsapp: notificacoes.notificarWhatsapp,

@@ -1,31 +1,37 @@
-import { apiNest } from '@/lib/apiNest';
-import { authClient } from '@/lib/auth-client';
+import axios from 'axios';
+import Cookies from 'js-cookie';
+import { api } from '@/lib/api';
 import type { User } from '@/types';
-import { getErrorMessage, getErrorStatus, normalizeAuthError } from '@/lib/error-message';
 
 export const authService = {
   login: async (email: string, password: string) => {
-    const result = await authClient.signIn.email({ email, password });
-    if (result.error) {
-      throw normalizeAuthError(result.error);
-    }
-    const user = await authService.getProfile();
-    return { user };
-  },
+    const response = await axios.post('/api/auth/login', { email, password }).catch((error) => {
+      const message = error.response?.data?.message || 'Erro ao autenticar';
+      throw new Error(message);
+    });
 
-  logout: async () => {
-    await authClient.signOut();
+    const { user, token, expires_at } = response.data;
+    Cookies.set('access_token', token, { sameSite: 'lax', expires: 1 });
+
+    return { user, expires_at };
   },
 
   getProfile: async (): Promise<User> => {
     try {
-      const response = await apiNest.get('/account/me');
+      const response = await api.get('/auth/me');
       return response.data.user;
-    } catch (error: unknown) {
-      const rejected = new Error(getErrorMessage(error, 'Erro ao buscar perfil')) as Error & {
-        status?: number;
-      };
-      rejected.status = getErrorStatus(error);
+    } catch (error: any) {
+      const backendMessage = error.response?.data?.message;
+      let message = 'Erro ao buscar perfil';
+
+      if (typeof backendMessage === 'string') {
+        message = backendMessage;
+      } else if (Array.isArray(backendMessage)) {
+        message = backendMessage.join(', ');
+      }
+
+      const rejected = new Error(message) as Error & { status?: number };
+      rejected.status = error.response?.status;
       return Promise.reject(rejected);
     }
   },

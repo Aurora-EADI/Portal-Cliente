@@ -130,7 +130,7 @@ export function DriverStep({ motoristas, onAddMotorista, selectedMotorista, onSe
                             <p className="text-xs text-zinc-500">Nenhum motorista encontrado.</p>
                             <button type="button" onClick={() => { setIsRegDriver(true); if (driverSearch.length >= 4) setFormName(driverSearch); }}
                               className="text-xs text-sky-600 font-bold flex items-center gap-1 mx-auto hover:underline">
-                              <PlusCircle className="w-3.5 h-3.5" /> Cadastrar &quot;{driverSearch}&quot;
+                              <PlusCircle className="w-3.5 h-3.5" /> Cadastrar "{driverSearch}"
                             </button>
                           </div>
                         ) : (
@@ -255,7 +255,7 @@ export function DriverStep({ motoristas, onAddMotorista, selectedMotorista, onSe
                             <p className="text-xs text-zinc-500">Nenhum veículo encontrado.</p>
                             <button type="button" onClick={() => { setIsRegVehicle(true); if (vehicleSearch.length <= 7) setFormPlaca(vehicleSearch.toUpperCase()); else setFormModelo(vehicleSearch); }}
                               className="text-xs text-sky-600 font-bold flex items-center gap-1 mx-auto hover:underline">
-                              <PlusCircle className="w-3.5 h-3.5" /> Cadastrar placa &quot;{vehicleSearch}&quot;
+                              <PlusCircle className="w-3.5 h-3.5" /> Cadastrar placa "{vehicleSearch}"
                             </button>
                           </div>
                         ) : (

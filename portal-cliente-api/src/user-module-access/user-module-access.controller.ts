@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { UserModuleAccessService } from './user-module-access.service';
-import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('user-module-access')
-@UseGuards(BetterAuthDomainGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class UserModuleAccessController {
   constructor(private service: UserModuleAccessService) {}
 
@@ -14,7 +14,7 @@ export class UserModuleAccessController {
   @Roles(UserRole.ADMIN)
   getStats() { return this.service.getModuleUsageStats(); }
 
-  @Get([':userId', 'user/:userId/modules'])
+  @Get(':userId')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
   getUserModules(@Param('userId') userId: string) {
     return this.service.getUserModulesWithAccessStatus(userId);
@@ -41,4 +41,10 @@ export class UserModuleAccessController {
     @Param('userId') userId: string,
     @Param('moduleId', ParseIntPipe) moduleId: number,
   ) { return this.service.removeModuleAccess(userId, moduleId); }
+
+  @Post('sync/:moduleId')
+  @Roles(UserRole.ADMIN)
+  syncActivities(@Param('moduleId', ParseIntPipe) moduleId: number) {
+    return this.service.syncMandatoryActivities(moduleId);
+  }
 }

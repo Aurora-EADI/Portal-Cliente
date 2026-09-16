@@ -1,35 +1,41 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import type { User } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-import { auth, betterAuthProvisioningHeaders } from './better-auth';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private jwtService: JwtService,
+  ) {}
 
-  async provisionCredential(input: { name: string; email: string; password: string }) {
-    const result = await auth.api.signUpEmail({
-      body: input,
-      headers: betterAuthProvisioningHeaders(),
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || !user.password || !user.active) {
+      throw new UnauthorizedException('Email ou senha inválidos');
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) throw new UnauthorizedException('Email ou senha inválidos');
+
+    const token = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
     });
-    return result.user;
+
+    const { password: _password, ...safeUser } = user;
+    return { user: safeUser, token };
   }
 
-  async removeCredential(userId: string) {
-    const context = await auth.$context;
-    await context.internalAdapter.deleteUser(userId);
-  }
-
-  async getProfile(userId: string): Promise<{ user: Omit<User, never> }> {
+  async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        cliente: { select: { id: true, nome: true, cnpj: true } },
-        despachante: { select: { id: true, codDespachante: true, nome: true } },
-        transportadoraConta: { select: { id: true, nome: true, cnpj: true } },
-      },
+      include: { cliente: { select: { id: true, nome: true, cnpj: true } } },
     });
     if (!user) throw new UnauthorizedException();
-    return { user };
+    const { password: _password, ...safeUser } = user;
+    return { user: safeUser };
   }
 }

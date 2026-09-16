@@ -1,10 +1,12 @@
-'use client';
+'use client'
 
-import React, { useCallback } from 'react';
-import Link from 'next/link';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { AppShell, type RenderLink } from '@/components/orion/blocks';
-import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
+import React, { useState } from 'react';
+import { Header } from '@/components/layout/Header';
+import { Layout } from '@/components/layout/Layout';
+type GuardConfig = {
+  moduleRoute: string;
+  requiredPermissions: string[];
+};
 
 type LayoutConfig = {
   className?: string;
@@ -28,11 +30,6 @@ type HeaderConfig = {
   pageTitle?: string;
 };
 
-type GuardConfig = {
-  moduleRoute: string;
-  requiredPermissions: string[];
-};
-
 export interface ModuleRouteShellProps {
   children: React.ReactNode;
   guard?: GuardConfig;
@@ -41,56 +38,21 @@ export interface ModuleRouteShellProps {
   header?: HeaderConfig;
 }
 
-const maxWidthClasses = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
-  '2xl': 'max-w-2xl',
-  '3xl': 'max-w-3xl',
-  '4xl': 'max-w-4xl',
-  '5xl': 'max-w-5xl',
-  '6xl': 'max-w-6xl',
-  '7xl': 'max-w-7xl',
-  full: 'max-w-full',
-};
-
 export function ModuleRouteShell({
   children,
+  guard,
   layout,
+  wrapperClassName = 'h-screen flex flex-col overflow-hidden',
+  header,
 }: ModuleRouteShellProps) {
-  const breadcrumbs = useBreadcrumbs();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const renderLink: RenderLink = useCallback(
-    ({ href, className, children: linkChildren, 'aria-current': ariaCurrent }) => (
-      <Link href={href} className={className} aria-current={ariaCurrent}>
-        {linkChildren}
-      </Link>
-    ),
-    []
+  const content = (
+    <div className={wrapperClassName}>
+      <Header pageTitle={header?.pageTitle} onMenuClick={() => setMobileMenuOpen(true)} />
+      <Layout {...layout} mobileMenuOpen={mobileMenuOpen} onMobileMenuChange={setMobileMenuOpen}>{children}</Layout>
+    </div>
   );
 
-  const maxWidth = layout?.maxWidth ?? '7xl';
-  const noPadding = layout?.noPadding ?? false;
-
-  return (
-    <AppShell
-      breadcrumbs={breadcrumbs}
-      renderLink={renderLink}
-      renderSidebar={(slotProps) => (
-        <Sidebar
-          mobile={slotProps.isMobile}
-          collapsed={slotProps.collapsed}
-          onCollapsedChange={slotProps.onCollapsedChange}
-          collapsible={slotProps.collapsible}
-          onClose={slotProps.onNavigate}
-        />
-      )}
-      contentClassName="bg-gray-50 flex flex-col"
-    >
-      <div className={`flex-1 w-full ${maxWidthClasses[maxWidth]} mx-auto ${noPadding ? '' : 'p-4 md:p-8'} ${layout?.className ?? ''}`}>
-        {children}
-      </div>
-    </AppShell>
-  );
+  return content;
 }
