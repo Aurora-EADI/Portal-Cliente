@@ -16,14 +16,11 @@
     "start": "turbo run start",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "prisma:generate": "turbo run prisma:generate",
+    "test": "turbo run test",
     "prisma": "pnpm --filter portal-cliente-api exec prisma",
-    "prisma:web": "pnpm --filter aurora-eadi-nextjs exec prisma",
     "db:migrate": "pnpm --filter portal-cliente-api exec prisma migrate dev",
-    "db:migrate:web": "pnpm --filter aurora-eadi-nextjs exec prisma migrate dev",
     "db:studio": "pnpm --filter portal-cliente-api exec prisma studio",
-    "prisma:sync": "node scripts/sync-prisma.mjs",
-    "prisma:check": "node scripts/sync-prisma.mjs --check"
+    "prisma:generate": "pnpm --filter portal-cliente-api exec prisma generate"
   },
   "devDependencies": {
     "turbo": "^2.8.0"

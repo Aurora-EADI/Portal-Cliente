@@ -10,9 +10,8 @@ export const useLogin = () => {
       return await authService.login(email, password);
     },
     onSuccess: async (data) => {
-      const { user, expires_at } = data;
-      await loginUser(user, expires_at);
+      await loginUser(data.user);
     },
-    onError: (_error: any) => {},
+    onError: () => {},
   });
 };

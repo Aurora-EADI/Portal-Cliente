@@ -1,7 +1,7 @@
 # =========================
 # Build
 # =========================
-FROM node:22-bookworm-slim AS builder
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /app
 
@@ -21,12 +21,28 @@ RUN pnpm --filter portal-cliente-api --filter portal-cliente install --frozen-lo
 
 COPY portal-cliente-api ./portal-cliente-api
 
-RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" pnpm build:api
+# One-shot migration image. It reuses this dependency installation and source
+# tree; Compose supplies DATABASE_URL and runs the command once.
+FROM base AS migrator
+
+WORKDIR /app/portal-cliente-api
+
+ENV NODE_ENV=production
+
+CMD ["npx", "prisma", "migrate", "deploy"]
+
+
+# =========================
+# Build API
+# =========================
+FROM base AS builder
+
+RUN pnpm build:api
 RUN pnpm --filter portal-cliente-api deploy --legacy --prod /prod/api
 # Generate inside the portable dependency tree rather than the build workspace.
 RUN cd /prod/api && \
     node /app/portal-cliente-api/node_modules/prisma/build/index.js generate --schema=prisma/schema.prisma && \
-    node -e "require('@prisma/client'); require('bcrypt')"
+    node -e "require('@prisma/client')"
 
 
 # =========================

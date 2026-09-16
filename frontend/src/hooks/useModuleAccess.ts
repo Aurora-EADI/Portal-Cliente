@@ -16,19 +16,19 @@ interface ModuleAccessResult {
  * @returns Estado de acesso ao módulo
  */
 export function useModuleAccess(route: string): ModuleAccessResult {
-  const { modules, isLoading, error, getModuleByRoute } = useModuleAccessContext();
+  const { isLoading, error, getModuleByRoute } = useModuleAccessContext();
 
   // Calcula acesso de forma memoizada (só recalcula se modules ou route mudarem)
   const result = useMemo(() => {
-    const module = getModuleByRoute(route);
+    const moduleAccess = getModuleByRoute(route);
 
     return {
       isLoading,
-      hasAccess: module !== null,
-      module,
+      hasAccess: moduleAccess !== null,
+      module: moduleAccess,
       error,
     };
-  }, [modules, route, isLoading, error, getModuleByRoute]);
+  }, [route, isLoading, error, getModuleByRoute]);
 
   return result;
 }

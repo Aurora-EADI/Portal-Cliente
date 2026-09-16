@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Truck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/error-message';
 import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 const INPUT = 'w-full py-2 px-3 border border-zinc-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-zinc-800';
@@ -100,8 +101,8 @@ export function AtribuirTransportadoraForm({ onBack }: AtribuirTransportadoraFor
             whatsapp: whatsapp.trim() || undefined,
           });
           saida.push({ container: ctnr, ok: true, convite: data.convite ?? { status: 'has_access' } });
-        } catch (err: any) {
-          saida.push({ container: ctnr, ok: false, erro: err?.response?.data?.message ?? 'Erro ao atribuir transportadora.' });
+        } catch (err: unknown) {
+          saida.push({ container: ctnr, ok: false, erro: getErrorMessage(err, 'Erro ao atribuir transportadora.') });
         }
       }
       setResultados(saida);

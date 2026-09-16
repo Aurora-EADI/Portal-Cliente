@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, Check, ChevronsUpDown, CheckCheck, XCircle } from "lucide-react";
+import { X, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,7 +103,7 @@ export function GroupedMultiSelect({
     onChange(selected.filter((item) => item !== value));
   };
 
-  const handleClearAll = (e: React.MouseEvent) => {
+  const handleClearAll = (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onChange([]);
@@ -258,7 +258,7 @@ export function GroupedMultiSelect({
           tabIndex={0}
           className="absolute right-8 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer group z-20"
           onClick={handleClearAll}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClearAll(e as any); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClearAll(e); }}
         >
           <X className="h-4 w-4 text-muted-foreground group-hover:text-destructive" />
         </span>

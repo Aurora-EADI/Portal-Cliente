@@ -46,11 +46,23 @@ export class MinioService implements OnModuleInit {
         `MinIO pronto — bucket "${this.bucketName}" (${endPoint}:${port})`,
       );
     } catch (err: any) {
-      this.logger.warn(
+      const message =
         `Não foi possível conectar ao MinIO em ${endPoint}:${port} (${err?.message || err}). ` +
-          `A API continuará funcionando, mas operações de arquivo falharão até que o MinIO esteja acessível.`,
+        `Operações de arquivo falharão até que o MinIO esteja acessível.`;
+
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(message);
+        throw err;
+      }
+
+      this.logger.warn(
+        `${message} A API continuará funcionando em desenvolvimento.`,
       );
     }
+  }
+
+  async isHealthy(): Promise<boolean> {
+    try { return await this.minioClient.bucketExists(this.bucketName); } catch { return false; }
   }
 
   private async ensureBucketExists(bucket: string) {

@@ -2,21 +2,37 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuard
 import type { Request } from 'express';
 import type { User } from '@prisma/client';
 import { AgendamentoService } from './agendamento.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
+type AuthenticatedRequest = Request & {
+  user?: User;
+};
+
 @Controller('agendamento')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
 export class AgendamentoController {
   constructor(private fcl: AgendamentoService) {}
 
   @Get('atribuicoes')
   @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
-  findAtribuicoes(@Req() request: Request, @Query('nLote') nLote?: string) {
+  findAtribuicoes(@Req() request: AuthenticatedRequest, @Query('nLote') nLote?: string) {
     return this.fcl.findAtribuicoes(request.user as User, nLote);
+  }
+
+  @Post('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  criarAtribuicao(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.criarAtribuicao(request.user as User, body);
+  }
+
+  @Delete('atribuicoes')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  removerAtribuicao(@Req() request: AuthenticatedRequest, @Query() query: any) {
+    return this.fcl.removerAtribuicao(request.user as User, query);
   }
 
   @Get('transportadoras-conta')

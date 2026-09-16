@@ -18,8 +18,14 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
   const { currentUser } = useAuthContext();
   const { isLoading, hasAccess, error } = useModuleAccess(route);
 
-  // CLIENTE, DESPACHANTE e TRANSPORTADORA vão direto — não usam o sistema de UserModuleAccess
-  if (currentUser?.role === UserRole.CLIENTE || currentUser?.role === UserRole.DESPACHANTE || currentUser?.role === UserRole.TRANSPORTADORA) {
+  // Perfis externos não usam o sistema de UserModuleAccess.
+  // ADMIN entra diretamente apenas no dashboard de agendamento, já autorizado pela API.
+  if (
+    currentUser?.role === UserRole.CLIENTE ||
+    currentUser?.role === UserRole.DESPACHANTE ||
+    currentUser?.role === UserRole.TRANSPORTADORA ||
+    (currentUser?.role === UserRole.ADMIN && route === '/agendamento')
+  ) {
     return <>{children}</>;
   }
 

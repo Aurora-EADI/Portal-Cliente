@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from '@/components/ui/FileUpload';
@@ -118,9 +119,8 @@ function CartaoDocumento({
       setArquivo(null);
       setAnexando(false);
       toast.success(`${documento.tipoDocumento.descricao} enviado para análise.`);
-    } catch (e: any) {
-      const m = e?.response?.data?.message;
-      setErro(Array.isArray(m) ? m.join(', ') : m || 'Falha ao enviar.');
+    } catch (e: unknown) {
+      setErro(getErrorMessage(e, 'Falha ao enviar.'));
     }
   };
 

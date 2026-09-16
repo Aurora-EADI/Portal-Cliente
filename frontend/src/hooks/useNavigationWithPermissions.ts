@@ -63,7 +63,7 @@ export function useNavigationWithPermissions(): NavItem[] {
     module.activities?.forEach((activity) => {
       // Verifica se a atividade está ativa e tem permissões vinculadas
       if (activity.isActive && activity.permissions) {
-        activity.permissions.forEach((permission: any) => {
+        activity.permissions.forEach((permission) => {
           // A permissão pode vir como string ou como objeto { key: string, ... }
           const permissionKey = typeof permission === 'string' ? permission : permission.key;
           if (permissionKey) {
@@ -152,7 +152,7 @@ export function useNavigationWithPermissions(): NavItem[] {
     return allNavigationItems
       .map(item => filterItemWithChildren(item))
       .filter((item): item is NavItem => item !== null);
-  }, [allNavigationItems, module, isLoading, module?.activities]);
+  }, [allNavigationItems, module, isLoading, userRole]);
 
   return filteredItems;
 }

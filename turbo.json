@@ -3,23 +3,20 @@
   "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "prisma:generate"],
+      "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["NEXT_PUBLIC_*", "NEXT_STANDALONE", "DATABASE_URL", "DIRECT_URL", "JWT_SECRET", "JWT_EXPIRES_IN", "RESEND_*", "CRON_SECRET", "SERVICE_API_KEY"],
+      "env": ["NEXT_PUBLIC_*", "NEXT_STANDALONE", "BETTER_AUTH_*", "SERVICE_API_KEY"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**" ]
     },
     "dev": {
-      "dependsOn": ["prisma:generate"],
+      "dependsOn": [],
       "cache": false,
       "persistent": true,
       "passThroughEnv": ["*"]
     },
     "start": { "cache": false, "persistent": true, "passThroughEnv": ["*"] },
     "lint": { "outputs": [] },
-    "typecheck": { "dependsOn": ["prisma:generate"], "outputs": [] },
-    "prisma:generate": {
-      "cache": false,
-      "passThroughEnv": ["DATABASE_URL", "DIRECT_URL"]
-    }
+    "typecheck": { "dependsOn": [], "outputs": [] },
+    "test": { "dependsOn": [], "outputs": [] }
   }
 }

@@ -17,7 +17,7 @@ function esc(valor: string | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
-const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.auroraeadi.com.br';
+const PORTAL_URL = process.env.PORTAL_URL || process.env.FRONTEND_URL || 'https://portal.seudominio.com';
 
 /** Laranja primary-500 do portal — mesma cor da interface. */
 const LARANJA = '#f97316';

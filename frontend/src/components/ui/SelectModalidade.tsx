@@ -71,6 +71,7 @@ export function SelectModalidadeMulti({
             type="button"
             role="combobox"
             aria-expanded={open}
+            aria-controls="modalidade-options"
             aria-haspopup="listbox"
             aria-label={label}
             className={cn(
@@ -126,7 +127,7 @@ export function SelectModalidadeMulti({
           style={{ width: popoverWidth }}
           align="start"
         >
-          <Command>
+          <Command id="modalidade-options">
             <CommandEmpty>Nada encontrado.</CommandEmpty>
             <CommandGroup>
               {options.map((item) => {

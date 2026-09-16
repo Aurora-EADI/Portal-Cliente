@@ -1,0 +1,211 @@
+name: Deploy Portal Cliente
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Existing GHCR image tag to deploy or roll back to
+        required: true
+        type: string
+
+concurrency:
+  group: portal-cliente-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.13.1
+  PNPM_VERSION: 11.3.0
+  REGISTRY: ghcr.io
+  GHCR_OWNER: ${{ vars.GHCR_OWNER || github.repository_owner }}
+  PORTAL_HOST: ${{ vars.PORTAL_HOST || 'portal-cliente.auroraeadi.com.br' }}
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run existing tests
+        env:
+          DATABASE_URL: postgresql://test:test@127.0.0.1:5432/test
+          BETTER_AUTH_SECRET: test-only-better-auth-secret-32-characters
+          BETTER_AUTH_PROVISIONING_SECRET: test-only-provisioning-secret
+          TS_NODE_PROJECT: portal-cliente-api/tsconfig.json
+          TS_NODE_TRANSPILE_ONLY: '1'
+        run: >-
+          pnpm exec node --test
+          frontend/tests/event-stream.test.cjs
+          portal-cliente-api/tests/module-access-route.test.cjs
+          portal-cliente-api/tests/minio-resilience.test.cjs
+          portal-cliente-api/tests/agendamento-lookups.test.cjs
+
+  build-images:
+    name: Build and push ${{ matrix.image }}
+    if: github.event_name == 'push'
+    needs: quality
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: portal-cliente-api
+            dockerfile: portal-cliente-api/Dockerfile
+            target: production
+            build_args: ''
+          - image: portal-cliente-frontend
+            dockerfile: frontend/Dockerfile
+            target: production
+            build_args: |
+              NEXT_PUBLIC_API_URL=/api
+              NEXT_PUBLIC_NEST_API_URL=/api
+              NEXT_PUBLIC_APP_URL=https://${{ vars.PORTAL_HOST || 'portal-cliente.auroraeadi.com.br' }}
+              NEXT_PUBLIC_AVERBACAO_ATIVA=${{ vars.AVERBACAO_ATIVA || 'false' }}
+          - image: portal-cliente-migrator
+            dockerfile: portal-cliente-api/Dockerfile
+            target: migrator
+            build_args: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest
+            type=raw,value=production
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy through EADI network
+    if: >-
+      always() && needs.quality.result == 'success' &&
+      ((github.event_name == 'push' && needs.build-images.result == 'success') ||
+       (github.event_name == 'workflow_dispatch' && needs.build-images.result == 'skipped'))
+    needs:
+      - quality
+      - build-images
+    runs-on: [self-hosted, linux, portal-eadi]
+    environment: production
+    env:
+      IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.sha }}
+      DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && 'rollback' || 'deploy' }}
+    steps:
+      - name: Validate deploy inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$IMAGE_TAG" in
+            ''|*[!A-Za-z0-9._-]*)
+              echo "IMAGE_TAG contains unsupported characters" >&2
+              exit 1
+              ;;
+          esac
+          case "$GHCR_OWNER" in
+            ''|*[!a-z0-9._-]*)
+              echo "GHCR_OWNER must be lowercase and contain only letters, numbers, dots, underscores, or hyphens" >&2
+              exit 1
+              ;;
+          esac
+          case "$PORTAL_HOST" in
+            ''|*[!A-Za-z0-9.-]*)
+              echo "PORTAL_HOST contains unsupported characters" >&2
+              exit 1
+              ;;
+          esac
+
+      # The runner is installed on SRVPORTALEADI, the same host that owns the
+      # production Compose project. Do not SSH back into this host: its runner
+      # service executes the deployment locally with the github-runner account.
+      - name: Deploy local Compose project
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /opt/portaleadi/app
+          test -f .env.prod
+          export IMAGE_TAG GHCR_OWNER
+
+          if [ "$DEPLOY_MODE" = "rollback" ]; then
+            docker compose --env-file .env.prod pull
+            docker compose --env-file .env.prod up -d --remove-orphans
+          else
+            docker compose --env-file .env.prod --profile migration pull
+            docker compose --env-file .env.prod run --rm migrate
+            docker compose --env-file .env.prod up -d --remove-orphans
+          fi
+
+          docker compose --env-file .env.prod ps
+
+      - name: Verify HTTPS healthcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          health_url="https://${PORTAL_HOST}/api/health"
+          for attempt in $(seq 1 20); do
+            if status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$health_url")"; then
+              if [ "$status" = "200" ]; then
+                echo "Healthcheck OK: $health_url"
+                exit 0
+              fi
+              echo "Healthcheck attempt $attempt/20 returned HTTP $status"
+            else
+              echo "Healthcheck attempt $attempt/20 failed to connect"
+            fi
+            sleep 15
+          done
+          echo "Healthcheck failed: $health_url" >&2
+          exit 1

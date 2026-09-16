@@ -1,13 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ModulesService } from './modules.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { CreateModuleDto, UpdateModuleDto, AddSharedItemDto, UpdateSharedItemDto } from './dto/module.dto';
 
 @Controller('modules')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class ModulesController {
   constructor(private modulesService: ModulesService) {}
 

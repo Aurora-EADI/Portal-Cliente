@@ -8,7 +8,7 @@ import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagen
 
 export function DIDirectoryView() {
   const router = useRouter();
-  const { visibleDis, visibleBookings, activeBookings, selectedClient, setSelectedDI, setCurrentStep, isDespachante, isAdmin, isTransportadora } = useAgendamento();
+  const { visibleDis, visibleBookings, setSelectedDI, setCurrentStep, isDespachante, isAdmin, isTransportadora } = useAgendamento();
   const isClienteOuDespachante = isDespachante || (!isAdmin && !isTransportadora);
 
   const [searchTerm, setSearchTerm] = useState('');

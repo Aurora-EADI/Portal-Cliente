@@ -74,7 +74,7 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
       id: item.path || item.label,
       label: item.label,
       href: item.isGroup ? undefined : item.path,
-      icon: item.icon as any,
+      icon: item.icon ? () => React.createElement(item.icon, { size: 16 }) : undefined,
       children: item.children?.map(mapItem),
       meta: item.isGroup ? { group: true } : undefined,
     });

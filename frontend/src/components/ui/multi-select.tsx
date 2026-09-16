@@ -67,7 +67,7 @@ export function MultiSelect({
     onChange(selected.filter((item) => item !== value));
   };
 
-  const handleClearAll = (e: React.MouseEvent) => {
+  const handleClearAll = (e: React.SyntheticEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onChange([]);
@@ -76,8 +76,6 @@ export function MultiSelect({
   const selectedLabels = selected.map(
     (value) => options.find((opt) => opt.value === value)?.label || value
   );
-
-  const allSelected = options.length > 0 && selected.length === options.length;
 
   return (
     <div className={cn("relative w-full", className)}>
@@ -162,7 +160,7 @@ export function MultiSelect({
           tabIndex={0}
           className="absolute right-8 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer group z-20"
           onClick={handleClearAll}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClearAll(e as any); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClearAll(e); }}
         >
           <X className="h-4 w-4 text-muted-foreground group-hover:text-destructive" />
         </span>

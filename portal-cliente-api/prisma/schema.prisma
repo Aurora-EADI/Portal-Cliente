@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 enum UserRole {
@@ -15,45 +15,82 @@ enum UserRole {
 }
 
 model User {
-  id         String    @id @default(uuid())
-  name       String
-  email      String    @unique
-  password   String?
-  role       UserRole  @default(EMPLOYEE)
-  position   String?
-  active     Boolean   @default(true)
-  clienteId      String?
-  despachanteId  String?
-  transportadoraContaId String? @map("transportadora_conta_id")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                    String   @id @default(uuid())
+  name                  String
+  email                 String   @unique
+  emailVerified         Boolean  @default(false)
+  image                 String?
+  role                  UserRole @default(EMPLOYEE)
+  position              String?
+  active                Boolean  @default(true)
+  clienteId             String?
+  despachanteId         String?
+  transportadoraContaId String?  @map("transportadora_conta_id")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  moduleAccess UserModuleAccess[]
-  cliente      Cliente?      @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  despachante  Despachante?  @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
-  transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
-  tokens       UserToken[]
+  sessions            Session[]
+  accounts            Account[]
+  moduleAccess        UserModuleAccess[]
+  cliente             Cliente?              @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  despachante         Despachante?          @relation(fields: [despachanteId], references: [id], onDelete: SetNull)
+  transportadoraConta TransportadoraConta?  @relation(fields: [transportadoraContaId], references: [id], onDelete: SetNull)
   procuracoesEnviadas Procuracao[]
   averbacoesCriadas   AverbacaoProcesso[]
-  historicoAverbacao  AverbacaoHistorico[] @relation("HistoricoAverbacaoAutor")
+  historicoAverbacao  AverbacaoHistorico[]  @relation("HistoricoAverbacaoAutor")
   historicoProcuracao ProcuracaoHistorico[] @relation("HistoricoProcuracaoAutor")
 
   @@map("users")
 }
 
-model UserToken {
-  id        String    @id @default(uuid())
-  userId    String    @map("user_id")
-  token     String    @unique
-  type      String    // e.g. "REFRESH"
-  expiresAt DateTime  @map("expires_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  revokedAt DateTime? @map("revoked_at")
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, type, token, expiresAt])
-  @@map("user_tokens")
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id
+  userId                String    @map("user_id")
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  password              String?
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
 }
 
 // ============================================================
@@ -71,7 +108,7 @@ model Module {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  activities Activity[]
+  activities  Activity[]
   userAccess  UserModuleAccess[]
   sharedItems ModuleSharedItem[]
 
@@ -79,18 +116,17 @@ model Module {
 }
 
 model ModuleSharedItem {
-  id          Int    @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   moduleId    Int
   targetRoute String
   label       String
   icon        String?
-  sortOrder   Int    @default(0)
+  sortOrder   Int     @default(0)
 
   module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@map("module_shared_items")
 }
-
 
 model UserModuleAccess {
   id        String  @id @default(uuid())
@@ -98,15 +134,14 @@ model UserModuleAccess {
   moduleId  Int
   isEnabled Boolean @default(false)
 
-  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   activityAccess UserActivityAccess[]
 
   @@unique([userId, moduleId])
   @@map("user_module_access")
 }
-
 
 enum DIStatus {
   liberada
@@ -123,6 +158,12 @@ enum AgendamentoStatus {
   ATRASADO
   AG_CHEGADA
   CONCLUIDO
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
 }
 
 model Cliente {
@@ -177,7 +218,7 @@ model DI {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cliente      Cliente      @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  cliente      Cliente       @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   agendamentos Agendamento[]
 
   @@map("dis")
@@ -224,22 +265,19 @@ model Veiculo {
   @@map("veiculos")
 }
 
-
-
 model JanelaAtendimento {
-  id                String   @id @default(uuid())
-  descricao         String
-  horaInicio        String
-  horaFim           String
-  intervaloMinutos  Int      @default(60)
-  vagasSimultaneas  Int      @default(3)
-  ativo             Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String   @id @default(uuid())
+  descricao        String
+  horaInicio       String
+  horaFim          String
+  intervaloMinutos Int      @default(60)
+  vagasSimultaneas Int      @default(3)
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("janelas_atendimento")
 }
-
 
 model Agendamento {
   id          String            @id @default(uuid())
@@ -298,6 +336,7 @@ model Agendamento {
   veiculo             Veiculo?             @relation(fields: [veiculoId], references: [id])
   cliente             Cliente?             @relation(fields: [clienteId], references: [id])
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id])
+  historicoStatus     AgendamentoStatusHistorico[]
 
   @@map("agendamentos")
 }
@@ -377,15 +416,79 @@ model DiAverbada {
   averbadoEm     DateTime  @map("averbado_em")
   sincronizadoEm DateTime  @default(now()) @map("sincronizado_em")
   status         DIStatus  @default(liberada)
+  auroraDiId     String?   @unique @map("aurora_di_id")
+  numeroDI       String?   @map("numero_di")
+  cpfMotorista   String?   @map("cpf_motorista")
+  placaVeiculo   String?   @map("placa_veiculo")
+  dtAverbacao    DateTime? @map("dt_averbacao")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   despachanteRef Despachante?                 @relation(fields: [codDespachante], references: [codDespachante])
   atribuicoes    DiTransportadoraAtribuicao[]
+  containerIds   DiAverbadaContainer[]
 
   @@index([cnpjCliente])
   @@index([codDespachante])
   @@map("dis_averbadas")
+}
+
+/// Identificadores de containers recebidos do Aurora. O identificador externo
+/// fica separado do campo legado `DiAverbada.containers`, sem descartar dados
+/// que chegaram por sincronizações anteriores.
+model DiAverbadaContainer {
+  id       String @id @default(uuid())
+  nLote    String @map("n_lote")
+  externalId String @map("external_id")
+
+  diAverbada DiAverbada @relation(fields: [nLote], references: [nLote], onDelete: Cascade)
+
+  @@unique([nLote, externalId])
+  @@map("di_averbada_containers")
+}
+
+model ProcessedEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique @map("event_id")
+  eventType   String   @map("event_type")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([eventType, processedAt])
+  @@map("processed_events")
+}
+
+model OutboxEvent {
+  id            String            @id @default(uuid())
+  eventId       String            @unique @map("event_id")
+  eventType     String            @map("event_type")
+  aggregateType String            @map("aggregate_type")
+  aggregateId   String            @map("aggregate_id")
+  payload       Json
+  status        OutboxEventStatus @default(PENDING)
+  attempts      Int               @default(0)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  publishedAt   DateTime?         @map("published_at")
+  nextAttemptAt DateTime          @default(now()) @map("next_attempt_at")
+  lastError     String?           @map("last_error")
+  leaseToken    String?           @map("lease_token")
+  lockedAt      DateTime?         @map("locked_at")
+
+  @@index([status, nextAttemptAt])
+  @@map("outbox_events")
+}
+
+model AgendamentoStatusHistorico {
+  id               String            @id @default(uuid())
+  agendamentoId    String            @map("agendamento_id")
+  status           AgendamentoStatus
+  previousStatus   AgendamentoStatus? @map("previous_status")
+  operadorId       String?           @map("operador_id")
+  dtAlteracao      DateTime          @default(now()) @map("dt_alteracao")
+
+  agendamento Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  @@index([agendamentoId, dtAlteracao])
+  @@map("agendamento_status_historico")
 }
 
 // ============================================================
@@ -453,17 +556,6 @@ model ConviteRegistro {
   createdAt          DateTime  @default(now()) @map("created_at")
 
   @@map("convites_registro")
-}
-
-model PasswordResetToken {
-  id        String    @id @default(uuid())
-  token     String    @unique @default(uuid())
-  userId    String    @map("user_id")
-  expiresAt DateTime  @map("expires_at")
-  usedAt    DateTime? @map("used_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-
-  @@map("password_reset_tokens")
 }
 
 // ============================================================
@@ -544,7 +636,6 @@ model Procuracao {
 
   /**
    * Data em que a procuração deixa de valer. Nula = sem prazo declarado.
-   *
    * Não é decorativa: uma procuração vencida deixa de autorizar operações em
    * nome do cliente, do mesmo jeito que uma não aprovada. Guardar a data e
    * ignorá-la daria a impressão de controle sem exercê-lo.
@@ -583,12 +674,10 @@ enum ProcuracaoHistoricoAcao {
 
 /**
  * Trilha append-only de tudo que aconteceu com uma procuração.
- *
  * Existe porque `Procuracao` guarda só o estado atual: um par
  * (despachante, cliente) tem uma linha, e reenviar sobrescreve o arquivo. Sem
  * esta tabela, "a procuração foi reprovada em março e a nova aprovada em abril"
  * seria uma informação perdida — junto com o PDF que motivou a recusa.
- *
  * Por isso cada entrada carrega a sua própria arquivoKey: o PDF de cada envio
  * continua existindo no MinIO e resolvível depois de qualquer substituição.
  * Nada aqui é atualizado ou apagado — não há endpoint de update nem delete.
@@ -803,7 +892,7 @@ model Activity {
   moduleId    Int
   isMandatory Boolean @default(false)
 
-  module         Module                @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  module         Module               @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   permissions    ActivityPermission[]
   activityAccess UserActivityAccess[]
 
