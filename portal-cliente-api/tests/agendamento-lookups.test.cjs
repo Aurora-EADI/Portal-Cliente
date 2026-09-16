@@ -1,3 +1,4 @@
+require('dotenv/config');
 require('reflect-metadata');
 require('ts-node/register');
 const { test } = require('node:test');

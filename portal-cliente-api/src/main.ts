@@ -1,13 +1,19 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { AppModule } from './app/app.module';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // O adaptador Better Auth precisa receber o body bruto da requisição.
+    // A integração reinstala os parsers Express depois de montar o handler.
+    bodyParser: false,
+  });
 
   app.use(cookieParser());
 
@@ -24,6 +30,8 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   app.setGlobalPrefix('api');
 

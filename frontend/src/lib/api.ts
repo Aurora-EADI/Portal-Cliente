@@ -1,7 +1,9 @@
 import { createHttpClient } from './http';
 
-// Route Handlers do proprio Next (mesma origem). Camada legada: agendamento,
-// auth, convites. Migra para o Nest numa fase posterior.
-export const api = createHttpClient(process.env.NEXT_PUBLIC_API_URL || '/api');
+// O Next não acessa banco nem implementa autenticação. Todas as chamadas de
+// domínio seguem para o NestJS, normalmente pelo caminho same-origin /api.
+export const api = createHttpClient(
+  process.env.NEXT_PUBLIC_NEST_API_URL || process.env.NEXT_PUBLIC_API_URL || '/api',
+);
 
 export default api;

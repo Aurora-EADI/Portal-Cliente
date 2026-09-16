@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import apiNest from '@/lib/apiNest';
+import { getErrorMessage } from '@/lib/error-message';
 
 function RegistroContent() {
   const router = useRouter();
@@ -31,25 +33,19 @@ function RegistroContent() {
 
   useEffect(() => {
     if (!token) { setLoadingConvite(false); return; }
-    fetch(`/api/auth/convite/${token}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          setConviteInvalid(data.message || 'Convite inválido');
-          return;
-        }
-        const data = await res.json();
+    apiNest.get(`/public/convites/${token}`)
+      .then(({ data }) => {
         if (data.nome) setNome(data.nome.toUpperCase());
         if (data.email) setEmail(data.email);
         if (data.tipo) setConviteTipo(data.tipo);
       })
-      .catch(() => setConviteInvalid('Erro ao validar convite'))
+      .catch((error) => setConviteInvalid(error.response?.data?.message || 'Erro ao validar convite'))
       .finally(() => setLoadingConvite(false));
   }, [token]);
 
   useEffect(() => {
     if (error) setError('');
-  }, [nome, email, senha, confirmar]);
+  }, [nome, email, senha, confirmar, error]);
 
   if (loadingConvite) {
     return (
@@ -86,8 +82,8 @@ function RegistroContent() {
       setError('Preencha todos os campos obrigatórios.');
       return;
     }
-    if (senha.length < 6) {
-      setError('Senha deve ter no mínimo 6 caracteres.');
+    if (senha.length < 8) {
+      setError('Senha deve ter no mínimo 8 caracteres.');
       return;
     }
     if (senha !== confirmar) {
@@ -97,28 +93,17 @@ function RegistroContent() {
 
     setIsLoading(true);
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await apiNest.post('/public/convites/register', {
           nome: nome.trim(),
           email: email.trim().toLowerCase(),
           senha,
           token,
           telefone: telefone || undefined,
-        }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || 'Erro ao criar conta.');
-        return;
-      }
-
       setSuccess(true);
-    } catch {
-      setError('Erro de conexão. Tente novamente.');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Erro ao criar conta.'));
     } finally {
       setIsLoading(false);
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -84,9 +85,8 @@ export function AnexarProcuracaoModal({
       await enviar({ clienteId, arquivo, validade: validade || undefined });
       toast.success('Procuração enviada para análise da equipe Aurora.');
       fechar();
-    } catch (e: any) {
-      const m = e?.response?.data?.message;
-      setErro(Array.isArray(m) ? m.join(', ') : m || 'Falha ao enviar a procuração.');
+    } catch (e: unknown) {
+      setErro(getErrorMessage(e, 'Falha ao enviar a procuração.'));
     }
   };
 

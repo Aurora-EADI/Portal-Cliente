@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Modalidade, UserRole } from '@prisma/client';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ServiceKeyGuard } from '../common/guards/service-key.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -19,7 +19,7 @@ import { ReplicarTiposDocumentoDto } from './dto/replicar-tipos-documento.dto';
 
 /** Leitura do catálogo pelo usuário externo. */
 @Controller('tipos-documento')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class TiposDocumentoController {
   constructor(private readonly service: TiposDocumentoService) {}
 
@@ -42,7 +42,7 @@ export class TiposDocumentoController {
 
 /**
  * Escrita, só server-to-server: não há usuário nem cookie neste caminho, quem
- * autentica é o ServiceKeyGuard. Note que o JwtAuthGuard não é global neste
+ * autentica é o ServiceKeyGuard. Note que o guard de sessão não é global neste
  * app — cada controller declara os seus, então basta não pedi-lo aqui.
  */
 @Controller('service/tipos-documento')

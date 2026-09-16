@@ -18,6 +18,7 @@ import { JanelasModule } from '../janelas/janelas.module';
 import { TiposDocumentoModule } from '../tipos-documento/tipos-documento.module';
 import { ProcuracoesModule } from '../procuracoes/procuracoes.module';
 import { AverbacoesModule } from '../averbacoes/averbacoes.module';
+import { ServiceModule } from '../service/service.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AverbacoesModule } from '../averbacoes/averbacoes.module';
     TiposDocumentoModule,
     ProcuracoesModule,
     AverbacoesModule,
+    ServiceModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

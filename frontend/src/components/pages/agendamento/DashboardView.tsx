@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, X, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
+import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 import { api } from '@/lib/api';
@@ -85,8 +85,6 @@ export function DashboardView() {
       .catch(() => {});
   }, [isAdmin, isTransportadora]);
 
-  if (isAdmin) return <AdminAgendamentoDashboard />;
-
   const stats = useMemo(() => ({
     total:     visibleBookings.length,
     chegou:    visibleBookings.filter(b => b.status === 'CHEGOU').length,
@@ -143,6 +141,8 @@ export function DashboardView() {
       )
       .sort((a, b) => b.data.localeCompare(a.data));
   }, [visibleBookings, busca]);
+
+  if (isAdmin) return <AdminAgendamentoDashboard />;
 
   return (
     <>

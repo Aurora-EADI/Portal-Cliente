@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { UserModuleAccessService } from './user-module-access.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('user-module-access')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class UserModuleAccessController {
   constructor(private service: UserModuleAccessService) {}
 

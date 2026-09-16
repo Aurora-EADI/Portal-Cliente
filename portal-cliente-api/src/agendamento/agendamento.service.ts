@@ -1,14 +1,15 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DIStatus, AgendamentoStatus } from '@prisma/client';
+import { DIStatus, AgendamentoStatus, UserRole } from '@prisma/client';
 import type { Prisma, User } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { MailService } from '../mail/mail.service';
 
 const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
 
 @Injectable()
 export class AgendamentoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly mail: MailService) {}
 
   async findAtribuicoes(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, nLote?: string) {
     let ownership: Prisma.DiAverbadaWhereInput | null = null;
@@ -30,6 +31,74 @@ export class AgendamentoService {
       include: { transportadora: { select: { id: true, nome: true, cnpj: true } } },
       orderBy: { atribuidoEm: 'desc' },
     });
+  }
+
+  private async ownership(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>) {
+    if (user.role === UserRole.CLIENTE && user.clienteId) {
+      const cliente = await this.prisma.cliente.findUnique({ where: { id: user.clienteId }, select: { cnpj: true } });
+      return cliente?.cnpj ? { cnpjCliente: cliente.cnpj } : null;
+    }
+    if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
+      const despachante = await this.prisma.despachante.findUnique({ where: { id: user.despachanteId }, select: { codDespachante: true } });
+      return despachante ? { codDespachante: despachante.codDespachante } : null;
+    }
+    return null;
+  }
+
+  async criarAtribuicao(user: User, body: any) {
+    const nLote = String(body.nLote ?? '').trim();
+    const cnpj = String(body.cnpj ?? '').replace(/\D/g, '');
+    const container = typeof body.container === 'string' ? body.container.trim() : '';
+    if (!nLote || cnpj.length !== 14) throw new BadRequestException('nLote e CNPJ válido são obrigatórios');
+    const where = await this.ownership(user);
+    if (!where) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const di = await this.prisma.diAverbada.findFirst({ where: { nLote, ...where } });
+    if (!di) throw new NotFoundException('DI não encontrada ou sem permissão');
+    if (container && !(di.containers ?? '').split('/').map((v) => v.trim()).includes(container)) {
+      throw new BadRequestException('Container não pertence a esta DI');
+    }
+    let transportadora = await this.prisma.transportadoraConta.findUnique({ where: { cnpj } });
+    if (!transportadora) {
+      if (!body.nome) throw new BadRequestException('nome é obrigatório para nova transportadora');
+      transportadora = await this.prisma.transportadoraConta.create({ data: { cnpj, nome: body.nome, whatsapp: body.whatsapp || null } });
+    } else if (body.whatsapp && body.whatsapp !== transportadora.whatsapp) {
+      transportadora = await this.prisma.transportadoraConta.update({ where: { id: transportadora.id }, data: { whatsapp: body.whatsapp } });
+      await this.prisma.diTransportadoraAtribuicao.updateMany({ where: { transportadoraContaId: transportadora.id, whatsappNotificadoEm: null }, data: { whatsappNotificadoEm: new Date() } });
+    }
+    const existente = await this.prisma.diTransportadoraAtribuicao.findFirst({ where: { nLote, container }, include: { transportadora: { select: { nome: true } } } });
+    if (existente) throw new ConflictException('Esta DI/container já possui uma atribuição');
+    const convite = await this.ensureTransportadoraInvite(transportadora, body.email);
+    const atribuicao = await this.prisma.diTransportadoraAtribuicao.create({
+      data: { nLote, container, transportadoraContaId: transportadora.id, atribuidoPorUserId: user.id, atribuidoPorRole: user.role },
+      include: { transportadora: { select: { id: true, nome: true, cnpj: true } } },
+    });
+    return { ...atribuicao, convite };
+  }
+
+  private async ensureTransportadoraInvite(transportadora: { id: string; cnpj: string; nome: string; email: string | null; codTransp: string | null }, emailOverride?: string) {
+    const active = await this.prisma.user.findFirst({ where: { transportadoraContaId: transportadora.id, active: true }, select: { id: true } });
+    if (active) return { status: 'has_access' as const };
+    const pending = await this.prisma.conviteRegistro.findFirst({ where: { tipo: UserRole.TRANSPORTADORA, cnpjTransportadora: transportadora.cnpj, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' } });
+    if (pending) return { status: 'pending' as const, link: `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${pending.token}` };
+    const email = emailOverride?.trim() || transportadora.email;
+    const convite = await this.prisma.conviteRegistro.create({ data: { tipo: UserRole.TRANSPORTADORA, nome: transportadora.nome, email, cnpjTransportadora: transportadora.cnpj, codTransp: transportadora.codTransp, expiresAt: new Date(Date.now() + 36500 * 86400000) } });
+    const link = `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${convite.token}`;
+    if (email) await this.mail.enviar({ para: [email], assunto: 'Convite — Portal do Cliente Aurora EADI', texto: `Acesse ${link} para concluir seu cadastro.`, html: `<p>Acesse <a href="${link}">${link}</a> para concluir seu cadastro.</p>` });
+    return { status: 'created' as const, link, emailSent: Boolean(email) };
+  }
+
+  async removerAtribuicao(user: User, query: any) {
+    const nLote = String(query.nLote ?? '').trim();
+    const transportadoraContaId = String(query.transportadoraContaId ?? '').trim();
+    const container = query.container === undefined ? undefined : String(query.container);
+    if (!nLote || !transportadoraContaId) throw new BadRequestException('nLote e transportadoraContaId são obrigatórios');
+    const where = await this.ownership(user);
+    if (!where) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const di = await this.prisma.diAverbada.findFirst({ where: { nLote, ...where }, select: { nLote: true } });
+    if (!di) throw new NotFoundException('DI não encontrada ou sem permissão');
+    const deleted = await this.prisma.diTransportadoraAtribuicao.deleteMany({ where: { nLote, transportadoraContaId, ...(container === undefined ? {} : { container }) } });
+    if (!deleted.count) throw new NotFoundException('Atribuição não encontrada');
+    return { message: 'Atribuição removida' };
   }
 
   findTransportadorasConta() {

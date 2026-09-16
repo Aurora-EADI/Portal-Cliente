@@ -46,6 +46,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.md
+!docker/traefik/README.md
 
 # Artefatos de build que escapavam do tsc antes do exclude de prisma/
 portal-cliente-api/prisma/*.js

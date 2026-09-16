@@ -24,26 +24,25 @@ ENV NO_PROXY=${NO_PROXY}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY frontend/package.json ./frontend/package.json
 COPY portal-cliente-api/package.json ./portal-cliente-api/package.json
-COPY frontend/prisma ./frontend/prisma
-
 RUN pnpm --filter aurora-eadi-nextjs --filter portal-cliente install --frozen-lockfile
 
 COPY frontend ./frontend
 
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_NEST_API_URL
 ARG NEXT_PUBLIC_API_KEY
+ARG NEXT_PUBLIC_APP_URL
 # Averbacao entra no bundle no momento do build: sem este ARG a flag nao chega
 # na imagem e o modulo fica desligado independente da env de runtime.
 ARG NEXT_PUBLIC_AVERBACAO_ATIVA=false
 
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_NEST_API_URL=${NEXT_PUBLIC_NEST_API_URL}
 ENV NEXT_PUBLIC_API_KEY=${NEXT_PUBLIC_API_KEY}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_AVERBACAO_ATIVA=${NEXT_PUBLIC_AVERBACAO_ATIVA}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_STANDALONE=true
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-ENV DIRECT_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-
 RUN pnpm build:web
 
 

@@ -1,6 +1,6 @@
 services:
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: minio
     ports:
       - "9000:9000" # API
@@ -14,6 +14,12 @@ services:
     restart: unless-stopped
     networks:
       - aurora-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
     deploy:
       resources:
         limits:
@@ -47,13 +53,9 @@ services:
       context: ./portal-cliente-api
       dockerfile: Dockerfile.dev
     container_name: portal-aurora-backend
-    # Nao roda "prisma:push" aqui: o schema do frontend e o superset (fonte de
-    # verdade do dominio agendamento) e ja faz o push. Rodar push dos dois lados
-    # entra em conflito (enums/colunas divergentes). So espera a tabela existir.
-    command: >
-      sh -c "npm run prisma:generate &&
-             until npm run prisma:seed; do echo 'Aguardando schema (frontend ainda nao rodou db push)...'; sleep 2; done &&
-             npm run dev"
+    # Migrations são deliberadas e aplicadas fora do boot. Sem reset ou seed
+    # automático.
+    command: npm run dev
     environment:
       NODE_ENV: development
       PORT: 5000
@@ -63,8 +65,11 @@ services:
       # O servico db continua usando DB_PASSWORD cru em POSTGRES_PASSWORD.
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD_URLENC}@db:5432/${DB_NAME}
       DIRECT_URL: postgresql://${DB_USER}:${DB_PASSWORD_URLENC}@db:5432/${DB_NAME}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_PROVISIONING_SECRET: ${BETTER_AUTH_PROVISIONING_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:5001}
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-http://localhost:3002}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3002}
       CORS_ORIGIN: ${CORS_ORIGIN}
       # Credencial das rotas /api/service/**, chamadas so pelo Portal Aurora.
       # Sem ela o ServiceKeyGuard falha fechado (503) em vez de liberar.
@@ -128,10 +133,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: portal-aurora-frontend
-    command: >
-      sh -c "npx prisma db push --accept-data-loss &&
-             npx prisma generate &&
-             npm run dev"
+    command: npm run dev
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: ${API_URL}
@@ -139,6 +141,7 @@ services:
       # E o valor visto pelo BROWSER, entao usa a porta publicada no host
       # (5001), nao a interna do container (5000).
       NEXT_PUBLIC_NEST_API_URL: ${NEST_API_URL:-http://localhost:5001/api}
+      NEST_API_INTERNAL_URL: ${NEST_API_INTERNAL_URL:-http://backend:5000/api}
       # Averbacao Aduaneira. Aqui roda "npm run dev", entao env de runtime basta
       # — o build de producao precisa do build arg equivalente.
       NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
@@ -146,10 +149,6 @@ services:
       # como "@" precisa vir percent-encoded (admin@123 -> admin%40123). Cru, a
       # URL vira postgresql://postgres:admin@123@db:5432/... e o parse quebra.
       # O servico db continua usando DB_PASSWORD cru em POSTGRES_PASSWORD.
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD_URLENC}@db:5432/${DB_NAME}
-      DIRECT_URL: postgresql://${DB_USER}:${DB_PASSWORD_URLENC}@db:5432/${DB_NAME}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       # Desabilitar telemetria do Next.js
       NEXT_TELEMETRY_DISABLED: 1
       # Otimizações de memória do Node.js

@@ -4,11 +4,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { User } from '../types';
 import { useRouter } from "next/navigation";
 import { authService } from '@/services/api';
+import { authClient } from '@/lib/auth-client';
 import { clearDraft } from '@/lib/wizard-draft';
 
 interface AuthContextType {
   currentUser: User | null;
-  loginUser: (user: User, expiresAt: string) => Promise<void>;
+  loginUser: (user: User) => Promise<void>;
   logoutUser: () => Promise<void>;
   isLoading: boolean;
   updateCurrentUser: (user: User) => void;
@@ -22,33 +23,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
 
   useEffect(() => {
-    const restoreSession = async () => {
-      // O cookie e httpOnly, entao nao da mais para checar a sessao no cliente
-      // antes de perguntar: quem responde se ha sessao valida e o servidor.
-      const maxAttempts = 3;
-      try {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          try {
-            const user = await authService.restoreSession();
-            if (user) setCurrentUser(user);
-            return;
-          } catch {
-            const isLastAttempt = attempt === maxAttempts - 1;
-            if (isLastAttempt) return;
-            await new Promise(r => setTimeout(r, 1500));
-          }
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (isSessionPending) return;
+    if (!session) {
+      setCurrentUser(null);
+      setIsLoading(false);
+      return;
+    }
 
-    restoreSession();
-  }, []);
+    let cancelled = false;
+    setIsLoading(true);
+    authService.getProfile()
+      .then((user) => { if (!cancelled) setCurrentUser(user); })
+      .catch(() => { if (!cancelled) setCurrentUser(null); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
 
-  const loginUser = async (user: User, _expiresAt: string) => {
+    return () => { cancelled = true; };
+  }, [isSessionPending, session]);
+
+  const loginUser = async (user: User) => {
     setCurrentUser(user);
   };
 

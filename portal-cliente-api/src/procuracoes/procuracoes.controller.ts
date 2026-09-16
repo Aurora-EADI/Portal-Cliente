@@ -21,7 +21,7 @@ import { memoryStorage } from 'multer';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { ProcuracaoStatus, User, UserRole } from '@prisma/client';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ServiceKeyGuard } from '../common/guards/service-key.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -46,7 +46,7 @@ function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
 }
 
 @Controller('procuracoes')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class ProcuracoesController {
   constructor(private readonly service: ProcuracoesService) {}
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   CalendarDays,
   CheckCircle2,
@@ -60,7 +59,6 @@ function filtrarPorCard(
 }
 
 export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
-  const router = useRouter();
   const { data, isLoading, isError } = useAverbacoes();
 
   const [busca, setBusca] = useState('');

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus, CheckCircle } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/error-message';
 import { TransportadoraCnpjPicker } from './TransportadoraCnpjPicker';
 
 interface AtribuicaoApi {
@@ -119,8 +120,8 @@ export function AtribuicaoTransportadorasView() {
       if (data.convite && data.convite.status !== 'has_access') {
         setInviteNotice(data.convite);
       }
-    } catch (err: any) {
-      setFormError(err?.response?.data?.message ?? 'Erro ao atribuir transportadora.');
+    } catch (err: unknown) {
+      setFormError(getErrorMessage(err, 'Erro ao atribuir transportadora.'));
     } finally {
       setSaving(false);
     }
@@ -151,8 +152,8 @@ export function AtribuicaoTransportadorasView() {
         email: convEmail.trim() || undefined,
       });
       setConvGerado({ link: data.link, expiresAt: data.expiresAt, emailSent: data.emailSent });
-    } catch (err: any) {
-      setConvError(err?.response?.data?.message ?? 'Erro ao gerar convite.');
+    } catch (err: unknown) {
+      setConvError(getErrorMessage(err, 'Erro ao gerar convite.'));
     } finally {
       setConvSaving(false);
     }

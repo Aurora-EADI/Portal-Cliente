@@ -13,6 +13,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -139,9 +140,8 @@ function LinhaDocumento({
     try {
       await enviar({ tipoDocumentoId: tipo.id, arquivo });
       onEnviado();
-    } catch (e: any) {
-      const m = e?.response?.data?.message;
-      setErro(Array.isArray(m) ? m.join(', ') : m || 'Falha ao enviar o arquivo.');
+    } catch (e: unknown) {
+      setErro(getErrorMessage(e, 'Falha ao enviar o arquivo.'));
     }
   };
 
@@ -282,9 +282,8 @@ export function NovaAverbacaoModal({
       setProcesso(criado);
       setEtapa(2);
       toast.success(`Processo ${criado.protocolo} aberto. Anexe os documentos.`);
-    } catch (e: any) {
-      const m = e?.response?.data?.message;
-      setErro(Array.isArray(m) ? m.join(', ') : m || 'Falha ao abrir o processo.');
+    } catch (e: unknown) {
+      setErro(getErrorMessage(e, 'Falha ao abrir o processo.'));
     }
   };
 

@@ -33,7 +33,7 @@ export function DIStep({ dis, activeBookings, selectedDI, onSelectDI, onNext }: 
         <div>
           <h3 className="text-sm font-semibold text-zinc-900">Retirada FCL - Seleção de Documento (DI)</h3>
           <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-            Selecione a Declaração de Importação (DI) liberada. Apenas DIs com status <span className="text-emerald-700 font-semibold">"liberada"</span> podem receber agendamento.
+            Selecione a Declaração de Importação (DI) liberada. Apenas DIs com status <span className="text-emerald-700 font-semibold">&quot;liberada&quot;</span> podem receber agendamento.
           </p>
         </div>
       </div>

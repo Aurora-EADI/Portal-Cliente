@@ -18,6 +18,7 @@ const ModuleAccessContext = createContext<ModuleAccessContextType | undefined>(u
 
 const MODULES_CACHE_KEY = 'user_modules_cache';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+const NO_MODULE_ROLES = ['CLIENTE', 'DESPACHANTE', 'TRANSPORTADORA'];
 
 export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { currentUser } = useAuthContext();
@@ -45,7 +46,7 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
               setIsLoading(false);
               return;
             }
-          } catch (e) {
+          } catch {
             // Cache corrompido, ignora e busca da API
             sessionStorage.removeItem(MODULES_CACHE_KEY);
           }
@@ -67,9 +68,9 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
           userId,
         })
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao carregar módulos:', err);
-      setError(err.message || 'Erro ao carregar módulos');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar módulos');
       setModules([]);
     } finally {
       setIsLoading(false);
@@ -77,7 +78,6 @@ export const ModuleAccessProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, []);
 
   // CLIENTE, DESPACHANTE e TRANSPORTADORA não usam o sistema de módulos
-  const NO_MODULE_ROLES = ['CLIENTE', 'DESPACHANTE', 'TRANSPORTADORA'];
   useEffect(() => {
     if (currentUser?.id && !NO_MODULE_ROLES.includes(currentUser.role)) {
       loadModules(currentUser.id);

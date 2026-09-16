@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { connectEventStream } from '@/lib/event-stream';
 
-export function useAgendamentoStream(enabled: boolean, onEvent: (payload: any) => void) {
+export function useAgendamentoStream(enabled: boolean, onEvent: (payload: unknown) => void) {
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
 

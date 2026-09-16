@@ -2,13 +2,13 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuard
 import type { Request } from 'express';
 import type { User } from '@prisma/client';
 import { AgendamentoService } from './agendamento.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 
 @Controller('agendamento')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 @Roles(UserRole.ADMIN, UserRole.EMPLOYEE)
 export class AgendamentoController {
   constructor(private fcl: AgendamentoService) {}
@@ -16,7 +16,7 @@ export class AgendamentoController {
   @Get('atribuicoes')
   @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
   findAtribuicoes(@Req() request: Request, @Query('nLote') nLote?: string) {
-    return this.fcl.findAtribuicoes(request.user as User, nLote);
+    return this.fcl.findAtribuicoes((request as any).user as User, nLote);
   }
 
   @Get('transportadoras-conta')

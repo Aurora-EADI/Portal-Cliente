@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { TransportadorasService } from './transportadoras.service';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
@@ -8,7 +8,7 @@ import { CreateTransportadorasDto } from './dto/create-transportadoras.dto';
 import { UpdateTransportadorasDto } from './dto/update-transportadoras.dto';
 
 @Controller('agendamento/transportadoras')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class TransportadorasController {
   constructor(private readonly service: TransportadorasService) {}
 
