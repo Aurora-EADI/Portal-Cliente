@@ -33,7 +33,7 @@ services:
     profiles: [migration]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.68:${DB_PORT:-5432}/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.68:${DB_PORT:-5432}/${DB_NAME}?sslmode=require
     command: ["npx", "prisma", "migrate", "deploy"]
     restart: "no"
     networks:
@@ -46,7 +46,7 @@ services:
       NODE_ENV: production
       PORT: 3030
       # PostgreSQL no host fixo da infraestrutura
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.68:${DB_PORT:-5432}/${DB_NAME}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@172.20.210.68:${DB_PORT:-5432}/${DB_NAME}?sslmode=require
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_PROVISIONING_SECRET: ${BETTER_AUTH_PROVISIONING_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
