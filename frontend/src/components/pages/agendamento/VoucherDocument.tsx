@@ -148,7 +148,8 @@ export const VoucherDocument = React.forwardRef<HTMLDivElement, { booking: Agend
 
 export async function downloadVoucherPdf(el: HTMLDivElement, protocolo: string) {
   const html2canvas = (await import('html2canvas')).default;
-  const { jsPDF } = await import('jspdf');
+  // jspdf 4 declara só `export default`; o destructure nomeado não compila.
+  const jsPDF = (await import('jspdf')).default;
   await Promise.all(Array.from(el.querySelectorAll('img')).map(img =>
     img.complete ? Promise.resolve() : new Promise(resolve => { img.onload = resolve; img.onerror = resolve; })
   ));
