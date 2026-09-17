@@ -14,6 +14,22 @@ import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 
 const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
 
+/**
+ * O que a criação de agendamento precisa saber de quem está agendando. É um
+ * Pick, e não o User inteiro, para os testes poderem montar o usuário sem
+ * inventar as trinta colunas da tabela.
+ */
+type UsuarioAgendamento = Pick<
+  User,
+  'role' | 'clienteId' | 'despachanteId' | 'transportadoraContaId'
+>;
+
+/** Campos que o formulário manda como lista e a tabela guarda como texto. */
+function juntarLista(valor: unknown): string | null {
+  if (Array.isArray(valor)) return valor.join(', ') || null;
+  return (valor as string) || null;
+}
+
 /** Como a procuração aparece na mensagem de bloqueio, na voz do despachante. */
 function descreverProcuracao(status: ProcuracaoStatus): string {
   switch (status) {
@@ -236,7 +252,26 @@ export class AgendamentoService {
     );
   }
 
-  async createAgendamento(
+  /**
+   * Duas formas de agendar convivem desde o Next, e o mesmo POST atende as
+   * duas: a antiga escolhe uma DI já averbada (`diId`), a nova é o formulário
+   * do wizard, que declara os dados da carga. O legado despachava olhando
+   * `body.diId` e o front continua postando nos dois formatos — manter o
+   * despacho aqui é o que torna o wizard funcional de novo.
+   */
+  async createAgendamento(user: UsuarioAgendamento, body: any) {
+    if (body?.diId) {
+      // Transportadora não escolhe DI da lista: opera pelo que lhe foi
+      // atribuído, e isso é conferido no caminho do formulário.
+      if (user.role === UserRole.TRANSPORTADORA) {
+        throw new ForbiddenException('Fluxo não disponível para transportadoras');
+      }
+      return this.criarAgendamentoPorDi(user, body);
+    }
+    return this.criarAgendamentoPeloFormulario(user, body);
+  }
+
+  private async criarAgendamentoPorDi(
     user: Pick<User, 'role' | 'despachanteId'>,
     data: { diId: string; motoristaId: string; veiculoId: string; data: string; horario: string },
   ) {
@@ -265,6 +300,304 @@ export class AgendamentoService {
     await this.prisma.slotReserva.deleteMany({ where: { diId: data.diId } });
 
     return agendamento;
+  }
+
+  /**
+   * Clientes que este despachante alcança, derivados das DIs averbadas em que
+   * ele aparece. Espelha getDespachanteClienteIds, do fluxo legado: é escopo de
+   * visibilidade, não autorização — quem autoriza operar em nome do importador
+   * continua sendo a procuração, conferida logo em seguida.
+   */
+  private async clientesDoDespachante(despachanteId: string): Promise<string[]> {
+    const despachante = await this.prisma.despachante.findUnique({
+      where: { id: despachanteId },
+      select: { codDespachante: true },
+    });
+    if (!despachante) return [];
+
+    const lotes = await this.prisma.diAverbada.findMany({
+      where: { codDespachante: despachante.codDespachante, cnpjCliente: { not: null } },
+      select: { cnpjCliente: true },
+      distinct: ['cnpjCliente'],
+    });
+    const cnpjs = lotes
+      .map((l) => l.cnpjCliente)
+      .filter((c): c is string => Boolean(c));
+    if (!cnpjs.length) return [];
+
+    const clientes = await this.prisma.cliente.findMany({
+      where: { cnpj: { in: cnpjs } },
+      select: { id: true },
+    });
+    return clientes.map((c) => c.id);
+  }
+
+  /**
+   * Agendamento pelo formulário do wizard, portado de handleNewFormPost.
+   *
+   * Aqui não se escolhe uma DI do estoque: o usuário declara a carga. Cada
+   * perfil chega ao cliente por um caminho diferente, e é isso que decide o que
+   * ele pode agendar — transportadora só o que lhe foi atribuído, despachante
+   * só quem o representa e com procuração vigente, cliente só a si mesmo.
+   */
+  private async criarAgendamentoPeloFormulario(user: UsuarioAgendamento, body: any) {
+    const {
+      operacao, subOperacao, cargaEspecial, servicos,
+      tipoVeiculo, dataAgendamento, inicio,
+      cpfMotorista, nomeMotorista, transportadora, empresa,
+      awbMawb, di: diDeclarada, dta, hawb, numeroVoo,
+      placaVeiculo, volumes, peso, consignatario, observacoes,
+      container, notificarWhatsapp, whatsapp,
+      transportadoraCnpj, transportadoraEmail,
+    } = body ?? {};
+
+    // Mesmo motorista, mesma data e mesmo horário é sempre engano de digitação:
+    // uma pessoa não dirige dois caminhões ao mesmo tempo.
+    if (cpfMotorista && dataAgendamento && inicio) {
+      const cpfLimpo = String(cpfMotorista).replace(/\D/g, '');
+      const mesmoSlot = await this.prisma.agendamento.findMany({
+        where: {
+          data: dataAgendamento,
+          horario: inicio,
+          status: { not: AgendamentoStatus.CANCELADO },
+        },
+        select: { cpfMotorista: true },
+      });
+      if (mesmoSlot.some((b) => b.cpfMotorista?.replace(/\D/g, '') === cpfLimpo)) {
+        throw new ConflictException(
+          'Já existe um agendamento para este motorista nesta data e horário.',
+        );
+      }
+    }
+
+    const disInformadas: string[] = (
+      Array.isArray(diDeclarada) ? diDeclarada : diDeclarada ? [diDeclarada] : []
+    )
+      .map((d: unknown) => String(d).trim())
+      .filter(Boolean);
+
+    let clienteId: string | null = null;
+    let transportadoraContaId: string | null = null;
+    let transportadoraNome: string | null = null;
+
+    if (user.role === UserRole.TRANSPORTADORA) {
+      if (!user.transportadoraContaId) {
+        throw new ForbiddenException('Conta de transportadora não vinculada');
+      }
+      if (!disInformadas.length) {
+        throw new BadRequestException('Informe a DI para agendar');
+      }
+
+      const contaId = user.transportadoraContaId;
+      const disAtribuidas = await this.prisma.diAverbada.findMany({
+        where: {
+          OR: [
+            { documentoSaida: { in: disInformadas } },
+            { nLote: { in: disInformadas } },
+          ],
+          atribuicoes: { some: { transportadoraContaId: contaId } },
+        },
+        include: {
+          atribuicoes: {
+            where: { transportadoraContaId: contaId },
+            select: { container: true },
+          },
+        },
+      });
+
+      const encontrados = new Set(
+        disAtribuidas.flatMap((d) =>
+          [d.documentoSaida, d.nLote].filter((v): v is string => Boolean(v)),
+        ),
+      );
+      const semAtribuicao = disInformadas.filter((n) => !encontrados.has(n));
+      if (semAtribuicao.length) {
+        throw new ForbiddenException(
+          `DI(s) não atribuída(s) a esta transportadora: ${semAtribuicao.join(', ')}`,
+        );
+      }
+
+      // Atribuição por container específico não libera a DI inteira: só vale o
+      // container que foi realmente entregue a esta transportadora.
+      const containerSolicitado = typeof container === 'string' ? container.trim() : '';
+      if (containerSolicitado) {
+        const atribuidos = disAtribuidas.flatMap((d) =>
+          d.atribuicoes.map((a) => a.container),
+        );
+        const temDiInteira = atribuidos.includes('');
+        if (!temDiInteira && !atribuidos.includes(containerSolicitado)) {
+          throw new ForbiddenException(
+            `Container ${containerSolicitado} não foi atribuído a esta transportadora`,
+          );
+        }
+      }
+
+      transportadoraContaId = contaId;
+      const conta = await this.prisma.transportadoraConta.findUnique({
+        where: { id: contaId },
+        select: { nome: true },
+      });
+      transportadoraNome = conta?.nome ?? null;
+
+      const cnpjClienteDi = disAtribuidas.find((d) => d.cnpjCliente)?.cnpjCliente;
+      if (cnpjClienteDi) {
+        const cliente = await this.prisma.cliente.findFirst({
+          where: { cnpj: cnpjClienteDi },
+        });
+        clienteId = cliente?.id ?? null;
+      }
+    } else if (user.role === UserRole.CLIENTE && user.clienteId) {
+      clienteId = user.clienteId;
+    } else if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
+      if (empresa) {
+        const cliente = await this.prisma.cliente.findFirst({
+          where: { nome: { contains: empresa, mode: 'insensitive' } },
+        });
+        if (cliente) {
+          const permitidos = await this.clientesDoDespachante(user.despachanteId);
+          if (!permitidos.includes(cliente.id)) {
+            throw new ForbiddenException('Sem permissão para agendar para este cliente');
+          }
+          await this.exigirProcuracao(user.despachanteId, cliente.id);
+          clienteId = cliente.id;
+        }
+      }
+    } else if (empresa) {
+      const cliente = await this.prisma.cliente.findFirst({
+        where: { nome: { contains: empresa, mode: 'insensitive' } },
+      });
+      clienteId = cliente?.id ?? null;
+    }
+
+    // Gate documental, para qualquer perfil: a DI informada não pode ser
+    // agendada enquanto houver processo de averbação aberto e não liberado.
+    await this.exigirAverbacaoLiberada(disInformadas);
+
+    let transportadoraConvite: unknown = null;
+    if (!transportadoraContaId && transportadoraCnpj) {
+      const cnpjDigits = String(transportadoraCnpj).replace(/\D/g, '');
+      if (cnpjDigits.length === 14) {
+        let conta = await this.prisma.transportadoraConta.findUnique({
+          where: { cnpj: cnpjDigits },
+        });
+        if (!conta && transportadora) {
+          conta = await this.prisma.transportadoraConta.create({
+            data: { cnpj: cnpjDigits, nome: transportadora },
+          });
+        }
+        if (conta) {
+          transportadoraContaId = conta.id;
+          transportadoraConvite = await this.ensureTransportadoraInvite(
+            conta,
+            transportadoraEmail,
+          );
+        }
+      }
+    }
+
+    // Motorista e veículo nascem do agendamento quando ainda não existem: o
+    // cadastro prévio não é exigido de quem agenda pela primeira vez.
+    let motoristaId: string | null = null;
+    if (cpfMotorista && clienteId) {
+      const cpfLimpo = String(cpfMotorista).replace(/\D/g, '');
+      const motoristas = await this.prisma.motorista.findMany({ where: { clienteId } });
+      let motorista =
+        motoristas.find((m) => m.cpf.replace(/\D/g, '') === cpfLimpo) ?? null;
+      if (!motorista && nomeMotorista) {
+        motorista = await this.prisma.motorista.create({
+          data: { clienteId, nome: nomeMotorista, cpf: cpfMotorista, cnh: '', telefone: '' },
+        });
+      } else if (motorista && nomeMotorista && motorista.nome !== nomeMotorista) {
+        motorista = await this.prisma.motorista.update({
+          where: { id: motorista.id },
+          data: { nome: nomeMotorista },
+        });
+      }
+      motoristaId = motorista?.id ?? null;
+    }
+
+    let veiculoId: string | null = null;
+    if (placaVeiculo && clienteId) {
+      const placaLimpa = String(placaVeiculo).replace(/\s/g, '').toUpperCase();
+      let veiculo = await this.prisma.veiculo.findFirst({
+        where: { clienteId, placa: { contains: placaLimpa, mode: 'insensitive' } },
+      });
+      if (!veiculo && tipoVeiculo) {
+        veiculo = await this.prisma.veiculo.create({
+          data: { clienteId, placa: placaLimpa, modelo: tipoVeiculo, tipo: tipoVeiculo },
+        });
+      }
+      veiculoId = veiculo?.id ?? null;
+    }
+
+    // Contato vira snapshot no agendamento: o cadastro pode mudar depois, e
+    // quem for atender precisa do telefone que valia no dia.
+    const [clienteInfo, transportadoraInfo] = await Promise.all([
+      clienteId
+        ? this.prisma.cliente.findUnique({
+            where: { id: clienteId },
+            select: { cnpj: true, email: true, telefone: true },
+          })
+        : null,
+      transportadoraContaId
+        ? this.prisma.transportadoraConta.findUnique({
+            where: { id: transportadoraContaId },
+            select: { cnpj: true, email: true, telefone: true },
+          })
+        : null,
+    ]);
+
+    const protocolo = `AG-${Date.now().toString(36).toUpperCase()}`;
+
+    const agendamento = await this.prisma.agendamento.create({
+      data: {
+        protocolo,
+        status: AgendamentoStatus.ATIVO,
+        data: dataAgendamento,
+        horario: inicio,
+        observacao: observacoes || null,
+        clienteId,
+        motoristaId,
+        veiculoId,
+        operacao: operacao || null,
+        subOperacao: subOperacao || null,
+        cargaEspecial: cargaEspecial ?? false,
+        servicos: Array.isArray(servicos) ? servicos : [],
+        tipoVeiculo: tipoVeiculo || null,
+        cpfMotorista: cpfMotorista || null,
+        nomeMotorista: nomeMotorista || null,
+        placaVeiculo: placaVeiculo || null,
+        transportadora: transportadora || transportadoraNome || null,
+        transportadoraContaId,
+        empresa: empresa || null,
+        awbMawb: juntarLista(awbMawb),
+        diNumero: juntarLista(diDeclarada),
+        dta: juntarLista(dta),
+        hawb: juntarLista(hawb),
+        numeroVoo: numeroVoo || null,
+        volumes: volumes || null,
+        peso: peso || null,
+        consignatario: consignatario || null,
+        container: container || null,
+        whatsapp: notificarWhatsapp && whatsapp ? whatsapp : null,
+        notificarWhatsapp: Boolean(notificarWhatsapp && whatsapp),
+        cnpjCliente: clienteInfo?.cnpj || null,
+        telefoneCliente: clienteInfo?.telefone || null,
+        emailCliente: clienteInfo?.email || null,
+        cnpjTransportadora:
+          transportadoraInfo?.cnpj ||
+          (transportadoraCnpj ? String(transportadoraCnpj).replace(/\D/g, '') : null),
+        telefoneTransportadora: transportadoraInfo?.telefone || null,
+        emailTransportadora: transportadoraInfo?.email || transportadoraEmail || null,
+      },
+      include: {
+        motorista: true,
+        veiculo: true,
+        cliente: { select: { id: true, nome: true } },
+      },
+    });
+
+    return { ...agendamento, transportadoraConvite };
   }
 
   cancelarAgendamento(id: string) {
