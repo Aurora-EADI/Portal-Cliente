@@ -46,9 +46,19 @@ export class AgendamentoController {
   @Get('agendamentos/historico')
   findHistorico(@Query('clienteId') clienteId?: string) { return this.fcl.findHistorico(clienteId); }
 
+  // DESPACHANTE e TRANSPORTADORA agendam pelo formulário do wizard, como no
+  // fluxo legado; quem restringe cada um é o serviço, por perfil.
   @Post('agendamentos')
-  @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
-  createAgendamento(@Body() body: any) { return this.fcl.createAgendamento(body); }
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.EMPLOYEE,
+    UserRole.CLIENTE,
+    UserRole.DESPACHANTE,
+    UserRole.TRANSPORTADORA,
+  )
+  createAgendamento(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.createAgendamento(request.user as User, body);
+  }
 
   @Patch('agendamentos/:id/cancelar')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)

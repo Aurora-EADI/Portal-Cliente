@@ -20,6 +20,7 @@ import { MailService } from '../mail/mail.service';
 import { documentoDecidido, processoLiberado } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
+import { resolverContainers } from '../common/containers';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
 
@@ -50,6 +51,7 @@ const SELECT_PROCESSO = {
   modalidade: true,
   diDuimp: true,
   containerConhecimento: true,
+  containers: true,
   localOrigem: true,
   recintoDestino: true,
   cargaEspecial: true,
@@ -135,6 +137,8 @@ export class AverbacoesService {
       );
     }
 
+    const { containers, principal } = resolverContainers(dto.modalidade, dto);
+
     return this.prisma.$transaction(async (tx) => {
       const protocolo = await this.gerarProtocolo(tx);
 
@@ -145,7 +149,8 @@ export class AverbacoesService {
           despachanteId,
           modalidade: dto.modalidade,
           diDuimp: dto.diDuimp,
-          containerConhecimento: dto.containerConhecimento,
+          containerConhecimento: principal,
+          containers,
           localOrigem: dto.localOrigem || null,
           recintoDestino: dto.recintoDestino || null,
           cargaEspecial: dto.cargaEspecial ?? false,
@@ -187,8 +192,10 @@ export class AverbacoesService {
         despachanteId: true,
         status: true,
         nLote: true,
+        modalidade: true,
         diDuimp: true,
         containerConhecimento: true,
+        containers: true,
         documentos: { select: { status: true } },
       },
     });
@@ -220,10 +227,19 @@ export class AverbacoesService {
       );
     }
 
+    // Redeclarar containers substitui a lista inteira, e `containerConhecimento`
+    // volta a ser o primeiro item — os dois campos nunca divergem.
+    const redeclarou =
+      dto.containers !== undefined || dto.containerConhecimento !== undefined;
+    const lista = redeclarou
+      ? resolverContainers(processo.modalidade, dto)
+      : null;
+
     const dados = {
       ...(dto.diDuimp !== undefined && { diDuimp: dto.diDuimp }),
-      ...(dto.containerConhecimento !== undefined && {
-        containerConhecimento: dto.containerConhecimento,
+      ...(lista && {
+        containerConhecimento: lista.principal,
+        containers: lista.containers,
       }),
       ...(dto.localOrigem !== undefined && {
         localOrigem: dto.localOrigem || null,
@@ -253,7 +269,8 @@ export class AverbacoesService {
     this.logger.log(
       `Processo ${processo.protocolo} corrigido por ${user.name ?? user.email}: ` +
         `DI ${processo.diDuimp} → ${atualizado.diDuimp}, ` +
-        `container ${processo.containerConhecimento} → ${atualizado.containerConhecimento}` +
+        `containers ${processo.containers.join(', ') || processo.containerConhecimento} → ` +
+        `${atualizado.containers.join(', ') || atualizado.containerConhecimento}` +
         (validados ? ` (atenção: ${validados} documento(s) já validado(s))` : ''),
     );
 

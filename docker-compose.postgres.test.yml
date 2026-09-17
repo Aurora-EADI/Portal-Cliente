@@ -1,0 +1,29 @@
+# PostgreSQL descartável para os testes que precisam de banco real
+# (portal-cliente-api/tests/auth-flow.test.cjs).
+#
+# Sobe na 55432, e não na 5432, para nunca colidir com o banco de
+# desenvolvimento nem ser confundido com ele. Os dados ficam em tmpfs: param de
+# existir quando o container para, então nenhuma execução herda estado da
+# anterior.
+#
+#   docker compose -f docker-compose.postgres.test.yml up -d
+#   export TEST_DATABASE_URL='postgresql://portal_test:portal_test@127.0.0.1:55432/portal_cliente_test'
+#   DATABASE_URL="$TEST_DATABASE_URL" pnpm --filter portal-cliente-api exec prisma migrate deploy
+#   pnpm --filter portal-cliente-api test
+#   docker compose -f docker-compose.postgres.test.yml down -v
+services:
+  postgres-test:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: portal_test
+      POSTGRES_PASSWORD: portal_test
+      POSTGRES_DB: portal_cliente_test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal_test -d portal_cliente_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12

@@ -26,6 +26,8 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, formatContainer } from '@/lib/utils';
+import { ehContainerIso6346, normalizarContainer } from '@/lib/containers';
+import { ContainersInput } from './ContainersInput';
 import {
   useClientesAutorizados,
   useCriarAverbacao,
@@ -206,7 +208,9 @@ export function NovaAverbacaoModal({
   const [modalidade, setModalidade] = useState<Modalidade | ''>('');
   const [clienteId, setClienteId] = useState('');
   const [diDuimp, setDiDuimp] = useState('');
-  const [container, setContainer] = useState('');
+  // Lista mesmo no aéreo e no rodoviário, onde tem um item só: um estado só
+  // evita converter para lá e para cá a cada troca de modalidade.
+  const [containers, setContainers] = useState<string[]>([]);
   const [localOrigem, setLocalOrigem] = useState('');
   const [recintoDestino, setRecintoDestino] = useState('');
   const [cargaEspecial, setCargaEspecial] = useState(false);
@@ -224,7 +228,7 @@ export function NovaAverbacaoModal({
     setModalidade('');
     setClienteId('');
     setDiDuimp('');
-    setContainer('');
+    setContainers([]);
     setLocalOrigem('');
     setRecintoDestino('');
     setCargaEspecial(false);
@@ -240,16 +244,14 @@ export function NovaAverbacaoModal({
   // mesma máscara neles apagaria o que a pessoa digitasse.
   const ehMaritimo = modalidade === Modalidade.MARITIMO;
 
-  const mascararContainer = (valor: string): string =>
-    ehMaritimo
-      ? formatContainer(valor)
-      : valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Fora do marítimo é um conhecimento só, então o campo continua sendo um
+  // input simples — a entrada de etiquetas ali só atrapalharia.
+  const conhecimento = containers[0] ?? '';
 
-  const containerIsoCompleto = /^[A-Z]{4}\d{7}$/.test(container);
   const diValida = DI_REGEX.test(diDuimp);
   const containerValido = ehMaritimo
-    ? containerIsoCompleto
-    : /^[A-Z0-9]+$/.test(container);
+    ? containers.length > 0 && containers.every(ehContainerIso6346)
+    : /^[A-Z0-9]+$/.test(conhecimento);
   const podeAvancar =
     Boolean(modalidade) && Boolean(clienteId) && diValida && containerValido;
 
@@ -273,7 +275,7 @@ export function NovaAverbacaoModal({
       const criado = await criar({
         modalidade: modalidade as Modalidade,
         diDuimp,
-        containerConhecimento: container,
+        containers,
         clienteId,
         localOrigem: localOrigem.trim() || undefined,
         recintoDestino: recintoDestino.trim() || undefined,
@@ -335,11 +337,13 @@ export function NovaAverbacaoModal({
                         setModalidade(valor);
                         // Trocar de modalidade troca a regra do campo: um AWB
                         // digitado antes não é container ISO válido, e deixá-lo
-                        // ali travaria o botão sem dizer por quê.
-                        setContainer((atual) =>
+                        // ali travaria o botão sem dizer por quê. Saindo do
+                        // marítimo sobra o primeiro, que é o que cabe num
+                        // conhecimento.
+                        setContainers((atuais) =>
                           valor === Modalidade.MARITIMO
-                            ? formatContainer(atual)
-                            : atual.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                            ? atuais.map(formatContainer).filter(Boolean)
+                            : atuais.slice(0, 1).map(normalizarContainer),
                         );
                       }}
                       aria-pressed={ativa}
@@ -395,22 +399,27 @@ export function NovaAverbacaoModal({
               <div>
                 <Label htmlFor="container">
                   {ehMaritimo
-                    ? 'Container'
+                    ? 'Containers'
                     : 'Container / Conhecimento de Transporte'}{' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="container"
-                  value={container}
-                  onChange={(e) => setContainer(mascararContainer(e.target.value))}
-                  placeholder={ehMaritimo ? 'Ex: MSKU1234567' : 'ABCD0000000'}
-                  maxLength={ehMaritimo ? 11 : undefined}
-                  className="font-mono uppercase"
-                />
-                {ehMaritimo && container && !containerIsoCompleto && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Padrão ISO 6346: 4 letras + 7 dígitos.
-                  </p>
+                {ehMaritimo ? (
+                  <ContainersInput
+                    id="container"
+                    valores={containers}
+                    onChange={setContainers}
+                  />
+                ) : (
+                  <Input
+                    id="container"
+                    value={conhecimento}
+                    onChange={(e) => {
+                      const valor = normalizarContainer(e.target.value);
+                      setContainers(valor ? [valor] : []);
+                    }}
+                    placeholder="ABCD0000000"
+                    className="font-mono uppercase"
+                  />
                 )}
               </div>
 

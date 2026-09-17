@@ -1,11 +1,14 @@
 import { Transform } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
 } from 'class-validator';
+import { MAX_CONTAINERS } from '../../common/containers';
 
 /**
  * Correção de um processo aberto por engano no cadastro.
@@ -37,6 +40,24 @@ export class EditarAverbacaoDto {
     message: 'Container/Conhecimento aceita apenas letras e números',
   })
   containerConhecimento?: string;
+
+  /** Substitui a lista inteira: corrigir é redeclarar o que a carga tem. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_CONTAINERS)
+  @Transform(({ value }) =>
+    Array.isArray(value)
+      ? value.map((v) =>
+          typeof v === 'string' ? v.toUpperCase().replace(/[^A-Z0-9]/g, '') : v,
+        )
+      : value,
+  )
+  @IsString({ each: true })
+  @Matches(/^[A-Z0-9]+$/, {
+    each: true,
+    message: 'Container aceita apenas letras e números',
+  })
+  containers?: string[];
 
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))

@@ -60,6 +60,48 @@ Migrações não fazem parte de `build`, `dev` ou instalação. Após migrar,
 não gera o cliente automaticamente em `migrate dev`. Para inspecionar comandos
 sem alterar banco, use `pnpm db:migrate --help`.
 
+## Testes
+
+```sh
+pnpm test                                  # ambos os workspaces
+pnpm --filter portal-cliente-api test
+pnpm --filter aurora-eadi-nextjs test
+```
+
+Quase toda a suíte da API roda com o Prisma dublado, sem banco algum. As
+exceções são os testes de sessão do Better Auth (`tests/auth-flow.test.cjs`),
+que gravam usuário e sessão de verdade, e o de integração do RabbitMQ.
+
+Esses testes **não leem `DATABASE_URL`**: num shell de desenvolvimento ela
+aponta para o banco com dados reais. Eles exigem `TEST_DATABASE_URL` explícito e,
+sem ela, pulam imprimindo o motivo — em vez de rodar contra o banco errado.
+
+### PostgreSQL descartável
+
+`docker-compose.postgres.test.yml` sobe um Postgres na **55432**, fora da porta
+padrão para não ser confundido com o de desenvolvimento, e com os dados em
+tmpfs: somem quando o container para, então nenhuma execução herda estado da
+anterior.
+
+```sh
+docker compose -f docker-compose.postgres.test.yml up -d
+
+export TEST_DATABASE_URL='postgresql://portal_test:portal_test@127.0.0.1:55432/portal_cliente_test'
+export DATABASE_URL="$TEST_DATABASE_URL"
+export BETTER_AUTH_SECRET='qualquer-segredo-de-teste-com-32-caracteres'
+export BETTER_AUTH_PROVISIONING_SECRET='qualquer-segredo-de-teste'
+
+pnpm --filter portal-cliente-api exec prisma migrate deploy
+pnpm --filter portal-cliente-api test
+
+docker compose -f docker-compose.postgres.test.yml down -v
+```
+
+`DATABASE_URL` também é exportada porque `node --test --test-isolation=none`
+carrega todos os arquivos no mesmo processo, e `src/auth/better-auth` abre o
+pool quando é importado — o que acontece por outro arquivo de teste, antes de
+`auth-flow.test.cjs` executar.
+
 ## Integração Aurora por RabbitMQ
 
 Não existe sincronização REST entre Portal Aurora e Portal do Cliente para DI
@@ -112,11 +154,13 @@ reporta API, PostgreSQL, MinIO e RabbitMQ sem dados sensíveis.
 
 ```sh
 docker compose -f docker-compose.rabbitmq.test.yml up -d
-# usar PostgreSQL local descartável já migrado
+# PostgreSQL descartável já migrado — ver "Testes" acima
+docker compose -f docker-compose.postgres.test.yml up -d
 $env:RABBITMQ_TEST_URL='amqp://127.0.0.1:5672'
-$env:DATABASE_URL='postgresql://.../portal_cliente_test'
+$env:DATABASE_URL='postgresql://portal_test:portal_test@127.0.0.1:55432/portal_cliente_test'
 pnpm --filter portal-cliente-api test -- tests/rabbitmq.integration.test.cjs
 docker compose -f docker-compose.rabbitmq.test.yml down -v
+docker compose -f docker-compose.postgres.test.yml down -v
 ```
 
 Variáveis: `RABBITMQ_URL`, `RABBITMQ_EXCHANGE`, `RABBITMQ_RETRY_EXCHANGE`,

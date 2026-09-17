@@ -90,6 +90,9 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       PORTAL_URL: ${PORTAL_URL:-http://localhost:3002}
+      # Mesma chave que liga o modulo no frontend. A API precisa dela para as
+      # travas de procuracao e de averbacao no agendamento.
+      AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
     volumes:
       - ./portal-cliente-api:/app
       - /app/node_modules

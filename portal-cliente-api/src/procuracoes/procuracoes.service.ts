@@ -16,6 +16,7 @@ import { MinioService } from '../minio/minio.service';
 import { MailService } from '../mail/mail.service';
 import { procuracaoDecidida } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
+import { RepresentacaoReplicadaDto } from './dto/replicar-representacoes.dto';
 
 /** Campos seguros para devolver ao usuário externo — sem a key do MinIO. */
 const SELECT_PUBLICO = {
@@ -172,7 +173,130 @@ export class ProcuracoesService {
       .sort((a, b) => a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR'));
   }
 
-  /** Clientes derivados das DIs em que este despachante já aparece. */
+  /**
+   * Recebe do Portal Aurora uma remessa da carteira despachante ↔ cliente.
+   *
+   * A carteira é espelho do estoque do SIAUM: esta chamada cria o que falta e
+   * marca `sincronizadoEm` em todo par recebido; `concluirReplicacao` remove
+   * depois o que nenhuma remessa marcou. Cliente com procuração continua na
+   * tela do despachante pela própria procuração.
+   *
+   * Sem transação de propósito: cada escrita é idempotente e a carteira inteira
+   * é reenviada a cada execução. Uma transação longa estouraria o timeout
+   * interativo do Prisma sem proteger nada que a próxima execução não conserte.
+   */
+  async replicarRepresentacoes(itens: RepresentacaoReplicadaDto[]) {
+    // A hora é daqui, não do Aurora nem do banco: é contra ela que a limpeza
+    // compara, e o `default now()` do Postgres usaria outro relógio.
+    const agora = new Date();
+
+    if (!itens.length) {
+      return {
+        recebidos: 0,
+        clientesNovos: 0,
+        vinculosNovos: 0,
+        sincronizadoEm: agora.toISOString(),
+      };
+    }
+
+    const nomeDespachante = new Map(
+      itens.map((i) => [i.codDespachante, i.nomeDespachante]),
+    );
+    const nomeCliente = new Map(itens.map((i) => [i.documento, i.nomeCliente]));
+    const codigos = [...nomeDespachante.keys()];
+    const documentos = [...nomeCliente.keys()];
+
+    // Despachante e cliente podem ainda não existir aqui: nascem da DI, antes
+    // de qualquer convite. Nome existente não é sobrescrito — o cadastro pode
+    // ter sido ajustado no registro do usuário.
+    await this.prisma.despachante.createMany({
+      data: codigos.map((cod) => ({
+        codDespachante: cod,
+        nome: nomeDespachante.get(cod)!,
+      })),
+      skipDuplicates: true,
+    });
+    const { count: clientesNovos } = await this.prisma.cliente.createMany({
+      data: documentos.map((doc) => ({ cnpj: doc, nome: nomeCliente.get(doc)! })),
+      skipDuplicates: true,
+    });
+
+    const [despachantes, clientes] = await Promise.all([
+      this.prisma.despachante.findMany({
+        where: { codDespachante: { in: codigos } },
+        select: { id: true, codDespachante: true },
+      }),
+      this.prisma.cliente.findMany({
+        where: { cnpj: { in: documentos } },
+        select: { id: true, cnpj: true },
+      }),
+    ]);
+    const idDespachante = new Map(
+      despachantes.map((d) => [d.codDespachante, d.id]),
+    );
+    const idCliente = new Map(clientes.map((c) => [c.cnpj, c.id]));
+
+    const pares = itens.map((i) => ({
+      despachanteId: idDespachante.get(i.codDespachante)!,
+      clienteId: idCliente.get(i.documento)!,
+      ultimaDiEm: i.ultimaDiEm ? new Date(i.ultimaDiEm) : null,
+      sincronizadoEm: agora,
+    }));
+
+    const { count: vinculosNovos } =
+      await this.prisma.despachanteCliente.createMany({
+        data: pares,
+        skipDuplicates: true,
+      });
+
+    // Vínculo que já existia é marcado como visto nesta execução — sem isso a
+    // limpeza o trataria como fora do estoque.
+    for (const par of pares) {
+      await this.prisma.despachanteCliente.updateMany({
+        where: { despachanteId: par.despachanteId, clienteId: par.clienteId },
+        data: { ultimaDiEm: par.ultimaDiEm, sincronizadoEm: agora },
+      });
+    }
+
+    this.logger.log(
+      `Carteira replicada: ${itens.length} par(es), ${clientesNovos} cliente(s) e ${vinculosNovos} vínculo(s) novo(s)`,
+    );
+
+    return {
+      recebidos: itens.length,
+      clientesNovos,
+      vinculosNovos,
+      sincronizadoEm: agora.toISOString(),
+    };
+  }
+
+  /**
+   * Fecha uma execução do Aurora: remove os vínculos que nenhuma remessa marcou
+   * desde `desde` — clientes cujo lote saiu do estoque do despachante.
+   *
+   * O cliente em si fica: pode ter procuração, processo ou voltar na próxima
+   * carga. O Aurora só chama isto quando todas as remessas passaram.
+   */
+  async concluirReplicacao(desde: Date) {
+    const { count: removidos } =
+      await this.prisma.despachanteCliente.deleteMany({
+        where: { sincronizadoEm: { lt: desde } },
+      });
+
+    this.logger.log(
+      `Carteira concluída: ${removidos} vínculo(s) fora do estoque removido(s)`,
+    );
+
+    return { removidos };
+  }
+
+  /**
+   * Clientes que este despachante representa, de duas fontes:
+   *
+   * - a carteira espelhada do estoque do SIAUM (despachante_clientes), que traz
+   *   o cliente assim que a DI chega ao terminal — antes da averbação;
+   * - as DIs averbadas, a fonte original, mantida enquanto a carteira é testada.
+   */
   private async clientesDoDespachante(despachanteId: string) {
     const despachante = await this.prisma.despachante.findUnique({
       where: { id: despachanteId },
@@ -180,22 +304,32 @@ export class ProcuracoesService {
     });
     if (!despachante) return [];
 
-    const lotes = await this.prisma.diAverbada.findMany({
-      where: {
-        codDespachante: despachante.codDespachante,
-        cnpjCliente: { not: null },
-      },
-      select: { cnpjCliente: true },
-      distinct: ['cnpjCliente'],
-    });
+    const [lotes, carteira] = await Promise.all([
+      this.prisma.diAverbada.findMany({
+        where: {
+          codDespachante: despachante.codDespachante,
+          cnpjCliente: { not: null },
+        },
+        select: { cnpjCliente: true },
+        distinct: ['cnpjCliente'],
+      }),
+      this.prisma.despachanteCliente.findMany({
+        where: { despachanteId },
+        select: { clienteId: true },
+      }),
+    ]);
 
     const cnpjs = lotes
       .map((l) => l.cnpjCliente)
       .filter((c): c is string => Boolean(c));
-    if (!cnpjs.length) return [];
+    const idsDaCarteira = carteira.map((v) => v.clienteId);
+    if (!cnpjs.length && !idsDaCarteira.length) return [];
 
     return this.prisma.cliente.findMany({
-      where: { cnpj: { in: cnpjs }, ativo: true },
+      where: {
+        ativo: true,
+        OR: [{ cnpj: { in: cnpjs } }, { id: { in: idsDaCarteira } }],
+      },
       select: { id: true, nome: true, cnpj: true },
     });
   }
@@ -207,8 +341,8 @@ export class ProcuracoesService {
    * clientes inteira. Devolver todos permitiria a qualquer despachante
    * enumerar a base de clientes da Aurora, que não é dele.
    *
-   * Cliente sem DI ainda não aparece aqui; nesse caso o pedido depende de a
-   * primeira DI chegar do SIAUM.
+   * Cliente sem carga no terminal não aparece aqui: entra quando a DI chega ao
+   * SIAUM e o Aurora espelha a carteira (a cada 30 minutos).
    */
   async clientesDisponiveis(user: User) {
     const despachanteId = this.despachanteDo(user);

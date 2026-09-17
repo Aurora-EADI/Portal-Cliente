@@ -81,6 +81,10 @@ services:
       RABBITMQ_DI_AVERBADA_DLQ: ${RABBITMQ_DI_AVERBADA_DLQ:-portal-cliente.dis-averbada.created.dlq}
       RABBITMQ_RETRY_DELAY_MS: ${RABBITMQ_RETRY_DELAY_MS:-30000}
       RABBITMQ_MAX_RETRIES: ${RABBITMQ_MAX_RETRIES:-5}
+      # Mesma chave que liga o modulo no frontend. A API precisa dela para as
+      # travas de procuracao e de averbacao no agendamento; desligada, o
+      # agendamento segue pela regra legada.
+      AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
     # Sem publicação de porta no host — roteado pelo Traefik via portal_net
     networks:
       - portal_net
