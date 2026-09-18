@@ -10,6 +10,7 @@ const {
   serializeEvent,
   EVENT_TYPES,
 } = require('../src/rabbitmq/contracts/event-envelope');
+const { OutboxService } = require('../src/rabbitmq/publishers/outbox.service');
 
 const validEvent = {
   eventId: '7b907bc4-0364-4b4b-8bd4-5e17ee3aa0d9',
@@ -92,4 +93,29 @@ test('accepts only the safe v2 status payload', () => {
       /Unrecognized key|invalid/i,
     );
   }
+});
+
+test('serializes only v2 status fields from the transactional writer', async () => {
+  let persisted;
+  const tx = {
+    outboxEvent: {
+      create: async ({ data }) => { persisted = data; return data; },
+    },
+  };
+  const changedAt = new Date('2026-09-18T12:34:56.000Z');
+  await new OutboxService({}).createAgendamentoStatusChanged(tx, {
+    agendamento: { id: validStatusChangedV2.payload.agendamentoId, status: 'CHEGOU' },
+    previousStatus: 'ATIVO',
+    changedAt,
+    aggregateVersion: 1,
+    correlationId: validStatusChangedV2.eventId,
+    causationId: '7b907bc4-0364-4b4b-8bd4-5e17ee3aa0d9',
+  });
+  assert.equal(persisted.payload.version, 2);
+  assert.equal(persisted.payload.occurredAt, changedAt.toISOString());
+  assert.equal(persisted.payload.payload.changedAt, changedAt.toISOString());
+  assert.equal(persisted.payload.payload.aggregateVersion, 1);
+  assert.deepEqual(Object.keys(persisted.payload.payload).sort(), [
+    'agendamentoId', 'aggregateVersion', 'changedAt', 'previousStatus', 'status',
+  ]);
 });

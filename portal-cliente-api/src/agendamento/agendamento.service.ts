@@ -11,6 +11,7 @@ import type { Prisma, User } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MailService } from '../mail/mail.service';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
+import { AgendamentoStatusService } from './agendamento-status.service';
 
 const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
 
@@ -48,7 +49,11 @@ function descreverProcuracao(status: ProcuracaoStatus): string {
 
 @Injectable()
 export class AgendamentoService {
-  constructor(private prisma: PrismaService, private readonly mail: MailService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly mail: MailService,
+    private readonly agendamentoStatus: AgendamentoStatusService,
+  ) {}
 
   async findAtribuicoes(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, nLote?: string) {
     let ownership: Prisma.DiAverbadaWhereInput | null = null;
@@ -600,11 +605,14 @@ export class AgendamentoService {
     return { ...agendamento, transportadoraConvite };
   }
 
-  cancelarAgendamento(id: string) {
-    return this.prisma.agendamento.update({
-      where: { id },
-      data: { status: AgendamentoStatus.CANCELADO },
+  async cancelarAgendamento(id: string, operadorId: string | null = null) {
+    const result = await this.agendamentoStatus.changeStatus({
+      agendamentoId: id,
+      nextStatus: AgendamentoStatus.CANCELADO,
+      operadorId,
+      correlationId: null,
     });
+    return result.agendamento;
   }
 
   // ---- SLOT RESERVAS (HOLD) ----

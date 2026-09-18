@@ -62,7 +62,9 @@ export class AgendamentoController {
 
   @Patch('agendamentos/:id/cancelar')
   @Roles(UserRole.ADMIN, UserRole.EMPLOYEE, UserRole.CLIENTE)
-  cancelarAgendamento(@Param('id') id: string) { return this.fcl.cancelarAgendamento(id); }
+  cancelarAgendamento(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.fcl.cancelarAgendamento(id, request.user?.id ?? null);
+  }
 
   // SLOT RESERVAS
   @Post('reservas')
