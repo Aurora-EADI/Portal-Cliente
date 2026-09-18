@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const EVENT_TYPES = {
   DIS_AVERBADA_CREATED: 'dis.averbada.created',
   AGENDAMENTO_STATUS_CHANGED: 'agendamento.status-changed',
+  AGENDAMENTO_COMMAND_REJECTED: 'agendamento.command-rejected',
+  AGENDAMENTO_COMMAND_COMPLETED: 'agendamento.command-completed',
 } as const;
 
 const envelopeV1Schema = z.object({

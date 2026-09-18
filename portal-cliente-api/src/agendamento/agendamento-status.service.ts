@@ -9,6 +9,7 @@ export type AgendamentoStatusChangeInput = {
   operadorId: string | null;
   correlationId: string | null;
   causationId?: string;
+  expectedAggregateVersion?: number;
 };
 
 export type AgendamentoStatusChange = {
@@ -21,6 +22,17 @@ export type AgendamentoStatusChange = {
 
 export class AggregateVersionRetryError extends Error {
   readonly code = 'AGGREGATE_VERSION_RETRY';
+}
+
+export class ExpectedAggregateVersionMismatchError extends Error {
+  readonly code = 'EXPECTED_AGGREGATE_VERSION_MISMATCH';
+
+  constructor(
+    readonly currentAggregateVersion: number,
+    readonly currentStatus: AgendamentoStatus,
+  ) {
+    super('A versão esperada do agendamento não corresponde à versão atual');
+  }
 }
 
 @Injectable()
@@ -39,7 +51,7 @@ export class AgendamentoStatusService {
 
     for (let attempt = 0; attempt < this.maxRetries; attempt += 1) {
       try {
-        return await this.prisma.$transaction(async (tx) => this.changeInTransaction(tx, input));
+        return await this.prisma.$transaction(async (tx) => this.changeStatusInTransaction(tx, input));
       } catch (error) {
         if (error instanceof AggregateVersionRetryError) continue;
         throw error;
@@ -49,12 +61,23 @@ export class AgendamentoStatusService {
     throw new ConflictException('Agendamento foi alterado concorrentemente; tente novamente');
   }
 
-  private async changeInTransaction(
+  async changeStatusInTransaction(
     tx: Prisma.TransactionClient,
     input: AgendamentoStatusChangeInput,
   ): Promise<AgendamentoStatusChange> {
+    if (!Object.values(AgendamentoStatus).includes(input.nextStatus)) {
+      throw new BadRequestException('Status inválido');
+    }
+
     const existing = await tx.agendamento.findUnique({ where: { id: input.agendamentoId } });
     if (!existing) throw new NotFoundException('Agendamento não encontrado');
+
+    if (
+      input.expectedAggregateVersion !== undefined
+      && existing.aggregateVersion !== input.expectedAggregateVersion
+    ) {
+      throw new ExpectedAggregateVersionMismatchError(existing.aggregateVersion, existing.status);
+    }
 
     if (existing.status === input.nextStatus) {
       return {
@@ -70,7 +93,7 @@ export class AgendamentoStatusService {
     const result = await tx.agendamento.updateMany({
       where: {
         id: input.agendamentoId,
-        aggregateVersion: existing.aggregateVersion,
+        aggregateVersion: input.expectedAggregateVersion ?? existing.aggregateVersion,
       },
       data: {
         status: input.nextStatus,
@@ -78,7 +101,12 @@ export class AgendamentoStatusService {
       },
     });
 
-    if (result.count !== 1) throw new AggregateVersionRetryError();
+    if (result.count !== 1) {
+      if (input.expectedAggregateVersion !== undefined) {
+        throw new ExpectedAggregateVersionMismatchError(existing.aggregateVersion, existing.status);
+      }
+      throw new AggregateVersionRetryError();
+    }
 
     const aggregateVersion = existing.aggregateVersion + 1;
     const agendamento = await tx.agendamento.findUnique({
