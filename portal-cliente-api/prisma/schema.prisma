@@ -291,6 +291,7 @@ model Agendamento {
   status      AgendamentoStatus @default(ATIVO)
   observacao  String?
   criadoEm    DateTime          @default(now())
+  aggregateVersion Int           @default(0) @map("aggregate_version")
 
   // Campos do novo formulário de agendamento
   operacao              String?

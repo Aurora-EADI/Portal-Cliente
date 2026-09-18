@@ -10,33 +10,37 @@ export class OutboxService {
 
   async createAgendamentoStatusChanged(
     tx: Prisma.TransactionClient,
-    agendamento: Pick<Agendamento, 'id' | 'diId' | 'status'>,
-    previousStatus: AgendamentoStatus,
-    operadorId: string | null,
-    correlationId: string | null = null,
+    change: {
+      agendamento: Pick<Agendamento, 'id' | 'status'>;
+      previousStatus: AgendamentoStatus;
+      changedAt: Date;
+      aggregateVersion: number;
+      correlationId: string | null;
+      causationId?: string;
+    },
   ): Promise<void> {
-    const occurredAt = new Date().toISOString();
+    const occurredAt = change.changedAt.toISOString();
     const eventId = randomUUID();
     await tx.outboxEvent.create({
       data: {
         eventId,
         eventType: EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED,
         aggregateType: 'Agendamento',
-        aggregateId: agendamento.id,
+        aggregateId: change.agendamento.id,
         payload: {
           eventId,
           eventType: EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED,
-          version: 1,
+          version: 2,
           occurredAt,
           source: 'portal-cliente',
-          correlationId,
+          correlationId: change.correlationId,
+          ...(change.causationId ? { causationId: change.causationId } : {}),
           payload: {
-            agendamentoId: agendamento.id,
-            diId: agendamento.diId,
-            status: agendamento.status,
-            dtAlteracao: occurredAt,
-            operadorId,
-            previousStatus,
+            agendamentoId: change.agendamento.id,
+            status: change.agendamento.status,
+            previousStatus: change.previousStatus,
+            changedAt: occurredAt,
+            aggregateVersion: change.aggregateVersion,
           },
         },
       },

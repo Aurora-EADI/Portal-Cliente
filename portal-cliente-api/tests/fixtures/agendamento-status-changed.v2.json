@@ -1,0 +1,15 @@
+{
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "eventType": "agendamento.status-changed",
+  "version": 2,
+  "occurredAt": "2026-09-18T12:00:00.000Z",
+  "source": "portal-cliente",
+  "correlationId": null,
+  "payload": {
+    "agendamentoId": "7b907bc4-0364-4b4b-8bd4-5e17ee3aa0d9",
+    "status": "CHEGOU",
+    "previousStatus": "ATIVO",
+    "changedAt": "2026-09-18T12:00:00.000Z",
+    "aggregateVersion": 1
+  }
+}
