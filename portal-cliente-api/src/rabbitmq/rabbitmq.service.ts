@@ -74,6 +74,9 @@ export class RabbitMqService implements OnModuleDestroy {
     await channel.assertExchange(this.config.exchange, 'topic', { durable: true });
     await channel.assertExchange(this.config.retryExchange, 'topic', { durable: true });
     await channel.assertExchange(this.config.deadLetterExchange, 'topic', { durable: true });
+    await channel.assertExchange(this.config.commandExchange, 'topic', { durable: true });
+    await channel.assertExchange(this.config.commandRetryExchange, 'topic', { durable: true });
+    await channel.assertExchange(this.config.commandDeadLetterExchange, 'topic', { durable: true });
     await channel.assertQueue(this.config.diAverbadaQueue, {
       durable: true,
       deadLetterExchange: this.config.deadLetterExchange,
@@ -88,6 +91,20 @@ export class RabbitMqService implements OnModuleDestroy {
     await channel.bindQueue(this.config.diAverbadaRetryQueue, this.config.retryExchange, 'dis.averbada.created');
     await channel.assertQueue(this.config.diAverbadaDlq, { durable: true });
     await channel.bindQueue(this.config.diAverbadaDlq, this.config.deadLetterExchange, 'dis.averbada.created');
+    await channel.assertQueue(this.config.agendamentoCancelQueue, {
+      durable: true,
+      deadLetterExchange: this.config.commandDeadLetterExchange,
+    });
+    await channel.bindQueue(this.config.agendamentoCancelQueue, this.config.commandExchange, 'agendamento.cancel.requested');
+    await channel.assertQueue(this.config.agendamentoCancelRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.commandExchange,
+      deadLetterRoutingKey: 'agendamento.cancel.requested',
+    });
+    await channel.bindQueue(this.config.agendamentoCancelRetryQueue, this.config.commandRetryExchange, 'agendamento.cancel.requested');
+    await channel.assertQueue(this.config.agendamentoCancelDlq, { durable: true });
+    await channel.bindQueue(this.config.agendamentoCancelDlq, this.config.commandDeadLetterExchange, 'agendamento.cancel.requested');
   }
 
   private async activateConsumers(): Promise<void> {

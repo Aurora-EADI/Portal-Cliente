@@ -6,10 +6,31 @@ import { OutboxService } from './publishers/outbox.service';
 import { OutboxWorker } from './publishers/outbox.worker';
 import { RabbitMqLifecycle } from './rabbitmq.lifecycle';
 import { RabbitMqService } from './rabbitmq.service';
+import { AgendamentoCancelConsumer } from './consumers/agendamento-cancel.consumer';
+import { AgendamentoCommandInboxService } from './consumers/agendamento-command-inbox.service';
+import { AgendamentoCancelService } from '../agendamento-commands/agendamento-cancel.service';
+import { AgendamentoCommandCompletedService } from '../agendamento-commands/agendamento-command-completed.service';
+import { AgendamentoCommandRejectionService } from '../agendamento-commands/agendamento-command-rejection.service';
+import { AgendamentoCommandTransactionService } from '../agendamento-commands/agendamento-command-transaction.service';
+import { AgendamentoStatusService } from '../agendamento/agendamento-status.service';
 
 @Module({
   imports: [PrismaModule],
-  providers: [RabbitMqService, RabbitMqLifecycle, DiAverbadaInboxService, DiAverbadaConsumer, OutboxService, OutboxWorker],
+  providers: [
+    RabbitMqService,
+    RabbitMqLifecycle,
+    DiAverbadaInboxService,
+    DiAverbadaConsumer,
+    AgendamentoCancelConsumer,
+    AgendamentoCommandInboxService,
+    AgendamentoStatusService,
+    AgendamentoCancelService,
+    AgendamentoCommandCompletedService,
+    AgendamentoCommandRejectionService,
+    AgendamentoCommandTransactionService,
+    OutboxService,
+    OutboxWorker,
+  ],
   exports: [RabbitMqService, OutboxService],
 })
 export class RabbitMqModule {}

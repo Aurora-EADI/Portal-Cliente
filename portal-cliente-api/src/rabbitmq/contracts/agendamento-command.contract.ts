@@ -29,7 +29,7 @@ const commandCompletedPayloadSchema = z.object({
   commandType: z.literal(AGENDAMENTO_CANCEL_REQUESTED),
   agendamentoId: z.uuid(),
   outcome: z.literal('ALREADY_SATISFIED'),
-  currentAggregateVersion: z.number().int().positive().safe(),
+  currentAggregateVersion: z.number().int().nonnegative().safe(),
   currentStatus: z.literal('CANCELADO'),
 }).strict();
 
