@@ -5,7 +5,9 @@ export const AGENDAMENTO_COMMAND_COMPLETED = 'agendamento.command-completed' as 
 
 const actorSchema = z.object({
   id: z.string().trim().min(1),
-  role: z.enum(['ADMIN', 'EMPLOYEE']),
+  // Transport accepts known application roles; domain authorization below
+  // remains responsible for deciding which roles may cancel.
+  role: z.enum(['ADMIN', 'EMPLOYEE', 'CLIENTE', 'DESPACHANTE', 'TRANSPORTADORA']),
 }).strict();
 
 const commandPayloadSchema = z.object({
