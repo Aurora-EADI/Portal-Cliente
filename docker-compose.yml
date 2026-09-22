@@ -79,6 +79,13 @@ services:
       RABBITMQ_DI_AVERBADA_QUEUE: ${RABBITMQ_DI_AVERBADA_QUEUE:-portal-cliente.dis-averbada.created}
       RABBITMQ_DI_AVERBADA_RETRY_QUEUE: ${RABBITMQ_DI_AVERBADA_RETRY_QUEUE:-portal-cliente.dis-averbada.created.retry.30s}
       RABBITMQ_DI_AVERBADA_DLQ: ${RABBITMQ_DI_AVERBADA_DLQ:-portal-cliente.dis-averbada.created.dlq}
+      RABBITMQ_COMMAND_EXCHANGE: ${RABBITMQ_COMMAND_EXCHANGE:-portal.integration.commands}
+      RABBITMQ_COMMAND_RETRY_EXCHANGE: ${RABBITMQ_COMMAND_RETRY_EXCHANGE:-portal.integration.commands.retry}
+      RABBITMQ_COMMAND_DLX_EXCHANGE: ${RABBITMQ_COMMAND_DLX_EXCHANGE:-portal.integration.commands.dlx}
+      RABBITMQ_AGENDAMENTO_CANCEL_QUEUE: ${RABBITMQ_AGENDAMENTO_CANCEL_QUEUE:-portal-cliente.agendamento.cancel.requested}
+      RABBITMQ_AGENDAMENTO_CANCEL_RETRY_QUEUE: ${RABBITMQ_AGENDAMENTO_CANCEL_RETRY_QUEUE:-portal-cliente.agendamento.cancel.requested.retry.30s}
+      RABBITMQ_AGENDAMENTO_CANCEL_DLQ: ${RABBITMQ_AGENDAMENTO_CANCEL_DLQ:-portal-cliente.agendamento.cancel.requested.dlq}
+      AGENDAMENTO_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${AGENDAMENTO_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
       RABBITMQ_RETRY_DELAY_MS: ${RABBITMQ_RETRY_DELAY_MS:-30000}
       RABBITMQ_MAX_RETRIES: ${RABBITMQ_MAX_RETRIES:-5}
       # Mesma chave que liga o modulo no frontend. A API precisa dela para as
