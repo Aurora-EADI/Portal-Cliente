@@ -4,6 +4,7 @@ import { OutboxEvent, OutboxEventStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { RabbitMqService } from '../rabbitmq.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { resolveOutboxRoute } from './outbox-routing';
 
 @Injectable()
 export class OutboxWorker {
@@ -56,7 +57,11 @@ export class OutboxWorker {
 
   private async publishOne(event: OutboxEvent, leaseToken: string): Promise<void> {
     try {
-      await this.rabbit.publish(this.rabbit.topology.exchange, event.eventType, event.payload);
+      const route = resolveOutboxRoute(event.eventType, {
+        eventsExchange: this.rabbit.topology.exchange,
+        commandsExchange: this.rabbit.topology.commandExchange,
+      });
+      await this.rabbit.publish(route.exchange, route.routingKey, event.payload);
       await this.prisma.outboxEvent.updateMany({
         where: { id: event.id, leaseToken, status: OutboxEventStatus.PROCESSING },
         data: { status: OutboxEventStatus.PUBLISHED, publishedAt: new Date(), leaseToken: null, lockedAt: null },

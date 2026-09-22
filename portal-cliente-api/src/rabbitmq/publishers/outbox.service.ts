@@ -15,37 +15,129 @@ export class OutboxService {
 
   async createAgendamentoStatusChanged(
     tx: Prisma.TransactionClient,
-    agendamento: Pick<Agendamento, 'id' | 'diId' | 'status'>,
-    previousStatus: AgendamentoStatus,
-    operadorId: string | null,
-    correlationId: string | null = null,
-  ): Promise<void> {
-    const occurredAt = new Date().toISOString();
+    change: {
+      agendamento: Pick<Agendamento, 'id' | 'status'>;
+      previousStatus: AgendamentoStatus;
+      changedAt: Date;
+      aggregateVersion: number;
+      correlationId: string | null;
+      causationId?: string;
+    },
+  ): Promise<string> {
+    const occurredAt = change.changedAt.toISOString();
     const eventId = randomUUID();
     await tx.outboxEvent.create({
       data: {
         eventId,
         eventType: EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED,
         aggregateType: 'Agendamento',
-        aggregateId: agendamento.id,
+        aggregateId: change.agendamento.id,
         payload: {
           eventId,
           eventType: EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED,
-          version: 1,
+          version: 2,
           occurredAt,
           source: 'portal-cliente',
-          correlationId,
+          correlationId: change.correlationId,
+          ...(change.causationId ? { causationId: change.causationId } : {}),
           payload: {
-            agendamentoId: agendamento.id,
-            diId: agendamento.diId,
-            status: agendamento.status,
-            dtAlteracao: occurredAt,
-            operadorId,
-            previousStatus,
+            agendamentoId: change.agendamento.id,
+            status: change.agendamento.status,
+            previousStatus: change.previousStatus,
+            changedAt: occurredAt,
+            aggregateVersion: change.aggregateVersion,
           },
         },
       },
     });
+    return eventId;
+  }
+
+  async createAgendamentoCommandCompleted(
+    tx: Prisma.TransactionClient,
+    completed: {
+      commandId: string;
+      commandType: string;
+      agendamentoId: string;
+      correlationId: string;
+      currentAggregateVersion: number;
+      currentStatus: AgendamentoStatus;
+      occurredAt?: Date;
+    },
+  ): Promise<string> {
+    const occurredAt = (completed.occurredAt ?? new Date()).toISOString();
+    const eventId = randomUUID();
+    await tx.outboxEvent.create({
+      data: {
+        eventId,
+        eventType: EVENT_TYPES.AGENDAMENTO_COMMAND_COMPLETED,
+        aggregateType: 'Agendamento',
+        aggregateId: completed.agendamentoId,
+        payload: {
+          eventId,
+          eventType: EVENT_TYPES.AGENDAMENTO_COMMAND_COMPLETED,
+          version: 1,
+          occurredAt,
+          source: 'portal-cliente',
+          correlationId: completed.correlationId,
+          causationId: completed.commandId,
+          payload: {
+            commandId: completed.commandId,
+            commandType: completed.commandType,
+            agendamentoId: completed.agendamentoId,
+            outcome: 'ALREADY_SATISFIED',
+            currentAggregateVersion: completed.currentAggregateVersion,
+            currentStatus: completed.currentStatus,
+          },
+        },
+      },
+    });
+    return eventId;
+  }
+
+  async createAgendamentoCommandRejected(
+    tx: Prisma.TransactionClient,
+    rejection: {
+      commandId: string;
+      commandType: string;
+      agendamentoId: string;
+      correlationId: string;
+      reasonCode: string;
+      currentAggregateVersion?: number;
+      currentStatus?: AgendamentoStatus;
+      occurredAt?: Date;
+    },
+  ): Promise<string> {
+    const occurredAt = (rejection.occurredAt ?? new Date()).toISOString();
+    const eventId = randomUUID();
+    await tx.outboxEvent.create({
+      data: {
+        eventId,
+        eventType: EVENT_TYPES.AGENDAMENTO_COMMAND_REJECTED,
+        aggregateType: 'Agendamento',
+        aggregateId: rejection.agendamentoId,
+        payload: {
+          eventId,
+          eventType: EVENT_TYPES.AGENDAMENTO_COMMAND_REJECTED,
+          version: 1,
+          occurredAt,
+          source: 'portal-cliente',
+          correlationId: rejection.correlationId,
+          causationId: rejection.commandId,
+          payload: {
+            commandId: rejection.commandId,
+            commandType: rejection.commandType,
+            agendamentoId: rejection.agendamentoId,
+            reasonCode: rejection.reasonCode,
+            ...(rejection.currentAggregateVersion === undefined
+              ? {}
+              : { currentAggregateVersion: rejection.currentAggregateVersion }),
+            ...(rejection.currentStatus === undefined ? {} : { currentStatus: rejection.currentStatus }),
+          },
+        },
+      },
+    });
+    return eventId;
   }
 
   /**

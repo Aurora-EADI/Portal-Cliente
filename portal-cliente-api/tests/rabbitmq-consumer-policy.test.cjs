@@ -3,6 +3,7 @@ require('ts-node/register');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { DiAverbadaConsumer } = require('../src/rabbitmq/consumers/di-averbada.consumer');
+const { RABBITMQ_DEFAULTS } = require('../src/rabbitmq/rabbitmq.config');
 
 const event = { eventId: '7b907bc4-0364-4b4b-8bd4-5e17ee3aa0d9', eventType: 'dis.averbada.created', version: 1, occurredAt: '2026-09-16T12:00:00.000Z', source: 'portal-aurora', correlationId: null, payload: { nLote: 'LOTE-1', diId: 'di-1', numeroDI: '26BR1', cpfMotorista: '123', placaVeiculo: 'ABC1D23', dtAverbacao: '2026-09-16T12:00:00.000Z', idContainers: [] } };
 const message = (body, headers = {}) => ({ content: Buffer.from(JSON.stringify(body)), properties: { headers } });
@@ -33,4 +34,18 @@ test('fifth transient error is routed to the DLQ', async () => {
   await consumer.handle(message(event, { 'x-retry-count': 4 }));
   assert.equal(calls[0][1], 'dlx');
   assert.equal(calls[1][0], 'ack');
+});
+
+test('keeps the existing DI consumer queue registration unchanged', () => {
+  const registrations = [];
+  const rabbit = {
+    topology: RABBITMQ_DEFAULTS,
+    registerConsumer: (queue, handler) => registrations.push({ queue, handler }),
+  };
+  const consumer = new DiAverbadaConsumer(rabbit, { process: async () => ({ duplicate: false }) });
+
+  consumer.register();
+
+  assert.equal(registrations.length, 1);
+  assert.equal(registrations[0].queue, 'portal-cliente.dis-averbada.created');
 });

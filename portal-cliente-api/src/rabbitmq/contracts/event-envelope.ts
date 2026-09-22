@@ -9,15 +9,28 @@ export const EVENT_TYPES = {
   // (envio/substituição de documento). É o gatilho para a fila de validação do
   // Portal Aurora se atualizar sozinha, sem depender de recarregar a tela.
   AVERBACAO_PROCESSO_ATUALIZADO: 'averbacao.processo.atualizado',
+  AGENDAMENTO_COMMAND_REJECTED: 'agendamento.command-rejected',
+  AGENDAMENTO_COMMAND_COMPLETED: 'agendamento.command-completed',
 } as const;
 
-const envelopeSchema = z.object({
+const envelopeV1Schema = z.object({
   eventId: z.uuid(),
   eventType: z.string(),
   version: z.literal(1),
   occurredAt: z.iso.datetime(),
   source: z.string().min(1),
   correlationId: z.uuid().nullable(),
+  payload: z.unknown(),
+});
+
+const envelopeSchema = z.object({
+  eventId: z.uuid(),
+  eventType: z.string(),
+  version: z.number().int().positive(),
+  occurredAt: z.iso.datetime(),
+  source: z.string().min(1),
+  correlationId: z.uuid().nullable(),
+  causationId: z.uuid().optional(),
   payload: z.unknown(),
 });
 
@@ -54,7 +67,7 @@ const disAverbadaPayloadSchema = z.object({
   containers: z.string().nullish(),
 });
 
-export const disAverbadaCreatedSchema = envelopeSchema.extend({
+export const disAverbadaCreatedSchema = envelopeV1Schema.extend({
   eventType: z.literal(EVENT_TYPES.DIS_AVERBADA_CREATED),
   payload: disAverbadaPayloadSchema,
 });
@@ -72,13 +85,47 @@ export const averbacaoProcessoAtualizadoSchema = envelopeSchema.extend({
   payload: averbacaoProcessoAtualizadoPayloadSchema,
 });
 
-export type EventEnvelope<TPayload> = z.infer<typeof envelopeSchema> & {
+const agendamentoStatusSchema = z.enum([
+  'ATIVO',
+  'CANCELADO',
+  'CHEGOU',
+  'NO_SHOW',
+  'ON_TIME',
+  'ATRASADO',
+  'AG_CHEGADA',
+  'CONCLUIDO',
+]);
+
+const agendamentoStatusChangedV2PayloadSchema = z.object({
+  agendamentoId: z.uuid(),
+  status: agendamentoStatusSchema,
+  previousStatus: agendamentoStatusSchema,
+  changedAt: z.iso.datetime(),
+  aggregateVersion: z.number().int().safe().min(1),
+}).strict();
+
+export const agendamentoStatusChangedV2Schema = envelopeSchema.extend({
+  eventType: z.literal(EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED),
+  version: z.literal(2),
+  source: z.literal('portal-cliente'),
+  payload: agendamentoStatusChangedV2PayloadSchema,
+});
+
+export type EventEnvelope<TPayload = unknown> = {
+  eventId: string;
+  eventType: string;
+  version: number;
+  occurredAt: string;
+  source: string;
+  correlationId: string | null;
+  causationId?: string;
   payload: TPayload;
 };
 export type DisAverbadaCreatedEvent = z.infer<typeof disAverbadaCreatedSchema>;
 export type AverbacaoProcessoAtualizadoEvent = z.infer<
   typeof averbacaoProcessoAtualizadoSchema
 >;
+export type AgendamentoStatusChangedV2Event = z.infer<typeof agendamentoStatusChangedV2Schema>;
 
 export function parseDisAverbadaCreated(input: unknown): DisAverbadaCreatedEvent {
   return disAverbadaCreatedSchema.parse(input);
@@ -97,4 +144,27 @@ export type DisAverbadaRemovedEvent = z.infer<typeof disAverbadaRemovedSchema>;
 
 export function parseDisAverbadaRemoved(input: unknown): DisAverbadaRemovedEvent {
   return disAverbadaRemovedSchema.parse(input);
+}
+
+export function parseAgendamentoStatusChangedV2(input: unknown): AgendamentoStatusChangedV2Event {
+  return agendamentoStatusChangedV2Schema.parse(input);
+}
+
+export function parseEvent(input: unknown): DisAverbadaCreatedEvent | AgendamentoStatusChangedV2Event {
+  if (input === null || typeof input !== 'object') {
+    throw new Error('UNSUPPORTED_EVENT');
+  }
+
+  const candidate = input as Record<string, unknown>;
+  if (candidate.eventType === EVENT_TYPES.DIS_AVERBADA_CREATED && candidate.version === 1) {
+    return parseDisAverbadaCreated(input);
+  }
+  if (candidate.eventType === EVENT_TYPES.AGENDAMENTO_STATUS_CHANGED && candidate.version === 2) {
+    return parseAgendamentoStatusChangedV2(input);
+  }
+  throw new Error('UNSUPPORTED_EVENT');
+}
+
+export function serializeEvent(input: unknown): string {
+  return JSON.stringify(parseEvent(input));
 }
