@@ -23,6 +23,8 @@ import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { resolverContainers } from '../common/containers';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
+import { AverbacoesEventos } from './averbacoes.eventos';
+import { OutboxService } from '../rabbitmq/publishers/outbox.service';
 
 /** Sem arquivoKey: a key do MinIO não sai da API. */
 const SELECT_DOCUMENTO = {
@@ -70,6 +72,8 @@ export class AverbacoesService {
     private readonly prisma: PrismaService,
     private readonly minio: MinioService,
     private readonly mail: MailService,
+    private readonly eventos: AverbacoesEventos,
+    private readonly outbox: OutboxService,
   ) {}
 
   private despachanteDo(user: User): string {
@@ -137,8 +141,6 @@ export class AverbacoesService {
       );
     }
 
-    const { containers, principal } = resolverContainers(dto.modalidade, dto);
-
     return this.prisma.$transaction(async (tx) => {
       const protocolo = await this.gerarProtocolo(tx);
 
@@ -149,8 +151,10 @@ export class AverbacoesService {
           despachanteId,
           modalidade: dto.modalidade,
           diDuimp: dto.diDuimp,
-          containerConhecimento: principal,
-          containers,
+          // A carga não é mais identificada por container/conhecimento na
+          // abertura: o container deixou de importar para o vínculo com o SIAUM.
+          containerConhecimento: null,
+          containers: [],
           localOrigem: dto.localOrigem || null,
           recintoDestino: dto.recintoDestino || null,
           cargaEspecial: dto.cargaEspecial ?? false,
@@ -434,7 +438,14 @@ export class AverbacoesService {
         id: true,
         status: true,
         arquivoKey: true,
-        processo: { select: { id: true, despachanteId: true, status: true } },
+        processo: {
+          select: {
+            id: true,
+            clienteId: true,
+            despachanteId: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -500,7 +511,18 @@ export class AverbacoesService {
         },
       });
 
-      await this.recalcularProcesso(tx, processoId);
+      const statusProcesso = await this.recalcularProcesso(tx, processoId);
+
+      // Na mesma transação, para o Portal Aurora atualizar a fila de validação
+      // em tempo real. O outbox garante que o evento só é publicado se o commit
+      // do documento passar — e sobrevive a um broker fora do ar.
+      await this.outbox.createAverbacaoProcessoAtualizado(tx, {
+        id: processoId,
+        clienteId: documento.processo.clienteId,
+        despachanteId: documento.processo.despachanteId,
+        status: statusProcesso,
+      });
+
       return doc;
     });
 
@@ -743,7 +765,7 @@ export class AverbacoesService {
   private async recalcularProcesso(
     tx: Prisma.TransactionClient,
     processoId: string,
-  ) {
+  ): Promise<AverbacaoProcessoStatus> {
     const documentos = await tx.averbacaoDocumento.findMany({
       where: { processoId },
       select: { status: true },
@@ -766,7 +788,7 @@ export class AverbacoesService {
       processo?.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO ||
       processo?.status === AverbacaoProcessoStatus.CANCELADO
     ) {
-      return;
+      return processo.status;
     }
 
     const novo = algumRejeitado
@@ -779,6 +801,8 @@ export class AverbacoesService {
       where: { id: processoId },
       data: { status: novo },
     });
+
+    return novo;
   }
 
   /**
@@ -930,6 +954,8 @@ export class AverbacoesService {
         status: true,
         nLote: true,
         protocolo: true,
+        despachanteId: true,
+        clienteId: true,
         documentos: {
           select: {
             status: true,
@@ -994,6 +1020,15 @@ export class AverbacoesService {
     });
 
     void this.notificarLiberacao(processoId, analisadoPor);
+
+    // Depois do commit: a tela do despachante (e a do cliente) relê a lista
+    // sem F5. Avisar antes faria o navegador recarregar o estado antigo.
+    this.eventos.emitir({
+      despachanteId: processo.despachanteId,
+      clienteId: processo.clienteId,
+      processoId,
+      status: liberado.status,
+    });
 
     return liberado;
   }

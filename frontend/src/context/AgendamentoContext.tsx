@@ -9,7 +9,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { api } from '@/lib/api';
 import { useAgendamentoWizard } from '@/store/agendamento-wizard.store';
-import { useDisAverbadasStream } from '@/hooks/useDisAverbadasStream';
+import { useDisAverbadasStream, type DiAverbadaStreamEvent } from '@/hooks/useDisAverbadasStream';
 import { useAgendamentoStream } from '@/hooks/useAgendamentoStream';
 
 interface AgendamentoContextValue {
@@ -207,7 +207,14 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     ]).finally(() => setIsLoadingData(false));
   }, [clienteId, currentUser]);
 
-  const upsertDi = (di: DI) => {
+  const onDiAverbadaEvent = (evento: DiAverbadaStreamEvent) => {
+    if ('removida' in evento) {
+      // DI desaverbada no Aurora: sai do dashboard.
+      setDis(prev => prev.filter(d => d.nLote !== evento.nLote));
+      toast.info(`DI desaverbada removida do painel`);
+      return;
+    }
+    const di = evento;
     setDis(prev => {
       const exists = prev.some(d => d.nLote && d.nLote === di.nLote);
       if (exists) return prev.map(d => (d.nLote === di.nLote ? { ...d, ...di } : d));
@@ -216,7 +223,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     toast.info(`DI averbada: ${di.numeroDI}`);
   };
 
-  useDisAverbadasStream(!!currentUser, upsertDi);
+  useDisAverbadasStream(!!currentUser, onDiAverbadaEvent);
 
   const upsertBooking = (mapped: Agendamento) => {
     setActiveBookings(prev => {

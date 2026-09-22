@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
   Query,
   Req,
   Res,
+  Sse,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -28,6 +30,7 @@ import { ServiceKeyGuard } from '../common/guards/service-key.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TAMANHO_MAXIMO_BYTES } from '../common/arquivo';
 import { ProcuracoesService } from './procuracoes.service';
+import { ProcuracoesEventos } from './procuracoes.eventos';
 import { CriarProcuracaoDto } from './dto/criar-procuracao.dto';
 import {
   AprovarProcuracaoDto,
@@ -53,7 +56,26 @@ function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
 @Controller('procuracoes')
 @UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class ProcuracoesController {
-  constructor(private readonly service: ProcuracoesService) {}
+  constructor(
+    private readonly service: ProcuracoesService,
+    private readonly eventos: ProcuracoesEventos,
+  ) {}
+
+  /**
+   * Avisa a tela quando uma procuração do despachante muda de situação. Leva
+   * só o id e o status: a tela relê a lista pelo GET, que é a fonte de verdade.
+   */
+  @Sse('stream')
+  @Roles(UserRole.DESPACHANTE)
+  stream(@Req() req: Request) {
+    const user = req.user as User;
+    if (!user.despachanteId) {
+      throw new ForbiddenException(
+        'Usuário não está vinculado a um despachante',
+      );
+    }
+    return this.eventos.doDespachante(user.despachanteId);
+  }
 
   @Get()
   @Roles(UserRole.DESPACHANTE)

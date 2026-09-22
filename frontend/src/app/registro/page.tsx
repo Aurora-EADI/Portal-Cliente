@@ -44,9 +44,12 @@ function RegistroContent() {
       .finally(() => setLoadingConvite(false));
   }, [token]);
 
+  // Limpa o erro só quando o usuário edita um campo. `error` não pode entrar
+  // nas dependências: o efeito rodaria logo após cada setError e apagaria a
+  // mensagem antes de ela aparecer.
   useEffect(() => {
-    if (error) setError('');
-  }, [nome, email, senha, confirmar, error]);
+    setError('');
+  }, [nome, email, senha, confirmar]);
 
   if (loadingConvite) {
     return (
@@ -211,7 +214,7 @@ function RegistroContent() {
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Min. 6 chars"
+                            placeholder="Mín. 8 caracteres"
                             value={senha}
                             onChange={(e) => setSenha(e.target.value)}
                             disabled={isLoading}

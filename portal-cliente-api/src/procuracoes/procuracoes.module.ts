@@ -7,11 +7,12 @@ import {
   ProcuracoesServiceController,
 } from './procuracoes.controller';
 import { ProcuracoesService } from './procuracoes.service';
+import { ProcuracoesEventos } from './procuracoes.eventos';
 
 @Module({
   imports: [PrismaModule, MinioModule, MailModule],
   controllers: [ProcuracoesController, ProcuracoesServiceController],
-  providers: [ProcuracoesService],
+  providers: [ProcuracoesService, ProcuracoesEventos],
   exports: [ProcuracoesService],
 })
 export class ProcuracoesModule {}

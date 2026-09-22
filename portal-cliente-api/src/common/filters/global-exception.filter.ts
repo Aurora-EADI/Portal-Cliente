@@ -44,6 +44,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let code: string = APP_ERROR_CODES.INTERNAL_ERROR;
     let message = 'Ocorreu um erro interno. Tente novamente mais tarde.';
     let prismaCode: string | undefined;
+    let detalhe: string | undefined;
 
     // 1. Erros conhecidos do Prisma
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
@@ -84,14 +85,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           code = resObj.code;
         }
 
-        if (status === HttpStatus.BAD_REQUEST) {
-          code = typeof resObj.code === 'string' ? resObj.code : APP_ERROR_CODES.VALIDATION_ERROR;
-          message = 'Verifique os dados informados.';
-        } else if (typeof resObj.message === 'string') {
-          message = resObj.message;
-        } else if (Array.isArray(resObj.message)) {
+        if (Array.isArray(resObj.message)) {
+          // Lista do ValidationPipe: fala de propriedades do DTO, não do
+          // formulário. O usuário recebe a genérica; o detalhe vai para o log.
           code = APP_ERROR_CODES.VALIDATION_ERROR;
           message = 'Verifique os dados informados.';
+          detalhe = resObj.message.join('; ');
+        } else if (status === HttpStatus.BAD_REQUEST) {
+          code = typeof resObj.code === 'string' ? resObj.code : APP_ERROR_CODES.VALIDATION_ERROR;
+          // Texto escrito de propósito num throw (ex.: "O arquivo não é um PDF
+          // válido") é a instrução que o usuário precisa para corrigir.
+          message =
+            typeof resObj.message === 'string' && resObj.message !== 'Bad Request'
+              ? resObj.message
+              : 'Verifique os dados informados.';
+        } else if (typeof resObj.message === 'string') {
+          message = resObj.message;
         }
       } else if (typeof res === 'string') {
         message = res;
@@ -153,7 +162,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (status >= 500) {
       this.logger.error(`${logDetails}\n${stack}`);
     } else {
-      this.logger.warn(`${logDetails} - ${message}`);
+      this.logger.warn(`${logDetails} - ${detalhe ?? message}`);
     }
 
     const payload: ApiErrorResponse = {

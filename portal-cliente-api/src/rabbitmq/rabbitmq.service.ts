@@ -88,6 +88,22 @@ export class RabbitMqService implements OnModuleDestroy {
     await channel.bindQueue(this.config.diAverbadaRetryQueue, this.config.retryExchange, 'dis.averbada.created');
     await channel.assertQueue(this.config.diAverbadaDlq, { durable: true });
     await channel.bindQueue(this.config.diAverbadaDlq, this.config.deadLetterExchange, 'dis.averbada.created');
+
+    // Mesma topologia (retry 30s + DLQ) para a desaverbação.
+    await channel.assertQueue(this.config.diDesaverbadaQueue, {
+      durable: true,
+      deadLetterExchange: this.config.deadLetterExchange,
+    });
+    await channel.bindQueue(this.config.diDesaverbadaQueue, this.config.exchange, 'dis.averbada.removed');
+    await channel.assertQueue(this.config.diDesaverbadaRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.exchange,
+      deadLetterRoutingKey: 'dis.averbada.removed',
+    });
+    await channel.bindQueue(this.config.diDesaverbadaRetryQueue, this.config.retryExchange, 'dis.averbada.removed');
+    await channel.assertQueue(this.config.diDesaverbadaDlq, { durable: true });
+    await channel.bindQueue(this.config.diDesaverbadaDlq, this.config.deadLetterExchange, 'dis.averbada.removed');
   }
 
   private async activateConsumers(): Promise<void> {

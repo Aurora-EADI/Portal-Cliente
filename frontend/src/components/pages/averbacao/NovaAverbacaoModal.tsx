@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   Check,
   CheckCircle2,
+  FileSignature,
   FolderOpen,
   Loader2,
   Package,
@@ -25,9 +27,7 @@ import {
 import { FileUpload } from '@/components/ui/FileUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn, formatContainer } from '@/lib/utils';
-import { ehContainerIso6346, normalizarContainer } from '@/lib/containers';
-import { ContainersInput } from './ContainersInput';
+import { cn } from '@/lib/utils';
 import {
   useClientesAutorizados,
   useCriarAverbacao,
@@ -197,6 +197,7 @@ export function NovaAverbacaoModal({
   /** Chamado ao concluir, com o id do processo aberto. */
   onCriado: (processoId: string) => void;
 }) {
+  const router = useRouter();
   const { data: clientes, isLoading: carregandoClientes } =
     useClientesAutorizados();
   const { mutateAsync: criar, isPending } = useCriarAverbacao();
@@ -208,9 +209,6 @@ export function NovaAverbacaoModal({
   const [modalidade, setModalidade] = useState<Modalidade | ''>('');
   const [clienteId, setClienteId] = useState('');
   const [diDuimp, setDiDuimp] = useState('');
-  // Lista mesmo no aéreo e no rodoviário, onde tem um item só: um estado só
-  // evita converter para lá e para cá a cada troca de modalidade.
-  const [containers, setContainers] = useState<string[]>([]);
   const [localOrigem, setLocalOrigem] = useState('');
   const [recintoDestino, setRecintoDestino] = useState('');
   const [cargaEspecial, setCargaEspecial] = useState(false);
@@ -228,7 +226,6 @@ export function NovaAverbacaoModal({
     setModalidade('');
     setClienteId('');
     setDiDuimp('');
-    setContainers([]);
     setLocalOrigem('');
     setRecintoDestino('');
     setCargaEspecial(false);
@@ -239,21 +236,8 @@ export function NovaAverbacaoModal({
   const opcoes = clientes ?? [];
   const clienteSelecionado = opcoes.find((c) => c.id === clienteId);
 
-  // A máscara ISO 6346 é do container marítimo. Aéreo (AWB) e rodoviário (CRT)
-  // usam conhecimento de transporte, que não tem esse formato — aplicar a
-  // mesma máscara neles apagaria o que a pessoa digitasse.
-  const ehMaritimo = modalidade === Modalidade.MARITIMO;
-
-  // Fora do marítimo é um conhecimento só, então o campo continua sendo um
-  // input simples — a entrada de etiquetas ali só atrapalharia.
-  const conhecimento = containers[0] ?? '';
-
   const diValida = DI_REGEX.test(diDuimp);
-  const containerValido = ehMaritimo
-    ? containers.length > 0 && containers.every(ehContainerIso6346)
-    : /^[A-Z0-9]+$/.test(conhecimento);
-  const podeAvancar =
-    Boolean(modalidade) && Boolean(clienteId) && diValida && containerValido;
+  const podeAvancar = Boolean(modalidade) && Boolean(clienteId) && diValida;
 
   const exigidos = useMemo(
     () =>
@@ -275,7 +259,6 @@ export function NovaAverbacaoModal({
       const criado = await criar({
         modalidade: modalidade as Modalidade,
         diDuimp,
-        containers,
         clienteId,
         localOrigem: localOrigem.trim() || undefined,
         recintoDestino: recintoDestino.trim() || undefined,
@@ -333,19 +316,7 @@ export function NovaAverbacaoModal({
                     <button
                       key={valor}
                       type="button"
-                      onClick={() => {
-                        setModalidade(valor);
-                        // Trocar de modalidade troca a regra do campo: um AWB
-                        // digitado antes não é container ISO válido, e deixá-lo
-                        // ali travaria o botão sem dizer por quê. Saindo do
-                        // marítimo sobra o primeiro, que é o que cabe num
-                        // conhecimento.
-                        setContainers((atuais) =>
-                          valor === Modalidade.MARITIMO
-                            ? atuais.map(formatContainer).filter(Boolean)
-                            : atuais.slice(0, 1).map(normalizarContainer),
-                        );
-                      }}
+                      onClick={() => setModalidade(valor)}
                       aria-pressed={ativa}
                       className={cn(
                         'relative rounded-lg border p-4 text-left transition-colors',
@@ -397,33 +368,6 @@ export function NovaAverbacaoModal({
               </div>
 
               <div>
-                <Label htmlFor="container">
-                  {ehMaritimo
-                    ? 'Containers'
-                    : 'Container / Conhecimento de Transporte'}{' '}
-                  <span className="text-destructive">*</span>
-                </Label>
-                {ehMaritimo ? (
-                  <ContainersInput
-                    id="container"
-                    valores={containers}
-                    onChange={setContainers}
-                  />
-                ) : (
-                  <Input
-                    id="container"
-                    value={conhecimento}
-                    onChange={(e) => {
-                      const valor = normalizarContainer(e.target.value);
-                      setContainers(valor ? [valor] : []);
-                    }}
-                    placeholder="ABCD0000000"
-                    className="font-mono uppercase"
-                  />
-                )}
-              </div>
-
-              <div>
                 <Label htmlFor="importador">
                   Razão Social do Importador{' '}
                   <span className="text-destructive">*</span>
@@ -431,11 +375,26 @@ export function NovaAverbacaoModal({
                 {carregandoClientes ? (
                   <p className="mt-2 text-sm text-muted-foreground">Carregando…</p>
                 ) : opcoes.length === 0 ? (
-                  <p className="mt-1 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
-                    Nenhum importador disponível. Só é possível abrir averbação
-                    para quem tem procuração aprovada — envie a procuração em
-                    &quot;Procurações&quot; e aguarde a análise.
-                  </p>
+                  <div className="mt-1 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                    <p>
+                      Nenhum importador disponível. Só é possível abrir averbação
+                      para quem tem procuração aprovada — envie a procuração em
+                      &quot;Procurações&quot; e aguarde a análise.
+                    </p>
+                    {/* Fecha antes de navegar: o Dialog preso aberto deixaria a
+                        outra tela sem rolagem por causa do scroll lock. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fechar();
+                        router.push('/procuracoes');
+                      }}
+                      className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                    >
+                      <FileSignature className="h-3.5 w-3.5" />
+                      Ir para Procurações
+                    </button>
+                  </div>
                 ) : (
                   <select
                     id="importador"

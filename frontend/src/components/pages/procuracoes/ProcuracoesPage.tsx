@@ -17,6 +17,7 @@ import { Badge, Button, Card, CardContent, Spinner } from '@/components/orion/ui
 import { cn } from '@/lib/utils';
 import { procuracoesService } from '@/services/procuracoes.service';
 import { useRepresentados } from '@/hooks/useProcuracoes';
+import { useProcuracoesStream } from '@/hooks/useProcuracoesStream';
 import {
   ClienteRepresentado,
   SITUACAO_LABEL,
@@ -46,9 +47,11 @@ function formatarData(iso: string | null): string | null {
 /** Faltando 30 dias ou menos, a validade vira aviso em vez de dado neutro. */
 function diasAteVencer(iso: string | null): number | null {
   if (!iso) return null;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  return Math.round((new Date(iso).getTime() - hoje.getTime()) / 86400000);
+  // Hoje em meia-noite UTC, como a validade: misturar com a meia-noite local
+  // desloca a conta em horas e arredonda para o dia errado.
+  const agora = new Date();
+  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  return Math.round((new Date(iso).getTime() - hoje) / 86400000);
 }
 
 function Resumo({ itens }: { itens: ClienteRepresentado[] }) {
@@ -151,7 +154,8 @@ function LinhaRepresentado({
             >
               <CalendarDays className="h-3 w-3" />
               {situacao === 'VENCIDA' ? 'Venceu em' : 'Validade:'} {validade}
-              {vencendo && dias !== null && ` · faltam ${dias}d`}
+              {vencendo && dias !== null &&
+                (dias === 0 ? ' · vence hoje' : ` · faltam ${dias}d`)}
             </span>
           )}
         </div>
@@ -209,7 +213,8 @@ function LinhaRepresentado({
 }
 
 export function ProcuracoesPage() {
-  const { data, isLoading } = useRepresentados();
+  const { data, isLoading, isError } = useRepresentados();
+  useProcuracoesStream();
   const [busca, setBusca] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
   const [clienteAlvo, setClienteAlvo] = useState<string | null>(null);
@@ -273,6 +278,14 @@ export function ProcuracoesPage() {
             <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground text-sm">
               <Spinner size="sm" />
               <span>Carregando representados...</span>
+            </div>
+          ) : isError ? (
+            // Sem isto a falha da API aparecia como "nenhum cliente representado".
+            <div className="p-6">
+              <EmptyState
+                title="Não foi possível carregar os representados"
+                description="Tente recarregar a página. Se persistir, avise a equipe Aurora."
+              />
             </div>
           ) : filtrados.length === 0 ? (
             <div className="p-6">

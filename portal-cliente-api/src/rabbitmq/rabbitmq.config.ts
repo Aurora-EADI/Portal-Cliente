@@ -5,6 +5,9 @@ export const RABBITMQ_DEFAULTS = {
   diAverbadaQueue: 'portal-cliente.dis-averbada.created',
   diAverbadaRetryQueue: 'portal-cliente.dis-averbada.created.retry.30s',
   diAverbadaDlq: 'portal-cliente.dis-averbada.created.dlq',
+  diDesaverbadaQueue: 'portal-cliente.dis-averbada.removed',
+  diDesaverbadaRetryQueue: 'portal-cliente.dis-averbada.removed.retry.30s',
+  diDesaverbadaDlq: 'portal-cliente.dis-averbada.removed.dlq',
   retryDelayMs: 30_000,
   maxRetries: 5,
   reconnectInitialMs: 1_000,
@@ -19,6 +22,9 @@ export interface RabbitMqConfig {
   diAverbadaQueue: string;
   diAverbadaRetryQueue: string;
   diAverbadaDlq: string;
+  diDesaverbadaQueue: string;
+  diDesaverbadaRetryQueue: string;
+  diDesaverbadaDlq: string;
   retryDelayMs: number;
   maxRetries: number;
 }
@@ -36,6 +42,9 @@ export const rabbitMqConfig = (): RabbitMqConfig => ({
   diAverbadaQueue: process.env.RABBITMQ_DI_AVERBADA_QUEUE ?? RABBITMQ_DEFAULTS.diAverbadaQueue,
   diAverbadaRetryQueue: process.env.RABBITMQ_DI_AVERBADA_RETRY_QUEUE ?? RABBITMQ_DEFAULTS.diAverbadaRetryQueue,
   diAverbadaDlq: process.env.RABBITMQ_DI_AVERBADA_DLQ ?? RABBITMQ_DEFAULTS.diAverbadaDlq,
+  diDesaverbadaQueue: process.env.RABBITMQ_DI_DESAVERBADA_QUEUE ?? RABBITMQ_DEFAULTS.diDesaverbadaQueue,
+  diDesaverbadaRetryQueue: process.env.RABBITMQ_DI_DESAVERBADA_RETRY_QUEUE ?? RABBITMQ_DEFAULTS.diDesaverbadaRetryQueue,
+  diDesaverbadaDlq: process.env.RABBITMQ_DI_DESAVERBADA_DLQ ?? RABBITMQ_DEFAULTS.diDesaverbadaDlq,
   retryDelayMs: positiveInt(process.env.RABBITMQ_RETRY_DELAY_MS, RABBITMQ_DEFAULTS.retryDelayMs),
   maxRetries: positiveInt(process.env.RABBITMQ_MAX_RETRIES, RABBITMQ_DEFAULTS.maxRetries),
 });

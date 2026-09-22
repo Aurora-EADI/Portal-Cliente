@@ -1,4 +1,10 @@
-export function connectEventStream<T>(path: string, onEvent: (data: T) => void): () => void {
+export function connectEventStream<T>(
+  path: string,
+  onEvent: (data: T) => void,
+  // Necessario quando a API esta em outra origem (dev: :3001 -> :5001); sem
+  // isso o cookie httpOnly da sessao nao viaja e o stream volta 401.
+  options?: { withCredentials?: boolean },
+): () => void {
   let source: EventSource | null = null;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
@@ -9,7 +15,9 @@ export function connectEventStream<T>(path: string, onEvent: (data: T) => void):
   };
   const connect = () => {
     if (stopped) return;
-    source = new EventSource(path);
+    source = options?.withCredentials
+      ? new EventSource(path, { withCredentials: true })
+      : new EventSource(path);
     source.onmessage = event => {
       try {
         const data = JSON.parse(event.data) as T;

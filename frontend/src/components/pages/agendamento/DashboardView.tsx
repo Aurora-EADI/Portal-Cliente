@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
+import { AVERBACAO_ATIVA } from '@/config/features';
 import { api } from '@/lib/api';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 import { StatusBadge } from './StatusBadge';
@@ -223,14 +224,33 @@ export function DashboardView() {
             </div>
           </div>
         ) : pendingRows.length === 0 && filtered.length === 0 ? (
-          <div className="py-16 text-center space-y-3">
+          <div className="py-16 text-center space-y-3 px-6">
+            {/* Sem DI liberada não há o que agendar: o atalho para o wizard só
+                levava a pessoa a preencher tudo para esbarrar no bloqueio no
+                fim. No lugar dele, o caminho que destrava — o processo. */}
             <p className="text-sm text-zinc-400">Nenhuma DI ou agendamento encontrado.</p>
-            <button
-              onClick={() => router.push('/agendamento?tab=wizard')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ED6A23] hover:underline"
-            >
-              <Plus className="w-3.5 h-3.5" /> {isClienteOuDespachante ? 'Atribuir | Agendar' : 'Criar agendamento'}
-            </button>
+            {isTransportadora ? (
+              <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                As DIs aparecem aqui quando o importador ou o despachante
+                atribui uma carga à sua transportadora.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                  A DI aparece aqui depois que a equipe da Aurora libera o
+                  processo de averbação dela. Enquanto o processo não é
+                  liberado, não há carga para atribuir ou agendar.
+                </p>
+                {AVERBACAO_ATIVA && (
+                  <button
+                    onClick={() => router.push('/averbacao')}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#ED6A23] hover:underline"
+                  >
+                    <FileCheck className="w-3.5 h-3.5" /> Ver meus processos de averbação
+                  </button>
+                )}
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

@@ -13,6 +13,7 @@ import {
   Query,
   Req,
   Res,
+  Sse,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -28,6 +29,7 @@ import { ServiceKeyGuard } from '../common/guards/service-key.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TAMANHO_MAXIMO_BYTES } from '../common/arquivo';
 import { AverbacoesService } from './averbacoes.service';
+import { AverbacoesEventos } from './averbacoes.eventos';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
 import { CancelarAverbacaoDto } from './dto/cancelar-averbacao.dto';
@@ -51,7 +53,25 @@ function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
 @Controller('averbacoes')
 @UseGuards(BetterAuthDomainGuard, RolesGuard)
 export class AverbacoesController {
-  constructor(private readonly service: AverbacoesService) {}
+  constructor(
+    private readonly service: AverbacoesService,
+    private readonly eventos: AverbacoesEventos,
+  ) {}
+
+  /**
+   * Avisa a tela quando um processo do usuário muda de situação — sobretudo a
+   * liberação feita pela equipe Aurora. Leva só id e status: a tela relê a
+   * lista pelo GET, que é a fonte de verdade.
+   */
+  @Sse('stream')
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.ADMIN, UserRole.EMPLOYEE)
+  stream(@Req() req: Request) {
+    const user = req.user as User;
+    return this.eventos.paraUsuario({
+      despachanteId: user.despachanteId,
+      clienteId: user.clienteId,
+    });
+  }
 
   @Get()
   @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.ADMIN, UserRole.EMPLOYEE)

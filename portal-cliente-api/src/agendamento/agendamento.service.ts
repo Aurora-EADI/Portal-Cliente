@@ -118,10 +118,10 @@ export class AgendamentoService {
     const active = await this.prisma.user.findFirst({ where: { transportadoraContaId: transportadora.id, active: true }, select: { id: true } });
     if (active) return { status: 'has_access' as const };
     const pending = await this.prisma.conviteRegistro.findFirst({ where: { tipo: UserRole.TRANSPORTADORA, cnpjTransportadora: transportadora.cnpj, usedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: 'desc' } });
-    if (pending) return { status: 'pending' as const, link: `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${pending.token}` };
+    if (pending) return { status: 'pending' as const, link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${pending.token}` };
     const email = emailOverride?.trim() || transportadora.email;
     const convite = await this.prisma.conviteRegistro.create({ data: { tipo: UserRole.TRANSPORTADORA, nome: transportadora.nome, email, cnpjTransportadora: transportadora.cnpj, codTransp: transportadora.codTransp, expiresAt: new Date(Date.now() + 36500 * 86400000) } });
-    const link = `${process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${convite.token}`;
+    const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/registro?token=${convite.token}`;
     if (email) await this.mail.enviar({ para: [email], assunto: 'Convite — Portal do Cliente Aurora EADI', texto: `Acesse ${link} para concluir seu cadastro.`, html: `<p>Acesse <a href="${link}">${link}</a> para concluir seu cadastro.</p>` });
     return { status: 'created' as const, link, emailSent: Boolean(email) };
   }

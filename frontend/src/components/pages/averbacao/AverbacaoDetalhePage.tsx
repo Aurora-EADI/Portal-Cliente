@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAverbacao } from '@/hooks/useAverbacoes';
+import { useAverbacoesStream } from '@/hooks/useAverbacoesStream';
 import {
   AverbacaoDetalheConteudo,
   CabecalhoProcesso,
@@ -20,6 +21,10 @@ import {
 export function AverbacaoDetalhePage({ id }: { id: string }) {
   const router = useRouter();
   const { data: processo, isLoading, isError } = useAverbacao(id);
+  // Link direto ao processo: a liberação decidida no Aurora chega por SSE e o
+  // detalhe se atualiza sem F5, como na lista. Invalida AVERBACAO_KEYS.all, que
+  // cobre o detail(id) por prefixo.
+  useAverbacoesStream();
 
   if (isLoading) {
     return <p className="p-6 text-sm text-muted-foreground">Carregando…</p>;

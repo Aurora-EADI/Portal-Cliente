@@ -17,6 +17,7 @@ import { MailService } from '../mail/mail.service';
 import { procuracaoDecidida } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { RepresentacaoReplicadaDto } from './dto/replicar-representacoes.dto';
+import { ProcuracoesEventos } from './procuracoes.eventos';
 
 /** Campos seguros para devolver ao usuário externo — sem a key do MinIO. */
 const SELECT_PUBLICO = {
@@ -54,11 +55,16 @@ const SELECT_HISTORICO = {
   orderBy: { criadoEm: 'desc' },
 } as const;
 
-/** Hoje à meia-noite: a procuração vale o dia inteiro do vencimento. */
+/**
+ * Hoje à meia-noite: a procuração vale o dia inteiro do vencimento.
+ *
+ * Meia-noite em UTC, com o dia do calendário local. `validade` é coluna `date`
+ * e o Prisma a entrega como meia-noite UTC; comparar com a meia-noite local
+ * (Manaus, UTC−4) dava a procuração por vencida no próprio dia do vencimento.
+ */
 function inicioDeHoje(): Date {
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 }
 
 /**
@@ -86,6 +92,7 @@ export class ProcuracoesService {
     private readonly prisma: PrismaService,
     private readonly minio: MinioService,
     private readonly mail: MailService,
+    private readonly eventos: ProcuracoesEventos,
   ) {}
 
   /**
@@ -401,12 +408,14 @@ export class ProcuracoesService {
 
     const existente = await this.prisma.procuracao.findUnique({
       where: { despachanteId_clienteId: { despachanteId, clienteId } },
-      select: { id: true, status: true, arquivoKey: true },
+      select: { id: true, status: true, validade: true, arquivoKey: true },
     });
 
-    // Reenviar por cima de uma já aprovada jogaria fora a autorização vigente
+    // Reenviar por cima de uma aprovada e vigente jogaria fora a autorização
     // e pararia as operações em nome desse cliente até uma nova análise.
-    if (existente?.status === ProcuracaoStatus.APROVADA) {
+    // Vencida não: o acesso já está bloqueado pelo prazo, e o novo envio é
+    // justamente a saída — sem isto o despachante ficava preso.
+    if (existente && procuracaoVigente(existente)) {
       throw new ConflictException(
         'Já existe procuração aprovada para este cliente. Peça a revogação à equipe da Aurora antes de enviar outra.',
       );
@@ -454,6 +463,14 @@ export class ProcuracoesService {
       });
 
       return salva;
+    });
+
+    // Outra aba ou outro login do mesmo escritório também vê o envio.
+    this.eventos.emitir({
+      despachanteId,
+      procuracaoId: procuracao.id,
+      clienteId,
+      status: procuracao.status,
     });
 
     // O PDF anterior NÃO é apagado: ele é o anexo da entrada de histórico do
@@ -679,7 +696,7 @@ export class ProcuracoesService {
     motivo: string | null,
     analisadoPor?: string,
   ) {
-    const salva = await this.prisma.$transaction(async (tx) => {
+    const { salva, despachanteId } = await this.prisma.$transaction(async (tx) => {
       const atual = await tx.procuracao.findUniqueOrThrow({
         where: { id },
         select: {
@@ -687,6 +704,7 @@ export class ProcuracoesService {
           arquivoNome: true,
           arquivoTamanho: true,
           validade: true,
+          despachanteId: true,
         },
       });
 
@@ -714,7 +732,15 @@ export class ProcuracoesService {
         },
       });
 
-      return salva;
+      return { salva, despachanteId: atual.despachanteId };
+    });
+
+    // Depois do commit: avisar antes faria a tela recarregar o estado antigo.
+    this.eventos.emitir({
+      despachanteId,
+      procuracaoId: id,
+      clienteId: salva.cliente.id,
+      status,
     });
 
     // Fora da transação e sem await: a decisão já está gravada e o email é

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Column, DataTable, StatusCardConfig, StatusCards } from '@/components/ui/DataTable';
 import { Input } from '@/components/ui/input';
 import { useAverbacoes } from '@/hooks/useAverbacoes';
+import { useAverbacoesStream } from '@/hooks/useAverbacoesStream';
 import {
   AverbacaoProcessoResumo,
   MODALIDADE_LABEL,
@@ -60,6 +61,8 @@ function filtrarPorCard(
 
 export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
   const { data, isLoading, isError } = useAverbacoes();
+  // Liberação decidida no Aurora chega por SSE — a lista se atualiza sem F5.
+  useAverbacoesStream();
 
   const [busca, setBusca] = useState('');
   const [modal, setModal] = useState<Modalidade | 'TODOS'>('TODOS');
