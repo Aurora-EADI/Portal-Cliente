@@ -10,7 +10,7 @@ export class AgendamentoCancelConsumer {
 
   constructor(
     private readonly rabbit: RabbitMqService,
-    private readonly inbox: Pick<AgendamentoCommandInboxService, 'process'>,
+    private readonly inbox: AgendamentoCommandInboxService,
   ) {}
 
   register(): void {
