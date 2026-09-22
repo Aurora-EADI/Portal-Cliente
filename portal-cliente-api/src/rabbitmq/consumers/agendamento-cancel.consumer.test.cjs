@@ -2,8 +2,11 @@ require('reflect-metadata');
 require('ts-node/register');
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { Test } = require('@nestjs/testing');
 
 const { AgendamentoCancelConsumer } = require('./agendamento-cancel.consumer');
+const { RabbitMqService } = require('../rabbitmq.service');
+const { AgendamentoCommandInboxService } = require('./agendamento-command-inbox.service');
 
 const command = {
   eventId: '550e8400-e29b-41d4-a716-446655440000',
@@ -22,6 +25,24 @@ const command = {
 const message = (body = command, headers = {}) => ({
   content: Buffer.from(JSON.stringify(body)),
   properties: { headers },
+});
+
+test('declares concrete runtime DI tokens and resolves through Nest', async () => {
+  const deps = Reflect.getMetadata('design:paramtypes', AgendamentoCancelConsumer);
+
+  assert.equal(deps[0], RabbitMqService);
+  assert.equal(deps[1], AgendamentoCommandInboxService);
+
+  const moduleRef = await Test.createTestingModule({
+    providers: [
+      AgendamentoCancelConsumer,
+      { provide: RabbitMqService, useValue: makeRabbit() },
+      { provide: AgendamentoCommandInboxService, useValue: { process: async () => ({ duplicate: false }) } },
+    ],
+  }).compile();
+
+  assert.ok(moduleRef.get(AgendamentoCancelConsumer));
+  await moduleRef.close();
 });
 
 function makeRabbit() {
