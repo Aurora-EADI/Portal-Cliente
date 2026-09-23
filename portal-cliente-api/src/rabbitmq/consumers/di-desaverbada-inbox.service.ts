@@ -24,6 +24,7 @@ export class DiDesaverbadaInboxService {
             removida: boolean;
             cnpjCliente: string | null;
             codDespachante: string | null;
+            transportadoraContaIds: string[];
           }
       > => {
         try {
@@ -49,8 +50,18 @@ export class DiDesaverbadaInboxService {
             removida: false,
             cnpjCliente: null,
             codDespachante: null,
+            transportadoraContaIds: [],
           };
         }
+
+        // As transportadoras atribuídas também precisam perder a linha, e o
+        // cascade abaixo apaga as atribuições: sem ler aqui, depois do commit
+        // não há mais como saber a quem a DI tinha sido entregue.
+        const atribuicoes = await tx.diTransportadoraAtribuicao.findMany({
+          where: { nLote },
+          select: { transportadoraContaId: true },
+          distinct: ['transportadoraContaId'],
+        });
 
         // Containers e atribuições saem por cascade (onDelete: Cascade).
         await tx.diAverbada.delete({ where: { nLote } });
@@ -60,6 +71,7 @@ export class DiDesaverbadaInboxService {
           removida: true,
           cnpjCliente: row.cnpjCliente,
           codDespachante: row.codDespachante,
+          transportadoraContaIds: atribuicoes.map((a) => a.transportadoraContaId),
         };
       },
     );
@@ -71,6 +83,7 @@ export class DiDesaverbadaInboxService {
         nLote: event.payload.nLote,
         cnpjCliente: resultado.cnpjCliente,
         codDespachante: resultado.codDespachante,
+        transportadoraContaIds: resultado.transportadoraContaIds,
       });
     }
 

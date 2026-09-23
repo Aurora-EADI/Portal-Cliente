@@ -13,6 +13,14 @@ interface DiAverbadaEvento {
   /** Chaves de escopo da DI, para entregar só a quem é dono. */
   cnpjCliente: string | null;
   codDespachante: string | null;
+  /**
+   * Contas de transportadora com atribuição nesta DI. Viaja no evento porque a
+   * remoção apaga as atribuições por cascade: depois do commit não há mais como
+   * descobrir a quem a DI pertencia. DI recém-averbada chega sem atribuição, e
+   * a lista vazia é o que mantém o stream mudo para transportadora até o
+   * importador ou o despachante atribuir a carga.
+   */
+  transportadoraContaIds?: string[];
 }
 
 /** Escopo já resolvido de um assinante do stream. */
@@ -20,6 +28,7 @@ type Escopo =
   | { tipo: 'todos' }
   | { tipo: 'cliente'; cnpjCliente: string }
   | { tipo: 'despachante'; codDespachante: string }
+  | { tipo: 'transportadora'; contaId: string }
   | { tipo: 'nenhum' };
 
 /**
@@ -48,6 +57,7 @@ export class DisAverbadasEventos {
     nLote: string;
     cnpjCliente: string | null;
     codDespachante: string | null;
+    transportadoraContaIds?: string[];
   }): void {
     this.alteracoes.next({ di: null, removida: true, ...evento });
   }
@@ -57,7 +67,9 @@ export class DisAverbadasEventos {
    * a representa. ADMIN/EMPLOYEE veem todas. O escopo é resolvido uma vez, na
    * abertura da conexão, e o stream só começa depois disso.
    */
-  paraUsuario(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>): Observable<MessageEvent> {
+  paraUsuario(
+    user: Pick<User, 'role' | 'clienteId' | 'despachanteId' | 'transportadoraContaId'>,
+  ): Observable<MessageEvent> {
     return from(this.resolverEscopo(user)).pipe(
       switchMap((escopo) => {
         const eventos = this.alteracoes.pipe(
@@ -84,13 +96,15 @@ export class DisAverbadasEventos {
         return e.cnpjCliente === escopo.cnpjCliente;
       case 'despachante':
         return e.codDespachante === escopo.codDespachante;
+      case 'transportadora':
+        return (e.transportadoraContaIds ?? []).includes(escopo.contaId);
       default:
         return false;
     }
   }
 
   private async resolverEscopo(
-    user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>,
+    user: Pick<User, 'role' | 'clienteId' | 'despachanteId' | 'transportadoraContaId'>,
   ): Promise<Escopo> {
     if (user.role === UserRole.ADMIN || user.role === UserRole.EMPLOYEE) {
       return { tipo: 'todos' };
@@ -112,6 +126,9 @@ export class DisAverbadasEventos {
       return despachante
         ? { tipo: 'despachante', codDespachante: despachante.codDespachante }
         : { tipo: 'nenhum' };
+    }
+    if (user.role === UserRole.TRANSPORTADORA && user.transportadoraContaId) {
+      return { tipo: 'transportadora', contaId: user.transportadoraContaId };
     }
     return { tipo: 'nenhum' };
   }

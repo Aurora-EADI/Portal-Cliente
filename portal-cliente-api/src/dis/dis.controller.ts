@@ -15,7 +15,13 @@ export class DisController {
   constructor(private readonly service: DisService) {}
 
   @Get()
-  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.ADMIN, UserRole.EMPLOYEE)
+  @Roles(
+    UserRole.DESPACHANTE,
+    UserRole.CLIENTE,
+    UserRole.TRANSPORTADORA,
+    UserRole.ADMIN,
+    UserRole.EMPLOYEE,
+  )
   findAll(@Req() req: Request) {
     return this.service.findAll(req.user as User);
   }
@@ -43,7 +49,13 @@ export class DisAverbadasStreamController {
   constructor(private readonly eventos: DisAverbadasEventos) {}
 
   @Sse('stream')
-  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE, UserRole.ADMIN, UserRole.EMPLOYEE)
+  @Roles(
+    UserRole.DESPACHANTE,
+    UserRole.CLIENTE,
+    UserRole.TRANSPORTADORA,
+    UserRole.ADMIN,
+    UserRole.EMPLOYEE,
+  )
   stream(@Req() req: Request) {
     return this.eventos.paraUsuario(req.user as User);
   }

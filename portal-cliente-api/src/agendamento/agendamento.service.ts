@@ -155,10 +155,42 @@ export class AgendamentoService {
 
 
   // ---- AGENDAMENTOS ----
-  findAllAgendamentos(clienteId?: string) {
+
+  /**
+   * Recorte de quem enxerga cada agendamento. Sai do usuário autenticado, e não
+   * do `clienteId` da query string: esse é escolhido pelo navegador e serve só
+   * para estreitar a lista de quem já vê tudo.
+   *
+   * `null` = sem recorte (ADMIN/EMPLOYEE). `'nenhum'` = externo sem vínculo,
+   * que não vê agendamento algum.
+   */
+  private async escopoAgendamento(
+    user: UsuarioAgendamento,
+  ): Promise<Prisma.AgendamentoWhereInput | null | 'nenhum'> {
+    if (user.role === UserRole.ADMIN || user.role === UserRole.EMPLOYEE) {
+      return null;
+    }
+    if (user.role === UserRole.CLIENTE) {
+      return user.clienteId ? { clienteId: user.clienteId } : 'nenhum';
+    }
+    if (user.role === UserRole.DESPACHANTE && user.despachanteId) {
+      const permitidos = await this.clientesDoDespachante(user.despachanteId);
+      return permitidos.length ? { clienteId: { in: permitidos } } : 'nenhum';
+    }
+    if (user.role === UserRole.TRANSPORTADORA && user.transportadoraContaId) {
+      return { transportadoraContaId: user.transportadoraContaId };
+    }
+    return 'nenhum';
+  }
+
+  async findAllAgendamentos(user: UsuarioAgendamento, clienteId?: string) {
+    const escopo = await this.escopoAgendamento(user);
+    if (escopo === 'nenhum') return [];
+
     return this.prisma.agendamento.findMany({
       where: {
         status: { in: ACTIVE_STATUSES },
+        ...(escopo ?? {}),
         ...(clienteId ? { di: { clienteId } } : {}),
       },
       include: {

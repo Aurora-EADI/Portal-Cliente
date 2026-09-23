@@ -40,8 +40,22 @@ export class AgendamentoController {
   findTransportadorasConta() { return this.fcl.findTransportadorasConta(); }
 
   // AGENDAMENTOS
+  // O escopo sai do usuário autenticado, no serviço: `clienteId` vem da query
+  // string e só estreita o que o perfil já pode ver — nunca alarga.
   @Get('agendamentos')
-  findAllAgendamentos(@Query('clienteId') clienteId?: string) { return this.fcl.findAllAgendamentos(clienteId); }
+  @Roles(
+    UserRole.ADMIN,
+    UserRole.EMPLOYEE,
+    UserRole.CLIENTE,
+    UserRole.DESPACHANTE,
+    UserRole.TRANSPORTADORA,
+  )
+  findAllAgendamentos(
+    @Req() request: AuthenticatedRequest,
+    @Query('clienteId') clienteId?: string,
+  ) {
+    return this.fcl.findAllAgendamentos(request.user as User, clienteId);
+  }
 
   @Get('agendamentos/historico')
   findHistorico(@Query('clienteId') clienteId?: string) { return this.fcl.findHistorico(clienteId); }
