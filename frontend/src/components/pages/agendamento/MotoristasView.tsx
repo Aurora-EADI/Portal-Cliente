@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, User, Truck, CheckCircle, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-message';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { Motorista, Veiculo } from '@/types/agendamento';
 import { formatCPF, formatPhone, formatPlaca } from '@/lib/agendamento';
@@ -70,20 +71,30 @@ export function MotoristasView() {
     return errors.length === 0;
   };
 
-  const handleSaveDriver = (e: React.FormEvent) => {
+  const handleSaveDriver = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateDriver()) return;
-    handleAddMotorista({ id: `mot-${Date.now()}`, nome: formName.trim(), cpf: formCPF, cnh: formCNH, telefone: formPhone });
-    setFormName(''); setFormCPF(''); setFormCNH(''); setFormPhone(''); setDriverErrors([]);
-    setShowAddDriver(false);
+    try {
+      await handleAddMotorista({ id: `mot-${Date.now()}`, nome: formName.trim(), cpf: formCPF, cnh: formCNH, telefone: formPhone });
+      toast.success('Motorista cadastrado.');
+      setFormName(''); setFormCPF(''); setFormCNH(''); setFormPhone(''); setDriverErrors([]);
+      setShowAddDriver(false);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao cadastrar motorista.'));
+    }
   };
 
-  const handleSaveVehicle = (e: React.FormEvent) => {
+  const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateVehicle()) return;
-    handleAddVeiculo({ id: `veic-${Date.now()}`, placa: formPlaca.toUpperCase().trim(), modelo: formModelo.trim(), tipo: formTipo });
-    setFormPlaca(''); setFormModelo(''); setFormTipo('Cavalo Mecânico'); setVehicleErrors([]);
-    setShowAddVehicle(false);
+    try {
+      await handleAddVeiculo({ id: `veic-${Date.now()}`, placa: formPlaca.toUpperCase().trim(), modelo: formModelo.trim(), tipo: formTipo });
+      toast.success('Veículo cadastrado.');
+      setFormPlaca(''); setFormModelo(''); setFormTipo('Cavalo Mecânico'); setVehicleErrors([]);
+      setShowAddVehicle(false);
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao cadastrar veículo.'));
+    }
   };
 
   const openEditDriver = (d: Motorista) => {
@@ -115,8 +126,8 @@ export function MotoristasView() {
       await handleEditMotorista(editingDriver.id, { nome: editName.trim(), cnh: editCNH, telefone: editPhone });
       toast.success('Motorista atualizado.');
       setEditingDriver(null);
-    } catch {
-      toast.error('Erro ao atualizar motorista.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao atualizar motorista.'));
     }
   };
 
@@ -132,8 +143,8 @@ export function MotoristasView() {
       await handleEditVeiculo(editingVehicle.id, { modelo: editModelo.trim(), tipo: editTipo });
       toast.success('Veículo atualizado.');
       setEditingVehicle(null);
-    } catch {
-      toast.error('Erro ao atualizar veículo.');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Erro ao atualizar veículo.'));
     }
   };
 

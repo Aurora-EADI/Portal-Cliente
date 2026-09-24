@@ -47,8 +47,8 @@ interface AgendamentoContextValue {
   updateJanelaApi: (id: string, data: Partial<JanelaAtendimento>) => Promise<JanelaAtendimento>;
   deleteJanelaApi: (id: string) => Promise<void>;
   saveSelectedJanelaIdToStorage: (id: string) => void;
-  handleAddMotorista: (m: Motorista) => void;
-  handleAddVeiculo: (v: Veiculo) => void;
+  handleAddMotorista: (m: Motorista) => Promise<Motorista>;
+  handleAddVeiculo: (v: Veiculo) => Promise<Veiculo>;
   handleEditMotorista: (id: string, data: Partial<Pick<Motorista, 'nome' | 'cnh' | 'telefone'>>) => Promise<void>;
   handleEditVeiculo: (id: string, data: Partial<Pick<Veiculo, 'modelo' | 'tipo'>>) => Promise<void>;
   handleCancelBooking: (id: string) => void;
@@ -273,28 +273,24 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   const saveSelectedJanelaIdToStorage = (id: string) => setSelectedJanelaId(id);
   const setSelectedClient = (c: string) => storeSetClient(c);
 
+  // Sem fallback local: um cadastro que não chegou ao banco não pode aparecer
+  // na lista como se tivesse sido salvo. O erro sobe para quem chamou.
   const handleAddMotorista = async (m: Motorista) => {
-    try {
-      const { data: saved } = await api.post('/agendamento/motoristas', {
-        nome: m.nome, cpf: m.cpf, cnh: m.cnh, telefone: m.telefone,
-      });
-      const created: Motorista = { id: saved.id, nome: saved.nome, cpf: saved.cpf, cnh: saved.cnh, telefone: saved.telefone };
-      setMotoristas(prev => [created, ...prev.filter(x => x.cpf.replace(/\D/g, '') !== created.cpf.replace(/\D/g, ''))]);
-    } catch {
-      setMotoristas(prev => [m, ...prev]);
-    }
+    const { data: saved } = await api.post('/agendamento/motoristas', {
+      nome: m.nome, cpf: m.cpf, cnh: m.cnh, telefone: m.telefone,
+    });
+    const created: Motorista = { id: saved.id, nome: saved.nome, cpf: saved.cpf, cnh: saved.cnh, telefone: saved.telefone };
+    setMotoristas(prev => [created, ...prev.filter(x => x.cpf.replace(/\D/g, '') !== created.cpf.replace(/\D/g, ''))]);
+    return created;
   };
 
   const handleAddVeiculo = async (v: Veiculo) => {
-    try {
-      const { data: saved } = await api.post('/agendamento/veiculos', {
-        placa: v.placa, modelo: v.modelo, tipo: v.tipo,
-      });
-      const created: Veiculo = { id: saved.id, placa: saved.placa, modelo: saved.modelo, tipo: saved.tipo };
-      setVeiculos(prev => [created, ...prev.filter(x => x.placa.toUpperCase() !== created.placa.toUpperCase())]);
-    } catch {
-      setVeiculos(prev => [v, ...prev]);
-    }
+    const { data: saved } = await api.post('/agendamento/veiculos', {
+      placa: v.placa, modelo: v.modelo, tipo: v.tipo,
+    });
+    const created: Veiculo = { id: saved.id, placa: saved.placa, modelo: saved.modelo, tipo: saved.tipo };
+    setVeiculos(prev => [created, ...prev.filter(x => x.placa.toUpperCase() !== created.placa.toUpperCase())]);
+    return created;
   };
 
   const handleEditMotorista = async (id: string, data: Partial<Pick<Motorista, 'nome' | 'cnh' | 'telefone'>>) => {

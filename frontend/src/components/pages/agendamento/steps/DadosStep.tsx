@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, X, UserPlus, Truck, ChevronLeft, ChevronRight, Clock, Users, CheckCircle2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useAgendamento } from '@/context/AgendamentoContext';
+import { getErrorMessage } from '@/lib/error-message';
 import { useAuthContext } from '@/context/AuthContext';
 import { DI, Motorista, Veiculo } from '@/types/agendamento';
 import { formatCPF, formatPhone, formatPlaca, gerarSlotsDeJanela } from '@/lib/agendamento';
@@ -378,7 +379,7 @@ function ModalMotorista({
   onClose: () => void;
   onSaved: (m: Motorista) => void;
   motoristas: Motorista[];
-  handleAddMotorista: (m: Motorista) => void;
+  handleAddMotorista: (m: Motorista) => Promise<Motorista>;
 }) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
@@ -398,12 +399,15 @@ function ModalMotorista({
     return errs.length === 0;
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     const novo: Motorista = { id: `mot-${Date.now()}`, nome: nome.trim(), cpf, cnh, telefone };
-    handleAddMotorista(novo);
-    onSaved(novo);
+    try {
+      onSaved(await handleAddMotorista(novo));
+    } catch (err: unknown) {
+      setErrors([getErrorMessage(err, 'Não foi possível salvar o motorista. Tente novamente.')]);
+    }
   };
 
   return (
@@ -464,7 +468,7 @@ function ModalVeiculo({
   onClose: () => void;
   onSaved: (v: Veiculo) => void;
   veiculos: Veiculo[];
-  handleAddVeiculo: (v: Veiculo) => void;
+  handleAddVeiculo: (v: Veiculo) => Promise<Veiculo>;
 }) {
   const [placa, setPlaca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -481,12 +485,15 @@ function ModalVeiculo({
     return errs.length === 0;
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     const novo: Veiculo = { id: `veic-${Date.now()}`, placa: placa.toUpperCase().trim(), modelo: modelo.trim(), tipo };
-    handleAddVeiculo(novo);
-    onSaved(novo);
+    try {
+      onSaved(await handleAddVeiculo(novo));
+    } catch (err: unknown) {
+      setErrors([getErrorMessage(err, 'Não foi possível salvar o veículo. Tente novamente.')]);
+    }
   };
 
   return (

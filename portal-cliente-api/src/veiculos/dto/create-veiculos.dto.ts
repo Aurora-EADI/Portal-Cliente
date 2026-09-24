@@ -1,5 +1,18 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class CreateVeiculosDto {
-  // TO DO
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(8)
+  placa!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  modelo!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  tipo!: string;
 }

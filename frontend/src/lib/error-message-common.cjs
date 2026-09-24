@@ -120,6 +120,17 @@ function normalizeAuthError(error) {
   return normalized;
 }
 
+function safeApiMessage(message) {
+  if (typeof message === 'string') {
+    return message.trim() && !containsTechnicalLeak(message) ? message : null;
+  }
+  if (Array.isArray(message)) {
+    const cleanItems = message.filter((m) => typeof m === 'string' && !containsTechnicalLeak(m));
+    return cleanItems.length > 0 ? cleanItems.join(', ') : null;
+  }
+  return null;
+}
+
 function getUserFriendlyError(error, customFallback) {
   if (!error) return customFallback || APP_ERROR_MESSAGES.INTERNAL_ERROR;
 
@@ -128,13 +139,21 @@ function getUserFriendlyError(error, customFallback) {
   const data = response?.data;
   const status = Number(response?.status || err.status || 0);
 
-  // 1. Prioriza código estável da aplicação vindo do backend
+  // 1. Mensagem escrita pela API para este caso (4xx). O GlobalExceptionFilter
+  // já sanitiza: é a instrução específica, e o mapa por código abaixo só a
+  // trocaria por um texto genérico.
+  const apiMessage = safeApiMessage(data?.message);
+  if (apiMessage && status >= 400 && status < 500) {
+    return apiMessage;
+  }
+
+  // 2. Código estável da aplicação, quando a API não trouxe texto próprio
   const appCode = data?.code || err.code;
   if (appCode && APP_ERROR_MESSAGES[appCode]) {
     return APP_ERROR_MESSAGES[appCode];
   }
 
-  // 2. Verifica se é erro de rede / conexão / backend fora do ar
+  // 3. Verifica se é erro de rede / conexão / backend fora do ar
   const rawMessage = String(err.message || '');
   if (
     err.code === 'ECONNREFUSED' ||
@@ -147,25 +166,17 @@ function getUserFriendlyError(error, customFallback) {
     return APP_ERROR_MESSAGES.SERVICE_UNAVAILABLE;
   }
 
-  // 3. Mensagem de validação amigável se vier do backend
-  if (data?.message) {
-    if (typeof data.message === 'string' && !containsTechnicalLeak(data.message)) {
-      return data.message;
-    }
-    if (Array.isArray(data.message) && data.message.length > 0) {
-      const cleanItems = data.message.filter((m) => typeof m === 'string' && !containsTechnicalLeak(m));
-      if (cleanItems.length > 0) {
-        return cleanItems.join(', ');
-      }
-    }
+  // 4. Mensagem segura da API sem status conhecido
+  if (apiMessage && !status) {
+    return apiMessage;
   }
 
-  // 4. Mapeamento por status HTTP
+  // 5. Mapeamento por status HTTP
   if (status && HTTP_STATUS_MESSAGES[status]) {
     return HTTP_STATUS_MESSAGES[status];
   }
 
-  // 5. Avalia erro já normalizado
+  // 6. Avalia erro já normalizado
   if (!containsTechnicalLeak(rawMessage) && rawMessage.trim().length > 0) {
     // Se a mensagem for exatamente um dos fallbacks válidos em pt-BR
     if (Object.values(APP_ERROR_MESSAGES).includes(rawMessage)) {

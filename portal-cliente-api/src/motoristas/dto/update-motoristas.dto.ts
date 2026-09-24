@@ -1,4 +1,5 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateMotoristasDto } from './create-motoristas.dto';
 
-export class UpdateMotoristasDto extends PartialType(CreateMotoristasDto) {}
+// CPF identifica o motorista na conta: não muda na edição.
+export class UpdateMotoristasDto extends PartialType(OmitType(CreateMotoristasDto, ['cpf'] as const)) {}

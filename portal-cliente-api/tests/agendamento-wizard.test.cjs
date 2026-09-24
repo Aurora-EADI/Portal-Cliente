@@ -94,20 +94,18 @@ test('wizard: listas do formulário viram texto na coluna', async () => {
   assert.equal(criado.dta, null);
 });
 
-test('wizard: mesmo motorista no mesmo horário é recusado', async () => {
+test('wizard: mesmo motorista pode ser agendado de novo no mesmo horário', async () => {
   const service = servicoCom(
     prismaFake({
       agendamento: {
         findMany: async () => [{ cpfMotorista: '11122233344' }],
-        create: async () => { throw new Error('Agendou duplicado'); },
+        create: async ({ data }) => ({ id: 'ag-2', ...data }),
       },
     }),
   );
 
-  await assert.rejects(
-    () => service.createAgendamento(CLIENTE, { ...formBase }),
-    /já existe um agendamento para este motorista/i,
-  );
+  const r = await service.createAgendamento(CLIENTE, { ...formBase });
+  assert.equal(r.id, 'ag-2');
 });
 
 test('wizard: transportadora não agenda DI que não lhe foi atribuída', async () => {

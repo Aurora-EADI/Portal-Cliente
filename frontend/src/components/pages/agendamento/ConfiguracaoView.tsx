@@ -8,6 +8,7 @@ import {
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { JanelaAtendimento } from '@/types/agendamento';
 import { gerarSlotsDeJanela } from '@/lib/agendamento';
+import { getErrorMessage } from '@/lib/error-message';
 
 const INTERVALO_OPTIONS = [
   { value: 15, label: '15 min' },
@@ -194,8 +195,8 @@ export function ConfiguracaoView() {
       setEditingId(null);
       setShowForm(false);
       setErrors([]);
-    } catch {
-      setErrors(['Erro ao salvar. Tente novamente.']);
+    } catch (err: unknown) {
+      setErrors([getErrorMessage(err, 'Erro ao salvar. Tente novamente.')]);
     } finally {
       setSaving(false);
     }
@@ -221,8 +222,8 @@ export function ConfiguracaoView() {
       await deleteJanelaApi(id);
       flash('Janela excluída.');
       if (editingId === id) { setEditingId(null); setForm(emptyForm()); setShowForm(false); }
-    } catch {
-      setErrors(['Erro ao excluir.']);
+    } catch (err: unknown) {
+      setErrors([getErrorMessage(err, 'Erro ao excluir.')]);
     } finally {
       setDeletingId(null);
     }

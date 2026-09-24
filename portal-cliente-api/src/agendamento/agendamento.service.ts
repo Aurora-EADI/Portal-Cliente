@@ -388,25 +388,8 @@ export class AgendamentoService {
       transportadoraCnpj, transportadoraEmail,
     } = body ?? {};
 
-    // Mesmo motorista, mesma data e mesmo horário é sempre engano de digitação:
-    // uma pessoa não dirige dois caminhões ao mesmo tempo.
-    if (cpfMotorista && dataAgendamento && inicio) {
-      const cpfLimpo = String(cpfMotorista).replace(/\D/g, '');
-      const mesmoSlot = await this.prisma.agendamento.findMany({
-        where: {
-          data: dataAgendamento,
-          horario: inicio,
-          status: { not: AgendamentoStatus.CANCELADO },
-        },
-        select: { cpfMotorista: true },
-      });
-      if (mesmoSlot.some((b) => b.cpfMotorista?.replace(/\D/g, '') === cpfLimpo)) {
-        throw new ConflictException(
-          'Já existe um agendamento para este motorista nesta data e horário.',
-        );
-      }
-    }
-
+    // O mesmo motorista pode ter mais de um agendamento, inclusive no mesmo
+    // horário (ex.: vários containers retirados na mesma viagem).
     const disInformadas: string[] = (
       Array.isArray(diDeclarada) ? diDeclarada : diDeclarada ? [diDeclarada] : []
     )

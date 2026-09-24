@@ -71,6 +71,31 @@ test('getUserFriendlyError: maps application codes with highest priority', () =>
   );
 });
 
+test('getUserFriendlyError: specific 4xx message from the API wins over the generic code text', () => {
+  const conflito = {
+    response: {
+      status: 409,
+      data: { code: APP_ERROR_CODES.RESOURCE_CONFLICT, message: 'Já existe um motorista com este CPF.' },
+    },
+  };
+  assert.equal(getUserFriendlyError(conflito), 'Já existe um motorista com este CPF.');
+
+  const proibido = {
+    response: {
+      status: 403,
+      data: { code: APP_ERROR_CODES.FORBIDDEN, message: 'DI(s) não atribuída(s) a esta transportadora: 24/0001' },
+    },
+  };
+  assert.equal(getUserFriendlyError(proibido), 'DI(s) não atribuída(s) a esta transportadora: 24/0001');
+});
+
+test('getUserFriendlyError: 5xx never shows the API message', () => {
+  const erro = {
+    response: { status: 500, data: { code: APP_ERROR_CODES.INTERNAL_ERROR, message: 'Falhou ao gravar' } },
+  };
+  assert.equal(getUserFriendlyError(erro), APP_ERROR_MESSAGES.INTERNAL_ERROR);
+});
+
 test('getUserFriendlyError: maps standard HTTP status codes', () => {
   assert.equal(
     getUserFriendlyError({ response: { status: 400 } }),

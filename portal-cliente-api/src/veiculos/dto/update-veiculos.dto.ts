@@ -1,4 +1,5 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateVeiculosDto } from './create-veiculos.dto';
 
-export class UpdateVeiculosDto extends PartialType(CreateVeiculosDto) {}
+// Placa identifica o veículo na conta: não muda na edição.
+export class UpdateVeiculosDto extends PartialType(OmitType(CreateVeiculosDto, ['placa'] as const)) {}

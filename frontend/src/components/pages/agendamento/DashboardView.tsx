@@ -7,6 +7,7 @@ import { useAgendamento } from '@/context/AgendamentoContext';
 import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 import { AVERBACAO_ATIVA } from '@/config/features';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/error-message';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
 import { StatusBadge } from './StatusBadge';
 import { VoucherDocument, downloadVoucherPdf } from './VoucherDocument';
@@ -448,8 +449,8 @@ export function DashboardView() {
                 try {
                   await handleCancelBooking(cancellingBooking.id);
                   setCancellingBooking(null);
-                } catch {
-                  alert('Erro ao cancelar agendamento. Tente novamente.');
+                } catch (err: unknown) {
+                  alert(getErrorMessage(err, 'Erro ao cancelar agendamento. Tente novamente.'));
                 } finally {
                   setIsCancelling(false);
                 }
