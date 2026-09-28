@@ -441,13 +441,20 @@ export class AgendamentoService {
 
       // Atribuição por container específico não libera a DI inteira: só vale o
       // container que foi realmente entregue a esta transportadora.
+      // Sem container informado, o pedido valeria pela DI inteira — então só
+      // passa quem recebeu a DI inteira.
       const containerSolicitado = typeof container === 'string' ? container.trim() : '';
-      if (containerSolicitado) {
-        const atribuidos = disAtribuidas.flatMap((d) =>
-          d.atribuicoes.map((a) => a.container),
-        );
-        const temDiInteira = atribuidos.includes('');
-        if (!temDiInteira && !atribuidos.includes(containerSolicitado)) {
+      const atribuidos = disAtribuidas.flatMap((d) =>
+        d.atribuicoes.map((a) => a.container),
+      );
+      const temDiInteira = atribuidos.includes('');
+      if (!temDiInteira) {
+        if (!containerSolicitado) {
+          throw new BadRequestException(
+            'Informe o container: esta transportadora recebeu apenas containers específicos desta DI.',
+          );
+        }
+        if (!atribuidos.includes(containerSolicitado)) {
           throw new ForbiddenException(
             `Container ${containerSolicitado} não foi atribuído a esta transportadora`,
           );

@@ -3,6 +3,24 @@ import { Prisma, User, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { mapDiAverbadaToDI } from './di-averbada.mapper';
 
+/**
+ * A transportadora só enxerga os containers que lhe foram entregues. Atribuição
+ * com container vazio vale pela DI inteira — mesma regra que o agendamento
+ * aplica ao validar o container solicitado.
+ */
+export function containersAtribuidos(
+  containers: string | null,
+  atribuidos: string[],
+): string | null {
+  if (atribuidos.includes('')) return containers;
+  const permitidos = new Set(atribuidos.map((c) => c.trim()));
+  const visiveis = (containers ?? '')
+    .split('/')
+    .map((c) => c.trim())
+    .filter((c) => c && permitidos.has(c));
+  return visiveis.length ? visiveis.join(' / ') : null;
+}
+
 @Injectable()
 export class DisService {
   constructor(private prisma: PrismaService) {}
@@ -18,6 +36,26 @@ export class DisService {
   ) {
     const escopo = await this.escopo(user);
     if (escopo === 'nenhum') return [];
+
+    if (user.role === UserRole.TRANSPORTADORA && user.transportadoraContaId) {
+      const rows = await this.prisma.diAverbada.findMany({
+        where: escopo,
+        orderBy: { averbadoEm: 'desc' },
+        include: {
+          atribuicoes: {
+            where: { transportadoraContaId: user.transportadoraContaId },
+            select: { container: true },
+          },
+        },
+      });
+      // Sem container visível a DI sai da lista: linha sem container o front
+      // trata como a DI inteira.
+      return rows.flatMap(({ atribuicoes, ...row }) => {
+        const containers = containersAtribuidos(row.containers, atribuicoes.map((a) => a.container));
+        if (containers === null && row.containers) return [];
+        return [mapDiAverbadaToDI({ ...row, containers })];
+      });
+    }
 
     const rows = await this.prisma.diAverbada.findMany({
       where: escopo,

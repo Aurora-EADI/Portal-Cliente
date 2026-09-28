@@ -34,7 +34,8 @@ function prismaFake(overrides = {}) {
 
 function servicoCom(prisma, ativa = false) {
   process.env.AVERBACAO_ATIVA = ativa ? 'true' : 'false';
-  return new AgendamentoService(prisma);
+  const eventos = { emitirCriacao() {}, emitirStatus() {} };
+  return new AgendamentoService(prisma, undefined, undefined, eventos);
 }
 
 const TRANSPORTADORA = { role: 'TRANSPORTADORA', transportadoraContaId: 'tc-1' };
@@ -168,6 +169,27 @@ test('wizard: atribuição por container não libera outro container', async () 
       container: 'ONEU2459171',
     }),
     /não foi atribuído a esta transportadora/,
+  );
+});
+
+test('wizard: atribuição por container exige informar o container', async () => {
+  const service = servicoCom(
+    prismaFake({
+      diAverbada: {
+        findMany: async () => [
+          { documentoSaida: '24/000111-1', nLote: 'L1', cnpjCliente: null, atribuicoes: [{ container: 'CAAU9572120' }] },
+        ],
+      },
+      agendamento: {
+        findMany: async () => [],
+        create: async () => { throw new Error('Agendou a DI inteira'); },
+      },
+    }),
+  );
+
+  await assert.rejects(
+    () => service.createAgendamento(TRANSPORTADORA, { ...formBase, di: ['24/000111-1'] }),
+    /Informe o container/,
   );
 });
 
