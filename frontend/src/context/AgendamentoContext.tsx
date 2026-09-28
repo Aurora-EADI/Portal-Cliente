@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { useAgendamentoWizard } from '@/store/agendamento-wizard.store';
 import { useDisAverbadasStream, type DiAverbadaStreamEvent } from '@/hooks/useDisAverbadasStream';
 import { useAgendamentoStream } from '@/hooks/useAgendamentoStream';
+import { getStatusLabel } from '@/lib/agendamento-status';
 
 interface AgendamentoContextValue {
   isLoadingData: boolean;
@@ -60,12 +61,21 @@ interface AgendamentoContextValue {
 const AgendamentoContext = createContext<AgendamentoContextValue | undefined>(undefined);
 
 const VALID_STATUSES = ['ATIVO','CANCELADO','CHEGOU','NO_SHOW','ON_TIME','ATRASADO','AG_CHEGADA','CONCLUIDO'] as const satisfies readonly AgendamentoStatus[];
-const ACTIVE_BOOKING_STATUSES = new Set(['ATIVO','AG_CHEGADA','CHEGOU','ON_TIME','ATRASADO']);
+
+/** O que o SSE de agendamento entrega. Minimo de proposito: ver agendamento.eventos.ts. */
+type AgendamentoStatusEvent = {
+  id?: string;
+  status?: string;
+  previousStatus?: string | null;
+  aggregateVersion?: number;
+  criado?: boolean;
+};
 
 type ApiRelation = string | { nome?: string | null } | null | undefined;
 type ApiBooking = {
   id?: string;
   status?: string;
+  aggregateVersion?: number;
   diId?: string | null;
   diNumero?: string | null;
   di?: { numeroDI?: string | null; container?: string | null; cliente?: ApiRelation } | null;
@@ -129,6 +139,7 @@ function mapApiBooking(b: ApiBooking): Agendamento {
     horario: b.horario ?? '',
     protocolo: b.protocolo ?? '',
     status,
+    aggregateVersion: b.aggregateVersion,
     observacao: b.observacao ?? undefined,
     criadoEm: b.criadoEm ?? '',
     operacao: b.operacao ?? undefined,
@@ -232,19 +243,57 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  /**
+   * O stream manda o mínimo — id, status e versão — e não o agendamento inteiro:
+   * o relê do backend não inclui a DI, e substituir a linha zeraria DI e
+   * container a cada troca de status. Por isso aqui é merge, não replace.
+   */
   const handleAgendamentoEvent = (payload: unknown) => {
     if (typeof payload !== 'object' || payload === null) return;
-    const event = payload as ApiBooking & { deleted?: boolean };
-    if (event.deleted) {
-      setActiveBookings(prev => prev.filter(b => b.id !== event.id));
+    const event = payload as AgendamentoStatusEvent;
+    if (!event.id) return;
+
+    // Agendamento que acabou de nascer: os quatro campos do evento não montam uma
+    // linha, então busca-se o resto.
+    if (event.criado) {
+      const params = clienteId ? { clienteId } : {};
+      api.get('/agendamento/agendamentos', { params })
+        .then(r => setActiveBookings(r.data.map(mapApiBooking)))
+        .catch(() => {});
       return;
     }
-    const isActive = typeof event.status === 'string' && ACTIVE_BOOKING_STATUSES.has(event.status);
-    if (!isActive) {
-      setActiveBookings(prev => prev.filter(b => b.id !== event.id));
+
+    const status = VALID_STATUSES.find(value => value === event.status);
+    if (!status) return;
+
+    // Decide sobre o estado desta renderização, e não dentro do updater: o
+    // `useAgendamentoStream` guarda sempre o handler mais recente, então
+    // `activeBookings` aqui está atual — e o updater só rodaria depois do retorno,
+    // tarde demais para saber se houve mudança.
+    const atual = activeBookings.find(b => b.id === event.id);
+    // Sem a linha em mão não há o que mesclar: não é do escopo desta tela, ou ainda
+    // não carregou. A próxima carga resolve.
+    if (!atual) return;
+    // Evento atrasado não faz o status voltar atrás.
+    if (
+      typeof event.aggregateVersion === 'number'
+      && typeof atual.aggregateVersion === 'number'
+      && event.aggregateVersion <= atual.aggregateVersion
+    ) {
       return;
     }
-    upsertBooking(mapApiBooking(event));
+    if (atual.status === status) return;
+
+    setActiveBookings(prev => prev.map(b => (
+      b.id === event.id
+        ? { ...b, status, aggregateVersion: event.aggregateVersion ?? b.aggregateVersion }
+        : b
+    )));
+
+    // A linha fica visível com o status novo até a próxima carga, inclusive quando
+    // é cancelado ou no-show — aí a listagem já a devolve no histórico. Ver a
+    // mudança acontecer é o ponto; desaparecer em silêncio não explica nada.
+    toast.info(`Agendamento agora está ${getStatusLabel(status)}`);
   };
 
   useAgendamentoStream(!!currentUser, handleAgendamentoEvent);

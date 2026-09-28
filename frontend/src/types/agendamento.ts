@@ -82,6 +82,8 @@ export interface Agendamento {
   horario: string;
   protocolo: string;
   status: AgendamentoStatus;
+  /** Versao do agregado, para descartar evento de stream fora de ordem. */
+  aggregateVersion?: number;
   observacao?: string;
   criadoEm: string;
   operacao?: string;

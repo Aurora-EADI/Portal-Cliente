@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { AgendamentoStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../rabbitmq/publishers/outbox.service';
+import { transicaoPermitida, transicoesPermitidas } from './agendamento-status.catalog';
 
 export type AgendamentoStatusChangeInput = {
   agendamentoId: string;
@@ -22,6 +23,28 @@ export type AgendamentoStatusChange = {
 
 export class AggregateVersionRetryError extends Error {
   readonly code = 'AGGREGATE_VERSION_RETRY';
+}
+
+/**
+ * Transicao fora da maquina de estados. Existe como erro de dominio, e nao como
+ * validacao de rota, porque tres caminhos escrevem neste campo: a rota de
+ * servico do Aurora, o cancelar do proprio cliente e o consumer do comando.
+ * Guarda em um deles deixaria buraco nos outros dois.
+ */
+export class TransicaoInvalidaError extends Error {
+  readonly code = 'TRANSICAO_INVALIDA';
+
+  constructor(
+    readonly de: AgendamentoStatus,
+    readonly para: AgendamentoStatus,
+    readonly permitidas: readonly AgendamentoStatus[],
+  ) {
+    super(
+      permitidas.length
+        ? `Nao e possivel mudar de ${de} para ${para}; a partir de ${de} so cabe: ${permitidas.join(', ')}`
+        : `${de} e um status final; o agendamento nao muda mais`,
+    );
+  }
 }
 
 export class ExpectedAggregateVersionMismatchError extends Error {
@@ -77,6 +100,19 @@ export class AgendamentoStatusService {
       && existing.aggregateVersion !== input.expectedAggregateVersion
     ) {
       throw new ExpectedAggregateVersionMismatchError(existing.aggregateVersion, existing.status);
+    }
+
+    // Mesmo status nao e transicao: cai no atalho abaixo e volta como sucesso
+    // silencioso, sem historico e sem evento.
+    if (
+      existing.status !== input.nextStatus
+      && !transicaoPermitida(existing.status, input.nextStatus)
+    ) {
+      throw new TransicaoInvalidaError(
+        existing.status,
+        input.nextStatus,
+        transicoesPermitidas(existing.status),
+      );
     }
 
     if (existing.status === input.nextStatus) {

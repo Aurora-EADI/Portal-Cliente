@@ -12,8 +12,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { MailService } from '../mail/mail.service';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { AgendamentoStatusService } from './agendamento-status.service';
-
-const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO];
+import { STATUS_ARQUIVADOS, STATUS_EM_ANDAMENTO } from './agendamento-status.catalog';
+import { AgendamentoEventos } from './agendamento.eventos';
 
 /**
  * O que a criação de agendamento precisa saber de quem está agendando. É um
@@ -53,6 +53,7 @@ export class AgendamentoService {
     private prisma: PrismaService,
     private readonly mail: MailService,
     private readonly agendamentoStatus: AgendamentoStatusService,
+    private readonly eventos: AgendamentoEventos,
   ) {}
 
   async findAtribuicoes(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, nLote?: string) {
@@ -189,7 +190,7 @@ export class AgendamentoService {
 
     return this.prisma.agendamento.findMany({
       where: {
-        status: { in: ACTIVE_STATUSES },
+        status: { in: [...STATUS_EM_ANDAMENTO] },
         ...(escopo ?? {}),
         ...(clienteId ? { di: { clienteId } } : {}),
       },
@@ -205,7 +206,7 @@ export class AgendamentoService {
   findHistorico(clienteId?: string) {
     return this.prisma.agendamento.findMany({
       where: {
-        status: AgendamentoStatus.CANCELADO,
+        status: { in: [...STATUS_ARQUIVADOS] },
         ...(clienteId ? { di: { clienteId } } : {}),
       },
       include: {
@@ -336,6 +337,7 @@ export class AgendamentoService {
 
     await this.prisma.slotReserva.deleteMany({ where: { diId: data.diId } });
 
+    this.eventos.emitirCriacao(agendamento);
     return agendamento;
   }
 
@@ -617,6 +619,7 @@ export class AgendamentoService {
       },
     });
 
+    this.eventos.emitirCriacao(agendamento);
     return { ...agendamento, transportadoraConvite };
   }
 
@@ -627,6 +630,15 @@ export class AgendamentoService {
       operadorId,
       correlationId: null,
     });
+    // Depois do commit. O cancelamento sai do painel e vai para o histórico, e é
+    // justamente por isso que a tela precisa ser avisada.
+    if (result.changed) {
+      this.eventos.emitirStatus(
+        result.agendamento as Parameters<AgendamentoEventos['emitirStatus']>[0],
+        result.previousStatus,
+        result.aggregateVersion,
+      );
+    }
     return result.agendamento;
   }
 
@@ -663,7 +675,10 @@ export class AgendamentoService {
   private async contarOcupacao(data: string, horario: string): Promise<number> {
     const now = new Date();
     const [bookings, holds] = await Promise.all([
-      this.prisma.agendamento.count({ where: { data, horario, status: { in: ACTIVE_STATUSES } } }),
+      // Quem chegou ou já saiu consumiu a vaga daquele horário do mesmo jeito; só
+      // cancelado e no-show a devolvem. Antes a lista era apenas [ATIVO], então
+      // marcar chegada liberava o slot para um segundo caminhão no mesmo horário.
+      this.prisma.agendamento.count({ where: { data, horario, status: { in: [...STATUS_EM_ANDAMENTO] } } }),
       this.prisma.slotReserva.count({ where: { data, horario, expiraEm: { gt: now } } }),
     ]);
     return bookings + holds;

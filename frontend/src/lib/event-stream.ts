@@ -18,6 +18,10 @@ export function connectEventStream<T>(
     source = options?.withCredentials
       ? new EventSource(path, { withCredentials: true })
       : new EventSource(path);
+    // Conexao de pe zera o contador. So o onmessage nao basta: o heartbeat do
+    // servidor e um evento nomeado (ping) e nao passa por la, logo um stream
+    // silencioso nunca recuperaria as cinco tentativas e morreria de vez.
+    source.onopen = () => { retries = 0; };
     source.onmessage = event => {
       try {
         const data = JSON.parse(event.data) as T;

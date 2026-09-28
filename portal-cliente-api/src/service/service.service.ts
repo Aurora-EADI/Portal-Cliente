@@ -1,12 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { AgendamentoStatus, UserRole } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
-import { AgendamentoStatusService } from '../agendamento/agendamento-status.service';
+import {
+  AgendamentoStatusService,
+  ExpectedAggregateVersionMismatchError,
+  TransicaoInvalidaError,
+} from '../agendamento/agendamento-status.service';
+import { AgendamentoEventos } from '../agendamento/agendamento.eventos';
 import { ListAgendamentosDto } from './dto/list-agendamentos.dto';
+import { UpdateAgendamentoStatusDto } from './dto/update-agendamento-status.dto';
+import { ALL_STATUSES } from '../agendamento/agendamento-status.catalog';
 
-const ACTIVE_STATUSES = [AgendamentoStatus.ATIVO, AgendamentoStatus.AG_CHEGADA, AgendamentoStatus.CHEGOU, AgendamentoStatus.ON_TIME, AgendamentoStatus.ATRASADO, AgendamentoStatus.CONCLUIDO];
+// O dashboard do Aurora e a unica tela onde o operador confirma o que acabou de
+// fazer, entao CANCELADO e NO_SHOW entram aqui tambem: sem eles a linha evapora
+// da lista no instante da mudanca. O recorte de excludeConcluido=1 segue valendo
+// para quem pergunta quais DIs ainda estao comprometidas.
+const ACTIVE_STATUSES = [...ALL_STATUSES];
 
 @Injectable()
 export class ServiceIntegrationService {
@@ -14,6 +25,7 @@ export class ServiceIntegrationService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly agendamentoStatus: AgendamentoStatusService,
+    private readonly eventos: AgendamentoEventos,
   ) {}
 
   async listAgendamentos(query: ListAgendamentosDto) {
@@ -83,18 +95,70 @@ export class ServiceIntegrationService {
     let veiculo = await this.prisma.veiculo.findFirst({ where: { clienteId: cliente.id, placa: { contains: placa, mode: 'insensitive' } } });
     if (!veiculo) veiculo = await this.prisma.veiculo.create({ data: { clienteId: cliente.id, placa, modelo: body.tipoVeiculo || placa, tipo: body.tipoVeiculo || 'CAMINHAO' } });
     const agendamento = await this.prisma.agendamento.create({ data: { protocolo: `RET-${Date.now().toString(36).toUpperCase()}`, status: AgendamentoStatus.ATIVO, data: body.data, horario: body.horario, clienteId: cliente.id, motoristaId: motorista.id, veiculoId: veiculo.id, operacao: body.operacao, subOperacao: body.subOperacao || null, cargaEspecial: body.cargaEspecial ?? false, servicos: Array.isArray(body.servicos) ? body.servicos : [], tipoVeiculo: body.tipoVeiculo || null, cpfMotorista: body.cpfMotorista || null, nomeMotorista: body.nomeMotorista || null, placaVeiculo: placa, transportadora: body.transportadora || null, empresa: body.empresa, diNumero: body.diNumero || null, container: body.container || null, dta: body.dta || null, volumes: body.volumes || null, peso: body.peso || null, consignatario: body.consignatario || null, observacao: body.observacao || null, criadoPorNome: body.criadoPorNome || null, criadoPorRole: 'AURORA_EMPLOYEE', cnpjCliente: body.cnpjCliente || null, enderecoCliente: body.enderecoCliente || null, telefoneCliente: body.telefoneCliente || null, emailCliente: body.emailCliente || null, cnpjTransportadora: body.cnpjTransportadora || null, enderecoTransportadora: body.enderecoTransportadora || null, telefoneTransportadora: body.telefoneTransportadora || null, emailTransportadora: body.emailTransportadora || null }, include: { motorista: true, veiculo: true, cliente: { select: { id: true, nome: true } } } });
+    // Retirada criada pelo Aurora: avisa as telas dos roles externos, senão o
+    // agendamento só aparece no F5 seguinte.
+    this.eventos.emitirCriacao(agendamento);
     return { protocolo: agendamento.protocolo, id: agendamento.id, agendamento };
   }
 
-  async updateAgendamentoStatus(id: string, status: string, operadorId: string | null = null) {
-    if (!Object.values(AgendamentoStatus).includes(status as AgendamentoStatus)) throw new BadRequestException('Status inválido');
-    const result = await this.agendamentoStatus.changeStatus({
-      agendamentoId: id,
-      nextStatus: status as AgendamentoStatus,
-      operadorId,
-      correlationId: null,
-    });
-    return result.agendamento;
+  /**
+   * Único caminho de escrita de status vindo do Aurora. A máquina de transições e
+   * o optimistic locking ficam dentro da transação, em `AgendamentoStatusService`;
+   * aqui só se traduz a recusa para HTTP, porque o operador do outro lado precisa
+   * distinguir "transição inválida" de "alguém mudou antes de você" — os dois
+   * viravam 500 antes.
+   */
+  async updateAgendamentoStatus(id: string, dto: UpdateAgendamentoStatusDto) {
+    try {
+      const result = await this.agendamentoStatus.changeStatus({
+        agendamentoId: id,
+        nextStatus: dto.status,
+        operadorId: dto.operadorId ?? null,
+        correlationId: null,
+        expectedAggregateVersion: dto.expectedAggregateVersion,
+      });
+
+      const agendamento = result.agendamento as {
+        id: string;
+        status: AgendamentoStatus;
+        clienteId: string | null;
+        transportadoraContaId: string | null;
+      };
+
+      // Depois do commit: `changeStatus` embrulha a transação e só retorna daqui
+      // com ela fechada. `changed: false` é o mesmo status de novo — nada mudou,
+      // nada a anunciar.
+      if (result.changed) {
+        this.eventos.emitirStatus(agendamento, result.previousStatus, result.aggregateVersion);
+      }
+
+      return {
+        id: agendamento.id,
+        status: agendamento.status,
+        previousStatus: result.previousStatus,
+        aggregateVersion: result.aggregateVersion,
+        changed: result.changed,
+      };
+    } catch (error) {
+      if (error instanceof TransicaoInvalidaError) {
+        throw new ConflictException({
+          code: error.code,
+          message: error.message,
+          de: error.de,
+          para: error.para,
+          permitidas: error.permitidas,
+        });
+      }
+      if (error instanceof ExpectedAggregateVersionMismatchError) {
+        throw new ConflictException({
+          code: error.code,
+          message: 'O agendamento mudou desde que a tela carregou; recarregue e tente de novo',
+          currentAggregateVersion: error.currentAggregateVersion,
+          currentStatus: error.currentStatus,
+        });
+      }
+      throw error;
+    }
   }
   listWhatsappAssignments() { return this.prisma.diTransportadoraAtribuicao.findMany({ where: { whatsappNotificadoEm: null, transportadora: { whatsapp: { not: null } } }, include: { transportadora: { select: { nome: true, whatsapp: true } }, diAverbada: { select: { documentoSaida: true, cliente: true } } }, orderBy: { atribuidoEm: 'asc' }, take: 100 }).then((rows) => ({ data: rows.map((a) => ({ id: a.id, nLote: a.nLote, documentoSaida: a.diAverbada?.documentoSaida ?? null, cliente: a.diAverbada?.cliente ?? null, transportadora: a.transportadora.nome, whatsapp: a.transportadora.whatsapp, atribuidoEm: a.atribuidoEm })), total: rows.length })); }
   listWhatsappBookings() { return this.prisma.agendamento.findMany({ where: { notificarWhatsapp: true, whatsappNotificadoEm: null, whatsapp: { not: null } }, select: { id: true, protocolo: true, data: true, horario: true, operacao: true, placaVeiculo: true, transportadora: true, whatsapp: true, nomeMotorista: true, diNumero: true, container: true, empresa: true }, orderBy: { criadoEm: 'asc' }, take: 100 }).then((data) => ({ data, total: data.length })); }

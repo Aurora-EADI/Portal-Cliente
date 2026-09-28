@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } f
 import { ServiceKeyGuard } from '../common/guards/service-key.guard';
 import { ServiceIntegrationService } from './service.service';
 import { ListAgendamentosDto } from './dto/list-agendamentos.dto';
+import { UpdateAgendamentoStatusDto } from './dto/update-agendamento-status.dto';
 
 @Controller('service')
 @UseGuards(ServiceKeyGuard)
@@ -9,6 +10,7 @@ export class ServiceIntegrationController {
   constructor(private readonly service: ServiceIntegrationService) {}
   @Get('agendamentos') listAgendamentos(@Query() q: ListAgendamentosDto) { return this.service.listAgendamentos(q); }
   @Post('agendamentos') createAgendamento(@Body() b: any) { return this.service.createAgendamento(b); }
+  @Patch('agendamentos/:id/status') updateAgendamentoStatus(@Param('id') id: string, @Body() b: UpdateAgendamentoStatusDto) { return this.service.updateAgendamentoStatus(id, b); }
   @Get('atribuicoes-pendentes-whatsapp') assignments() { return this.service.listWhatsappAssignments(); }
   @Patch('atribuicoes-pendentes-whatsapp/:id') assignmentDone(@Param('id') id: string) { return this.service.setAssignmentWhatsapp(id); }
   @Get('whatsapp-pendentes') bookings() { return this.service.listWhatsappBookings(); }
