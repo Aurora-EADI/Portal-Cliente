@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MinioModule } from '../minio/minio.module';
 import { MailModule } from '../mail/mail.module';
@@ -11,7 +11,7 @@ import { AverbacoesService } from './averbacoes.service';
 import { AverbacoesEventos } from './averbacoes.eventos';
 
 @Module({
-  imports: [PrismaModule, MinioModule, MailModule, RabbitMqModule],
+  imports: [PrismaModule, MinioModule, MailModule, forwardRef(() => RabbitMqModule)],
   controllers: [AverbacoesController, AverbacoesServiceController],
   providers: [AverbacoesService, AverbacoesEventos],
   exports: [AverbacoesService],

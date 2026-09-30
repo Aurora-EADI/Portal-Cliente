@@ -2,13 +2,15 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
+import { Plus, Calendar, CheckCircle, Clock, XCircle, Loader2, Printer, Download, Trash2, AlertTriangle, Truck, FileSignature, FileCheck } from 'lucide-react';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { MENSAGEM_AVERBACAO, MENSAGEM_PROCURACAO } from '@/lib/bloqueio-mensagens';
 import { AVERBACAO_ATIVA } from '@/config/features';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/error-message';
 import { AdminAgendamentoDashboard } from './AdminFCLDashboard';
+import { SearchBar } from '@/components/orion/blocks';
+import { FiltroSelect } from '@/components/pages/shared/FiltroSelect';
 import { StatusBadge } from './StatusBadge';
 import { VoucherDocument, downloadVoucherPdf } from './VoucherDocument';
 import { Agendamento } from '@/types/agendamento';
@@ -66,11 +68,15 @@ function VoucherModal({ booking, onClose }: { booking: Agendamento; onClose: () 
   );
 }
 
+/** Valor do "Todos" no filtro de cliente — não colide com nome de cliente. */
+const TODOS_CLIENTES = '__TODOS__';
+
 export function DashboardView() {
   const router = useRouter();
   const { visibleBookings, visibleDis, selectedClient, isAdmin, isDespachante, isTransportadora, isLoadingData, handleCancelBooking } = useAgendamento();
   const isClienteOuDespachante = isDespachante || (!isAdmin && !isTransportadora);
   const [busca, setBusca] = useState('');
+  const [clienteFiltro, setClienteFiltro] = useState<string>(TODOS_CLIENTES);
   const [viewingBooking, setViewingBooking] = useState<Agendamento | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<Agendamento | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -87,12 +93,44 @@ export function DashboardView() {
       .catch(() => {});
   }, [isAdmin, isTransportadora]);
 
+  // Clientes presentes nas DIs e nos agendamentos visíveis, com quantos itens
+  // cada um tem. Vem dos próprios dados: não oferece cliente que levaria a uma
+  // tabela vazia. Mesmo padrão do filtro da tela de Averbação.
+  const clientes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    const somar = (nome?: string | null) => {
+      if (!nome) return;
+      mapa.set(nome, (mapa.get(nome) ?? 0) + 1);
+    };
+    visibleDis.forEach(d => { if (d.status === 'liberada') somar(d.cliente); });
+    visibleBookings.forEach(b => somar(b.diCliente));
+    return [...mapa.entries()]
+      .map(([nome, qtd]) => ({ nome, qtd }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [visibleDis, visibleBookings]);
+
+  // Cliente escolhido que sumiu dos dados volta para "Todos" sozinho.
+  const clienteAtivo =
+    clienteFiltro !== TODOS_CLIENTES && clientes.some(c => c.nome === clienteFiltro)
+      ? clienteFiltro
+      : TODOS_CLIENTES;
+
+  const disDoCliente = useMemo(
+    () => clienteAtivo === TODOS_CLIENTES ? visibleDis : visibleDis.filter(d => d.cliente === clienteAtivo),
+    [visibleDis, clienteAtivo],
+  );
+  const bookingsDoCliente = useMemo(
+    () => clienteAtivo === TODOS_CLIENTES ? visibleBookings : visibleBookings.filter(b => b.diCliente === clienteAtivo),
+    [visibleBookings, clienteAtivo],
+  );
+
+  // Os cards contam dentro do cliente escolhido, senão não batem com a tabela.
   const stats = useMemo(() => ({
-    total:     visibleBookings.length,
-    chegou:    visibleBookings.filter(b => b.status === 'CHEGOU').length,
-    agChegada: visibleBookings.filter(b => b.status === 'AG_CHEGADA' || b.status === 'ATIVO').length,
-    noShow:    visibleBookings.filter(b => b.status === 'NO_SHOW').length,
-  }), [visibleBookings]);
+    total:     bookingsDoCliente.length,
+    chegou:    bookingsDoCliente.filter(b => b.status === 'CHEGOU').length,
+    agChegada: bookingsDoCliente.filter(b => b.status === 'AG_CHEGADA' || b.status === 'ATIVO').length,
+    noShow:    bookingsDoCliente.filter(b => b.status === 'NO_SHOW').length,
+  }), [bookingsDoCliente]);
 
   const bookedKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -116,7 +154,7 @@ export function DashboardView() {
 
   const pendingRows = useMemo(() => {
     const rows: { di: typeof visibleDis[0]; container: string; key: string }[] = [];
-    visibleDis.forEach(d => {
+    disDoCliente.forEach(d => {
       if (d.status !== 'liberada') return;
       const containers = d.container ? d.container.split('/').map(c => c.trim()).filter(Boolean) : [''];
       containers.forEach(ctnr => {
@@ -127,12 +165,12 @@ export function DashboardView() {
       });
     });
     return rows.sort((a, b) => (a.di.cliente || '').localeCompare(b.di.cliente || ''));
-  }, [visibleDis, bookedKeys]);
+  }, [disDoCliente, bookedKeys]);
 
   const filtered = useMemo(() => {
     const q = busca.toLowerCase().trim();
-    if (!q) return [...visibleBookings].sort((a, b) => b.data.localeCompare(a.data));
-    return visibleBookings
+    if (!q) return [...bookingsDoCliente].sort((a, b) => b.data.localeCompare(a.data));
+    return bookingsDoCliente
       .filter(b =>
         b.motorista?.nome?.toLowerCase().includes(q) ||
         b.veiculo?.placa?.toLowerCase().includes(q) ||
@@ -142,7 +180,7 @@ export function DashboardView() {
         b.container?.toLowerCase().includes(q)
       )
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [visibleBookings, busca]);
+  }, [bookingsDoCliente, busca]);
 
   if (isAdmin) return <AdminAgendamentoDashboard />;
 
@@ -163,7 +201,7 @@ export function DashboardView() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="dashboard-indicadores" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-zinc-200 rounded-xl p-5 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-xs text-zinc-500 mb-1">Total</p>
@@ -195,8 +233,10 @@ export function DashboardView() {
       </div>
 
       {/* Tabela unificada — DIs disponíveis + Agendamentos */}
-      <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100">
+      <div data-tour="dashboard-tabela" className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
+        {/* Título em cima, filtros na linha de baixo — mesmo arranjo da tela
+            de Averbação. */}
+        <div className="flex flex-col gap-3 px-5 py-4 border-b border-zinc-100">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-zinc-800">Minhas DIs e Agendamentos</h3>
             {pendingRows.length > 0 && (
@@ -205,15 +245,32 @@ export function DashboardView() {
               </span>
             )}
           </div>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar por DI, container, motorista, placa..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs border border-zinc-200 rounded-lg bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-sky-500 transition-shadow w-full sm:w-72"
+          <div className="flex flex-wrap items-center gap-2">
+          {/* Só com mais de um cliente: o login de CLIENTE vê apenas os seus. */}
+          {clientes.length > 1 && (
+            <FiltroSelect
+              value={clienteAtivo}
+              onChange={setClienteFiltro}
+              ariaLabel="Filtrar por cliente"
+              className="w-64"
+              opcoes={[
+                {
+                  value: TODOS_CLIENTES,
+                  label: `Cliente: Todos (${clientes.reduce((s, c) => s + c.qtd, 0)})`,
+                },
+                ...clientes.map(c => ({ value: c.nome, label: `${c.nome} (${c.qtd})` })),
+              ]}
             />
+          )}
+          {/* data-tour fica no wrapper: o SearchBar do Orion não repassa
+              atributos extras, e o tour de ajuda aponta para este passo. */}
+          <div data-tour="dashboard-busca" className="w-full sm:w-72">
+            <SearchBar
+              value={busca}
+              onChange={setBusca}
+              placeholder="Buscar por DI, container, motorista, placa..."
+            />
+          </div>
           </div>
         </div>
 
@@ -297,7 +354,7 @@ export function DashboardView() {
                         </div>
                       </td>
                     )}
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td data-tour="dashboard-status" className="px-4 py-3 whitespace-nowrap">
                       {atribuicoes.length > 0 ? (
                         <span title={`Container atribuído a: ${atribuicoes.map(a => a.transportadora.nome).join(', ')}`} className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full bg-sky-100 text-sky-700 border border-sky-300">
                           <Truck className="w-3 h-3" />
@@ -324,7 +381,7 @@ export function DashboardView() {
                     <td className="px-4 py-3 text-zinc-400">—</td>
                     <td className="px-4 py-3 text-zinc-400">—</td>
                     <td className="px-4 py-3 text-zinc-400">—</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <td data-tour="dashboard-acao" className="px-4 py-3 whitespace-nowrap text-center">
                       {bloqueadoPorProcuracao ? (
                         <button
                           onClick={() => router.push('/procuracoes')}
@@ -389,7 +446,7 @@ export function DashboardView() {
                         <span className="text-zinc-400 text-[11px]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <td data-tour="dashboard-comprovante" className="px-4 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => setViewingBooking(bk)}

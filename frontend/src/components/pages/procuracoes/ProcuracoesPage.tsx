@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
   Ban,
@@ -213,11 +214,22 @@ function LinhaRepresentado({
 }
 
 export function ProcuracoesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data, isLoading, isError } = useRepresentados();
   useProcuracoesStream();
   const [busca, setBusca] = useState('');
-  const [modalAberto, setModalAberto] = useState(false);
-  const [clienteAlvo, setClienteAlvo] = useState<string | null>(null);
+
+  const modalParam =
+    searchParams.get('anexar') === 'true' ||
+    searchParams.get('modal') === 'anexar';
+  const clienteParam = searchParams.get('clienteId');
+
+  const [modalAbertoState, setModalAbertoState] = useState(false);
+  const [clienteAlvoState, setClienteAlvoState] = useState<string | null>(null);
+
+  const modalAberto = modalParam || modalAbertoState;
+  const clienteAlvo = clienteParam ?? clienteAlvoState;
 
   const itens = useMemo(() => data ?? [], [data]);
 
@@ -234,8 +246,29 @@ export function ProcuracoesPage() {
   const liberados = itens.filter((i) => i.vigente).length;
 
   const abrirModal = (clienteId?: string) => {
-    setClienteAlvo(clienteId ?? null);
-    setModalAberto(true);
+    setClienteAlvoState(clienteId ?? null);
+    setModalAbertoState(true);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('modal', 'anexar');
+    if (clienteId) {
+      params.set('clienteId', clienteId);
+    } else {
+      params.delete('clienteId');
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
+  const fecharModal = () => {
+    setModalAbertoState(false);
+    setClienteAlvoState(null);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('modal');
+    params.delete('anexar');
+    params.delete('clienteId');
+    const query = params.toString();
+    router.replace(query ? `?${query}` : '/procuracoes', { scroll: false });
   };
 
   return (
@@ -318,10 +351,7 @@ export function ProcuracoesPage() {
 
       <AnexarProcuracaoModal
         aberto={modalAberto}
-        onClose={() => {
-          setModalAberto(false);
-          setClienteAlvo(null);
-        }}
+        onClose={fecharModal}
         representados={itens}
         clienteInicial={clienteAlvo}
       />

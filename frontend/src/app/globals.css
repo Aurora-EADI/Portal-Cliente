@@ -124,3 +124,42 @@ html, body {
     background: white !important;
   }
 }
+/* Tour de ajuda (Driver.js): balão no visual do portal. */
+.driver-popover.portal-tour {
+  border-radius: calc(var(--radius) + 4px);
+  padding: 18px 20px 14px;
+  max-width: 340px;
+  color: hsl(var(--foreground));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
+.driver-popover.portal-tour .driver-popover-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+.driver-popover.portal-tour .driver-popover-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+.driver-popover.portal-tour .driver-popover-progress-text {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+.driver-popover.portal-tour .driver-popover-footer button {
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: none;
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  border: 1px solid hsl(var(--border));
+  background: #fff;
+  color: #3f3f46;
+}
+.driver-popover.portal-tour .driver-popover-footer .driver-popover-next-btn {
+  background: #ed6a23;
+  border-color: #ed6a23;
+  color: #fff;
+}
+.driver-popover.portal-tour .driver-popover-footer .driver-popover-next-btn:hover {
+  background: #d45917;
+}

@@ -1,5 +1,8 @@
 import { Injectable, MessageEvent } from '@nestjs/common';
-import { AverbacaoProcessoStatus } from '@prisma/client';
+import {
+  AverbacaoDocumentoStatus,
+  AverbacaoProcessoStatus,
+} from '@prisma/client';
 import { Observable, Subject, filter, interval, map, merge } from 'rxjs';
 
 export interface AverbacaoAlterada {
@@ -8,6 +11,10 @@ export interface AverbacaoAlterada {
   clienteId: string;
   processoId: string;
   status: AverbacaoProcessoStatus;
+  /** Presente quando o evento é a decisão de um documento pela Aurora. */
+  documentoStatus?: AverbacaoDocumentoStatus;
+  /** A Aurora devolveu o processo para o despachante corrigir os dados. */
+  devolvido?: boolean;
 }
 
 /**
@@ -49,8 +56,8 @@ export class AverbacoesEventos {
           (!!user.clienteId && e.clienteId === user.clienteId),
       ),
       map(
-        ({ processoId, clienteId, status }): MessageEvent => ({
-          data: { processoId, clienteId, status },
+        ({ processoId, clienteId, status, documentoStatus, devolvido }): MessageEvent => ({
+          data: { processoId, clienteId, status, documentoStatus, devolvido },
         }),
       ),
     );

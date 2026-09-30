@@ -29,7 +29,7 @@ export function AdminAgendamentoDashboard() {
   return (
     <div className="animate-in fade-in space-y-0">
       {/* Tab bar */}
-      <div className="flex border-b border-zinc-200 bg-white">
+      <div data-tour="admin-abas" className="flex border-b border-zinc-200 bg-white">
         {[
           { key: 'agendamento', label: 'Dashboard Agendamento' },
           { key: 'patio', label: 'Dashboard Gestão de Pátio' },
@@ -51,7 +51,7 @@ export function AdminAgendamentoDashboard() {
       {activeTab === 'agendamento' && (
         <div className="pt-6 space-y-5">
           {/* Filter bar */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-tour="admin-filtros" className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <Input
                 type="date"
@@ -79,7 +79,7 @@ export function AdminAgendamentoDashboard() {
           </div>
 
           {/* KPI cards row */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div data-tour="admin-indicadores" className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               { label: 'Nº Agendamentos', value: stats.total },
               { label: 'Chegou',          value: stats.chegou },
@@ -95,7 +95,7 @@ export function AdminAgendamentoDashboard() {
           </div>
 
           {/* Taxa cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+          <div data-tour="admin-taxas" className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
             {[
               { label: 'Taxa de Show',    value: `${stats.taxaShow}%` },
               { label: 'Taxa de No-show', value: `${stats.taxaNoShow}%` },

@@ -156,6 +156,7 @@ export function MotoristasView() {
           <p className="text-xs text-zinc-500 mt-1">Cadastros credenciados para retirada FCL</p>
         </div>
         <button
+          data-tour="motoristas-novo"
           onClick={() => { if (activeTab === 'drivers') setShowAddDriver(true); else setShowAddVehicle(true); }}
           className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
@@ -166,7 +167,7 @@ export function MotoristasView() {
 
       {/* Tabs */}
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="flex border-b border-zinc-200">
+        <div data-tour="motoristas-abas" className="flex border-b border-zinc-200">
           {[{ id: 'drivers' as const, label: 'Motoristas', icon: User }, { id: 'vehicles' as const, label: 'Veículos', icon: Truck }].map(tab => (
             <button
               key={tab.id}
@@ -181,7 +182,7 @@ export function MotoristasView() {
 
         <div className="p-4">
           {/* Search */}
-          <div className="relative mb-4">
+          <div data-tour="motoristas-busca" className="relative mb-4">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -224,6 +225,7 @@ export function MotoristasView() {
                       </td>
                       <td className="py-3 px-3">
                         <button
+                          data-tour="motoristas-editar"
                           onClick={() => openEditDriver(d)}
                           className="inline-flex items-center gap-1 text-sky-700 hover:text-sky-900 font-bold text-[11px] cursor-pointer"
                         >

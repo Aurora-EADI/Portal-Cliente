@@ -18,6 +18,7 @@ import { procuracaoDecidida } from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { RepresentacaoReplicadaDto } from './dto/replicar-representacoes.dto';
 import { ProcuracoesEventos } from './procuracoes.eventos';
+import { OutboxService } from '../rabbitmq/publishers/outbox.service';
 
 /** Campos seguros para devolver ao usuário externo — sem a key do MinIO. */
 const SELECT_PUBLICO = {
@@ -93,6 +94,7 @@ export class ProcuracoesService {
     private readonly minio: MinioService,
     private readonly mail: MailService,
     private readonly eventos: ProcuracoesEventos,
+    private readonly outbox: OutboxService,
   ) {}
 
   /**
@@ -462,6 +464,15 @@ export class ProcuracoesService {
         },
       });
 
+      // Mesma transação: a Gestão de Acesso do Aurora só é avisada se o envio
+      // gravou — e o aviso sobrevive a um broker fora do ar (outbox).
+      await this.outbox.createProcuracaoAtualizada(tx, {
+        id: salva.id,
+        despachanteId,
+        clienteId,
+        status: salva.status,
+      });
+
       return salva;
     });
 
@@ -730,6 +741,15 @@ export class ProcuracoesService {
           arquivoTamanho: atual.arquivoTamanho,
           validade: atual.validade,
         },
+      });
+
+      // Outros analistas com a Gestão de Acesso aberta — inclusive em outra
+      // réplica do Aurora — veem a decisão sem F5.
+      await this.outbox.createProcuracaoAtualizada(tx, {
+        id,
+        despachanteId: atual.despachanteId,
+        clienteId: salva.cliente.id,
+        status,
       });
 
       return { salva, despachanteId: atual.despachanteId };

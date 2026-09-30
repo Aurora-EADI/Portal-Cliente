@@ -4,6 +4,7 @@ import type {
   AverbacaoProcessoDetalhe,
   AverbacaoProcessoResumo,
   CriarAverbacaoDto,
+  EditarAverbacaoDto,
 } from '@/types/averbacao';
 import type { ClienteResumo } from '@/types/procuracao';
 import type { TipoDocumentoResumo } from '@/types/averbacao';
@@ -23,6 +24,26 @@ export const averbacoesService = {
 
   criar: async (dto: CriarAverbacaoDto): Promise<AverbacaoProcessoResumo> => {
     const response = await apiNest.post(BASE_PATH, dto);
+    return response.data;
+  },
+
+  /** Corrige dados de identificação — é também a resposta a uma devolução. */
+  editar: async (
+    id: string,
+    dto: EditarAverbacaoDto,
+  ): Promise<AverbacaoProcessoResumo> => {
+    const response = await apiNest.patch(`${BASE_PATH}/${id}`, dto);
+    return response.data;
+  },
+
+  /** Descarta o processo (vira CANCELADO; não apaga). Motivo obrigatório. */
+  cancelar: async (
+    id: string,
+    motivo: string,
+  ): Promise<AverbacaoProcessoResumo> => {
+    const response = await apiNest.delete(`${BASE_PATH}/${id}`, {
+      data: { motivo },
+    });
     return response.data;
   },
 

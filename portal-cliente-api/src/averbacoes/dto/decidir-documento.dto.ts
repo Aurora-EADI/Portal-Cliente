@@ -14,6 +14,19 @@ export class RejeitarDocumentoDto {
   analisadoPor?: string;
 }
 
+export class DevolverProcessoDto {
+  /** Obrigatório: é o que o Despachante lê para saber o que corrigir. */
+  @IsString()
+  @MinLength(5, { message: 'Descreva o motivo da devolução (mínimo 5 caracteres)' })
+  @MaxLength(1000)
+  motivo!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  devolvidoPor?: string;
+}
+
 export class AprovarDocumentoDto {
   @IsOptional()
   @IsString()

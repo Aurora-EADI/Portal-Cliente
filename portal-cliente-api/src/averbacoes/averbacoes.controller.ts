@@ -36,6 +36,7 @@ import { CancelarAverbacaoDto } from './dto/cancelar-averbacao.dto';
 import {
   AprovarDocumentoDto,
   DesvincularLoteDto,
+  DevolverProcessoDto,
   LiberarProcessoDto,
   RejeitarDocumentoDto,
   VincularLoteDto,
@@ -207,6 +208,18 @@ export class AverbacoesServiceController {
     @Body() dto: RejeitarDocumentoDto,
   ) {
     return this.service.rejeitarDocumento(docId, dto.motivo, dto.analisadoPor);
+  }
+
+  /**
+   * Devolve o processo ao despachante para corrigir os dados (ex.: documento
+   * de saída inexistente no SIAUM). Não mexe nos documentos.
+   */
+  @Patch(':id/devolver')
+  devolver(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DevolverProcessoDto,
+  ) {
+    return this.service.devolver(id, dto.motivo, dto.devolvidoPor);
   }
 
   /** Amarra o processo ao registro do SIAUM. Decisão do analista, não busca. */

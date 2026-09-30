@@ -17,6 +17,8 @@ export enum ProcessoStatus {
   EM_ANALISE = 'EM_ANALISE',
   PENDENTE_CORRECAO = 'PENDENTE_CORRECAO',
   LIBERADO_AGENDAMENTO = 'LIBERADO_AGENDAMENTO',
+  /** Descartado pelo despachante. Terminal; o registro fica para auditoria. */
+  CANCELADO = 'CANCELADO',
 }
 
 export const PROCESSO_STATUS_LABEL: Record<ProcessoStatus, string> = {
@@ -24,6 +26,7 @@ export const PROCESSO_STATUS_LABEL: Record<ProcessoStatus, string> = {
   [ProcessoStatus.EM_ANALISE]: 'Em análise',
   [ProcessoStatus.PENDENTE_CORRECAO]: 'Pendente de correção',
   [ProcessoStatus.LIBERADO_AGENDAMENTO]: 'Liberado para agendamento',
+  [ProcessoStatus.CANCELADO]: 'Cancelado',
 };
 
 export enum DocumentoStatus {
@@ -100,6 +103,17 @@ export interface AverbacaoProcessoResumo {
   cargaEspecial: boolean;
   status: ProcessoStatus;
   nLote: string | null;
+  /**
+   * Devolução pela equipe Aurora para corrigir os dados (ex.: documento de
+   * saída que não existe no SIAUM). Não nulo = devolução pendente.
+   */
+  devolvidoEm: string | null;
+  devolvidoPor: string | null;
+  motivoDevolucao: string | null;
+  /** Quando o despachante atendeu a devolução, e a DI que havia antes. */
+  corrigidoEm: string | null;
+  corrigidoPor: string | null;
+  diDuimpAnterior: string | null;
   createdAt: string;
   updatedAt: string;
   cliente: ClienteResumo;
@@ -119,6 +133,34 @@ export interface CriarAverbacaoDto {
   localOrigem?: string;
   recintoDestino?: string;
   cargaEspecial?: boolean;
+}
+
+/** Correção do processo: só o que muda. Modalidade e cliente não se editam. */
+export interface EditarAverbacaoDto {
+  diDuimp?: string;
+  localOrigem?: string;
+  recintoDestino?: string;
+  cargaEspecial?: boolean;
+}
+
+/**
+ * Mesma janela do backend (`editar`/`cancelar`): fecha no vínculo com o SIAUM,
+ * na liberação e no cancelamento.
+ */
+export function processoEditavel(p: {
+  status: ProcessoStatus;
+  nLote: string | null;
+  devolvidoEm: string | null;
+  corrigidoEm: string | null;
+}): boolean {
+  return (
+    !p.nLote &&
+    p.status !== ProcessoStatus.LIBERADO_AGENDAMENTO &&
+    p.status !== ProcessoStatus.CANCELADO &&
+    // Correção já enviada: fica com a Aurora. Só volta a editar se ela
+    // devolver de novo (a nova devolução zera `corrigidoEm`).
+    !(p.corrigidoEm && !p.devolvidoEm)
+  );
 }
 
 /** Quantos obrigatórios já estão validados — alimenta a barra de progresso. */

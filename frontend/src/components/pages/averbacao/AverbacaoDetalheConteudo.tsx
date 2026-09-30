@@ -29,6 +29,9 @@ import {
   progressoObrigatorios,
 } from '@/types/averbacao';
 import { StatusDocumento, StatusProcesso } from './StatusBadges';
+import { AcoesProcesso, BannerDevolucao } from './AcoesProcesso';
+import { useAuthContext } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 
 const ICONE_MODALIDADE: Record<Modalidade, typeof Ship> = {
   [Modalidade.MARITIMO]: Ship,
@@ -303,11 +306,24 @@ export function AverbacaoDetalheConteudo({
     [processo],
   );
 
+  const { currentUser } = useAuthContext();
+  const ehDespachante = currentUser?.role === UserRole.DESPACHANTE;
+
   const progresso = progressoObrigatorios(processo.documentos);
   const liberado = processo.status === ProcessoStatus.LIBERADO_AGENDAMENTO;
+  const cancelado = processo.status === ProcessoStatus.CANCELADO;
 
   return (
     <div className="space-y-4">
+      <BannerDevolucao processo={processo} />
+      {ehDespachante && <AcoesProcesso processo={processo} />}
+
+      {cancelado && (
+        <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+          Processo cancelado. Os documentos ficam somente para consulta.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-1 border-b">
         {(
           [
@@ -358,7 +374,7 @@ export function AverbacaoDetalheConteudo({
                 key={d.id}
                 documento={d}
                 processoId={processo.id}
-                somenteLeitura={liberado}
+                somenteLeitura={liberado || cancelado}
               />
             ))}
           </div>

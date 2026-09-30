@@ -108,6 +108,22 @@ export class RabbitMqService implements OnModuleDestroy {
     await channel.assertQueue(this.config.diDesaverbadaDlq, { durable: true });
     await channel.bindQueue(this.config.diDesaverbadaDlq, this.config.deadLetterExchange, 'dis.averbada.removed');
 
+    // Mesma topologia (retry 30s + DLQ) para a replicação do catálogo de tipos.
+    await channel.assertQueue(this.config.averbacaoTiposDocumentoQueue, {
+      durable: true,
+      deadLetterExchange: this.config.deadLetterExchange,
+    });
+    await channel.bindQueue(this.config.averbacaoTiposDocumentoQueue, this.config.exchange, 'averbacao.tipos-documento.replicar');
+    await channel.assertQueue(this.config.averbacaoTiposDocumentoRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.exchange,
+      deadLetterRoutingKey: 'averbacao.tipos-documento.replicar',
+    });
+    await channel.bindQueue(this.config.averbacaoTiposDocumentoRetryQueue, this.config.retryExchange, 'averbacao.tipos-documento.replicar');
+    await channel.assertQueue(this.config.averbacaoTiposDocumentoDlq, { durable: true });
+    await channel.bindQueue(this.config.averbacaoTiposDocumentoDlq, this.config.deadLetterExchange, 'averbacao.tipos-documento.replicar');
+
     await channel.assertQueue(this.config.agendamentoCancelQueue, {
       durable: true,
       deadLetterExchange: this.config.commandDeadLetterExchange,
@@ -122,6 +138,86 @@ export class RabbitMqService implements OnModuleDestroy {
     await channel.bindQueue(this.config.agendamentoCancelRetryQueue, this.config.commandRetryExchange, 'agendamento.cancel.requested');
     await channel.assertQueue(this.config.agendamentoCancelDlq, { durable: true });
     await channel.bindQueue(this.config.agendamentoCancelDlq, this.config.commandDeadLetterExchange, 'agendamento.cancel.requested');
+
+    // Mesma topologia (retry 30s + DLQ) para o comando genérico de mudança de status.
+    await channel.assertQueue(this.config.agendamentoStatusChangeQueue, {
+      durable: true,
+      deadLetterExchange: this.config.commandDeadLetterExchange,
+    });
+    await channel.bindQueue(this.config.agendamentoStatusChangeQueue, this.config.commandExchange, 'agendamento.status.change.requested');
+    await channel.assertQueue(this.config.agendamentoStatusChangeRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.commandExchange,
+      deadLetterRoutingKey: 'agendamento.status.change.requested',
+    });
+    await channel.bindQueue(this.config.agendamentoStatusChangeRetryQueue, this.config.commandRetryExchange, 'agendamento.status.change.requested');
+    await channel.assertQueue(this.config.agendamentoStatusChangeDlq, { durable: true });
+    await channel.bindQueue(this.config.agendamentoStatusChangeDlq, this.config.commandDeadLetterExchange, 'agendamento.status.change.requested');
+
+    // Mesma topologia (retry 30s + DLQ) para o comando unificado de averbação.
+    await channel.assertQueue(this.config.averbacaoCommandQueue, {
+      durable: true,
+      deadLetterExchange: this.config.commandDeadLetterExchange,
+    });
+    await channel.bindQueue(this.config.averbacaoCommandQueue, this.config.commandExchange, 'averbacao.command.requested');
+    await channel.assertQueue(this.config.averbacaoCommandRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.commandExchange,
+      deadLetterRoutingKey: 'averbacao.command.requested',
+    });
+    await channel.bindQueue(this.config.averbacaoCommandRetryQueue, this.config.commandRetryExchange, 'averbacao.command.requested');
+    await channel.assertQueue(this.config.averbacaoCommandDlq, { durable: true });
+    await channel.bindQueue(this.config.averbacaoCommandDlq, this.config.commandDeadLetterExchange, 'averbacao.command.requested');
+
+    // Mesma topologia (retry 30s + DLQ) para o comando de gestão de acesso.
+    await channel.assertQueue(this.config.gestaoAcessoCommandQueue, {
+      durable: true,
+      deadLetterExchange: this.config.commandDeadLetterExchange,
+    });
+    await channel.bindQueue(this.config.gestaoAcessoCommandQueue, this.config.commandExchange, 'gestao-acesso.command.requested');
+    await channel.assertQueue(this.config.gestaoAcessoCommandRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.commandExchange,
+      deadLetterRoutingKey: 'gestao-acesso.command.requested',
+    });
+    await channel.bindQueue(this.config.gestaoAcessoCommandRetryQueue, this.config.commandRetryExchange, 'gestao-acesso.command.requested');
+    await channel.assertQueue(this.config.gestaoAcessoCommandDlq, { durable: true });
+    await channel.bindQueue(this.config.gestaoAcessoCommandDlq, this.config.commandDeadLetterExchange, 'gestao-acesso.command.requested');
+
+    // Replicação da carteira de transportadoras — evento (events exchange).
+    await channel.assertQueue(this.config.transportadorasQueue, {
+      durable: true,
+      deadLetterExchange: this.config.deadLetterExchange,
+    });
+    await channel.bindQueue(this.config.transportadorasQueue, this.config.exchange, 'transportadoras.replicar');
+    await channel.assertQueue(this.config.transportadorasRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.exchange,
+      deadLetterRoutingKey: 'transportadoras.replicar',
+    });
+    await channel.bindQueue(this.config.transportadorasRetryQueue, this.config.retryExchange, 'transportadoras.replicar');
+    await channel.assertQueue(this.config.transportadorasDlq, { durable: true });
+    await channel.bindQueue(this.config.transportadorasDlq, this.config.deadLetterExchange, 'transportadoras.replicar');
+
+    // Comando de janela de atendimento — comando (commands exchange).
+    await channel.assertQueue(this.config.janelaCommandQueue, {
+      durable: true,
+      deadLetterExchange: this.config.commandDeadLetterExchange,
+    });
+    await channel.bindQueue(this.config.janelaCommandQueue, this.config.commandExchange, 'janela.command.requested');
+    await channel.assertQueue(this.config.janelaCommandRetryQueue, {
+      durable: true,
+      messageTtl: this.config.retryDelayMs,
+      deadLetterExchange: this.config.commandExchange,
+      deadLetterRoutingKey: 'janela.command.requested',
+    });
+    await channel.bindQueue(this.config.janelaCommandRetryQueue, this.config.commandRetryExchange, 'janela.command.requested');
+    await channel.assertQueue(this.config.janelaCommandDlq, { durable: true });
+    await channel.bindQueue(this.config.janelaCommandDlq, this.config.commandDeadLetterExchange, 'janela.command.requested');
   }
 
   private async activateConsumers(): Promise<void> {

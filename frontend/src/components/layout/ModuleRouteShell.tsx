@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { AppShell, type RenderLink } from '@/components/orion/blocks';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
+import { TourAutoStart } from '@/components/help/TourAutoStart';
 
 type LayoutConfig = {
   className?: string;
@@ -88,9 +89,10 @@ export function ModuleRouteShell({
       )}
       contentClassName="bg-gray-50 flex flex-col"
     >
-      <div className={`flex-1 w-full ${maxWidthClasses[maxWidth]} mx-auto ${noPadding ? '' : 'p-4 md:p-8'} ${layout?.className ?? ''}`}>
+      <div data-tour-root className={`flex-1 w-full ${maxWidthClasses[maxWidth]} mx-auto ${noPadding ? '' : 'p-4 md:p-8'} ${layout?.className ?? ''}`}>
         {children}
       </div>
+      <TourAutoStart />
     </AppShell>
   );
 }

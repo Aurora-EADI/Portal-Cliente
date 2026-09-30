@@ -809,6 +809,23 @@ model AverbacaoProcesso {
   canceladoEm        DateTime? @map("cancelado_em")
   motivoCancelamento String?   @map("motivo_cancelamento")
 
+  /// Devolução pela equipe Aurora para o despachante corrigir os dados do
+  /// processo (ex.: documento de saída que não existe no SIAUM). Preenchidos
+  /// juntos; `devolvidoEm` não nulo = devolução pendente, e o status fica em
+  /// PENDENTE_CORRECAO até o despachante corrigir (`editar` limpa os três).
+  devolvidoEm     DateTime? @map("devolvido_em")
+  devolvidoPor    String?   @map("devolvido_por")
+  motivoDevolucao String?   @map("motivo_devolucao")
+
+  /// Resposta do despachante à devolução: quando corrigiu, quem, e o documento
+  /// de saída que havia antes. É o que o analista da Aurora vê como
+  /// "corrigido pelo despachante" na fila — sem isso o processo simplesmente
+  /// reaparecia, e ninguém sabia que era a correção pedida. Uma nova devolução
+  /// zera os três.
+  corrigidoEm     DateTime? @map("corrigido_em")
+  corrigidoPor    String?   @map("corrigido_por")
+  diDuimpAnterior String?   @map("di_duimp_anterior")
+
   documentos AverbacaoDocumento[]
 
   createdAt DateTime @default(now()) @map("created_at")

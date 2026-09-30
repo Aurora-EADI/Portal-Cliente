@@ -1,9 +1,11 @@
 // Server Component de proposito: notFound() so devolve status 404 de verdade
 // quando corre no servidor. Em 'use client' a tela de 404 aparece, mas a
 // resposta sai 200. Nao usa hook nenhum — os filhos e que sao client.
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { RoleGuard } from '@/components/guards/RoleGuard';
 import { ModuleRouteShell } from '@/components/layout/ModuleRouteShell';
+import { Spinner } from '@/components/orion/ui';
 import { ProcuracoesPage } from '@/components/pages/procuracoes/ProcuracoesPage';
 import { AVERBACAO_ATIVA } from '@/config/features';
 import { UserRole } from '@/types';
@@ -20,7 +22,15 @@ export default function ProcuracoesRoute() {
         layout={{ maxWidth: 'full' }}
         header={{ pageTitle: 'Procurações' }}
       >
-        <ProcuracoesPage />
+        <Suspense
+          fallback={
+            <div className="flex h-40 items-center justify-center">
+              <Spinner />
+            </div>
+          }
+        >
+          <ProcuracoesPage />
+        </Suspense>
       </ModuleRouteShell>
     </RoleGuard>
   );

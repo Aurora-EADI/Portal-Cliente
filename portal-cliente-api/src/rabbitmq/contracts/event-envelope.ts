@@ -9,6 +9,9 @@ export const EVENT_TYPES = {
   // (envio/substituição de documento). É o gatilho para a fila de validação do
   // Portal Aurora se atualizar sozinha, sem depender de recarregar a tela.
   AVERBACAO_PROCESSO_ATUALIZADO: 'averbacao.processo.atualizado',
+  // Procuração enviada/reenviada pelo despachante ou decidida: a Gestão de
+  // Acesso e o sino do Portal Aurora se atualizam sozinhos.
+  PROCURACAO_ATUALIZADA: 'procuracao.atualizada',
   AGENDAMENTO_COMMAND_REJECTED: 'agendamento.command-rejected',
   AGENDAMENTO_COMMAND_COMPLETED: 'agendamento.command-completed',
 } as const;
@@ -78,6 +81,12 @@ const averbacaoProcessoAtualizadoPayloadSchema = z.object({
   // Nulo enquanto o processo não foi vinculado a um despachante do SIAUM.
   despachanteId: z.string().trim().min(1).nullable(),
   status: z.string().trim().min(1),
+  // Só quando o despachante corrigiu um processo devolvido pela Aurora.
+  evento: z.literal('corrigido').optional(),
+  protocolo: z.string().optional(),
+  diDuimp: z.string().optional(),
+  diDuimpAnterior: z.string().nullable().optional(),
+  corrigidoPor: z.string().optional(),
 });
 
 export const averbacaoProcessoAtualizadoSchema = envelopeSchema.extend({

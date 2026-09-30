@@ -4,6 +4,7 @@ import {
   AgendamentoStatus,
   AverbacaoProcessoStatus,
   Prisma,
+  ProcuracaoStatus,
 } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { EVENT_TYPES } from '../contracts/event-envelope';
@@ -156,6 +157,17 @@ export class OutboxService {
       status: AverbacaoProcessoStatus;
     },
     correlationId: string | null = null,
+    /**
+     * Presente quando o despachante corrigiu um processo devolvido: o Aurora
+     * usa para avisar o analista (toast + notificação no sino) com o que mudou.
+     */
+    correcao?: {
+      evento: 'corrigido';
+      protocolo: string;
+      diDuimp: string;
+      diDuimpAnterior: string | null;
+      corrigidoPor: string;
+    },
   ): Promise<void> {
     const occurredAt = new Date().toISOString();
     const eventId = randomUUID();
@@ -177,6 +189,48 @@ export class OutboxService {
             clienteId: processo.clienteId,
             despachanteId: processo.despachanteId,
             status: processo.status,
+            ...(correcao ?? {}),
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Registra, na mesma transação da procuração, que ela mudou — envio, reenvio
+   * depois de recusa, ou decisão. O Portal Aurora consome para a Gestão de
+   * Acesso e o sino se atualizarem sem F5. Só ids e status: a tela de lá relê
+   * pelo GET, sem trafegar o documento.
+   */
+  async createProcuracaoAtualizada(
+    tx: Prisma.TransactionClient,
+    procuracao: {
+      id: string;
+      despachanteId: string;
+      clienteId: string;
+      status: ProcuracaoStatus;
+    },
+  ): Promise<void> {
+    const occurredAt = new Date().toISOString();
+    const eventId = randomUUID();
+    await tx.outboxEvent.create({
+      data: {
+        eventId,
+        eventType: EVENT_TYPES.PROCURACAO_ATUALIZADA,
+        aggregateType: 'Procuracao',
+        aggregateId: procuracao.id,
+        payload: {
+          eventId,
+          eventType: EVENT_TYPES.PROCURACAO_ATUALIZADA,
+          version: 1,
+          occurredAt,
+          source: 'portal-cliente',
+          correlationId: null,
+          payload: {
+            procuracaoId: procuracao.id,
+            despachanteId: procuracao.despachanteId,
+            clienteId: procuracao.clienteId,
+            status: procuracao.status,
           },
         },
       },

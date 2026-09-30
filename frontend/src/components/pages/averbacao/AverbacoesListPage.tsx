@@ -7,14 +7,14 @@ import {
   Clock,
   Plane,
   Plus,
-  Search,
   Ship,
   Truck,
   XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Column, DataTable, StatusCardConfig, StatusCards } from '@/components/ui/DataTable';
-import { Input } from '@/components/ui/input';
+import { SearchBar } from '@/components/orion/blocks';
+import { FiltroSelect } from '@/components/pages/shared/FiltroSelect';
 import { useAverbacoes } from '@/hooks/useAverbacoes';
 import { useAverbacoesStream } from '@/hooks/useAverbacoesStream';
 import {
@@ -66,13 +66,44 @@ export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
 
   const [busca, setBusca] = useState('');
   const [modal, setModal] = useState<Modalidade | 'TODOS'>('TODOS');
+  const [clienteId, setClienteId] = useState<string>('TODOS');
   const [card, setCard] = useState('total');
   const [pagina, setPagina] = useState(1);
   const [detalheId, setDetalheId] = useState<string | null>(null);
   const [novoAberto, setNovoAberto] = useState(false);
   const limite = 15;
 
-  const processos = useMemo(() => data ?? [], [data]);
+  const todos = useMemo(() => data ?? [], [data]);
+
+  // Clientes que aparecem nos processos do despachante, com quantos processos
+  // cada um tem. Vem da própria lista: não oferece cliente sem processo, que
+  // só levaria a uma tabela vazia.
+  const clientes = useMemo(() => {
+    const mapa = new Map<string, { id: string; nome: string; qtd: number }>();
+    for (const p of todos) {
+      const atual = mapa.get(p.cliente.id);
+      if (atual) atual.qtd += 1;
+      else mapa.set(p.cliente.id, { id: p.cliente.id, nome: p.cliente.nome, qtd: 1 });
+    }
+    return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [todos]);
+
+  // Se o cliente escolhido sumir da lista (ex.: processo cancelado e filtrado
+  // em outro lugar), volta para "Todos" em vez de mostrar tabela vazia.
+  const clienteAtivo =
+    clienteId !== 'TODOS' && clientes.some((c) => c.id === clienteId)
+      ? clienteId
+      : 'TODOS';
+
+  // O filtro de cliente vem antes dos cards: eles passam a contar só os
+  // processos daquele cliente, senão o número do card não bateria com a tabela.
+  const processos = useMemo(
+    () =>
+      clienteAtivo === 'TODOS'
+        ? todos
+        : todos.filter((p) => p.cliente.id === clienteAtivo),
+    [todos, clienteAtivo],
+  );
 
   const contagem: Record<string, number> = {
     total: processos.length,
@@ -245,7 +276,9 @@ export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
       />
 
       <div className="rounded-xl border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+        {/* Título em cima, filtros na linha de baixo: lado a lado, com o
+            seletor de cliente, a linha estourava e quebrava de forma irregular. */}
+        <div className="flex flex-col gap-3 border-b px-5 py-4">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold">Minhas DIs e Averbações</h2>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -254,39 +287,53 @@ export function AverbacoesListPage({ podeCriar }: { podeCriar: boolean }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-xs">
-              <Search
-                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                value={busca}
-                onChange={(e) => {
-                  setBusca(e.target.value);
+            {/* Só faz sentido com mais de um cliente — o login de CLIENTE vê
+                apenas os próprios processos. */}
+            {clientes.length > 1 && (
+              <FiltroSelect
+                value={clienteAtivo}
+                onChange={(v) => {
+                  setClienteId(v);
                   setPagina(1);
                 }}
-                placeholder="Buscar por DI, container, cliente..."
-                className="pl-8"
-                aria-label="Buscar por DI, container ou cliente"
+                ariaLabel="Filtrar por cliente"
+                className="w-64"
+                opcoes={[
+                  { value: 'TODOS', label: `Cliente: Todos (${todos.length})` },
+                  ...clientes.map((c) => ({
+                    value: c.id,
+                    label: `${c.nome} (${c.qtd})`,
+                  })),
+                ]}
               />
-            </div>
+            )}
 
-            <select
-              value={modal}
-              onChange={(e) => {
-                setModal(e.target.value as Modalidade | 'TODOS');
+            <SearchBar
+              value={busca}
+              onChange={(v) => {
+                setBusca(v);
                 setPagina(1);
               }}
-              aria-label="Filtrar por modalidade"
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="TODOS">Modal: Todos</option>
-              {Object.values(Modalidade).map((m) => (
-                <option key={m} value={m}>
-                  {MODALIDADE_LABEL[m]}
-                </option>
-              ))}
-            </select>
+              placeholder="Buscar por DI, container, cliente..."
+              className="w-full max-w-xs"
+            />
+
+            <FiltroSelect
+              value={modal}
+              onChange={(v) => {
+                setModal(v as Modalidade | 'TODOS');
+                setPagina(1);
+              }}
+              ariaLabel="Filtrar por modalidade"
+              className="w-44"
+              opcoes={[
+                { value: 'TODOS', label: 'Modal: Todos' },
+                ...Object.values(Modalidade).map((m) => ({
+                  value: m,
+                  label: MODALIDADE_LABEL[m],
+                })),
+              ]}
+            />
           </div>
         </div>
 

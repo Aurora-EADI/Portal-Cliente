@@ -8,6 +8,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useNavigationWithPermissions } from '@/hooks/useNavigationWithPermissions';
 import type { NavItem } from '@/config/navigation';
 import { UserProfileModal } from './UserProfileModal';
+import { HelpButton } from '@/components/help/HelpButton';
 import {
   Sidebar as OrionSidebar,
   type SidebarModule,
@@ -165,6 +166,8 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
     if (isCollapsed) {
       return (
         <div className="flex flex-col items-center gap-1">
+          <HelpButton compacto />
+
           <Tooltip>
             <TooltipTrigger
               render={
@@ -223,6 +226,8 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
           <Settings className="size-3.5 text-sidebar-foreground/50 group-hover:text-sidebar-foreground transition-colors shrink-0" />
         </button>
 
+        <HelpButton antesDeAbrir={mobile ? onClose : undefined} />
+
         {/* Botão de Sair posicionado ao lado da engrenagem */}
         <Tooltip>
           <TooltipTrigger
@@ -241,7 +246,7 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
         </Tooltip>
       </div>
     );
-  }, [mobile, collapsed, currentUser, handleLogout]);
+  }, [mobile, collapsed, currentUser, handleLogout, onClose]);
 
   if (!currentUser) return null;
 

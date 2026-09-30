@@ -197,6 +197,51 @@ export function documentoDecidido(d: DadosDocumento): Omit<Mensagem, 'para'> {
   };
 }
 
+// ── Devolução para correção ─────────────────────────────────────────
+
+export interface DadosDevolucao {
+  protocolo: string;
+  clienteNome: string;
+  diDuimp: string;
+  motivo: string;
+  devolvidoPor?: string | null;
+}
+
+export function processoDevolvido(d: DadosDevolucao): Omit<Mensagem, 'para'> {
+  const titulo = 'Processo devolvido para correção';
+
+  const blocos = [
+    paragrafo(
+      `O processo <strong>${esc(d.protocolo)}</strong> foi devolvido pela equipe Aurora. Corrija os dados pelo portal, em "Corrigir dados", para ele voltar à análise.`,
+    ),
+    linhas([
+      ['Protocolo', d.protocolo],
+      ['Importador', d.clienteNome],
+      ['Documento de saída', d.diDuimp],
+      ['Devolvido por', d.devolvidoPor ?? 'Equipe Aurora'],
+    ]),
+    destaque('Motivo da devolução', d.motivo),
+  ];
+
+  const texto = [
+    titulo,
+    '',
+    `Protocolo: ${d.protocolo}`,
+    `Importador: ${d.clienteNome}`,
+    `Documento de saída: ${d.diDuimp}`,
+    `Devolvido por: ${d.devolvidoPor ?? 'Equipe Aurora'}`,
+    `Motivo: ${d.motivo}`,
+    '',
+    PORTAL_URL,
+  ].join('\n');
+
+  return {
+    assunto: `[Aurora EADI] ${titulo} — ${d.protocolo}`,
+    html: layout(titulo, 'rejeitado', blocos),
+    texto,
+  };
+}
+
 // ── Liberação para agendamento ──────────────────────────────────────
 
 export interface DadosLiberacao {

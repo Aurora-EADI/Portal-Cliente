@@ -17,6 +17,7 @@ const PROCESSO: Record<
   [ProcessoStatus.EM_ANALISE]: 'warning',
   [ProcessoStatus.PENDENTE_CORRECAO]: 'danger',
   [ProcessoStatus.RASCUNHO]: 'secondary',
+  [ProcessoStatus.CANCELADO]: 'secondary',
 };
 
 const DOCUMENTO: Record<

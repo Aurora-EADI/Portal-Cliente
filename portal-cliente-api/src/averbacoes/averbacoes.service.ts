@@ -17,7 +17,11 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
 import { MailService } from '../mail/mail.service';
-import { documentoDecidido, processoLiberado } from '../mail/templates';
+import {
+  documentoDecidido,
+  processoDevolvido,
+  processoLiberado,
+} from '../mail/templates';
 import { nomeExibicao, validarPdfEGerarKey } from '../common/arquivo';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { resolverContainers } from '../common/containers';
@@ -59,6 +63,14 @@ const SELECT_PROCESSO = {
   cargaEspecial: true,
   status: true,
   nLote: true,
+  devolvidoEm: true,
+  devolvidoPor: true,
+  motivoDevolucao: true,
+  corrigidoEm: true,
+  corrigidoPor: true,
+  diDuimpAnterior: true,
+  canceladoEm: true,
+  motivoCancelamento: true,
   createdAt: true,
   updatedAt: true,
   cliente: { select: { id: true, nome: true, cnpj: true } },
@@ -97,6 +109,49 @@ export class AverbacoesService {
       where: { protocolo: { startsWith: prefixo } },
     });
     return `${prefixo}${String(total + 1).padStart(5, '0')}`;
+  }
+
+  /**
+   * Uma DI, um processo vivo. Só um processo CANCELADO libera a DI para outro.
+   *
+   * O índice em `diDuimp` não é unique de propósito (o cancelado continua na
+   * tabela, para auditoria), então a regra vive aqui. Sem ela o despachante
+   * abria dois processos iguais para a mesma DI, e a Aurora validava os dois.
+   *
+   * Roda dentro da transação de quem grava, com um lock por DI: dois cliques
+   * simultâneos em "Criar" esperam um pelo outro em vez de passarem juntos pela
+   * checagem.
+   */
+  private async exigirDiLivre(
+    tx: Prisma.TransactionClient,
+    diDuimp: string,
+    despachanteId: string,
+    ignorarProcessoId?: string,
+  ) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`averbacao-di:${diDuimp}`}))`;
+
+    const existente = await tx.averbacaoProcesso.findFirst({
+      where: {
+        diDuimp,
+        status: { not: AverbacaoProcessoStatus.CANCELADO },
+        ...(ignorarProcessoId && { id: { not: ignorarProcessoId } }),
+      },
+      select: { protocolo: true, status: true, despachanteId: true },
+    });
+    if (!existente) return;
+
+    // O protocolo só é mostrado a quem é dono dele: dizer a um despachante o
+    // número do processo de outro vazaria o que não é dele.
+    if (existente.despachanteId === despachanteId) {
+      throw new ConflictException(
+        `Já existe o processo ${existente.protocolo} para a DI ${diDuimp}. ` +
+          'Continue nele ou cancele-o antes de abrir outro.',
+      );
+    }
+    throw new ConflictException(
+      `A DI ${diDuimp} já tem um processo em andamento aberto por outro despachante. ` +
+        'Procure a equipe da Aurora.',
+    );
   }
 
   /**
@@ -142,6 +197,8 @@ export class AverbacoesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await this.exigirDiLivre(tx, dto.diDuimp, despachanteId);
+
       const protocolo = await this.gerarProtocolo(tx);
 
       return tx.averbacaoProcesso.create({
@@ -187,6 +244,25 @@ export class AverbacoesService {
    * erro de digitação, que é justamente o que este método resolve. O caso fica
    * registrado no log para a auditoria enxergar.
    */
+  /**
+   * Correção já enviada em resposta a uma devolução: o processo está com a
+   * Aurora conferindo. Editar ou cancelar agora mudaria o dado debaixo do
+   * analista. A janela reabre se a Aurora devolver de novo — `devolver` zera
+   * `corrigidoEm`.
+   */
+  private exigirSemCorrecaoPendente(processo: {
+    protocolo: string;
+    devolvidoEm: Date | null;
+    corrigidoEm: Date | null;
+  }) {
+    if (processo.corrigidoEm && !processo.devolvidoEm) {
+      throw new ConflictException(
+        `A correção do processo ${processo.protocolo} já foi enviada e está com a equipe Aurora. ` +
+          'Se precisar de nova alteração, aguarde uma nova devolução.',
+      );
+    }
+  }
+
   async editar(id: string, user: User, dto: EditarAverbacaoDto) {
     const processo = await this.prisma.averbacaoProcesso.findUnique({
       where: { id },
@@ -200,6 +276,9 @@ export class AverbacoesService {
         diDuimp: true,
         containerConhecimento: true,
         containers: true,
+        clienteId: true,
+        devolvidoEm: true,
+        corrigidoEm: true,
         documentos: { select: { status: true } },
       },
     });
@@ -211,6 +290,8 @@ export class AverbacoesService {
     if (processo.despachanteId !== this.despachanteDo(user)) {
       throw new ForbiddenException('Processo pertence a outro despachante');
     }
+
+    this.exigirSemCorrecaoPendente(processo);
 
     if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
       throw new ConflictException(
@@ -260,10 +341,76 @@ export class AverbacoesService {
       throw new BadRequestException('Nenhum campo para alterar');
     }
 
-    const atualizado = await this.prisma.averbacaoProcesso.update({
-      where: { id },
-      data: dados,
-      select: SELECT_PROCESSO,
+    // Corrigir é a resposta à devolução: limpa a pendência e o status volta a
+    // ser derivado dos documentos (os já validados continuam validados — só o
+    // cabeçalho estava errado). Na mesma transação avisa o Aurora, que recoloca
+    // o processo na fila de vínculo sem F5.
+    const respondeuDevolucao = Boolean(processo.devolvidoEm);
+
+    const atualizado = await this.prisma.$transaction(async (tx) => {
+      // Corrigir a DI para uma que já tem processo vivo criaria o mesmo
+      // duplicado que a abertura recusa.
+      if (dto.diDuimp !== undefined && dto.diDuimp !== processo.diDuimp) {
+        await this.exigirDiLivre(tx, dto.diDuimp, processo.despachanteId, id);
+      }
+
+      await tx.averbacaoProcesso.update({
+        where: { id },
+        data: {
+          ...dados,
+          // Marca a correção para o analista enxergar que o processo voltou
+          // porque o despachante atendeu o pedido — e o que mudou na DI.
+          ...(respondeuDevolucao && {
+            devolvidoEm: null,
+            devolvidoPor: null,
+            motivoDevolucao: null,
+            corrigidoEm: new Date(),
+            corrigidoPor: user.name ?? user.email,
+            diDuimpAnterior:
+              dto.diDuimp !== undefined && dto.diDuimp !== processo.diDuimp
+                ? processo.diDuimp
+                : null,
+          }),
+        },
+      });
+
+      const status = await this.recalcularProcesso(tx, id);
+
+      await this.outbox.createAverbacaoProcessoAtualizado(
+        tx,
+        {
+          id,
+          clienteId: processo.clienteId,
+          despachanteId: processo.despachanteId,
+          status,
+        },
+        null,
+        respondeuDevolucao
+          ? {
+              evento: 'corrigido',
+              protocolo: processo.protocolo,
+              diDuimp: dto.diDuimp ?? processo.diDuimp,
+              diDuimpAnterior:
+                dto.diDuimp !== undefined && dto.diDuimp !== processo.diDuimp
+                  ? processo.diDuimp
+                  : null,
+              corrigidoPor: user.name ?? user.email,
+            }
+          : undefined,
+      );
+
+      return tx.averbacaoProcesso.findUniqueOrThrow({
+        where: { id },
+        select: SELECT_PROCESSO,
+      });
+    });
+
+    // Outra aba do despachante (e a do cliente) reflete a correção.
+    this.eventos.emitir({
+      despachanteId: processo.despachanteId,
+      clienteId: processo.clienteId,
+      processoId: id,
+      status: atualizado.status,
     });
 
     const validados = processo.documentos.filter(
@@ -301,6 +448,8 @@ export class AverbacoesService {
         despachanteId: true,
         status: true,
         nLote: true,
+        devolvidoEm: true,
+        corrigidoEm: true,
       },
     });
 
@@ -309,6 +458,8 @@ export class AverbacoesService {
     if (processo.despachanteId !== this.despachanteDo(user)) {
       throw new ForbiddenException('Processo pertence a outro despachante');
     }
+
+    this.exigirSemCorrecaoPendente(processo);
 
     if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
       throw new ConflictException(
@@ -329,14 +480,34 @@ export class AverbacoesService {
       );
     }
 
-    const atualizado = await this.prisma.averbacaoProcesso.update({
-      where: { id },
-      data: {
-        status: AverbacaoProcessoStatus.CANCELADO,
-        canceladoEm: new Date(),
-        motivoCancelamento: motivo,
-      },
-      select: SELECT_PROCESSO,
+    const atualizado = await this.prisma.$transaction(async (tx) => {
+      const salvo = await tx.averbacaoProcesso.update({
+        where: { id },
+        data: {
+          status: AverbacaoProcessoStatus.CANCELADO,
+          canceladoEm: new Date(),
+          motivoCancelamento: motivo,
+        },
+        select: SELECT_PROCESSO,
+      });
+
+      // Sem isto a fila do Aurora só via o cancelamento no próximo F5 — e o
+      // analista podia seguir validando documento de um processo descartado.
+      await this.outbox.createAverbacaoProcessoAtualizado(tx, {
+        id,
+        clienteId: salvo.cliente.id,
+        despachanteId: processo.despachanteId,
+        status: salvo.status,
+      });
+
+      return salvo;
+    });
+
+    this.eventos.emitir({
+      despachanteId: processo.despachanteId,
+      clienteId: atualizado.cliente.id,
+      processoId: id,
+      status: atualizado.status,
     });
 
     this.logger.log(
@@ -344,6 +515,143 @@ export class AverbacoesService {
     );
 
     return atualizado;
+  }
+
+  /**
+   * A equipe Aurora devolve o processo para o despachante corrigir os dados
+   * de identificação — o caso típico é o documento de saída que não existe no
+   * SIAUM: os PDFs podem estar certos, mas sem o número certo não há vínculo.
+   *
+   * Não rejeita documento nenhum: o problema está no cabeçalho, e o que já foi
+   * validado continua validado. O processo fica em PENDENTE_CORRECAO e sai da
+   * fila de vínculo até `editar` limpar a devolução.
+   *
+   * Mesma janela de `editar`: depois do vínculo, o caminho é desvincular antes.
+   * Devolver de novo o que já está devolvido só atualiza o motivo — é o que
+   * torna a op idempotente para o comando por RabbitMQ.
+   */
+  async devolver(processoId: string, motivo: string, devolvidoPor?: string) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id: processoId },
+      select: {
+        protocolo: true,
+        status: true,
+        nLote: true,
+        clienteId: true,
+        despachanteId: true,
+        devolvidoEm: true,
+        motivoDevolucao: true,
+      },
+    });
+
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+
+    if (processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} foi cancelado pelo despachante.`,
+      );
+    }
+
+    if (processo.status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} já foi liberado para agendamento e não pode ser devolvido.`,
+      );
+    }
+
+    if (processo.nLote) {
+      throw new ConflictException(
+        `O processo ${processo.protocolo} está vinculado ao lote ${processo.nLote}. ` +
+          'Desfaça o vínculo antes de devolver ao despachante.',
+      );
+    }
+
+    const motivoLimpo = motivo.trim();
+    if (processo.devolvidoEm && processo.motivoDevolucao === motivoLimpo) {
+      return this.prisma.averbacaoProcesso.findUniqueOrThrow({
+        where: { id: processoId },
+        select: SELECT_PROCESSO,
+      });
+    }
+
+    const atualizado = await this.prisma.$transaction(async (tx) => {
+      const salvo = await tx.averbacaoProcesso.update({
+        where: { id: processoId },
+        data: {
+          status: AverbacaoProcessoStatus.PENDENTE_CORRECAO,
+          devolvidoEm: new Date(),
+          devolvidoPor: devolvidoPor ?? 'Equipe Aurora',
+          motivoDevolucao: motivoLimpo,
+          // Nova devolução apaga o selo de uma correção anterior.
+          corrigidoEm: null,
+          corrigidoPor: null,
+          diDuimpAnterior: null,
+        },
+        select: SELECT_PROCESSO,
+      });
+
+      // Aurora tira o processo da fila de vínculo e mostra a devolução.
+      await this.outbox.createAverbacaoProcessoAtualizado(tx, {
+        id: processoId,
+        clienteId: processo.clienteId,
+        despachanteId: processo.despachanteId,
+        status: salvo.status,
+      });
+
+      return salvo;
+    });
+
+    // Depois do commit: a tela do despachante mostra a devolução sem F5.
+    this.eventos.emitir({
+      despachanteId: processo.despachanteId,
+      clienteId: processo.clienteId,
+      processoId,
+      status: atualizado.status,
+      devolvido: true,
+    });
+
+    void this.notificarDevolucao(processoId);
+
+    this.logger.log(
+      `Processo ${processo.protocolo} devolvido por ${devolvidoPor ?? 'Equipe Aurora'}: ${motivoLimpo}`,
+    );
+
+    return atualizado;
+  }
+
+  /** Avisa o despachante por e-mail. Engole os próprios erros (disparo por `void`). */
+  private async notificarDevolucao(processoId: string) {
+    try {
+      const processo = await this.prisma.averbacaoProcesso.findUnique({
+        where: { id: processoId },
+        select: {
+          protocolo: true,
+          diDuimp: true,
+          devolvidoPor: true,
+          motivoDevolucao: true,
+          cliente: { select: { nome: true } },
+          despachante: { select: { email: true } },
+          criadoPor: { select: { email: true } },
+        },
+      });
+      if (!processo?.motivoDevolucao) return;
+
+      const corpo = processoDevolvido({
+        protocolo: processo.protocolo,
+        clienteNome: processo.cliente.nome,
+        diDuimp: processo.diDuimp,
+        motivo: processo.motivoDevolucao,
+        devolvidoPor: processo.devolvidoPor,
+      });
+
+      await this.mail.enviar({
+        para: [processo.criadoPor?.email, processo.despachante.email],
+        ...corpo,
+      });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar devolução do processo ${processoId} — ${(erro as Error).message}`,
+      );
+    }
   }
 
   async listar(user: User) {
@@ -612,9 +920,25 @@ export class AverbacoesService {
   ) {
     const documento = await this.prisma.averbacaoDocumento.findUnique({
       where: { id: documentoId },
-      select: { id: true, status: true, processoId: true },
+      select: {
+        id: true,
+        status: true,
+        processoId: true,
+        processo: {
+          select: { clienteId: true, despachanteId: true, status: true },
+        },
+      },
     });
     if (!documento) throw new NotFoundException('Documento não encontrado');
+
+    // Processo descartado pelo despachante não tem mais o que validar: o
+    // documento pode ter ficado EM_ANALISE, mas decidir sobre ele só geraria
+    // e-mail e trilha de um processo que não existe mais.
+    if (documento.processo.status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        'O processo foi cancelado pelo despachante; os documentos não podem mais ser decididos.',
+      );
+    }
 
     // Só o que está aguardando análise pode ser decidido — mesma razão da
     // procuração: dois analistas na mesma fila não podem decidir duas vezes.
@@ -643,8 +967,32 @@ export class AverbacoesService {
         },
       });
 
-      await this.recalcularProcesso(tx, documento.processoId);
-      return doc;
+      const statusProcesso = await this.recalcularProcesso(tx, documento.processoId);
+
+      // Na mesma transação, o Portal Aurora atualiza a fila de validação e o
+      // espelho documental em tempo real. Antes só `enviarDocumento` emitia este
+      // evento; agora a decisão do analista também emite, para que a migração
+      // das decisões para comando (fire-and-forget) reconcilie a tela do Aurora
+      // — que deixou de depender da resposta HTTP síncrona.
+      await this.outbox.createAverbacaoProcessoAtualizado(tx, {
+        id: documento.processoId,
+        clienteId: documento.processo.clienteId,
+        despachanteId: documento.processo.despachanteId,
+        status: statusProcesso,
+      });
+
+      return { doc, statusProcesso };
+    });
+
+    // Depois do commit: a tela do despachante (e a do cliente) mostra a
+    // aprovação/recusa sem F5. Antes só a liberação avisava, e o documento
+    // recusado só aparecia recarregando a página.
+    this.eventos.emitir({
+      despachanteId: documento.processo.despachanteId,
+      clienteId: documento.processo.clienteId,
+      processoId: documento.processoId,
+      status: atualizado.statusProcesso,
+      documentoStatus: novoStatus,
     });
 
     // Fora da transação e sem await, pela mesma razão da procuração: a decisão
@@ -656,7 +1004,7 @@ export class AverbacoesService {
       analisadoPor,
     );
 
-    return atualizado;
+    return atualizado.doc;
   }
 
   /**
@@ -780,7 +1128,7 @@ export class AverbacoesService {
 
     const processo = await tx.averbacaoProcesso.findUnique({
       where: { id: processoId },
-      select: { status: true },
+      select: { status: true, devolvidoEm: true },
     });
     // Os dois estados terminais não são derivados dos documentos: recalcular
     // aqui devolveria um processo cancelado para EM_ANALISE no próximo upload.
@@ -791,7 +1139,10 @@ export class AverbacoesService {
       return processo.status;
     }
 
-    const novo = algumRejeitado
+    // Devolução pendente segura PENDENTE_CORRECAO: sem isto, o próximo upload
+    // (ou decisão de documento) jogaria o processo de volta para EM_ANALISE
+    // antes de o despachante corrigir o que a Aurora pediu.
+    const novo = algumRejeitado || processo?.devolvidoEm
       ? AverbacaoProcessoStatus.PENDENTE_CORRECAO
       : algumEnviado
         ? AverbacaoProcessoStatus.EM_ANALISE
@@ -915,9 +1266,13 @@ export class AverbacoesService {
       // não deve existir, e mantê-lo na fila daria trabalho ao analista para
       // vincular algo que ninguém vai liberar — que é o problema que o
       // cancelamento veio resolver.
+      //
+      // Devolvido ao despachante também sai até ele corrigir: vincular com o
+      // dado que a própria Aurora acabou de apontar como errado não faz sentido.
       where: {
         nLote: null,
         status: { not: AverbacaoProcessoStatus.CANCELADO },
+        devolvidoEm: null,
       },
       select: {
         ...SELECT_PROCESSO,

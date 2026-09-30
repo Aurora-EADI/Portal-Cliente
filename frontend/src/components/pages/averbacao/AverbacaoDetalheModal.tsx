@@ -1,14 +1,18 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+// Orion (Base UI), não o dialog Radix local: as janelas de Corrigir dados e
+// Cancelar processo abrem por cima deste modal, e dentro de um Radix elas
+// ficavam sem foco nem digitação (o Radix prende o foco no próprio conteúdo).
+// Diálogos Base UI empilhados convivem.
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/orion/ui';
 import { useAverbacao } from '@/hooks/useAverbacoes';
 import {
   AverbacaoDetalheConteudo,
@@ -31,7 +35,11 @@ export function AverbacaoDetalheModal({
   const { data: processo, isLoading, isError } = useAverbacao(processoId ?? '');
 
   return (
-    <Dialog open={processoId !== null} onOpenChange={(a) => !a && onClose()}>
+    <Dialog
+      open={processoId !== null}
+      onOpenChange={(a) => !a && onClose()}
+      disablePointerDismissal
+    >
       {/* Coluna flex em vez do grid padrão do DialogContent: assim o rodapé
           fica fixo e só o miolo rola. */}
       <DialogContent className="flex max-h-[88vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">

@@ -54,13 +54,17 @@ export function AnexarProcuracaoModal({
   // O modal fica montado entre aberturas, então o estado inicial do useState
   // só valeria na primeira. Sem isto, abrir por uma linha não seleciona o
   // cliente e o botão de enviar nunca habilita.
+  const [prevAberto, setPrevAberto] = useState(false);
+
   useEffect(() => {
-    if (!aberto) return;
-    setClienteId(clienteInicial ?? '');
-    setValidade('');
-    setArquivo(null);
-    setErro(null);
-  }, [aberto, clienteInicial]);
+    if (aberto && !prevAberto) {
+      setClienteId(clienteInicial ?? '');
+      setValidade('');
+      setArquivo(null);
+      setErro(null);
+    }
+    setPrevAberto(aberto);
+  }, [aberto, clienteInicial, prevAberto]);
 
   const { mutateAsync: enviar, isPending } = useEnviarProcuracao();
 
@@ -92,7 +96,11 @@ export function AnexarProcuracaoModal({
 
   return (
     <Dialog open={aberto} onOpenChange={(a) => !a && fechar()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className="max-w-lg"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Anexar Procuração</DialogTitle>
           <p className="text-sm text-muted-foreground">

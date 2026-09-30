@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { averbacoesService } from '@/services/averbacoes.service';
-import type { CriarAverbacaoDto } from '@/types/averbacao';
+import type { CriarAverbacaoDto, EditarAverbacaoDto } from '@/types/averbacao';
 
 export const AVERBACAO_KEYS = {
   all: ['averbacoes'] as const,
@@ -51,6 +51,28 @@ export function useCriarAverbacao() {
     mutationFn: (dto: CriarAverbacaoDto) => averbacoesService.criar(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: AVERBACAO_KEYS.list() });
+    },
+  });
+}
+
+export function useEditarAverbacao(processoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: EditarAverbacaoDto) =>
+      averbacoesService.editar(processoId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AVERBACAO_KEYS.all });
+    },
+  });
+}
+
+export function useCancelarAverbacao(processoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (motivo: string) =>
+      averbacoesService.cancelar(processoId, motivo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AVERBACAO_KEYS.all });
     },
   });
 }

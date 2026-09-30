@@ -220,7 +220,7 @@ export function WizardView() {
       </div>
 
       {canDelegate && (
-        <div className="px-6 pt-4">
+        <div data-tour="wizard-modo" className="px-6 pt-4">
           <p className="text-xs font-bold text-zinc-500 mb-2">Como deseja prosseguir?</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
@@ -265,7 +265,9 @@ export function WizardView() {
         <AtribuirTransportadoraForm onBack={() => router.push('/agendamento')} />
       ) : (
         <>
-          <StepIndicator currentStep={step} steps={WIZARD_STEPS} />
+          <div data-tour="wizard-etapas">
+            <StepIndicator currentStep={step} steps={WIZARD_STEPS} />
+          </div>
 
           {submitError && (
             <div className="mx-6 mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 animate-in fade-in slide-in-from-top-2">
@@ -274,7 +276,7 @@ export function WizardView() {
             </div>
           )}
 
-          <div className="p-6">
+          <div data-tour="wizard-formulario" className="p-6">
             {step <= 4 && <DadosStep data={dados} onChange={handleDadosChange} disabled={saving} section={SECTION_BY_STEP[step]} />}
             {step === 5 && <NotificacoesStep data={notificacoes} onChange={setNotificacoes} errors={notifErrors} disabled={saving} />}
           </div>
@@ -285,7 +287,7 @@ export function WizardView() {
             </p>
           )}
 
-          <div className="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
+          <div data-tour="wizard-navegacao" className="px-6 py-4 border-t border-zinc-100 flex justify-end gap-3">
             <button
               onClick={handleBack}
               disabled={saving}

@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { AgendamentoStatus } from '@prisma/client';
 
 export const AGENDAMENTO_CANCEL_REQUESTED = 'agendamento.cancel.requested' as const;
+export const AGENDAMENTO_STATUS_CHANGE_REQUESTED = 'agendamento.status.change.requested' as const;
 export const AGENDAMENTO_COMMAND_COMPLETED = 'agendamento.command-completed' as const;
 
 const actorSchema = z.object({
@@ -46,12 +48,39 @@ const commandCompletedSchema = z.object({
   payload: commandCompletedPayloadSchema,
 }).strict();
 
+const statusChangePayloadSchema = z.object({
+  agendamentoId: z.uuid(),
+  nextStatus: z.nativeEnum(AgendamentoStatus),
+  expectedAggregateVersion: z.number().int().nonnegative().safe(),
+  actor: actorSchema,
+}).strict();
+
+const statusChangeCommandSchema = z.object({
+  eventId: z.uuid(),
+  eventType: z.literal(AGENDAMENTO_STATUS_CHANGE_REQUESTED),
+  version: z.literal(1),
+  occurredAt: z.iso.datetime(),
+  source: z.literal('portal-aurora'),
+  correlationId: z.uuid(),
+  payload: statusChangePayloadSchema,
+}).strict();
+
 export type AgendamentoCancelRequestedCommand = z.infer<typeof commandSchema> & { commandId: string };
+export type AgendamentoStatusChangeRequestedCommand = z.infer<typeof statusChangeCommandSchema> & { commandId: string };
 export type AgendamentoCommandCompletedEvent = z.infer<typeof commandCompletedSchema>;
 
 export function parseAgendamentoCancelRequested(input: unknown): AgendamentoCancelRequestedCommand {
   try {
     const parsed = commandSchema.parse(input);
+    return { ...parsed, commandId: parsed.eventId };
+  } catch {
+    throw new Error('AGENDAMENTO_COMMAND_INVALID');
+  }
+}
+
+export function parseAgendamentoStatusChangeRequested(input: unknown): AgendamentoStatusChangeRequestedCommand {
+  try {
+    const parsed = statusChangeCommandSchema.parse(input);
     return { ...parsed, commandId: parsed.eventId };
   } catch {
     throw new Error('AGENDAMENTO_COMMAND_INVALID');

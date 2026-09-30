@@ -182,6 +182,7 @@ export function AtribuicaoTransportadorasView() {
           <p className="text-xs text-zinc-500 mt-1">Atribua transportadoras às suas DIs averbadas para que possam agendar a retirada</p>
         </div>
         <button
+          data-tour="transportadoras-convidar"
           onClick={() => setShowConvite(true)}
           className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
@@ -214,7 +215,7 @@ export function AtribuicaoTransportadorasView() {
 
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
         <div className="p-4">
-          <div className="relative mb-4">
+          <div data-tour="transportadoras-busca" className="relative mb-4">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -262,7 +263,7 @@ export function AtribuicaoTransportadorasView() {
                         {lote && <span className="block text-[10px] text-zinc-400 font-mono">Lote {lote}</span>}
                       </td>
                       <td className="py-3 px-3 text-zinc-600">{di.cliente || '—'}</td>
-                      <td className="py-3 px-3">{StatusBadge}</td>
+                      <td data-tour="transportadoras-status" className="py-3 px-3">{StatusBadge}</td>
                       <td className="py-3 px-3">
                         {containersDaDi.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
@@ -314,7 +315,7 @@ export function AtribuicaoTransportadorasView() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3">
+                      <td data-tour="transportadoras-atribuir" className="py-3 px-3">
                         <button
                           onClick={() => abrirModalAtribuir(lote)}
                           disabled={!lote}
