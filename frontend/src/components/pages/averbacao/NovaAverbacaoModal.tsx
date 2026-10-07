@@ -282,11 +282,7 @@ export function NovaAverbacaoModal({
     <Dialog open={aberto} onOpenChange={(a) => !a && fechar()}>
       {/* Coluna flex em vez do grid padrão: assim o rodapé com os botões fica
           fixo e só o formulário rola. */}
-      <DialogContent
-        className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
+      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 flex-row items-start gap-3 space-y-0 border-b px-6 py-4 text-left">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <FolderOpen className="h-5 w-5" aria-hidden />

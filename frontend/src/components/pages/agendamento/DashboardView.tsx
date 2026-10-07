@@ -398,6 +398,19 @@ export function DashboardView() {
                         >
                           <FileCheck className="w-3 h-3" /> Averbação
                         </button>
+                      ) : isClienteOuDespachante && atribuicoes.length > 0 ? (
+                        // Já entregue a uma transportadora: agendar passa a ser
+                        // dela. Oferecer "Atribuir | Agendar" aqui deixava o
+                        // despachante agendar por cima (ou atribuir de novo, o
+                        // que o backend recusa). O caminho para trocar é a aba
+                        // de atribuições, onde dá para remover e atribuir outra.
+                        <button
+                          onClick={() => router.push('/agendamento?tab=transportadoras')}
+                          title={`Atribuído a ${atribuicoes.map(a => a.transportadora.nome).join(', ')} — o agendamento fica com a transportadora. Para trocar, remova a atribuição.`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-300 rounded-md transition-colors"
+                        >
+                          <Truck className="w-3 h-3" /> Transportadora
+                        </button>
                       ) : (
                         <button
                           onClick={() => router.push(`/agendamento?tab=wizard&diNumero=${encodeURIComponent(di.numeroDI)}&container=${encodeURIComponent(container)}`)}

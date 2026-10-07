@@ -35,11 +35,7 @@ export function AverbacaoDetalheModal({
   const { data: processo, isLoading, isError } = useAverbacao(processoId ?? '');
 
   return (
-    <Dialog
-      open={processoId !== null}
-      onOpenChange={(a) => !a && onClose()}
-      disablePointerDismissal
-    >
+    <Dialog open={processoId !== null} onOpenChange={(a) => !a && onClose()}>
       {/* Coluna flex em vez do grid padrão do DialogContent: assim o rodapé
           fica fixo e só o miolo rola. */}
       <DialogContent className="flex max-h-[88vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
