@@ -13,6 +13,7 @@
 #   - imagens construídas aqui, não puxadas do GHCR;
 #   - Postgres fora do Docker, no host da VM, via host.docker.internal;
 #   - Traefik dentro da stack, com certificado autoassinado em portas altas;
+#   - RabbitMQ dentro da stack, em vez do broker da produção (172.20.210.85);
 #   - a configuração vem de .env.homolog (env_file), não de variáveis
 #     enumeradas serviço por serviço.
 services:
@@ -41,6 +42,35 @@ services:
       timeout: 5s
       retries: 6
       start_period: 10s
+
+  rabbitmq:
+    # Broker próprio da homologação. O broker de 172.20.210.85 é o da produção
+    # e não é usado daqui: toda a homologação (Aurora e Cliente) roda na .87.
+    image: rabbitmq:4.1-management-alpine
+    container_name: rabbitmq-cliente-hml
+    hostname: rabbitmq-cliente-hml
+    # Usuário, senha e vhost só são aplicados na PRIMEIRA inicialização do
+    # volume. Trocar depois exige rabbitmqctl, não basta mudar o .env.homolog.
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_HML_USER:-portal_cliente_hml}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_HML_PASSWORD:?RABBITMQ_HML_PASSWORD e obrigatorio}
+      RABBITMQ_DEFAULT_VHOST: homologacao
+    # Sem publicação de porta: só a API da stack conecta, pela rede interna.
+    volumes:
+      - rabbitmq_data_hml:/var/lib/rabbitmq
+    restart: always
+    networks:
+      - portalcliente_hml
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 30s
 
   migrate:
     container_name: portal-cliente-migrate-hml
@@ -82,6 +112,9 @@ services:
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER e obrigatorio}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD e obrigatorio}
+      # Broker interno da stack. Composto aqui, e não no .env.homolog, para a
+      # senha ter uma fonte só; por isso ela precisa ser URL-safe.
+      RABBITMQ_URL: amqp://${RABBITMQ_HML_USER:-portal_cliente_hml}:${RABBITMQ_HML_PASSWORD:?RABBITMQ_HML_PASSWORD e obrigatorio}@rabbitmq:5672/homologacao
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Sem publicação de porta: o Traefik da stack roteia pela rede interna.
@@ -89,6 +122,8 @@ services:
       - portalcliente_hml
     depends_on:
       minio:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: always
     deploy:
@@ -173,7 +208,9 @@ services:
       - "traefik.http.services.hml-front.loadbalancer.server.port=3000"
 
   traefik:
-    image: traefik:v3.1
+    # v3.6+: o v3.1 não negocia a API do Docker Engine 29 (mínimo 1.40) e o
+    # provider docker falha com `Error response from daemon: ""`.
+    image: traefik:v3.6
     container_name: traefik-cliente-hml
     # 80 e 443 do host sao do Aurora homolog; esta stack usa portas altas.
     # O redirect http->https dentro do traefik.homolog.yml tem de citar a
@@ -208,4 +245,6 @@ networks:
 
 volumes:
   minio_data_hml:
+    driver: local
+  rabbitmq_data_hml:
     driver: local

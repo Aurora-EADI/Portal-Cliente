@@ -28,10 +28,15 @@ Resumo do que sobe:
 | Frontend (Next.js) | `portal-cliente-frontend-hml` | nenhuma — via Traefik |
 | API (NestJS) | `portal-cliente-api-hml` | nenhuma — via Traefik, prefixo `/api` |
 | MinIO | `minio-cliente-hml` | nenhuma |
+| RabbitMQ | `rabbitmq-cliente-hml` | nenhuma — vhost `homologacao` |
 | Migration | `portal-cliente-migrate-hml` | job one-shot |
 
 Postgres **não** entra na stack: roda no host da VM, banco `portal_cliente`,
 alcançado pelos containers via `host.docker.internal`.
+
+O RabbitMQ **entra** na stack. O broker de `172.20.210.85` é o da produção, e
+toda a homologação — Aurora e Cliente — roda na `.87`; nada da homologação
+conecta no `.85`.
 
 Branch: a homologação faz deploy de **`develop`**; produção, de `main`. Ver
 [AMBIENTES.md](AMBIENTES.md#fluxo-de-branches).
@@ -52,11 +57,14 @@ Nos blocos adiante, **`hml`** representa a invocação do seu SO. Os argumentos
 são os mesmos nos dois: tudo que você passa vai direto para o `docker compose`.
 
 ```sh
-hml config
+hml config --quiet
 hml --profile migration build
 hml up -d --remove-orphans
 hml logs -f portal-cliente-api
 ```
+
+Use sempre `config --quiet`: sem ele o `config` imprime o `env_file` inteiro
+interpolado, com todos os segredos, na tela.
 
 Se o PowerShell bloquear a execução do script:
 
@@ -104,7 +112,7 @@ Get-NetTCPConnection -State Listen -LocalPort 80,443,9000 -ErrorAction SilentlyC
 ```
 
 Se 8090 ou 8453 estiverem ocupadas, escolha outro par e ajuste
-`HOMOLOG_HTTP_PORT` / `HOMOLOG_HTTPS_PORT` no `.env.homolog` **e** o `port:` do
+`HOMOLOG_HTTP_PORT` / `HOMOLOG_HTTPS_PORT` no `.env.homolog` **e** o `to:` do
 redirect em `docker/traefik/traefik.homolog.yml`, que é estático.
 
 ### 1.3 Subnet livre
@@ -212,19 +220,20 @@ New-NetFirewallRule -DisplayName 'Portal Cliente HML (HTTP/HTTPS)' `
   -RemoteAddress 172.20.210.0/24 -Action Allow
 ```
 
-### 1.7 Vhost do RabbitMQ
+### 1.7 RabbitMQ — nada a fazer no host
 
-> O broker é **externo** à VM. Estes comandos vão no host do RabbitMQ, ou pelo
-> Management UI.
+O broker é o serviço `rabbitmq` da própria stack. O compose cria o vhost
+`homologacao` e o usuário `RABBITMQ_HML_USER` na primeira inicialização do
+volume `rabbitmq_data_hml`, com a senha `RABBITMQ_HML_PASSWORD` do
+`.env.homolog` (etapa 2.2).
 
-```sh
-rabbitmqctl add_vhost homologacao
-rabbitmqctl add_user portal_cliente_hml 'SENHA_FORTE'
-rabbitmqctl set_permissions -p homologacao portal_cliente_hml '.*' '.*' '.*'
-```
+> **Não use o broker de `172.20.210.85`.** É o da produção: o Portal do
+> Cliente de produção consome ali, no vhost `/agendamento`, as filas sem
+> sufixo. Nenhum comando desta página roda no `.85`.
 
-É o mesmo broker da produção, e o único ponto onde a homologação pode causar
-dano real — ver a trava da etapa 2.4.
+Sem porta publicada: só a API da stack conecta. Integrar o Aurora homolog a
+este broker exige publicar a 5672 (ou ligar o Aurora à rede
+`portalcliente_hml`) — decisão à parte, ver "Problemas comuns".
 
 ### 1.8 SMTP
 
@@ -242,10 +251,10 @@ cd Portal-Cliente
 git checkout develop
 ```
 
-> Fim de linha não é problema: o repo não tem `.gitattributes`, então num host
-> Windows com `core.autocrlf=true` os arquivos vêm em CRLF — mas o Compose v2
-> descarta o `\r` ao ler `env_file`, e os YAML montados nos containers toleram
-> CRLF. Não converta nada.
+> Fim de linha não é problema: o `.gitattributes` só força LF nos `*.sh`, então
+> num host Windows com `core.autocrlf=true` o resto vem em CRLF — mas o Compose
+> v2 descarta o `\r` ao ler `env_file`, e os YAML montados nos containers
+> toleram CRLF. Não converta nada.
 
 ### 2.1 Criar o `.env.homolog`
 
@@ -302,6 +311,25 @@ $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 
 Um para `BETTER_AUTH_SECRET`, um para `BETTER_AUTH_PROVISIONING_SECRET`, um
 para `SERVICE_API_KEY`. Preencha também todo o resto dos `SUBSTITUA_ME`.
+
+`RABBITMQ_HML_PASSWORD` (e, por conveniência, `MINIO_ROOT_PASSWORD`) tem de ser
+**só letras e números**: o compose a coloca dentro da `RABBITMQ_URL`, e base64
+traz `/`, `+` e `=`, que quebram a URL.
+
+**Linux**
+
+```sh
+openssl rand -hex 24
+```
+
+**Windows**
+
+```powershell
+$c   = [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$b   = New-Object byte[] 32; $rng.GetBytes($b)
+-join ($b | ForEach-Object { $c[$_ % $c.Length] })
+```
 
 ### 2.3 Gerar o certificado autoassinado
 
@@ -360,7 +388,7 @@ funcionar e a sessão não persiste.
 
 O `hml config` barra parte dos erros sozinho: as variáveis que o compose
 interpola (`HOMOLOG_HOST`, `API_URL`, `FRONTEND_URL`, `MINIO_ROOT_USER`,
-`MINIO_ROOT_PASSWORD`) estão declaradas com `:?`, então faltando qualquer uma
+`MINIO_ROOT_PASSWORD`, `RABBITMQ_HML_PASSWORD`) estão declaradas com `:?`, então faltando qualquer uma
 ele encerra com erro em vez de gerar um `Host()` vazio que não casa nada. Com o
 `.env.homolog` antigo do Aurora a saída é exatamente:
 
@@ -380,10 +408,10 @@ batido e só falham no boot. Essas confira à mão.
 for v in DATABASE_URL BETTER_AUTH_SECRET BETTER_AUTH_PROVISIONING_SECRET \
          BETTER_AUTH_URL BETTER_AUTH_TRUSTED_ORIGINS CORS_ORIGIN \
          FRONTEND_URL SERVICE_API_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-         MINIO_BUCKET_NAME HOMOLOG_HOST AVERBACAO_ATIVA; do
+         MINIO_BUCKET_NAME HOMOLOG_HOST AVERBACAO_ATIVA RABBITMQ_HML_PASSWORD; do
   grep -qE "^$v=.+" .env.homolog && echo "ok    $v" || echo "FALTA $v"
 done
-grep -n 'SUBSTITUA_ME' .env.homolog          # tem de sair vazio
+grep -n '=.*SUBSTITUA_ME' .env.homolog       # tem de sair vazio
 
 # b) O banco é o da homologação
 grep '^DATABASE_URL' .env.homolog | sed 's|://[^:]*:[^@]*@|://***:***@|'
@@ -401,11 +429,11 @@ $obrig = @(
   'DATABASE_URL','BETTER_AUTH_SECRET','BETTER_AUTH_PROVISIONING_SECRET',
   'BETTER_AUTH_URL','BETTER_AUTH_TRUSTED_ORIGINS','CORS_ORIGIN',
   'FRONTEND_URL','SERVICE_API_KEY','MINIO_ROOT_USER','MINIO_ROOT_PASSWORD',
-  'MINIO_BUCKET_NAME','HOMOLOG_HOST','AVERBACAO_ATIVA'
+  'MINIO_BUCKET_NAME','HOMOLOG_HOST','AVERBACAO_ATIVA','RABBITMQ_HML_PASSWORD'
 )
 $env_hml = Get-Content .env.homolog
 foreach ($v in $obrig) { if ($env_hml -match "^$v=.+") { "ok    $v" } else { "FALTA $v" } }
-Select-String -Path .env.homolog -Pattern 'SUBSTITUA_ME'   # tem de sair vazio
+Select-String -Path .env.homolog -Pattern '=.*SUBSTITUA_ME'   # tem de sair vazio
 
 # b) O banco é o da homologação
 (Select-String -Path .env.homolog -Pattern '^DATABASE_URL').Line -replace '://[^:]*:[^@]*@','://***:***@'
@@ -419,9 +447,13 @@ Select-String -Path .env.homolog `
 Em (b), o esperado é `host.docker.internal:5432/portal_cliente` — **nunca**
 `172.20.210.68`.
 
-Em (c), qualquer linha que apareça é uma fila ou exchange sem sufixo, isto é, a
-de produção. Sem o sufixo esta stack declara e **consome** a fila de produção,
-e a mensagem não chega ao consumidor real. Corrija antes de continuar.
+O padrão `=.*SUBSTITUA_ME` olha só os valores: o comentário do topo do
+template cita a palavra e faria um `SUBSTITUA_ME` puro acusar sempre.
+
+Em (c), qualquer linha que apareça é uma fila ou exchange sem sufixo, isto é,
+o nome usado pela produção. Com o broker próprio da stack isso não alcança a
+produção, mas o sufixo é a defesa para o dia em que a stack for apontada por
+engano para um broker compartilhado. Corrija antes de continuar.
 
 ---
 
@@ -432,7 +464,7 @@ muda (`./scripts/hml.sh` ou `.\scripts\hml.ps1`).
 
 ```sh
 # 1. Valida a interpolação antes de gastar tempo em build.
-hml config
+hml config --quiet
 
 # 2. Build. O migrator está num profile, então precisa ser pedido à parte.
 hml --profile migration build
@@ -545,11 +577,19 @@ Windows PowerShell 5.1 não tem `-SkipCertificateCheck`.
 processo está de pé. `/api/health/ready` checa Postgres, MinIO e RabbitMQ, e o
 corpo do 503 diz qual caiu.
 
+Broker da stack — a API conectada no vhost `homologacao` e as filas `.hml`
+declaradas:
+
+```sh
+hml exec rabbitmq rabbitmqctl -q list_connections user vhost
+hml exec rabbitmq rabbitmqctl -q list_queues -p homologacao name consumers
+```
+
 Migrations aplicadas no banco — fonte da verdade, mais confiável que a pasta do
 repo. Dá para consultar de dentro do container, sem depender do `psql` do host:
 
 ```sh
-hml exec portal-cliente-api node -e "const{PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.\$queryRawUnsafe('select migration_name,finished_at from _prisma_migrations order by finished_at').then(r=>console.table(r)).finally(()=>p.\$disconnect())"
+hml exec portal-cliente-api node -e "const{PrismaClient}=require('@prisma/client');const{PrismaPg}=require('@prisma/adapter-pg');const p=new PrismaClient({adapter:new PrismaPg({connectionString:process.env.DATABASE_URL})});p.\$queryRawUnsafe('select migration_name,finished_at from _prisma_migrations order by finished_at').then(r=>console.table(r)).finally(()=>p.\$disconnect())"
 ```
 
 Pelo navegador, aceitando o aviso do certificado autoassinado:
@@ -574,7 +614,7 @@ falta: `NEXT_PUBLIC_*` é inlinado no bundle em tempo de build.
 ```sh
 git pull --ff-only          # na branch develop
 
-hml config
+hml config --quiet
 hml --profile migration build
 hml build
 hml --profile migration run --rm migrate
@@ -613,8 +653,8 @@ já migrado pode falhar. Avalie antes de voltar.
 ## Derrubar
 
 ```sh
-hml down          # mantém o volume do MinIO
-hml down -v       # apaga também os arquivos do MinIO de homologação
+hml down          # mantém os volumes do MinIO e do RabbitMQ
+hml down -v       # apaga também os volumes do MinIO e do RabbitMQ de homologação
 ```
 
 Sempre pelo wrapper. Um `docker compose down` solto nesse diretório é o jeito
@@ -633,12 +673,16 @@ mais rápido de derrubar a stack do Aurora por engano.
 | Login funciona e cai no F5 | acesso por HTTP em vez de HTTPS: o cookie `Secure` é descartado |
 | Navegador recusa o certificado sem opção de prosseguir | certificado gerado sem `subjectAltName=IP:` |
 | `Invoke-WebRequest` falha no certificado | esperado com autoassinado; use `curl.exe -k` |
-| Redirect da 8090 leva a uma página morta | `port:` do redirect em `traefik.homolog.yml` diferente da porta publicada |
+| Redirect da 8090 leva a uma página morta | `to:` do redirect em `traefik.homolog.yml` diferente da porta publicada |
 | Tudo na tela responde 500 | `NEST_API_INTERNAL_URL` errado: o proxy do Next cai no default `localhost:3030` dentro do próprio container |
 | Migration falha com erro de conexão | `listen_addresses`, regra do `pg_hba.conf`, ou firewall bloqueando a interface do Docker. Confirme a faixa com `docker network inspect portalcliente_hml` e que a 5432 escuta em todas as interfaces |
 | `host.docker.internal` não resolve no container | em Docker Desktop é nativo; o `extra_hosts: host-gateway` do compose é a garantia de paridade no Linux. Teste: `hml exec portal-cliente-api getent hosts host.docker.internal` |
 | `/api/health/ready` em 503 mas o portal funciona | um dos três: Postgres, MinIO ou RabbitMQ. O corpo da resposta diz qual |
-| Mensagem de integração não chega ao Aurora | fila sem sufixo `.hml`: a homologação consumiu a de produção. Rode a trava da etapa 2.4 |
+| Mensagem de integração não chega ao Aurora | o Aurora homolog ainda aponta para o broker de produção (`172.20.210.85`) ou não alcança o broker desta stack, que não publica porta. Integrar exige publicar a 5672 (ou ligar o Aurora à rede `portalcliente_hml`), reapontar o Aurora homolog para o vhost `homologacao` e usar as filas `.hml` dos dois lados |
+| API loga `RabbitMQ reconectará` em loop | broker da stack fora do ar ou credencial diferente da gravada no volume: usuário/senha só valem na primeira inicialização de `rabbitmq_data_hml`. Ver `hml logs rabbitmq` |
+| `up` falha com `401 UNAUTHORIZED` ao baixar `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` | a tag não está mais disponível publicamente (nem no quay.io nem no Docker Hub). Se a máquina já tiver a imagem com outro nome, confira que é a mesma release — `docker run --rm --entrypoint minio <id> --version` — e dê a ela a tag esperada: `docker tag <id> quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z`. Em host limpo, a imagem tem de vir de um mirror |
+| Traefik loga `Error response from daemon: ""` no provider docker | Traefik antigo demais para o Docker Engine 29 (API mínima 1.40). O compose fixa `traefik:v3.6`; não volte para v3.1 |
+| Traefik reinicia com `field not found, node: port` | campo `port` no redirect do `traefik.homolog.yml`, que o v3 não tem. A porta vai no `to:` (`to: ":8453"`) |
 | Containers do Aurora desapareceram | `docker compose --remove-orphans` chamado sem o wrapper |
 | Traefik não roteia nada | label `traefik.docker.network` tem de ser `portalcliente_hml`, e o provider do `traefik.homolog.yml` também |
 | Build do frontend morre sem mensagem | memória: rode os builds em separado. No Windows, aumente a RAM do WSL2 em `%USERPROFILE%\.wslconfig` |

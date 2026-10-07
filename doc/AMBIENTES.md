@@ -53,8 +53,8 @@ host, e esses estão lado a lado em [HOMOLOGACAO.md](HOMOLOGACAO.md).
 | Rede | `portal_net` (external, criada fora do compose) | `portalcliente_hml` (própria, subnet `172.31.240.0/24`) |
 | Postgres | `172.20.210.68:5432`, banco `portal_agendamento`, `sslmode=require` | host da própria VM via `host.docker.internal:5432`, banco `portal_cliente`, `sslmode=disable` |
 | MinIO | `minio-prod`, volume `minio_data`, bucket `portal-cliente` | `minio-cliente-hml`, volume `minio_data_hml`, bucket `portal-cliente-hml` |
-| RabbitMQ | broker externo, filas sem sufixo | **mesmo broker**, vhost de homologação, filas sufixadas `.hml` |
-| Containers | `portal-cliente-api`, `portal-cliente-frontend`, `minio-prod` | mesmos nomes com sufixo `-hml`, mais `traefik-cliente-hml` |
+| RabbitMQ | broker em `172.20.210.85:5672`, vhost `/agendamento`, filas sem sufixo | **broker próprio**, container `rabbitmq-cliente-hml` na stack, vhost `homologacao`, filas sufixadas `.hml` |
+| Containers | `portal-cliente-api`, `portal-cliente-frontend`, `minio-prod` | mesmos nomes com sufixo `-hml`, mais `traefik-cliente-hml` e `rabbitmq-cliente-hml` |
 
 ### Quem mais vive nessas VMs
 
@@ -82,9 +82,10 @@ A tabela acima é o contrato. Três consequências práticas:
    `DB_HOST`/`DB_SSLMODE` no arquivo de produção foi considerado e descartado,
    para que ele siga byte-idêntico ao que já roda. Fica como dívida: se um dia
    houver um terceiro ambiente, parametrizar passa a valer a pena.
-3. **O broker RabbitMQ e o servidor SMTP são compartilhados.** São os únicos
-   recursos de infraestrutura comuns aos dois ambientes, e a mitigação é
-   configuração, não isolamento físico — ver a seção de riscos.
+3. **Só o servidor SMTP é compartilhado.** O RabbitMQ da homologação é um
+   container da própria stack: toda a homologação roda na `.87`, e o broker de
+   `172.20.210.85` é exclusivo da produção. Nenhum comando de homologação roda
+   no `.85`.
 
 ### Regras de operação
 
@@ -235,10 +236,19 @@ explícitos. Mesma ressalva sobre o banco.
 
 ### Compartilhado entre produção e homologação
 
-- **RabbitMQ.** Mesmo broker. A separação é vhost + sufixo `.hml` em **todas**
-  as filas e exchanges. Sem o sufixo, a homologação declara e consome a fila de
-  produção, e a mensagem não chega ao consumidor real. A conferência está no
-  runbook e no `.env.homolog.example`; a lista completa de variáveis vem de
+- **RabbitMQ — Aurora homolog ligado ao broker de produção.** Apurado em
+  2026-10-07 no broker do `.85` (`rabbitmqctl list_connections`): o usuário
+  `portal_aurora` conecta a partir de `172.20.210.87` — a homologação do Aurora
+  — no vhost `/agendamento`, o mesmo onde o usuário `portal_cliente` consome as
+  filas de produção sem sufixo. O env do Aurora homolog também aponta
+  `PORTAL_CLIENTE_API_URL` para `https://portal-cliente.auroraeadi.com.br`. Ou
+  seja, a homologação do Aurora conversa hoje com a **produção** do Cliente.
+  Correção fica no repo do Aurora: reapontá-lo para o broker desta stack
+  (vhost `homologacao`, filas `.hml`) e para `https://172.20.210.87:8453`.
+- **RabbitMQ — sufixo `.hml`.** Continua obrigatório em todas as filas e
+  exchanges, mesmo com broker próprio: é a defesa se a stack for apontada por
+  engano para um broker compartilhado. A conferência está no runbook (etapa
+  2.4); a lista completa de variáveis vem de
   `portal-cliente-api/src/rabbitmq/rabbitmq.config.ts`.
 - **SMTP.** Mesmo servidor. Homologação dispara e-mail de verdade: use apenas
   endereços de teste e não importe base de clientes real.
