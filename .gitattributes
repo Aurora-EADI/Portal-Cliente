@@ -1,0 +1,8 @@
+# O repo é operado de host Windows (homologação) e Linux (produção), então o
+# fim de linha dos scripts de shell não pode depender do `core.autocrlf` de
+# quem commitou: com CRLF o Linux falha com
+# "bad interpreter: /usr/bin/env sh^M".
+*.sh text eol=lf
+
+# Deliberadamente sem `* text=auto`: normalizar o repo inteiro agora
+# reescreveria todos os arquivos e poluiria o histórico sem necessidade.
