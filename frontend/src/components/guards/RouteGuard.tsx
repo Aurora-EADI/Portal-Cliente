@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useAuthContext } from '@/context/AuthContext';
 import { AlertCircle, ShieldOff, ArrowLeft } from 'lucide-react';
@@ -14,8 +13,7 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard({ route, children }: RouteGuardProps) {
-  const router = useRouter();
-  const { currentUser } = useAuthContext();
+  const { currentUser, logoutUser } = useAuthContext();
   const { isLoading, hasAccess, error } = useModuleAccess(route);
 
   // Perfis externos não usam o sistema de UserModuleAccess.
@@ -52,11 +50,11 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Erro ao Verificar Permissões</h1>
           <p className="text-gray-600 text-center mb-6">{error}</p>
           <button
-            onClick={() => router.push('/modules')}
+            onClick={() => logoutUser()}
             className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Módulos
+            Sair e voltar ao login
           </button>
         </div>
       </div>
@@ -83,11 +81,11 @@ export function RouteGuard({ route, children }: RouteGuardProps) {
             </p>
           </div>
           <button
-            onClick={() => router.push('/modules')}
+            onClick={() => logoutUser()}
             className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar para Módulos
+            Sair e voltar ao login
           </button>
         </div>
       </div>

@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarComponentProps> = ({
   const brand = useMemo(() => {
     const isCollapsed = !mobile && collapsed;
     return (
-      <Link href="/modules" className="flex items-center justify-center transition-opacity hover:opacity-90 px-1 py-1">
+      <Link href="/agendamento" className="flex items-center justify-center transition-opacity hover:opacity-90 px-1 py-1">
         {isCollapsed ? (
           <Image
             src="/favicon-Aurora.png"

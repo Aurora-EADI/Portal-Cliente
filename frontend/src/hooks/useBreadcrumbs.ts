@@ -18,15 +18,8 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
 
-  // "Início" aponta para /agendamento: e a tela inicial do portal, nao /modules.
+  // "Início" aponta para /agendamento: é a tela inicial do portal.
   const HOME_HREF = '/agendamento';
-
-  if (pathname.startsWith('/modules')) {
-    return [
-      { label: 'Início', href: HOME_HREF },
-      { label: 'Módulos', current: true },
-    ];
-  }
 
   if (pathname.startsWith('/agendamento')) {
     const currentTabLabel = tab ? (TAB_LABELS[tab] ?? tab) : 'Dashboard';

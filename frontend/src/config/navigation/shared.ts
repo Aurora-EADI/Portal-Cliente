@@ -1,11 +1,5 @@
-import { Home, List } from 'lucide-react';
+import { List } from 'lucide-react';
 import type { NavItem } from './types';
-
-export const HOME_ITEM = {
-    label: 'Home',
-    icon: Home,
-    path: '/modules',
-} satisfies NavItem;
 
 export const CLIENTE_ITEM = {
     label: 'Cliente',

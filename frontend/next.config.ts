@@ -11,6 +11,12 @@ const nextConfig: NextConfig = {
   // Permite acessar o dev server a partir dos hosts internos.
   allowedDevOrigins: ['172.20.210.81', '172.20.210.84'],
 
+  // A seleção de módulos saiu. Favorito antigo cai em `/`: sem sessão é o
+  // login, com sessão a própria página manda para o agendamento.
+  async redirects() {
+    return [{ source: '/modules', destination: '/', permanent: false }];
+  },
+
   webpack: (config, { dev }) => {
     // Workaround para instabilidades de cache em alguns ambientes Windows/FS
     if (dev) {

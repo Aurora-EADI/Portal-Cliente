@@ -16,7 +16,7 @@ interface RoleGuardProps {
  * Guard que verifica o role do usuário e redireciona se não tiver permissão.
  * 
  * @param allowedRoles - Lista de roles permitidos para acessar o conteúdo
- * @param redirectTo - Rota para redirecionar se o usuário não tiver role permitido (default: /modules)
+ * @param redirectTo - Rota para redirecionar se o usuário não tiver role permitido (default: /agendamento)
  * @param children - Conteúdo a renderizar se o usuário tiver role permitido
  * 
  * @example
@@ -27,7 +27,7 @@ interface RoleGuardProps {
  */
 export function RoleGuard({
     allowedRoles,
-    redirectTo = '/modules',
+    redirectTo = '/agendamento',
     children,
 }: RoleGuardProps) {
     const router = useRouter();

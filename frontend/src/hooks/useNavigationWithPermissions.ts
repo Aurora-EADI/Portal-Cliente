@@ -22,7 +22,7 @@ export function useNavigationWithPermissions(): NavItem[] {
   // Extrai a rota base do módulo atual (ex: /faturamento/cutoff -> /faturamento)
   const moduleRoute = useMemo(() => {
     const parts = pathname.split('/').filter(Boolean);
-    return parts.length > 0 ? `/${parts[0]}` : '/modules';
+    return parts.length > 0 ? `/${parts[0]}` : '/agendamento';
   }, [pathname]);
 
   // Busca dados do módulo e permissões

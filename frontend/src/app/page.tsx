@@ -4,20 +4,16 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import { Login } from '@/components/pages/Login'
-import { UserRole } from '@/types'
 
 export default function HomePage() {
   const { currentUser, isLoading } = useAuthContext()
   const router = useRouter()
 
   useEffect(() => {
+    // Todo perfil inicia no dashboard de agendamento: a seleção de módulos
+    // saiu, e a API recusava a listagem para quem não é ADMIN.
     if (!isLoading && currentUser) {
-      // Perfis operacionais e ADMIN iniciam no dashboard de agendamento.
-      if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CLIENTE || currentUser.role === UserRole.DESPACHANTE || currentUser.role === UserRole.TRANSPORTADORA) {
-        router.push('/agendamento')
-      } else {
-        router.push('/modules')
-      }
+      router.push('/agendamento')
     }
   }, [currentUser, isLoading, router])
 

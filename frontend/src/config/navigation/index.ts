@@ -3,7 +3,6 @@ import { UserRole } from '@/types';
 import { NavItem, NavigationContext } from './types';
 
 export type { NavItem, NavigationContext } from './types';
-import { mainNavigation } from './modules/main';
 import { agendamentoFCLNavigation } from './modules/agendamento';
 import { averbacaoNavigation, procuracoesNavigation } from './modules/averbacao';
 import { AVERBACAO_ATIVA } from '@/config/features';
@@ -13,7 +12,6 @@ import { AVERBACAO_ATIVA } from '@/config/features';
 export const allNavigationContexts: NavigationContext[] = [
     agendamentoFCLNavigation,
     ...(AVERBACAO_ATIVA ? [averbacaoNavigation, procuracoesNavigation] : []),
-    mainNavigation,
 ];
 
 // Map para lookup O(1) da navegação estática
@@ -86,7 +84,7 @@ export const getNavigationByPathAndRole = (
         return [{
             label: 'Home',
             icon: Home,
-            path: '/modules'
+            path: '/agendamento'
         }];
     }
 
@@ -112,7 +110,7 @@ export const getNavigationByPath = (currentPath: string): NavItem[] => {
         {
             label: 'Home',
             icon: Home,
-            path: '/modules',
+            path: '/agendamento',
         }
     ];
 };

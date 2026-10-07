@@ -30,7 +30,6 @@ function renderHome(role) {
       if (id === 'next/navigation') return { useRouter: () => ({ push: (route) => routes.push(route) }) };
       if (id === '@/context/AuthContext') return { useAuthContext: () => ({ currentUser: { role }, isLoading: false }) };
       if (id === '@/components/pages/Login') return { Login: () => null };
-      if (id === '@/types') return { UserRole };
       throw new Error(`Unexpected dependency: ${id}`);
     },
   });
@@ -81,9 +80,9 @@ test('external roles keep the agendamento flow after login', () => {
   }
 });
 
-test('module-based roles keep the module selection flow after login', () => {
+test('internal roles also start on agendamento: module selection was removed', () => {
   for (const role of [UserRole.SUPPLIER, UserRole.EMPLOYEE]) {
-    assert.deepEqual(renderHome(role), ['/modules']);
+    assert.deepEqual(renderHome(role), ['/agendamento']);
   }
 });
 

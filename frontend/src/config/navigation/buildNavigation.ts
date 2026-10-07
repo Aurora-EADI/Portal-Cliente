@@ -78,13 +78,6 @@ export function buildNavigationContexts(
 
     const moduleLabel = registryRoute?.label || mod.name;
 
-    // Home item é sempre o primeiro
-    const homeItem: NavItem = {
-      label: 'Home',
-      icon: Home,
-      path: '/modules',
-    };
-
     // Constrói children a partir dos sharedItems (sub-páginas do módulo)
     // Para cada item, busca na navegação estática para preservar ícone, permissões e roles
     const children: NavItem[] = mod.sharedItems
@@ -118,7 +111,7 @@ export function buildNavigationContexts(
     // Preserva allowedRoles da navegação estática
     const context: NavigationContext = {
       basePath: mod.route,
-      items: [homeItem, moduleItem],
+      items: [moduleItem],
       ...(staticContext?.allowedRoles && { allowedRoles: staticContext.allowedRoles }),
     };
 
