@@ -242,9 +242,17 @@ explícitos. Mesma ressalva sobre o banco.
   — no vhost `/agendamento`, o mesmo onde o usuário `portal_cliente` consome as
   filas de produção sem sufixo. O env do Aurora homolog também aponta
   `PORTAL_CLIENTE_API_URL` para `https://portal-cliente.auroraeadi.com.br`. Ou
-  seja, a homologação do Aurora conversa hoje com a **produção** do Cliente.
-  Correção fica no repo do Aurora: reapontá-lo para o broker desta stack
-  (vhost `homologacao`, filas `.hml`) e para `https://172.20.210.87:8453`.
+  seja, a homologação do Aurora conversava com a **produção** do Cliente.
+  - **HTTP corrigido em 2026-10-07:** `PORTAL_CLIENTE_API_URL`/`_NEST_URL`/
+    `_PUBLIC_URL` do Aurora homolog apontam para `https://172.20.210.87:8453`,
+    com a `SERVICE_API_KEY` da homologação. O backend do Aurora confia no
+    certificado autoassinado via bundle montado em
+    `Portal-Aurora/docker/portal-cliente-hml/ca-bundle.pem`
+    (`NODE_EXTRA_CA_CERTS`). **Regerar `docker/traefik/certs/homolog.crt`
+    exige refazer esse bundle** e recriar o backend do Aurora.
+  - **RabbitMQ ainda pendente:** o Aurora homolog segue no broker de produção.
+    Correção: reapontá-lo para o broker desta stack (vhost `homologacao`,
+    filas `.hml`).
 - **RabbitMQ — sufixo `.hml`.** Continua obrigatório em todas as filas e
   exchanges, mesmo com broker próprio: é a defesa se a stack for apontada por
   engano para um broker compartilhado. A conferência está no runbook (etapa

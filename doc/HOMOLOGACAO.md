@@ -336,6 +336,18 @@ $b   = New-Object byte[] 32; $rng.GetBytes($b)
 O SAN de IP é obrigatório — sem ele o navegador recusa antes de oferecer a
 opção de prosseguir.
 
+> **O Aurora homolog confia neste certificado.** O backend dele chama
+> `/api/service/**` por `https://172.20.210.87:8453` e valida o certificado
+> por um bundle (`Portal-Aurora/docker/portal-cliente-hml/ca-bundle.pem`).
+> Se regerar o certificado, refaça o bundle — `aurora-ca.pem` + o novo
+> `homolog.crt` — e recrie só o backend do Aurora, sem as dependências
+> (o `up` comum roda de novo a migration dele):
+>
+> ```powershell
+> cd C:\Users\Administrator\Documents\Portal-Aurora
+> docker compose -p portal-aurora -f docker-compose.homolog.yml --env-file .env.homolog up -d --no-deps --no-build backend
+> ```
+
 **Linux**
 
 ```sh
@@ -678,7 +690,7 @@ mais rápido de derrubar a stack do Aurora por engano.
 | Migration falha com erro de conexão | `listen_addresses`, regra do `pg_hba.conf`, ou firewall bloqueando a interface do Docker. Confirme a faixa com `docker network inspect portalcliente_hml` e que a 5432 escuta em todas as interfaces |
 | `host.docker.internal` não resolve no container | em Docker Desktop é nativo; o `extra_hosts: host-gateway` do compose é a garantia de paridade no Linux. Teste: `hml exec portal-cliente-api getent hosts host.docker.internal` |
 | `/api/health/ready` em 503 mas o portal funciona | um dos três: Postgres, MinIO ou RabbitMQ. O corpo da resposta diz qual |
-| Mensagem de integração não chega ao Aurora | o Aurora homolog ainda aponta para o broker de produção (`172.20.210.85`) ou não alcança o broker desta stack, que não publica porta. Integrar exige publicar a 5672 (ou ligar o Aurora à rede `portalcliente_hml`), reapontar o Aurora homolog para o vhost `homologacao` e usar as filas `.hml` dos dois lados |
+| Mensagem de integração (RabbitMQ) não chega ao Aurora | o Aurora homolog ainda usa o broker de produção (`172.20.210.85`) e não alcança o broker desta stack, que não publica porta. As chamadas HTTP do Aurora já vêm para esta stack (ver etapa 2.3). Integrar exige publicar a 5672 (ou ligar o Aurora à rede `portalcliente_hml`), reapontar o Aurora homolog para o vhost `homologacao` e usar as filas `.hml` dos dois lados |
 | API loga `RabbitMQ reconectará` em loop | broker da stack fora do ar ou credencial diferente da gravada no volume: usuário/senha só valem na primeira inicialização de `rabbitmq_data_hml`. Ver `hml logs rabbitmq` |
 | `up` falha com `401 UNAUTHORIZED` ao baixar `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` | a tag não está mais disponível publicamente (nem no quay.io nem no Docker Hub). Se a máquina já tiver a imagem com outro nome, confira que é a mesma release — `docker run --rm --entrypoint minio <id> --version` — e dê a ela a tag esperada: `docker tag <id> quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z`. Em host limpo, a imagem tem de vir de um mirror |
 | Traefik loga `Error response from daemon: ""` no provider docker | Traefik antigo demais para o Docker Engine 29 (API mínima 1.40). O compose fixa `traefik:v3.6`; não volte para v3.1 |
