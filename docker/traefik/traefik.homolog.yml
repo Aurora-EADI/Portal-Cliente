@@ -15,12 +15,13 @@ entryPoints:
     http:
       redirections:
         entryPoint:
-          to: websecure
+          # `to` com porta, e não com o nome do entrypoint: `to: websecure`
+          # redirecionaria para a 443 do host, que pertence ao Aurora homolog.
+          # O Traefik v3 não tem campo `port` aqui (falha com "field not
+          # found, node: port"). O valor tem de ser o mesmo HOMOLOG_HTTPS_PORT
+          # publicado no compose.
+          to: ":8453"
           scheme: https
-          # `port` é obrigatório aqui. Sem ele o redirect aponta para a 443 do
-          # host, que não é publicada por esta stack, e o acesso morre. O valor
-          # tem de ser o mesmo HOMOLOG_HTTPS_PORT publicado no compose.
-          port: "8453"
           permanent: false
 
   websecure:
@@ -34,8 +35,10 @@ providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
-    # Restringe a descoberta à rede desta stack: sem isto o Traefik enxergaria
-    # os containers da homologação do Aurora na mesma máquina.
+    # Só containers desta stack. Sem a constraint o Traefik lê também as labels
+    # da homologação do Aurora na mesma máquina e cria rotas para ela —
+    # `network` abaixo NÃO restringe a descoberta, só escolhe a rede padrão.
+    constraints: "Label(`com.docker.compose.project`,`portal-cliente-hml`)"
     network: portalcliente_hml
     watch: true
   file:
