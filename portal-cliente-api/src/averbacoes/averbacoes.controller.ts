@@ -194,6 +194,17 @@ export class AverbacoesServiceController {
     enviarPdf(res, nome, stream);
   }
 
+  /** Versão anterior de um documento (entrada do histórico). */
+  @Get('historico/:historicoId/arquivo')
+  async arquivoDoHistorico(
+    @Param('historicoId', ParseUUIDPipe) historicoId: string,
+    @Res() res: Response,
+  ) {
+    const { stream, nome } =
+      await this.service.abrirArquivoDoHistorico(historicoId);
+    enviarPdf(res, nome, stream);
+  }
+
   @Patch('documentos/:docId/aprovar')
   aprovar(
     @Param('docId', ParseUUIDPipe) docId: string,

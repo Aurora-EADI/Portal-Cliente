@@ -672,6 +672,9 @@ export class AverbacoesService {
       select: {
         ...SELECT_PROCESSO,
         despachante: { select: { id: true, nome: true, codDespachante: true } },
+        // Quem abriu — primeiro evento da linha do tempo do Arquivo de
+        // Processos no Aurora.
+        criadoPor: { select: { name: true, email: true } },
         documentos: {
           select: {
             ...SELECT_DOCUMENTO,
@@ -866,6 +869,30 @@ export class AverbacoesService {
     return {
       stream: await this.minio.getFileStream(documento.arquivoKey),
       nome: documento.arquivoNome ?? 'documento.pdf',
+    };
+  }
+
+  /**
+   * PDF de uma entrada do histórico — a versão que valia naquele momento.
+   *
+   * É o que permite ao Arquivo de Processos do Aurora entregar também as
+   * versões substituídas ou rejeitadas, e não só a atual: numa auditoria, a
+   * versão que motivou uma recusa é justamente a que se pede. Só o Aurora
+   * (service key) chama; o despachante continua vendo a versão atual.
+   */
+  async abrirArquivoDoHistorico(historicoId: string) {
+    const entrada = await this.prisma.averbacaoHistorico.findUnique({
+      where: { id: historicoId },
+      select: { arquivoKey: true, arquivoNome: true },
+    });
+
+    if (!entrada?.arquivoKey) {
+      throw new NotFoundException('Esta entrada do histórico não tem arquivo');
+    }
+
+    return {
+      stream: await this.minio.getFileStream(entrada.arquivoKey),
+      nome: entrada.arquivoNome ?? 'documento.pdf',
     };
   }
 
