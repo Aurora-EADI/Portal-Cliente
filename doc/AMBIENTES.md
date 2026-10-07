@@ -15,6 +15,7 @@ deploy dá errado. Para o procedimento de subir a homologação, ver
 | | Produção | Homologação |
 |---|---|---|
 | VM | `172.20.210.68` | `172.20.210.87` |
+| SO do host | Linux (runner do CI é `[self-hosted, linux, portal-eadi]`, caminhos `/opt/...`) | **Windows** — comandos de host em PowerShell, Postgres como serviço do Windows |
 | URL | https://portal-cliente.auroraeadi.com.br | `https://172.20.210.87:8453` |
 | Compose | `docker-compose.yml` | `docker-compose.homolog.yml` |
 | Project name | **[VERIFICAR NA VM]** | `portal-cliente-hml` |
