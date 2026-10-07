@@ -10,6 +10,33 @@ deploy dá errado. Para o procedimento de subir a homologação, ver
 
 ---
 
+## Fluxo de branches
+
+```text
+feature/*  ──>  develop  ──>  main
+                 homolog       produção
+```
+
+| Branch | Ambiente | VM |
+|---|---|---|
+| `develop` | Homologação | `172.20.210.87` (Windows) |
+| `main` | Produção | `172.20.210.68` (Linux) |
+
+Mesma convenção do Portal Aurora (`DEPLOY.md:5-12` daquele repo). `develop` é
+**estágio de release**, não variante de sistema operacional: o código é
+idêntico nas duas branches e nenhum arquivo versionado é específico de SO. Os
+containers são Linux nos dois hosts; o que varia são os comandos de preparo do
+host, e esses estão lado a lado em [HOMOLOGACAO.md](HOMOLOGACAO.md).
+
+> Não bifurque por SO. Uma cópia por ambiente apodrece: o
+> `docker-compose.homolog.yml` deste repo *era* uma cópia do Portal Aurora
+> apontando para `./backend` e `./aurora-eadi-front`, pastas que nunca
+> existiram aqui, e o `develop` antigo ficou 148 commits atrás do `main` sem
+> nunca ter ido ao `origin`. Correção de segurança aplicada numa branch só não
+> chega na outra.
+
+---
+
 ## Inventário
 
 | | Produção | Homologação |

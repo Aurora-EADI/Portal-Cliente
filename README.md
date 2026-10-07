@@ -321,9 +321,11 @@ revisado.
 Staging/desenvolvimento podem continuar usando os compose próprios, com redes e
 domínios isolados. Nenhum desses arquivos é a configuração oficial de produção.
 
-A homologação roda em VM separada, com `docker-compose.homolog.yml`: o passo a
-passo está em [doc/HOMOLOGACAO.md](doc/HOMOLOGACAO.md), e o mapa dos ambientes
-com o procedimento de rollback em [doc/AMBIENTES.md](doc/AMBIENTES.md).
+A homologação roda em VM separada (`develop` → homologação, `main` → produção),
+com `docker-compose.homolog.yml` e os wrappers `scripts/hml.sh` e
+`scripts/hml.ps1`, que embutem o project name obrigatório. O passo a passo está
+em [doc/HOMOLOGACAO.md](doc/HOMOLOGACAO.md), e o mapa dos ambientes com o
+fluxo de branches e o rollback em [doc/AMBIENTES.md](doc/AMBIENTES.md).
 
 Referências: [pnpm workspaces](https://pnpm.io/workspaces),
 [Prisma em pnpm workspaces](https://www.prisma.io/docs/guides/deployment/pnpm-workspaces).
