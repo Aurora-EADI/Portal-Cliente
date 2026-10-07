@@ -23,8 +23,8 @@ services:
     container_name: minio-cliente-hml
     # Sem publicação de porta: 9000 no host é do MinIO do Aurora homolog.
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER e obrigatorio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD e obrigatorio}
     volumes:
       - minio_data_hml:/data
     command: server /data --console-address ":9001"
@@ -80,8 +80,8 @@ services:
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?MINIO_ROOT_USER e obrigatorio}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD e obrigatorio}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Sem publicação de porta: o Traefik da stack roteia pela rede interna.
@@ -113,7 +113,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=portalcliente_hml"
       # Sem certresolver: o certificado é autoassinado e vem do file provider.
-      - "traefik.http.routers.hml-api.rule=Host(`${HOMOLOG_HOST}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.hml-api.rule=Host(`${HOMOLOG_HOST:?HOMOLOG_HOST e obrigatorio}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.hml-api.entrypoints=websecure"
       - "traefik.http.routers.hml-api.tls=true"
       - "traefik.http.routers.hml-api.priority=100"
@@ -132,16 +132,16 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api
         NEXT_PUBLIC_NEST_API_URL: /api
-        NEXT_PUBLIC_APP_URL: ${FRONTEND_URL}
+        NEXT_PUBLIC_APP_URL: ${FRONTEND_URL:?FRONTEND_URL e obrigatorio}
         NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${API_URL}
-      NEXT_PUBLIC_NEST_API_URL: ${API_URL}
+      NEXT_PUBLIC_API_URL: ${API_URL:?API_URL e obrigatorio}
+      NEXT_PUBLIC_NEST_API_URL: ${API_URL:?API_URL e obrigatorio}
       # Sem isto o proxy /api do Next tenta localhost:3030 dentro do próprio
       # container do frontend e tudo responde 500.
       NEST_API_INTERNAL_URL: http://portal-cliente-api:3030/api
-      NEXT_PUBLIC_APP_URL: ${FRONTEND_URL}
+      NEXT_PUBLIC_APP_URL: ${FRONTEND_URL:?FRONTEND_URL e obrigatorio}
       NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
       NEXT_TELEMETRY_DISABLED: 1
     networks:
@@ -165,7 +165,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=portalcliente_hml"
-      - "traefik.http.routers.hml-front.rule=Host(`${HOMOLOG_HOST}`)"
+      - "traefik.http.routers.hml-front.rule=Host(`${HOMOLOG_HOST:?HOMOLOG_HOST e obrigatorio}`)"
       - "traefik.http.routers.hml-front.entrypoints=websecure"
       - "traefik.http.routers.hml-front.tls=true"
       - "traefik.http.routers.hml-front.priority=10"

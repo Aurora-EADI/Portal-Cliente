@@ -358,8 +358,20 @@ funcionar e a sessão não persiste.
 
 ### 2.4 Travas antes de subir
 
-`hml config` valida a **interpolação**, não o `env_file`: um `.env.homolog`
-incompleto passa pelo `config` e só falha no boot. Confira à mão.
+O `hml config` barra parte dos erros sozinho: as variáveis que o compose
+interpola (`HOMOLOG_HOST`, `API_URL`, `FRONTEND_URL`, `MINIO_ROOT_USER`,
+`MINIO_ROOT_PASSWORD`) estão declaradas com `:?`, então faltando qualquer uma
+ele encerra com erro em vez de gerar um `Host()` vazio que não casa nada. Com o
+`.env.homolog` antigo do Aurora a saída é exatamente:
+
+```text
+error while interpolating services.portal-cliente-api.labels.[]:
+required variable HOMOLOG_HOST is missing a value: HOMOLOG_HOST e obrigatorio
+```
+
+O que o `config` **não** valida é o `env_file`: as variáveis lidas direto pela
+aplicação (`DATABASE_URL`, `BETTER_AUTH_*`, `SERVICE_API_KEY`, as filas) passam
+batido e só falham no boot. Essas confira à mão.
 
 **Linux**
 
