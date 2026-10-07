@@ -228,6 +228,8 @@ model Motorista {
   id                    String   @id @default(uuid())
   clienteId             String?
   transportadoraContaId String?  @map("transportadora_conta_id")
+  /// Cadastro feito pelo despachante na tela de Motoristas: só ele enxerga.
+  despachanteId         String?  @map("despachante_id")
   nome                  String
   cpf                   String
   cnh                   String
@@ -238,10 +240,12 @@ model Motorista {
 
   cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  despachante         Despachante?         @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
   agendamentos        Agendamento[]
 
   @@unique([clienteId, cpf])
   @@unique([transportadoraContaId, cpf])
+  @@unique([despachanteId, cpf])
   @@map("motoristas")
 }
 
@@ -249,6 +253,8 @@ model Veiculo {
   id                    String   @id @default(uuid())
   clienteId             String?
   transportadoraContaId String?  @map("transportadora_conta_id")
+  /// Cadastro feito pelo despachante na tela de Motoristas: só ele enxerga.
+  despachanteId         String?  @map("despachante_id")
   placa                 String
   modelo                String
   tipo                  String
@@ -258,10 +264,12 @@ model Veiculo {
 
   cliente             Cliente?             @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   transportadoraConta TransportadoraConta? @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  despachante         Despachante?         @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
   agendamentos        Agendamento[]
 
   @@unique([clienteId, placa])
   @@unique([transportadoraContaId, placa])
+  @@unique([despachanteId, placa])
   @@map("veiculos")
 }
 
@@ -362,6 +370,8 @@ model Despachante {
   procuracoes  Procuracao[]
   averbacoes   AverbacaoProcesso[]
   clientes     DespachanteCliente[]
+  motoristas   Motorista[]
+  veiculos     Veiculo[]
 
   @@map("despachantes")
 }

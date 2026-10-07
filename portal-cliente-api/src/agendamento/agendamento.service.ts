@@ -525,16 +525,27 @@ export class AgendamentoService {
     }
 
     // Motorista e veículo nascem do agendamento quando ainda não existem: o
-    // cadastro prévio não é exigido de quem agenda pela primeira vez.
+    // cadastro prévio não é exigido de quem agenda pela primeira vez. Ficam com
+    // quem agenda — despachante e transportadora têm cadastro próprio, e é dele
+    // que escolheram o motorista; os demais usam o do cliente da carga.
+    const donoCadastro =
+      user.role === UserRole.DESPACHANTE && user.despachanteId
+        ? { despachanteId: user.despachanteId }
+        : user.role === UserRole.TRANSPORTADORA && user.transportadoraContaId
+          ? { transportadoraContaId: user.transportadoraContaId }
+          : clienteId
+            ? { clienteId }
+            : null;
+
     let motoristaId: string | null = null;
-    if (cpfMotorista && clienteId) {
+    if (cpfMotorista && donoCadastro) {
       const cpfLimpo = String(cpfMotorista).replace(/\D/g, '');
-      const motoristas = await this.prisma.motorista.findMany({ where: { clienteId } });
+      const motoristas = await this.prisma.motorista.findMany({ where: donoCadastro });
       let motorista =
         motoristas.find((m) => m.cpf.replace(/\D/g, '') === cpfLimpo) ?? null;
       if (!motorista && nomeMotorista) {
         motorista = await this.prisma.motorista.create({
-          data: { clienteId, nome: nomeMotorista, cpf: cpfMotorista, cnh: '', telefone: '' },
+          data: { ...donoCadastro, nome: nomeMotorista, cpf: cpfMotorista, cnh: '', telefone: '' },
         });
       } else if (motorista && nomeMotorista && motorista.nome !== nomeMotorista) {
         motorista = await this.prisma.motorista.update({
@@ -546,14 +557,14 @@ export class AgendamentoService {
     }
 
     let veiculoId: string | null = null;
-    if (placaVeiculo && clienteId) {
+    if (placaVeiculo && donoCadastro) {
       const placaLimpa = String(placaVeiculo).replace(/\s/g, '').toUpperCase();
       let veiculo = await this.prisma.veiculo.findFirst({
-        where: { clienteId, placa: { contains: placaLimpa, mode: 'insensitive' } },
+        where: { ...donoCadastro, placa: { contains: placaLimpa, mode: 'insensitive' } },
       });
       if (!veiculo && tipoVeiculo) {
         veiculo = await this.prisma.veiculo.create({
-          data: { clienteId, placa: placaLimpa, modelo: tipoVeiculo, tipo: tipoVeiculo },
+          data: { ...donoCadastro, placa: placaLimpa, modelo: tipoVeiculo, tipo: tipoVeiculo },
         });
       }
       veiculoId = veiculo?.id ?? null;

@@ -5,15 +5,24 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMotoristasDto } from './dto/create-motoristas.dto';
 import { UpdateMotoristasDto } from './dto/update-motoristas.dto';
 
-type UsuarioCadastro = Pick<User, 'role' | 'clienteId' | 'transportadoraContaId'>;
+type UsuarioCadastro = Pick<User, 'role' | 'clienteId' | 'transportadoraContaId' | 'despachanteId'>;
 
-/** Dono do cadastro: cliente e transportadora só enxergam o que é seu. */
+/** Dono do cadastro: cliente, transportadora e despachante só enxergam o que é seu. */
 function escopo(user: UsuarioCadastro): Prisma.MotoristaWhereInput {
   if (user.role === UserRole.CLIENTE) return { clienteId: user.clienteId ?? '__sem_vinculo__' };
   if (user.role === UserRole.TRANSPORTADORA) {
     return { transportadoraContaId: user.transportadoraContaId ?? '__sem_vinculo__' };
   }
+  if (user.role === UserRole.DESPACHANTE) return { despachanteId: user.despachanteId ?? '__sem_vinculo__' };
   return {};
+}
+
+function dono(user: UsuarioCadastro) {
+  return {
+    clienteId: user.role === UserRole.CLIENTE ? user.clienteId : null,
+    transportadoraContaId: user.role === UserRole.TRANSPORTADORA ? user.transportadoraContaId : null,
+    despachanteId: user.role === UserRole.DESPACHANTE ? user.despachanteId : null,
+  };
 }
 
 @Injectable()
@@ -30,11 +39,7 @@ export class MotoristasService {
   async create(user: UsuarioCadastro, dto: CreateMotoristasDto) {
     try {
       return await this.prisma.motorista.create({
-        data: {
-          ...dto,
-          clienteId: user.role === UserRole.CLIENTE ? user.clienteId : null,
-          transportadoraContaId: user.role === UserRole.TRANSPORTADORA ? user.transportadoraContaId : null,
-        },
+        data: { ...dto, ...dono(user) },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
