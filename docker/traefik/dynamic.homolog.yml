@@ -1,0 +1,24 @@
+# Traefik dinâmico da HOMOLOGAÇÃO: certificado autoassinado como default.
+#
+# Os arquivos vivem em ./docker/traefik/certs no host e são montados em
+# /etc/traefik/certs:ro. Não são versionados (.gitignore) — cada VM gera o seu.
+# Geração, com SAN de IP (sem SAN o navegador recusa antes de oferecer a opção
+# de prosseguir):
+#
+#   openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+#     -keyout docker/traefik/certs/homolog.key \
+#     -out   docker/traefik/certs/homolog.crt \
+#     -subj  "/CN=172.20.210.87" \
+#     -addext "subjectAltName=IP:172.20.210.87,DNS:localhost"
+#
+# `default` cobre qualquer router com tls=true, então não há duplicação por
+# domínio: basta trocar o par de arquivos para trocar o certificado.
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/homolog.crt
+        keyFile: /etc/traefik/certs/homolog.key
+  certificates:
+    - certFile: /etc/traefik/certs/homolog.crt
+      keyFile: /etc/traefik/certs/homolog.key

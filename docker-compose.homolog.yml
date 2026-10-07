@@ -1,149 +1,211 @@
+# Stack de HOMOLOGAÇÃO do Portal do Cliente — VM 172.20.210.87.
+#
+# A VM é compartilhada com a homologação do Portal Aurora, que ocupa as portas
+# 80, 443 e 9000 e a rede `aurora-network`. Por isso tudo aqui é isolado: rede,
+# volume, nomes de container e portas próprios. Suba sempre com o project name
+# explícito, porque `--remove-orphans` sem ele alcança containers do outro
+# projeto Compose da mesma máquina:
+#
+#   docker compose -p portal-cliente-hml -f docker-compose.homolog.yml \
+#     --env-file .env.homolog <comando>
+#
+# Diferenças de propósito em relação a docker-compose.yml (produção):
+#   - imagens construídas aqui, não puxadas do GHCR;
+#   - Postgres fora do Docker, no host da VM, via host.docker.internal;
+#   - Traefik dentro da stack, com certificado autoassinado em portas altas;
+#   - a configuração vem de .env.homolog (env_file), não de variáveis
+#     enumeradas serviço por serviço.
 services:
 
-  # MinIO Service (Object Storage)
   minio:
+    # Mesma tag fixa da produção; nao usar latest.
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    container_name: minio-homolog
+    container_name: minio-cliente-hml
+    # Sem publicação de porta: 9000 no host é do MinIO do Aurora homolog.
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
-      - minio_data_homolog:/data
+      - minio_data_hml:/data
     command: server /data --console-address ":9001"
     restart: always
     networks:
-      - aurora-network
+      - portalcliente_hml
     deploy:
       resources:
         limits:
           memory: 512M
     healthcheck:
-      test: [ "CMD", "mc", "ready", "local" ]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 6
       start_period: 10s
 
-  # SQL Server Proxy (bridge to host SQL Server)
-  sql-proxy:
-    image: alpine/socat:latest
-    container_name: sql-server-proxy-homolog
-    command: "tcp-listen:1433,fork,reuseaddr tcp-connect:${SQL_SERVER_HOST}:${SQL_SERVER_PORT:-1433}"
-    networks:
-      - aurora-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-    healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "1433" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # Backend Service (NestJS)
-  backend:
+  migrate:
+    container_name: portal-cliente-migrate-hml
+    image: portal-cliente-migrator:hml
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
-    container_name: portal-aurora-backend-homolog
-    command: >
-      sh -c "npx prisma migrate deploy --schema=prisma/postgres/schema.prisma &&
-             node dist/src/main.js"
-    environment:
-      NODE_ENV: production
-      PORT: 5000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      context: .
+      dockerfile: portal-cliente-api/Dockerfile
+      target: migrator
+    # Job one-shot, chamado explicitamente pelo runbook; `up` nao o repete.
+    profiles: [migration]
     env_file:
       - .env.homolog
-    volumes:
-      - ./backend/prisma:/app/prisma # Needed for migration command
-    # NO PORTS EXPOSED to host
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`homologacao.auroraeadi.com.br`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=5000"
+    environment:
+      NODE_ENV: production
+    # O Postgres roda no host da VM. O extra_hosts precisa ser repetido aqui:
+    # este serviço não herda nada da API.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
     networks:
-      - aurora-network
+      - portalcliente_hml
+
+  portal-cliente-api:
+    container_name: portal-cliente-api-hml
+    image: portal-cliente-api:hml
+    build:
+      context: .
+      dockerfile: portal-cliente-api/Dockerfile
+      target: production
+    env_file:
+      - .env.homolog
+    environment:
+      NODE_ENV: production
+      PORT: 3030
+      # MinIO interno da stack; o endpoint é o nome do serviço na rede.
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Sem publicação de porta: o Traefik da stack roteia pela rede interna.
+    networks:
+      - portalcliente_hml
     depends_on:
       minio:
         condition: service_healthy
-      sql-proxy:
-        condition: service_started
     restart: always
     deploy:
       resources:
         limits:
           memory: 1G
+        reservations:
+          memory: 512M
     healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api', r => process.exit(r.statusCode < 500 ? 0 : 1))" ]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3030/api/health', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=portalcliente_hml"
+      # Sem certresolver: o certificado é autoassinado e vem do file provider.
+      - "traefik.http.routers.hml-api.rule=Host(`${HOMOLOG_HOST}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.hml-api.entrypoints=websecure"
+      - "traefik.http.routers.hml-api.tls=true"
+      - "traefik.http.routers.hml-api.priority=100"
+      - "traefik.http.routers.hml-api.service=hml-api"
+      - "traefik.http.services.hml-api.loadbalancer.server.port=3030"
 
-  # Frontend Service (Next.js)
   frontend:
+    container_name: portal-cliente-frontend-hml
+    image: portal-cliente-frontend:hml
     build:
-      context: ./aurora-eadi-front
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+      # NEXT_PUBLIC_* é inlinado no bundle: tem de entrar como build arg, e
+      # mudar qualquer um destes exige rebuild do frontend.
       args:
-        NEXT_PUBLIC_API_URL: ${API_URL}
-    container_name: portal-aurora-frontend-homolog
+        NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_NEST_API_URL: /api
+        NEXT_PUBLIC_APP_URL: ${FRONTEND_URL}
+        NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_NEST_API_URL: ${API_URL}
+      # Sem isto o proxy /api do Next tenta localhost:3030 dentro do próprio
+      # container do frontend e tudo responde 500.
+      NEST_API_INTERNAL_URL: http://portal-cliente-api:3030/api
+      NEXT_PUBLIC_APP_URL: ${FRONTEND_URL}
+      NEXT_PUBLIC_AVERBACAO_ATIVA: ${AVERBACAO_ATIVA:-false}
       NEXT_TELEMETRY_DISABLED: 1
-    env_file:
-      - .env.homolog
-    # NO PORTS EXPOSED to host
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`homologacao.auroraeadi.com.br`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
     networks:
-      - aurora-network
+      - portalcliente_hml
     depends_on:
-      backend:
+      portal-cliente-api:
         condition: service_healthy
     restart: always
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 1G
+        reservations:
+          memory: 512M
     healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" ]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 90s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=portalcliente_hml"
+      - "traefik.http.routers.hml-front.rule=Host(`${HOMOLOG_HOST}`)"
+      - "traefik.http.routers.hml-front.entrypoints=websecure"
+      - "traefik.http.routers.hml-front.tls=true"
+      - "traefik.http.routers.hml-front.priority=10"
+      - "traefik.http.routers.hml-front.service=hml-front"
+      - "traefik.http.services.hml-front.loadbalancer.server.port=3000"
 
-  # Traefik Reverse Proxy
   traefik:
-    image: traefik:v2.11
-    container_name: traefik-homolog
+    image: traefik:v3.1
+    container_name: traefik-cliente-hml
+    # 80 e 443 do host sao do Aurora homolog; esta stack usa portas altas.
+    # O redirect http->https dentro do traefik.homolog.yml tem de citar a
+    # porta publicada (8453), senao manda o navegador para 443 e quebra.
     ports:
-      - "80:80"
-      # - "443:443" # Uncomment if using HTTPS
-      - "8080:8080" # Dashboard
+      - "${HOMOLOG_HTTP_PORT:-8090}:80"
+      - "${HOMOLOG_HTTPS_PORT:-8453}:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./docker/traefik/traefik.homolog.yml:/etc/traefik/traefik.yml:ro
+      - ./docker/traefik/dynamic.homolog.yml:/etc/traefik/dynamic.homolog.yml:ro
+      - ./docker/traefik/certs:/etc/traefik/certs:ro
     restart: always
     networks:
-      - aurora-network
+      - portalcliente_hml
     deploy:
       resources:
         limits:
           memory: 256M
 
 networks:
-  aurora-network:
+  portalcliente_hml:
+    # Nome fixo: sem ele o Docker prefixaria o project name, e as labels
+    # `traefik.docker.network` deixariam de casar se o project mudasse.
+    name: portalcliente_hml
     driver: bridge
+    # Subnet fixa para a regra do pg_hba.conf ser precisa, em vez de depender
+    # da faixa que o Docker sortear.
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24
 
 volumes:
-  minio_data_homolog:
+  minio_data_hml:
+    driver: local

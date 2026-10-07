@@ -1,17 +1,45 @@
+# Traefik estático da HOMOLOGAÇÃO do Portal do Cliente (VM 172.20.210.87).
+#
+# Este Traefik vive dentro da stack (ao contrário da produção, onde é externo e
+# compartilhado). Escuta 80/443 dentro do container; o compose publica isso em
+# 8090/8453 no host, porque 80 e 443 pertencem à homologação do Portal Aurora
+# na mesma VM.
+
 api:
-  dashboard: true
-  insecure: true
+  # Dashboard desligado: `insecure: true` exporia o painel na rede interna.
+  dashboard: false
 
 entryPoints:
   web:
     address: ":80"
-  # websecure:
-  #   address: ":443"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          # `port` é obrigatório aqui. Sem ele o redirect aponta para a 443 do
+          # host, que não é publicada por esta stack, e o acesso morre. O valor
+          # tem de ser o mesmo HOMOLOG_HTTPS_PORT publicado no compose.
+          port: "8453"
+          permanent: false
+
+  websecure:
+    address: ":443"
+
+# Nenhum certificatesResolver: homologação usa certificado autoassinado,
+# declarado pelo file provider abaixo. ACME exige porta 80 pública e domínio
+# resolvível, e aqui o acesso é por IP numa rede interna.
 
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
+    # Restringe a descoberta à rede desta stack: sem isto o Traefik enxergaria
+    # os containers da homologação do Aurora na mesma máquina.
+    network: portalcliente_hml
+    watch: true
+  file:
+    filename: /etc/traefik/dynamic.homolog.yml
     watch: true
 
 log:

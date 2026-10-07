@@ -18,6 +18,9 @@ dist/
 .env.*
 !.env.example
 !**/.env.example
+# Template de homologação: `.env.*` acima o engoliria, e as negações de
+# `.env.example` cobrem apenas aquele nome exato.
+!.env.homolog.example
 
 # Notas internas de deploy (não versionadas)
 .DEPLOY_PROD.md
@@ -47,7 +50,12 @@ yarn-debug.log*
 yarn-error.log*
 *.md
 !docker/traefik/README.md
+# Documentação de ambiente e deploy: versionada de propósito.
+!doc/AMBIENTES.md
+!doc/HOMOLOGACAO.md
 docker/traefik/acme.json
+# Certificado autoassinado de homologação, gerado na VM.
+docker/traefik/certs/
 
 # Artefatos de build que escapavam do tsc antes do exclude de prisma/
 portal-cliente-api/prisma/*.js
