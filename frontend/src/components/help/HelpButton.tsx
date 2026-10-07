@@ -28,9 +28,9 @@ export function HelpButton({ compacto = false, antesDeAbrir }: HelpButtonProps) 
       toast.info('Esta página ainda não tem explicação disponível.');
       return;
     }
-    const usuario = { id: currentUser.id, role: currentUser.role };
+    const perfil = currentUser.role;
     const iniciar = () => {
-      if (!iniciarTour(pagina, usuario)) {
+      if (!iniciarTour(pagina, perfil)) {
         toast.info('Esta página ainda não tem explicação disponível.');
       }
     };

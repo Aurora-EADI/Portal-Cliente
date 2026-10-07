@@ -4,10 +4,7 @@
  * O texto mora aqui, fora das telas, para ser revisado por quem conhece o
  * negócio sem mexer em componente. Cada passo aponta para um `data-tour` da
  * tela; passo sem `elemento` vira um balão central, o que garante explicação
- * até em página ainda não marcada.
- *
- * Suba `versao` quando a tela mudar o bastante para o tour antigo enganar: o
- * início automático volta a aparecer para todo mundo.
+ * até em página ainda não marcada. O tour só abre pelo botão Ajuda.
  */
 import { UserRole } from '@/types';
 
@@ -34,7 +31,6 @@ export interface TourStep {
 }
 
 export interface PageTour {
-  versao: number;
   passos: TourStep[];
 }
 
@@ -52,7 +48,6 @@ const PASSO_AJUDA: TourStep = {
 
 export const TOURS: Record<TourPageId, PageTour> = {
   'agendamento.dashboard': {
-    versao: 1,
     passos: [
       {
         titulo: 'Painel de agendamentos',
@@ -129,7 +124,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.wizard': {
-    versao: 1,
     passos: [
       {
         titulo: 'Novo agendamento',
@@ -161,7 +155,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.gate': {
-    versao: 1,
     passos: [
       {
         titulo: 'Portaria (Gate)',
@@ -172,7 +165,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.dis': {
-    versao: 1,
     passos: [
       {
         titulo: 'DIs & Containers',
@@ -183,7 +175,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.drivers': {
-    versao: 1,
     passos: [
       {
         titulo: 'Motoristas e veículos',
@@ -214,7 +205,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.transportadoras': {
-    versao: 1,
     passos: [
       {
         titulo: 'Transportadoras',
@@ -245,7 +235,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'agendamento.config': {
-    versao: 1,
     passos: [
       {
         titulo: 'Configurações de agendamento',
@@ -256,7 +245,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   averbacao: {
-    versao: 1,
     passos: [
       {
         titulo: 'Averbação aduaneira',
@@ -267,7 +255,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   'averbacao.detalhe': {
-    versao: 1,
     passos: [
       {
         titulo: 'Detalhe do processo',
@@ -278,7 +265,6 @@ export const TOURS: Record<TourPageId, PageTour> = {
   },
 
   procuracoes: {
-    versao: 1,
     passos: [
       {
         titulo: 'Procurações',
