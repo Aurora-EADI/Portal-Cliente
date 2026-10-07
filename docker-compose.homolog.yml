@@ -55,7 +55,12 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_HML_USER:-portal_cliente_hml}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_HML_PASSWORD:?RABBITMQ_HML_PASSWORD e obrigatorio}
       RABBITMQ_DEFAULT_VHOST: homologacao
-    # Sem publicação de porta: só a API da stack conecta, pela rede interna.
+    # Publicada só no loopback da VM: o backend do Aurora homolog conecta por
+    # host.docker.internal:5672 (vhost homologacao, usuário próprio). Ligar o
+    # Aurora à rede portalcliente_hml foi descartado: os nomes `minio`/`redis`
+    # ficariam ambíguos para ele.
+    ports:
+      - "127.0.0.1:5672:5672"
     volumes:
       - rabbitmq_data_hml:/var/lib/rabbitmq
     restart: always

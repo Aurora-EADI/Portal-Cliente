@@ -250,9 +250,11 @@ explícitos. Mesma ressalva sobre o banco.
     `Portal-Aurora/docker/portal-cliente-hml/ca-bundle.pem`
     (`NODE_EXTRA_CA_CERTS`). **Regerar `docker/traefik/certs/homolog.crt`
     exige refazer esse bundle** e recriar o backend do Aurora.
-  - **RabbitMQ ainda pendente:** o Aurora homolog segue no broker de produção.
-    Correção: reapontá-lo para o broker desta stack (vhost `homologacao`,
-    filas `.hml`).
+  - **RabbitMQ corrigido em 2026-10-07:** antes da correção, o Aurora homolog
+    publicou no broker de produção um lote de 37 DIs e desaverbações (19:27).
+    Agora conecta no broker desta stack (`host.docker.internal:5672`, vhost
+    `homologacao`, usuário `portal_aurora_hml`, exchanges `.hml`). Nada da
+    homologação conecta mais no `.85`.
 - **RabbitMQ — sufixo `.hml`.** Continua obrigatório em todas as filas e
   exchanges, mesmo com broker próprio: é a defesa se a stack for apontada por
   engano para um broker compartilhado. A conferência está no runbook (etapa
