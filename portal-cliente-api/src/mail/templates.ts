@@ -197,6 +197,57 @@ export function documentoDecidido(d: DadosDocumento): Omit<Mensagem, 'para'> {
   };
 }
 
+// ── Atribuição de transportadora ────────────────────────────────────
+
+export interface DadosAtribuicao {
+  transportadoraNome: string;
+  /** Documento de saída da DI; cai para o nLote quando ausente. */
+  documentoSaida?: string | null;
+  nLote: string;
+  clienteNome?: string | null;
+  /** "" = DI inteira; omite a linha nesse caso. */
+  container?: string | null;
+}
+
+export function transportadoraAtribuida(
+  d: DadosAtribuicao,
+): Omit<Mensagem, 'para'> {
+  const titulo = 'Você foi atribuída a uma DI';
+  const di = d.documentoSaida || d.nLote;
+
+  const blocos = [
+    paragrafo(
+      `A transportadora <strong>${esc(d.transportadoraNome)}</strong> foi atribuída para a retirada da DI <strong>${esc(di)}</strong>. Acesse o portal para agendar a retirada.`,
+    ),
+    linhas([
+      ['DI', di],
+      ['Lote SIAUM', d.nLote],
+      ['Container', d.container || null],
+      ['Importador', d.clienteNome],
+    ]),
+  ];
+
+  const texto = [
+    titulo,
+    '',
+    `Transportadora: ${d.transportadoraNome}`,
+    `DI: ${di}`,
+    `Lote SIAUM: ${d.nLote}`,
+    d.container ? `Container: ${d.container}` : '',
+    d.clienteNome ? `Importador: ${d.clienteNome}` : '',
+    '',
+    PORTAL_URL,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return {
+    assunto: `[Aurora EADI] Nova atribuição — DI ${di}`,
+    html: layout(titulo, 'neutro', blocos),
+    texto,
+  };
+}
+
 // ── Devolução para correção ─────────────────────────────────────────
 
 export interface DadosDevolucao {

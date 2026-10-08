@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   DIStatus,
@@ -10,6 +10,7 @@ import {
 import type { Prisma, User } from '@prisma/client';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MailService } from '../mail/mail.service';
+import { transportadoraAtribuida } from '../mail/templates';
 import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { AgendamentoStatusService } from './agendamento-status.service';
 import { STATUS_ARQUIVADOS, STATUS_EM_ANDAMENTO } from './agendamento-status.catalog';
@@ -49,6 +50,8 @@ function descreverProcuracao(status: ProcuracaoStatus): string {
 
 @Injectable()
 export class AgendamentoService {
+  private readonly logger = new Logger(AgendamentoService.name);
+
   constructor(
     private prisma: PrismaService,
     private readonly mail: MailService,
@@ -117,7 +120,59 @@ export class AgendamentoService {
       data: { nLote, container, transportadoraContaId: transportadora.id, atribuidoPorUserId: user.id, atribuidoPorRole: user.role },
       include: { transportadora: { select: { id: true, nome: true, cnpj: true } } },
     });
+
+    // Aviso de atribuição por email. O WhatsApp já sai pela fila
+    // (whatsappNotificadoEm = null). Quando o convite foi recém-criado, o email
+    // de convite já saiu neste mesmo instante — não duplicamos com o de
+    // atribuição. Fora da request (void): o email é consequência da atribuição,
+    // não parte dela, e não pode segurar o commit nem derrubar o processo.
+    if (convite.status !== 'created') {
+      void this.notificarAtribuicao(transportadora.id, { documentoSaida: di.documentoSaida, nLote, cliente: di.cliente, container });
+    }
+
     return { ...atribuicao, convite };
+  }
+
+  /**
+   * Email de "você foi atribuída a uma DI" para a transportadora.
+   *
+   * Vai para o login ativo, se houver; senão para o email do cadastro. Sem
+   * nenhum dos dois, não há para quem enviar — sai sem erro. Engole as próprias
+   * falhas: disparada por `void`, uma exceção aqui viraria unhandled rejection.
+   */
+  private async notificarAtribuicao(
+    transportadoraId: string,
+    di: { documentoSaida: string | null; nLote: string; cliente: string | null; container: string },
+  ) {
+    try {
+      const [conta, ativo] = await Promise.all([
+        this.prisma.transportadoraConta.findUnique({
+          where: { id: transportadoraId },
+          select: { nome: true, email: true },
+        }),
+        this.prisma.user.findFirst({
+          where: { transportadoraContaId: transportadoraId, active: true },
+          select: { email: true },
+        }),
+      ]);
+
+      const destino = ativo?.email || conta?.email;
+      if (!conta || !destino) return;
+
+      const corpo = transportadoraAtribuida({
+        transportadoraNome: conta.nome,
+        documentoSaida: di.documentoSaida,
+        nLote: di.nLote,
+        clienteNome: di.cliente,
+        container: di.container,
+      });
+
+      await this.mail.enviar({ para: [destino], ...corpo });
+    } catch (erro) {
+      this.logger.error(
+        `Falha ao notificar atribuição da DI ${di.nLote} à transportadora ${transportadoraId} — ${(erro as Error).message}`,
+      );
+    }
   }
 
   private async ensureTransportadoraInvite(transportadora: { id: string; cnpj: string; nome: string; email: string | null; codTransp: string | null }, emailOverride?: string) {

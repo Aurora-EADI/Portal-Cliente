@@ -9,13 +9,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "9920d6c4-756a-462c-800c-2b04492bcaf7",
+      "id": "35c0a618-845e-4085-9418-0a820cd194d5",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -272,
-        512
+        592,
+        1600
       ],
       "webhookId": "agendamento-confirmado",
       "credentials": {
@@ -48,13 +48,13 @@
         },
         "options": {}
       },
-      "id": "ca2cc035-16b5-4bd3-9809-56ca96f67ab6",
+      "id": "cb69daac-4e2d-4d8a-afad-9a6a3381ed17",
       "name": "Rotear tipo",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -48,
-        512
+        816,
+        1600
       ]
     },
     {
@@ -80,13 +80,13 @@
         },
         "options": {}
       },
-      "id": "29a86a63-e144-4b51-a699-637d8c424c05",
+      "id": "0d26d85d-eb8b-4270-88e8-f321cc9799d9",
       "name": "Rotear tipo (averbação)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -48,
-        736
+        816,
+        1824
       ]
     },
     {
@@ -112,99 +112,119 @@
         },
         "options": {}
       },
-      "id": "e6d0d851-22f4-4ec7-a4d8-d25f718948b7",
+      "id": "087d9ad6-d0ab-424e-80c7-ee2cab6af089",
       "name": "Rotear tipo (convite)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -48,
-        960
+        816,
+        2048
       ]
     },
     {
       "parameters": {
-        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst portalUrl = String($env.PORTAL_CLIENTE_URL || '').replace(/\\/+$/, '');\nif (!portalUrl) throw new Error('PORTAL_CLIENTE_URL não configurada');\n\nconst b = $json.body;\nconst di = b.documentoSaida || b.nLote;\n// A mensagem vai para o WhatsApp da transportadora atribuída.\nconst nome = b.nome || b.transportadora;\n\nconst text =\n  `Olá, *${nome}*! 👋\\n\\n` +\n  `Aqui é a equipe da *Aurora EADI*.\\n\\n` +\n  `A transportadora *${b.transportadora}* foi atribuída para a retirada da DI *${di}* 🚛\\n\\n` +\n  (b.cliente ? `🏢 Cliente: ${b.cliente}\\n\\n` : '') +\n  `Acesse o Portal do Cliente para *agendar a retirada*:\\n` +\n  `${portalUrl}/agendamento\\n\\n` +\n  `Qualquer dúvida, fale com nosso SAC:\\n` +\n  `📞 (92) 98277-2168\\n\\n` +\n  `_Aurora EADI — Portal do Cliente_`;\n\nreturn [{ json: { number, text } }];"
+        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst portalUrl = String($env.PORTAL_CLIENTE_URL || '').replace(/\\/+$/, '');\nif (!portalUrl) throw new Error('PORTAL_CLIENTE_URL não configurada');\n\nconst b = $json.body;\nconst di = b.documentoSaida || b.nLote;\n// A mensagem vai para o WhatsApp da transportadora atribuída.\nconst nome = b.nome || b.transportadora;\n\nconst text =\n  `Olá, *${nome}*! 👋\\n\\n` +\n  `Aqui é a equipe da *Aurora EADI*.\\n\\n` +\n  `A transportadora *${b.transportadora}* foi atribuída para a retirada da DI *${di}* 🚛\\n\\n` +\n  (b.cliente ? `🏢 Cliente: ${b.cliente}\\n\\n` : '') +\n  `Acesse o Portal do Cliente para *agendar a retirada*:\\n` +\n  `${portalUrl}/agendamento\\n\\n` +\n  `Qualquer dúvida, fale com nosso SAC:\\n` +\n  `📞 (92) 98277-2168\\n\\n` +\n  `_Aurora EADI — Portal do Cliente_`;\n\nreturn [{ json: { number, text } }];\n"
       },
-      "id": "315d84c7-90ef-431c-818c-99d77b982da6",
+      "id": "129e9e43-3674-4e75-8e39-ce818ca124a2",
       "name": "Montar mensagem (atribuição)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        176,
-        384
+        1040,
+        1472
       ]
     },
     {
       "parameters": {
         "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst text = `Olá! Seu agendamento foi confirmado.\\n\\n` +\n  `Protocolo: ${$json.body.protocolo}\\n` +\n  `Data: ${$json.body.data}  Horário: ${$json.body.horario}\\n` +\n  ($json.body.empresa ? `Empresa: ${$json.body.empresa}\\n` : '') +\n  ($json.body.operacao ? `Operação: ${$json.body.operacao}\\n` : '') +\n  ($json.body.diNumero ? `D.I: ${$json.body.diNumero}\\n` : '') +\n  ($json.body.container ? `Container: ${$json.body.container}\\n` : '') +\n  ($json.body.nomeMotorista ? `Motorista: ${$json.body.nomeMotorista}\\n` : '') +\n  ($json.body.placaVeiculo ? `Veículo: ${$json.body.placaVeiculo}\\n` : '') +\n  ($json.body.transportadora ? `Transportadora: ${$json.body.transportadora}\\n` : '') +\n  `\\nAurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
       },
-      "id": "d9d18f74-12ea-44a7-9d03-201c43ed1490",
+      "id": "d2eadfa7-f927-41c0-b37c-fe0219c52233",
       "name": "Montar mensagem",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        176,
-        624
+        1040,
+        1712
       ]
     },
     {
       "parameters": {
-        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst portalUrl = String($env.PORTAL_CLIENTE_URL || '').replace(/\\/+$/, '');\nif (!portalUrl) throw new Error('PORTAL_CLIENTE_URL não configurada');\n\nconst lotes = $json.body.lotes || [];\nconst plural = lotes.length > 1 ? 's' : '';\nconst listaLotes = lotes\n  .map(l => `• Lote ${l.nLote}${l.documento ? ` (Doc: ${l.documento})` : ''}`)\n  .join('\\n');\n\nconst text = `Olá, ${$json.body.nome}!\\n\\n` +\n  `A averbação do${plural} lote${plural} abaixo foi concluída:\\n\\n` +\n  `${listaLotes}\\n\\n` +\n  `Já está disponível para agendamento no Portal do Cliente Aurora EADI:\\n` +\n  `${portalUrl}/\\n\\n` +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
+        "jsCode": "const body = $json.body || {};\n\nconst digits = (body.whatsapp || '').replace(/\\D/g, '');\nif (digits.length < 10) return [];\n\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\n// $env é bloqueado neste n8n (N8N_BLOCK_ENV_ACCESS_IN_NODE), então a URL\n// pública fica aqui. Ao virar produção, trocar por auroraeadi.com.br.\nconst PORTAL_URL = 'https://portal-cliente.auroraeadi.com.br/';\nconst SAC = '(92) 98277-2168';\n\n// \"JR ASSESSORIA\" -> \"Jr Assessoria\" (evita tom de banco de dados)\nconst nome = (body.nome || 'cliente')\n  .toLowerCase()\n  .replace(/(^|\\s|\\/)\\p{L}/gu, (c) => c.toUpperCase());\n\nconst lotes = body.lotes || [];\nif (lotes.length === 0) return [];\n\nconst multi = lotes.length > 1;\n\nconst listaLotes = lotes\n  .map((l) => {\n    const linhas = [`📦 Lote: *${l.nLote}*`];\n    if (l.documento) linhas.push(`📄 Documento: ${l.documento}`);\n    return linhas.join('\\n');\n  })\n  .join('\\n\\n');\n\nconst text =\n  `Olá, *${nome}*! 👋\\n\\n` +\n  `Aqui é a equipe da *Aurora EADI*.\\n\\n` +\n  `${multi ? 'As averbações dos lotes' : 'A averbação do lote'} abaixo ` +\n  `${multi ? 'foram concluídas' : 'foi concluída'} ✅\\n\\n` +\n  `${listaLotes}\\n\\n` +\n  `Já ${multi ? 'estão liberados' : 'está liberado'} para *agendamento* no Portal do Cliente:\\n` +\n  `${PORTAL_URL}/agendamento\\n\\n` +\n  `Qualquer dúvida, fale com nosso SAC:\\n` +\n  `📞 ${SAC}\\n\\n` +\n  `_Aurora EADI — Portal do Cliente_`;\n\nreturn [{ json: { number, text, linkPreview: true } }];\n"
       },
-      "id": "ac5bee55-29a7-4957-b292-8e6b7805e83a",
+      "id": "d658e4ab-10da-4088-81b3-73dd1130d070",
       "name": "Montar mensagem (averbação)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        176,
-        864
+        1040,
+        1952
       ]
     },
     {
       "parameters": {
-        "jsCode": "const digits = ($json.body.whatsapp || '').replace(/\\D/g, '');\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\nconst tipoLabel = { DESPACHANTE: 'despachante', CLIENTE: 'cliente', TRANSPORTADORA: 'transportadora' }[$json.body.destinatario] || 'usuário';\n\nlet expiraTexto = '';\ntry {\n  const dt = new Date($json.body.expiresAt);\n  expiraTexto = dt.toLocaleDateString('pt-BR');\n} catch (e) {\n  expiraTexto = $json.body.expiresAt || '';\n}\n\nconst text = `Olá, ${$json.body.nome}!\\n\\n` +\n  `Você foi convidado(a) como ${tipoLabel} para acessar o Portal do Cliente Aurora EADI.\\n\\n` +\n  `Acesse o link abaixo para concluir seu cadastro:\\n${$json.body.link}\\n\\n` +\n  (expiraTexto ? `Este convite expira em ${expiraTexto}.\\n\\n` : '') +\n  `Aurora EADI — Portal do Cliente`;\n\nreturn [{ json: { number, text } }];"
+        "jsCode": "const body = $json.body || {};\n\nconst digits = (body.whatsapp || '').replace(/\\D/g, '');\nif (digits.length < 10) return [];\n\nconst withCountry = digits.startsWith('55') ? digits : `55${digits}`;\nconst number = `${withCountry}@s.whatsapp.net`;\n\n// $env é bloqueado neste n8n (N8N_BLOCK_ENV_ACCESS_IN_NODE), então a URL\n// pública fica aqui. Ao virar produção, trocar por auroraeadi.com.br.\nconst PORTAL_URL = 'https://homologacao.auroraeadi.com.br';\nconst SAC = '(92) 98277-2168';\nconst TZ = 'America/Manaus';\n\n// O WhatsApp só transforma em link o que tem protocolo e domínio público.\n// localhost / host.docker.internal não viram link nem geram preview, então\n// reescrevemos para o domínio real antes de montar a mensagem.\nfunction normalizarLink(raw) {\n  if (!raw) return '';\n  let url = String(raw).trim();\n  if (!/^https?:\\/\\//i.test(url)) url = `https://${url}`;\n  try {\n    const u = new URL(url);\n    if (/^(host\\.docker\\.internal|localhost|127\\.0\\.0\\.1|\\[::1\\])$/i.test(u.hostname)) {\n      const base = new URL(PORTAL_URL);\n      u.protocol = base.protocol;\n      u.hostname = base.hostname;\n      u.port = base.port; // '' quando o domínio usa 443\n    }\n    return u.toString();\n  } catch (e) {\n    return url;\n  }\n}\n\nconst link = normalizarLink(body.link);\nif (!link) return [];\n\nconst tipoLabel = {\n  DESPACHANTE: 'despachante',\n  CLIENTE: 'cliente',\n  TRANSPORTADORA: 'transportadora',\n}[body.destinatario] || 'usuário';\n\n// new Date('lixo') devolve Invalid Date sem lançar — checar com isNaN\nconst dt = body.expiresAt ? new Date(body.expiresAt) : null;\nconst dtValida = dt && !isNaN(dt.getTime());\n\nconst expiraTexto = dtValida\n  ? dt.toLocaleString('pt-BR', {\n      timeZone: TZ,\n      day: '2-digit',\n      month: '2-digit',\n      year: 'numeric',\n      hour: '2-digit',\n      minute: '2-digit',\n    })\n  : '';\n\nconst diasRestantes = dtValida\n  ? Math.ceil((dt.getTime() - Date.now()) / 86400000)\n  : null;\n\nconst prazo = diasRestantes !== null && diasRestantes > 0\n  ? ` (${diasRestantes} dia${diasRestantes > 1 ? 's' : ''})`\n  : '';\n\nconst nome = (body.nome || '')\n  .toLowerCase()\n  .replace(/(^|\\s|\\/)\\p{L}/gu, (c) => c.toUpperCase());\n\nconst linhas = [\n  `Olá${nome ? `, *${nome}*` : ''}! 👋`,\n  '',\n  'Aqui é a equipe da *Aurora EADI*.',\n  '',\n  `Você foi convidado como *${tipoLabel}* para acessar o Portal do Cliente.`,\n  '',\n  'Toque no link abaixo para criar sua senha e concluir o cadastro:',\n  link,\n  '',\n];\n\nlinhas.push(\n  '🔒 Este link é pessoal. Não encaminhe para outras pessoas.',\n  '',\n  'Qualquer dúvida, fale com nosso SAC:',\n  `📞 ${SAC}`,\n  '',\n  '_Aurora EADI — Portal do Cliente_',\n);\n\nreturn [{ json: { number, text: linhas.join('\\n'), linkPreview: true } }];\n"
       },
-      "id": "0b19c19b-5306-456f-91e3-19c7bc4ed633",
+      "id": "5f69c9d0-b3d3-48bf-ba9c-10718f99c3f0",
       "name": "Montar mensagem (convite)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        176,
-        1104
+        1040,
+        2192
       ]
     },
     {
       "parameters": {},
-      "id": "9db55808-dd8d-43e6-b7e1-7bd40e1753f2",
+      "id": "cbd56fed-f8c4-4817-ac86-338d79558914",
       "name": "Mensagem pronta",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        400,
-        512
+        1264,
+        1600
       ]
     },
     {
       "parameters": {
-        "url": "={{ $env.EVOLUTION_API_URL + '/instance/connectionState/wtsp' }}",
+        "url": "http://evolution_api:8080/instance/connectionState/averbacao_aduaneira",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
-      "id": "726d07b0-24da-4fb1-b49b-e8da6ce48c79",
+      "id": "80a2cda2-53f3-4e83-a0fb-8403226e7c35",
       "name": "Verificar Conexão",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        560,
-        512
+        1424,
+        1600
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza a resposta do /instance/connectionState.\n// Se o node HTTP falhou (onError: continueRegularOutput), o item vem como { error: ... }\n// e $json.instance.state nao existe — sem isso o IF quebra com typeValidation strict.\nconst j = $json || {};\n\nif (j.error !== undefined) {\n  const msg = typeof j.error === 'string' ? j.error : (j.error?.message || 'erro desconhecido');\n  return [{ json: { state: 'unreachable', detalhe: msg } }];\n}\n\nconst state = j?.instance?.state || j?.state || 'unknown';\nreturn [{ json: { state, detalhe: '' } }];"
+      },
+      "id": "b3998d5a-8b8c-453e-8eda-ab7e4258c680",
+      "name": "Normalizar estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        1600
       ]
     },
     {
@@ -218,7 +238,7 @@
           "conditions": [
             {
               "id": "cond-conectado",
-              "leftValue": "={{ $json.instance.state }}",
+              "leftValue": "={{ $json.state }}",
               "rightValue": "open",
               "operator": {
                 "type": "string",
@@ -230,103 +250,160 @@
         },
         "options": {}
       },
-      "id": "2251962a-cecf-48bc-a385-b77bfe63dd5a",
+      "id": "f1013cdf-9c04-47a9-a4d0-83b99c039026",
       "name": "Está conectado?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        720,
-        512
+        1744,
+        1600
       ]
     },
     {
       "parameters": {
-        "url": "={{ $env.EVOLUTION_API_URL + '/instance/connect/wtsp' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "id": "cond-tentativas-restantes",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
-      "id": "0c1afb9c-487d-4b9e-9809-227052221708",
-      "name": "Reconectar",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "483fc74d-21d1-432e-9c9d-194d1ea880e2",
+      "name": "Tentar reconectar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
       "position": [
-        720,
-        720
-      ]
-    },
-    {
-      "parameters": {
-        "amount": 15
-      },
-      "id": "798f9fea-ab8c-4119-ba14-0c2da75f0023",
-      "name": "Aguardar reconexão",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        880,
-        720
-      ],
-      "webhookId": "aguardar-reconexao-wtsp"
-    },
-    {
-      "parameters": {
-        "jsCode": "const original = $('Mensagem pronta').item.json.number;\nconst text = $('Mensagem pronta').item.json.text;\nconst digits = original.replace('@s.whatsapp.net', '');\nconst prefix = digits.slice(0, 4);\nconst rest = digits.slice(4);\nconst altRest = rest.length === 9 ? rest.slice(1) : `9${rest}`;\nconst altDigits = `${prefix}${altRest}`;\n\nreturn [{ json: { text, candidatos: [digits, altDigits] } }];"
-      },
-      "id": "6fac108f-0d09-4f0a-9455-7b133ccb6108",
-      "name": "Montar variantes de número",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1040,
-        512
+        1744,
+        1840
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL + '/chat/whatsappNumbers/wtsp' }}",
+        "url": "http://evolution_api:8080/instance/restart/averbacao_aduaneira",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "249d1b01-88bf-4a5b-932b-e3d6ac198cc5",
+      "name": "Reconectar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1584,
+        2032
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "22f23438-4793-42aa-9692-b36ee7ad7caf",
+      "name": "Aguardar reconexão",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        2032
+      ],
+      "webhookId": "aguardar-reconexao-wtsp"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Estourou o limite de restarts: a instancia nao volta sozinha.\n// Normalmente significa credencial invalidada (deslogado no celular) — precisa reparear via QR:\n// GET http://evolution_api:8080/instance/connect/wtsp\nconst estado = $('Normalizar estado').first().json;\nconst detalhe = estado.detalhe ? ` (${estado.detalhe})` : '';\n\nreturn [{ json: { error: { message: `Instância wtsp não conectou após 3 restarts. Estado: ${estado.state}${detalhe}. Verifique se precisa reparear o QR Code.` } } }];"
+      },
+      "id": "852899d5-a728-42ba-81b5-61e552e148c8",
+      "name": "Falha de conexão",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        2032
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// .first() em vez de .item: apos o loop de reconexao (que passa por Wait)\n// o pareamento de itens se perde e $('...').item lanca erro.\nconst original = $('Mensagem pronta').first().json.number;\nconst text = $('Mensagem pronta').first().json.text;\nconst digits = original.replace('@s.whatsapp.net', '');\nconst prefix = digits.slice(0, 4);\nconst rest = digits.slice(4);\nconst altRest = rest.length === 9 ? rest.slice(1) : `9${rest}`;\nconst altDigits = `${prefix}${altRest}`;\n\nreturn [{ json: { text, candidatos: [digits, altDigits] } }];"
+      },
+      "id": "83e3f3fc-76cb-43d7-bcf4-fca057ad8aed",
+      "name": "Montar variantes de número",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/chat/whatsappNumbers/averbacao_aduaneira",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "evolution_api_key_12345"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"numbers\": $json.candidatos } }}",
-        "options": {}
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "e6986224-2718-42f3-b92e-49a1a98c5063",
+      "id": "77fd2d9e-55d2-415f-a588-a7e45714fa62",
       "name": "Checar Números (Evolution)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1200,
-        512
-      ]
+        2128,
+        1488
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst valido = items.find(i => i.json.exists === true);\n\nif (valido) {\n  return [{ json: { number: valido.json.jid, text: $('Montar variantes de número').item.json.text } }];\n}\n\nreturn [{ json: { error: { message: `Número não existe no WhatsApp em nenhum formato testado: ${items.map(i => i.json.number).join(', ')}` } } }];"
+        "jsCode": "const items = $input.all();\n\n// Erro de infra na Evolution (ex.: \"Connection Closed\") nao pode virar\n// \"numero nao existe\" — sao causas diferentes e tratamentos diferentes.\nconst falhou = items.find(i => i.json.error !== undefined);\nif (falhou) {\n  const e = falhou.json.error;\n  const msg = typeof e === 'string' ? e : (e?.message || 'erro desconhecido');\n  return [{ json: { error: { message: `Falha ao checar números na Evolution API: ${msg}` } } }];\n}\n\nconst valido = items.find(i => i.json.exists === true);\nconst text = $('Montar variantes de número').first().json.text;\n\nif (valido) {\n  return [{ json: { number: valido.json.jid, text } }];\n}\n\nreturn [{ json: { error: { message: `Número não existe no WhatsApp em nenhum formato testado: ${items.map(i => i.json.number).join(', ')}` } } }];"
       },
-      "id": "b5a20c20-675c-4cac-9e24-19477c4d2746",
+      "id": "a509e5f2-5186-4034-9539-40397cd8b9b4",
       "name": "Escolher número válido",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        512
+        2288,
+        1488
       ]
     },
     {
@@ -352,44 +429,46 @@
         },
         "options": {}
       },
-      "id": "c41b45d9-7dc1-4f08-942c-be3c25176562",
+      "id": "6cd4eb51-9be4-462e-84b5-ae6219128330",
       "name": "Número válido?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1520,
-        512
+        2448,
+        1488
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL + '/message/sendText/wtsp' }}",
+        "url": "http://evolution_api:8080/message/sendText/averbacao_aduaneira",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
+              "value": "evolution_api_key_12345"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"number\": $('Escolher número válido').item.json.number, \"text\": $('Escolher número válido').item.json.text } }}",
-        "options": {}
+        "jsonBody": "={{ { \"number\": $json.number, \"text\": $json.text } }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      "id": "ec352c24-415b-40f7-bd63-9585b97c9aab",
+      "id": "f8e53aa1-ecf3-4e8c-8513-26603491ab6c",
       "name": "Enviar WhatsApp (Evolution API)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1680,
-        512
+        2656,
+        1376
       ],
       "retryOnFail": true,
       "maxTries": 4,
-      "waitBetweenTries": 8000,
+      "waitBetweenTries": 5000,
       "alwaysOutputData": true,
       "onError": "continueRegularOutput"
     },
@@ -416,35 +495,131 @@
         },
         "options": {}
       },
-      "id": "74cda0e6-1ff7-4983-b4f6-2bca11af6946",
+      "id": "f3d2d39f-ddac-4fac-8a81-889fb50aac55",
       "name": "Falhou definitivamente?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1840,
-        512
+        2864,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-connection-closed",
+              "leftValue": "={{ String($json.error?.message ?? $json.error ?? '') }}",
+              "rightValue": "Connection Closed",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "cond-tentativas-envio",
+              "leftValue": "={{ $runIndex }}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e9712d21-a29c-456f-9562-5cbc4d3488e0",
+      "name": "Erro de conexão?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2864,
+        1648
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/instance/restart/averbacao_aduaneira",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "evolution_api_key_12345"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "2b5ec525-eff9-488b-bab2-b848c5c28bd2",
+      "name": "Reconectar (pós-falha)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2848,
+        2192
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "id": "d2159832-6e1f-45b6-aeda-b3ba29f37043",
+      "name": "Aguardar pós-falha",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2560,
+        2144
+      ],
+      "webhookId": "aguardar-pos-falha-wtsp"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reconstroi o payload do envio: apos o Wait o item que chega e a resposta\n// do restart, nao a mensagem original.\nconst origem = $('Escolher número válido').first().json;\n\nreturn [{ json: { number: origem.number, text: origem.text } }];"
+      },
+      "id": "e3307005-e880-40cc-9de9-cc3a3661a2f9",
+      "name": "Repreparar envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        1664
       ]
     },
     {
       "parameters": {},
-      "id": "95d59160-7389-4442-8867-3c412d60507f",
+      "id": "2e6535ca-ec1b-4829-8313-9f56251e96ac",
       "name": "Enviado com sucesso",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2000,
-        416
+        3072,
+        1264
       ]
     },
     {
       "parameters": {},
-      "id": "35198cf8-ff44-4c11-8f62-7dae91be3674",
+      "id": "3e311ad3-3989-4c6e-bc08-e1881d26506d",
       "name": "Alertar falha no envio",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1792,
-        896
+        3104,
+        1952
       ]
     },
     {
@@ -455,13 +630,13 @@
           "responseCode": 200
         }
       },
-      "id": "a3b0de82-0ad4-47ca-a00e-27a402ee21f1",
+      "id": "da30b4a4-0267-4069-89c9-4efbc6f543a2",
       "name": "Responder sucesso",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2160,
-        416
+        3264,
+        1264
       ]
     },
     {
@@ -472,13 +647,13 @@
           "responseCode": 500
         }
       },
-      "id": "d5ce04a1-8aaa-426e-b02d-462b01687a18",
+      "id": "0aa6f889-40bc-4be0-86a4-f04fe4790262",
       "name": "Responder falha",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2000,
-        896
+        3296,
+        1952
       ]
     }
   ],
@@ -608,6 +783,17 @@
       "main": [
         [
           {
+            "node": "Normalizar estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar estado": {
+      "main": [
+        [
+          {
             "node": "Está conectado?",
             "type": "main",
             "index": 0
@@ -626,7 +812,25 @@
         ],
         [
           {
+            "node": "Tentar reconectar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tentar reconectar?": {
+      "main": [
+        [
+          {
             "node": "Reconectar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Falha de conexão",
             "type": "main",
             "index": 0
           }
@@ -648,7 +852,18 @@
       "main": [
         [
           {
-            "node": "Montar variantes de número",
+            "node": "Verificar Conexão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falha de conexão": {
+      "main": [
+        [
+          {
+            "node": "Alertar falha no envio",
             "type": "main",
             "index": 0
           }
@@ -721,7 +936,7 @@
       "main": [
         [
           {
-            "node": "Alertar falha no envio",
+            "node": "Erro de conexão?",
             "type": "main",
             "index": 0
           }
@@ -729,6 +944,57 @@
         [
           {
             "node": "Enviado com sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro de conexão?": {
+      "main": [
+        [
+          {
+            "node": "Reconectar (pós-falha)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alertar falha no envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reconectar (pós-falha)": {
+      "main": [
+        [
+          {
+            "node": "Aguardar pós-falha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar pós-falha": {
+      "main": [
+        [
+          {
+            "node": "Repreparar envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repreparar envio": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp (Evolution API)",
             "type": "main",
             "index": 0
           }
@@ -764,7 +1030,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "b70b7fd6-3224-494d-aa91-0c95164ab24f",
+  "versionId": "b200bf5a-c616-4846-a742-3ac58561eac2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "2b0bb3950c8f478a002cc92d13b835692cdf1b8617a50ceabd9b6aa4300dc531"
