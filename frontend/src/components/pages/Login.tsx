@@ -85,10 +85,6 @@ export function Login() {
                   {isPending ? <><Loader2 className="animate-spin mr-2" size={18} />Entrando...</> : 'Acessar Portal'}
                 </Button>
               </form>
-              <p className="mt-6 text-center text-xs text-gray-400">
-                Cadastro disponível somente por convite.{' '}
-                <button type="button" onClick={() => router.push('/registro')} className="text-primary-600 font-semibold hover:underline">Usar convite</button>
-              </p>
             </CardContent>
           </Card>
         </div>

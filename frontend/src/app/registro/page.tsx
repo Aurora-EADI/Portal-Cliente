@@ -12,9 +12,11 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import apiNest from '@/lib/apiNest';
 import { getErrorMessage } from '@/lib/error-message';
+import { useLogin } from '@/hooks/useAuth';
 
 function RegistroContent() {
   const router = useRouter();
+  const { mutateAsync: login } = useLogin();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
@@ -96,16 +98,27 @@ function RegistroContent() {
     }
 
     setIsLoading(true);
+    const credenciais = { email: email.trim().toLowerCase(), password: senha };
     try {
       await apiNest.post('/public/convites/register', {
           nome: nome.trim(),
-          email: email.trim().toLowerCase(),
+          email: credenciais.email,
           senha,
           token,
           telefone: telefone || undefined,
       });
 
-      setSuccess(true);
+      // Conta criada: loga direto com as credenciais recém-cadastradas e
+      // manda para o dashboard, sem passar pela tela de login.
+      try {
+        await login(credenciais);
+        router.push('/agendamento');
+        return;
+      } catch {
+        // Login automático falhou (ex.: conta precisa de verificação).
+        // Cai para a tela de sucesso, de onde o usuário loga manualmente.
+        setSuccess(true);
+      }
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Erro ao criar conta.'));
     } finally {
