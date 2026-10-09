@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -28,6 +28,8 @@ import { FileUpload } from '@/components/ui/FileUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/context/AuthContext';
+import { UserRole } from '@/types';
 import {
   useClientesAutorizados,
   useCriarAverbacao,
@@ -198,8 +200,13 @@ export function NovaAverbacaoModal({
   onCriado: (processoId: string) => void;
 }) {
   const router = useRouter();
-  const { data: clientes, isLoading: carregandoClientes } =
-    useClientesAutorizados();
+  const { currentUser } = useAuthContext();
+  // CLIENTE abre em nome próprio: não escolhe importador, é ele mesmo. O
+  // DESPACHANTE escolhe entre os clientes de procuração aprovada.
+  const souCliente = currentUser?.role === UserRole.CLIENTE;
+  const clienteProprio = currentUser?.cliente ?? null;
+  const { data: clientesDespachante, isLoading: carregandoClientes } =
+    useClientesAutorizados({ enabled: !souCliente });
   const { mutateAsync: criar, isPending } = useCriarAverbacao();
 
   const [etapa, setEtapa] = useState(1);
@@ -233,8 +240,19 @@ export function NovaAverbacaoModal({
     onClose();
   };
 
-  const opcoes = clientes ?? [];
+  const opcoes = souCliente
+    ? clienteProprio
+      ? [clienteProprio]
+      : []
+    : clientesDespachante ?? [];
   const clienteSelecionado = opcoes.find((c) => c.id === clienteId);
+
+  // CLIENTE não tem seletor — fixa o próprio cliente assim que o modal abre.
+  useEffect(() => {
+    if (aberto && souCliente && clienteProprio) {
+      setClienteId(clienteProprio.id);
+    }
+  }, [aberto, souCliente, clienteProprio]);
 
   const diValida = DI_REGEX.test(diDuimp);
   const podeAvancar = Boolean(modalidade) && Boolean(clienteId) && diValida;
@@ -372,7 +390,16 @@ export function NovaAverbacaoModal({
                   Razão Social do Importador{' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                {carregandoClientes ? (
+                {souCliente ? (
+                  // O cliente abre para si: o importador é ele mesmo, sem
+                  // seletor. Vem do login, não é digitável.
+                  <Input
+                    id="importador"
+                    value={clienteProprio?.nome ?? ''}
+                    readOnly
+                    tabIndex={-1}
+                  />
+                ) : carregandoClientes ? (
                   <p className="mt-2 text-sm text-muted-foreground">Carregando…</p>
                 ) : opcoes.length === 0 ? (
                   <div className="mt-1 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
@@ -411,8 +438,9 @@ export function NovaAverbacaoModal({
                   </select>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Selecione o cliente representado. O CNPJ será preenchido
-                  automaticamente.
+                  {souCliente
+                    ? 'A averbação é aberta em nome da sua empresa. O CNPJ é preenchido automaticamente.'
+                    : 'Selecione o cliente representado. O CNPJ será preenchido automaticamente.'}
                 </p>
               </div>
 

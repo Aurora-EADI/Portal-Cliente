@@ -87,7 +87,7 @@ export class AverbacoesController {
   }
 
   @Post()
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
   @HttpCode(HttpStatus.CREATED)
   criar(@Req() req: Request, @Body() dto: CriarAverbacaoDto) {
     return this.service.criar(req.user as User, dto);
@@ -95,7 +95,7 @@ export class AverbacoesController {
 
   /** Corrige dados de identificação digitados errado na abertura. */
   @Patch(':id')
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
   editar(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
@@ -106,7 +106,7 @@ export class AverbacoesController {
 
   /** Descarta um processo aberto por engano. Não apaga: marca CANCELADO. */
   @Delete(':id')
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
   cancelar(
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request,
@@ -116,7 +116,7 @@ export class AverbacoesController {
   }
 
   @Post(':id/documentos/:tipoId')
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor('arquivo', {

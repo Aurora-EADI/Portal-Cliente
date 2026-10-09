@@ -31,7 +31,6 @@ import {
 import { StatusDocumento, StatusProcesso } from './StatusBadges';
 import { AcoesProcesso, BannerDevolucao } from './AcoesProcesso';
 import { useAuthContext } from '@/context/AuthContext';
-import { UserRole } from '@/types';
 
 const ICONE_MODALIDADE: Record<Modalidade, typeof Ship> = {
   [Modalidade.MARITIMO]: Ship,
@@ -307,7 +306,15 @@ export function AverbacaoDetalheConteudo({
   );
 
   const { currentUser } = useAuthContext();
-  const ehDespachante = currentUser?.role === UserRole.DESPACHANTE;
+  // Dono do processo: o despachante que o abriu, ou o cliente que o abriu em
+  // nome próprio (sem despachante). Espelha o `exigirDono` do backend — só o
+  // dono corrige, cancela ou anexa documento. ADMIN/EMPLOYEE veem em leitura.
+  const souDono =
+    (!!currentUser?.despachanteId &&
+      processo.despachante?.id === currentUser.despachanteId) ||
+    (!!currentUser?.clienteId &&
+      !processo.despachante &&
+      processo.cliente.id === currentUser.clienteId);
 
   const progresso = progressoObrigatorios(processo.documentos);
   const liberado = processo.status === ProcessoStatus.LIBERADO_AGENDAMENTO;
@@ -316,7 +323,7 @@ export function AverbacaoDetalheConteudo({
   return (
     <div className="space-y-4">
       <BannerDevolucao processo={processo} />
-      {ehDespachante && <AcoesProcesso processo={processo} />}
+      {souDono && <AcoesProcesso processo={processo} />}
 
       {cancelado && (
         <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
@@ -374,7 +381,7 @@ export function AverbacaoDetalheConteudo({
                 key={d.id}
                 documento={d}
                 processoId={processo.id}
-                somenteLeitura={liberado || cancelado}
+                somenteLeitura={liberado || cancelado || !souDono}
               />
             ))}
           </div>

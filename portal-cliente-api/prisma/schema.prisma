@@ -768,8 +768,13 @@ model AverbacaoProcesso {
 
   // Mesma razão da Procuracao: o processo é do escritório despachante, não do
   // login que o abriu.
-  despachanteId String      @map("despachante_id")
-  despachante   Despachante @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
+  //
+  // Opcional: o CLIENTE pode abrir a averbação em nome próprio, direto para a
+  // equipe Aurora, sem passar por despachante — nesse caso fica nulo e o dono
+  // do processo é só o `clienteId`. Quando um despachante abre, continua
+  // preenchido e é ele quem responde pelo processo.
+  despachanteId String?      @map("despachante_id")
+  despachante   Despachante? @relation(fields: [despachanteId], references: [id], onDelete: Restrict)
 
   modalidade Modalidade
   diDuimp    String     @map("di_duimp")

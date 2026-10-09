@@ -298,7 +298,8 @@ export function processoDevolvido(d: DadosDevolucao): Omit<Mensagem, 'para'> {
 export interface DadosLiberacao {
   protocolo: string;
   clienteNome: string;
-  despachanteNome: string;
+  /** Nulo quando o próprio cliente abriu o processo, sem despachante. */
+  despachanteNome?: string | null;
   nLote: string;
   diDuimp?: string | null;
   liberadoPor?: string | null;
@@ -326,7 +327,7 @@ export function processoLiberado(d: DadosLiberacao): Omit<Mensagem, 'para'> {
     '',
     `Protocolo: ${d.protocolo}`,
     `Importador: ${d.clienteNome}`,
-    `Despachante: ${d.despachanteNome}`,
+    d.despachanteNome ? `Despachante: ${d.despachanteNome}` : '',
     d.diDuimp ? `DI/DUIMP: ${d.diDuimp}` : '',
     `Lote SIAUM: ${d.nLote}`,
     `Liberado por: ${d.liberadoPor ?? 'Equipe Aurora'}`,

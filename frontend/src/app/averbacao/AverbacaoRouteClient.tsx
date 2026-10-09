@@ -32,7 +32,12 @@ export function AverbacaoRouteClient() {
         header={{ pageTitle: 'Averbação Aduaneira' }}
       >
         <AverbacoesListPage
-          podeCriar={currentUser?.role === UserRole.DESPACHANTE}
+          // DESPACHANTE abre em nome do cliente; CLIENTE abre em nome próprio,
+          // direto para a equipe Aurora, sem depender de despachante.
+          podeCriar={
+            currentUser?.role === UserRole.DESPACHANTE ||
+            currentUser?.role === UserRole.CLIENTE
+          }
         />
       </ModuleRouteShell>
     </RoleGuard>

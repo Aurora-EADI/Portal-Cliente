@@ -13,6 +13,7 @@ import {
   Prisma,
   ProcuracaoStatus,
   User,
+  UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MinioService } from '../minio/minio.service';
@@ -95,6 +96,35 @@ export class AverbacoesService {
     return user.despachanteId;
   }
 
+  private clienteDo(user: User): string {
+    if (!user.clienteId) {
+      throw new ForbiddenException('Usuário não está vinculado a um cliente');
+    }
+    return user.clienteId;
+  }
+
+  /**
+   * Só o dono do processo escreve nele. São duas donias possíveis:
+   *  - o despachante que o abriu (`despachanteId` casa com o do login);
+   *  - o cliente que o abriu em nome próprio — e aí `despachanteId` é nulo e o
+   *    `clienteId` casa com o do login. Um processo que um despachante abriu
+   *    para o cliente NÃO é editável pelo cliente: quem declarou corrige.
+   */
+  private exigirDono(
+    processo: { despachanteId: string | null; clienteId: string },
+    user: User,
+  ) {
+    const dono =
+      (!!user.despachanteId && processo.despachanteId === user.despachanteId) ||
+      (!!user.clienteId &&
+        processo.despachanteId === null &&
+        processo.clienteId === user.clienteId);
+
+    if (!dono) {
+      throw new ForbiddenException('Processo pertence a outro usuário');
+    }
+  }
+
   /**
    * Protocolo legível: AVB-<ano>-<sequencial do ano>.
    *
@@ -125,7 +155,7 @@ export class AverbacoesService {
   private async exigirDiLivre(
     tx: Prisma.TransactionClient,
     diDuimp: string,
-    despachanteId: string,
+    dono: { despachanteId: string | null; clienteId: string },
     ignorarProcessoId?: string,
   ) {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`averbacao-di:${diDuimp}`}))`;
@@ -136,20 +166,33 @@ export class AverbacoesService {
         status: { not: AverbacaoProcessoStatus.CANCELADO },
         ...(ignorarProcessoId && { id: { not: ignorarProcessoId } }),
       },
-      select: { protocolo: true, status: true, despachanteId: true },
+      select: {
+        protocolo: true,
+        status: true,
+        despachanteId: true,
+        clienteId: true,
+      },
     });
     if (!existente) return;
 
-    // O protocolo só é mostrado a quem é dono dele: dizer a um despachante o
-    // número do processo de outro vazaria o que não é dele.
-    if (existente.despachanteId === despachanteId) {
+    // "Meu" é o processo que o mesmo ator abriu: o despachante dono, ou o
+    // cliente que o abriu em nome próprio (sem despachante). Processo de um não
+    // é "meu" para o outro, mesmo sendo do mesmo cliente.
+    const meu = dono.despachanteId
+      ? existente.despachanteId === dono.despachanteId
+      : existente.despachanteId === null &&
+        existente.clienteId === dono.clienteId;
+
+    // O protocolo só é mostrado a quem é dono dele: dizer a um o número do
+    // processo de outro vazaria o que não é dele.
+    if (meu) {
       throw new ConflictException(
         `Já existe o processo ${existente.protocolo} para a DI ${diDuimp}. ` +
           'Continue nele ou cancele-o antes de abrir outro.',
       );
     }
     throw new ConflictException(
-      `A DI ${diDuimp} já tem um processo em andamento aberto por outro despachante. ` +
+      `A DI ${diDuimp} já tem um processo em andamento. ` +
         'Procure a equipe da Aurora.',
     );
   }
@@ -163,26 +206,37 @@ export class AverbacoesService {
    * altera o que já foi pedido a quem está no meio do processo.
    */
   async criar(user: User, dto: CriarAverbacaoDto) {
-    const despachanteId = this.despachanteDo(user);
+    // Dois caminhos de abertura:
+    //  - DESPACHANTE: opera em nome do cliente, então precisa de procuração
+    //    aprovada e vigente; o processo fica no nome do escritório.
+    //  - CLIENTE: abre em nome próprio, direto para a equipe Aurora, sem
+    //    despachante e sem procuração (não faz sentido autorizar a si mesmo).
+    //    O `clienteId` vem sempre do login, não do corpo: ninguém abre
+    //    processo em nome de outro cliente.
+    const souCliente = user.role === UserRole.CLIENTE;
+    const despachanteId = souCliente ? null : this.despachanteDo(user);
+    const clienteId = souCliente ? this.clienteDo(user) : dto.clienteId;
 
-    const procuracao = await this.prisma.procuracao.findUnique({
-      where: {
-        despachanteId_clienteId: { despachanteId, clienteId: dto.clienteId },
-      },
-      select: { status: true, validade: true },
-    });
+    if (!souCliente) {
+      const procuracao = await this.prisma.procuracao.findUnique({
+        where: {
+          despachanteId_clienteId: { despachanteId: despachanteId!, clienteId },
+        },
+        select: { status: true, validade: true },
+      });
 
-    // Vencida não autoriza, e a mensagem diz qual dos dois casos é — "não
-    // aprovada" para uma procuração vencida mandaria a pessoa reenviar o
-    // documento errado.
-    if (!procuracao || !procuracaoVigente(procuracao)) {
-      const vencida =
-        procuracao?.status === ProcuracaoStatus.APROVADA && !!procuracao.validade;
-      throw new ForbiddenException(
-        vencida
-          ? 'Operação bloqueada — a procuração deste cliente venceu. Envie uma procuração vigente.'
-          : 'Operação bloqueada — é necessário possuir procuração aprovada para este cliente.',
-      );
+      // Vencida não autoriza, e a mensagem diz qual dos dois casos é — "não
+      // aprovada" para uma procuração vencida mandaria a pessoa reenviar o
+      // documento errado.
+      if (!procuracao || !procuracaoVigente(procuracao)) {
+        const vencida =
+          procuracao?.status === ProcuracaoStatus.APROVADA && !!procuracao.validade;
+        throw new ForbiddenException(
+          vencida
+            ? 'Operação bloqueada — a procuração deste cliente venceu. Envie uma procuração vigente.'
+            : 'Operação bloqueada — é necessário possuir procuração aprovada para este cliente.',
+        );
+      }
     }
 
     const tipos = await this.prisma.tipoDocumento.findMany({
@@ -197,14 +251,14 @@ export class AverbacoesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      await this.exigirDiLivre(tx, dto.diDuimp, despachanteId);
+      await this.exigirDiLivre(tx, dto.diDuimp, { despachanteId, clienteId });
 
       const protocolo = await this.gerarProtocolo(tx);
 
       return tx.averbacaoProcesso.create({
         data: {
           protocolo,
-          clienteId: dto.clienteId,
+          clienteId,
           despachanteId,
           modalidade: dto.modalidade,
           diDuimp: dto.diDuimp,
@@ -285,11 +339,9 @@ export class AverbacoesService {
 
     if (!processo) throw new NotFoundException('Processo não encontrado');
 
-    // Só o despachante dono corrige. ADMIN/EMPLOYEE não editam dado que o
-    // despachante declarou — se está errado, quem declarou corrige.
-    if (processo.despachanteId !== this.despachanteDo(user)) {
-      throw new ForbiddenException('Processo pertence a outro despachante');
-    }
+    // Só o dono corrige — despachante ou cliente que abriu. ADMIN/EMPLOYEE não
+    // editam dado que o dono declarou: se está errado, quem declarou corrige.
+    this.exigirDono(processo, user);
 
     this.exigirSemCorrecaoPendente(processo);
 
@@ -351,7 +403,12 @@ export class AverbacoesService {
       // Corrigir a DI para uma que já tem processo vivo criaria o mesmo
       // duplicado que a abertura recusa.
       if (dto.diDuimp !== undefined && dto.diDuimp !== processo.diDuimp) {
-        await this.exigirDiLivre(tx, dto.diDuimp, processo.despachanteId, id);
+        await this.exigirDiLivre(
+          tx,
+          dto.diDuimp,
+          { despachanteId: processo.despachanteId, clienteId: processo.clienteId },
+          id,
+        );
       }
 
       await tx.averbacaoProcesso.update({
@@ -446,6 +503,7 @@ export class AverbacoesService {
         id: true,
         protocolo: true,
         despachanteId: true,
+        clienteId: true,
         status: true,
         nLote: true,
         devolvidoEm: true,
@@ -455,9 +513,7 @@ export class AverbacoesService {
 
     if (!processo) throw new NotFoundException('Processo não encontrado');
 
-    if (processo.despachanteId !== this.despachanteDo(user)) {
-      throw new ForbiddenException('Processo pertence a outro despachante');
-    }
+    this.exigirDono(processo, user);
 
     this.exigirSemCorrecaoPendente(processo);
 
@@ -643,8 +699,9 @@ export class AverbacoesService {
         devolvidoPor: processo.devolvidoPor,
       });
 
+      // Processo aberto pelo cliente não tem despachante — avisa só quem abriu.
       await this.mail.enviar({
-        para: [processo.criadoPor?.email, processo.despachante.email],
+        para: [processo.criadoPor?.email, processo.despachante?.email],
         ...corpo,
       });
     } catch (erro) {
@@ -741,8 +798,6 @@ export class AverbacoesService {
     tipoDocumentoId: string,
     file: Express.Multer.File | undefined,
   ) {
-    const despachanteId = this.despachanteDo(user);
-
     const documento = await this.prisma.averbacaoDocumento.findUnique({
       where: { processoId_tipoDocumentoId: { processoId, tipoDocumentoId } },
       select: {
@@ -765,9 +820,7 @@ export class AverbacoesService {
         'Documento não previsto neste processo',
       );
     }
-    if (documento.processo.despachanteId !== despachanteId) {
-      throw new ForbiddenException('Sem acesso a este processo');
-    }
+    this.exigirDono(documento.processo, user);
     if (
       documento.processo.status ===
       AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO
@@ -1072,10 +1125,11 @@ export class AverbacoesService {
         analisadoPor,
       });
 
+      // Processo aberto pelo cliente não tem despachante — o `?.` segura o nulo.
       await this.mail.enviar({
         para: [
           documento.processo.criadoPor?.email,
-          documento.processo.despachante.email,
+          documento.processo.despachante?.email,
         ],
         ...corpo,
       });
@@ -1109,7 +1163,8 @@ export class AverbacoesService {
       const corpo = processoLiberado({
         protocolo: processo.protocolo,
         clienteNome: processo.cliente.nome,
-        despachanteNome: processo.despachante.nome,
+        // Processo aberto pelo cliente não tem despachante.
+        despachanteNome: processo.despachante?.nome,
         // Nunca nulo neste ponto: `liberar` recusa processo sem lote.
         nLote: processo.nLote ?? '',
         diDuimp: processo.diDuimp,
@@ -1119,7 +1174,7 @@ export class AverbacoesService {
       await this.mail.enviar({
         para: [
           processo.criadoPor?.email,
-          processo.despachante.email,
+          processo.despachante?.email,
           processo.cliente.email,
         ],
         ...corpo,

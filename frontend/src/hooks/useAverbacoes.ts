@@ -29,10 +29,13 @@ export function useAverbacao(id: string) {
   });
 }
 
-export function useClientesAutorizados() {
+// `enabled` porque o endpoint é do despachante — um login CLIENTE abre em nome
+// próprio e não deve disparar a busca (ela voltaria 403).
+export function useClientesAutorizados({ enabled = true } = {}) {
   return useQuery({
     queryKey: AVERBACAO_KEYS.clientesAutorizados(),
     queryFn: () => averbacoesService.clientesAutorizados(),
+    enabled,
   });
 }
 
