@@ -1,5 +1,11 @@
 import type { NextRequest } from 'next/server';
 
+// Rotas server-to-server, autenticadas só por x-service-key e chamadas apenas
+// pelo Portal Aurora pela rede interna. A borda web pública nunca deve ser um
+// caminho até elas — se o front proxiar /api/service, a única barreira vira o
+// segredo compartilhado. Fechar aqui é defesa em profundidade além do guard.
+const INTERNAL_ONLY_PREFIXES = ['service'];
+
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'content-length',
@@ -28,6 +34,11 @@ async function proxy(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await context.params;
+
+  if (path.length > 0 && INTERNAL_ONLY_PREFIXES.includes(path[0])) {
+    return new Response('Not Found', { status: 404 });
+  }
+
   const headers = new Headers(request.headers);
   for (const header of HOP_BY_HOP_HEADERS) headers.delete(header);
 

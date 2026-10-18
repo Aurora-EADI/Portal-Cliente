@@ -11,6 +11,7 @@ import {
 import { AgendamentoEventos } from '../agendamento/agendamento.eventos';
 import { ListAgendamentosDto } from './dto/list-agendamentos.dto';
 import { UpdateAgendamentoStatusDto } from './dto/update-agendamento-status.dto';
+import { UpdateJanelaDto } from './dto/update-janela.dto';
 import { ALL_STATUSES } from '../agendamento/agendamento-status.catalog';
 
 // O dashboard do Aurora e a unica tela onde o operador confirma o que acabou de
@@ -170,7 +171,18 @@ export class ServiceIntegrationService {
   async setUserActive(id: string, active: boolean) { const user = await this.prisma.user.findUnique({ where: { id } }); if (!user) throw new NotFoundException('Usuário não encontrado'); const updated = await this.prisma.user.update({ where: { id }, data: { active } }); return { id: updated.id, nome: updated.name, email: updated.email, role: updated.role, active: updated.active }; }
   listJanelas() { return this.prisma.janelaAtendimento.findMany({ orderBy: { horaInicio: 'asc' } }).then((data) => ({ data })); }
   createJanela(body: any) { if (!body.descricao || !body.horaInicio || !body.horaFim) throw new BadRequestException('descricao, horaInicio e horaFim são obrigatórios'); return this.prisma.janelaAtendimento.create({ data: { descricao: body.descricao, horaInicio: body.horaInicio, horaFim: body.horaFim, intervaloMinutos: body.intervaloMinutos ?? 60, vagasSimultaneas: body.vagasSimultaneas ?? 3 } }); }
-  updateJanela(id: string, body: any) { return this.prisma.janelaAtendimento.update({ where: { id }, data: body }); }
+  updateJanela(id: string, patch: UpdateJanelaDto) {
+    // Campos explícitos: o `data: body` anterior deixava o chamador escrever
+    // qualquer coluna da janela (mass assignment). `undefined` o Prisma ignora.
+    const data: Prisma.JanelaAtendimentoUpdateInput = {
+      descricao: patch.descricao,
+      horaInicio: patch.horaInicio,
+      horaFim: patch.horaFim,
+      intervaloMinutos: patch.intervaloMinutos,
+      vagasSimultaneas: patch.vagasSimultaneas,
+    };
+    return this.prisma.janelaAtendimento.update({ where: { id }, data });
+  }
   deleteJanela(id: string) { return this.prisma.janelaAtendimento.delete({ where: { id } }).then(() => ({ success: true })); }
   async setBookingWhatsapp(id: string) { const updated = await this.prisma.agendamento.update({ where: { id }, data: { whatsappNotificadoEm: new Date() } }); return { id: updated.id, whatsappNotificadoEm: updated.whatsappNotificadoEm }; }
   async setAssignmentWhatsapp(id: string) { const updated = await this.prisma.diTransportadoraAtribuicao.update({ where: { id }, data: { whatsappNotificadoEm: new Date() } }); return { id: updated.id, whatsappNotificadoEm: updated.whatsappNotificadoEm }; }

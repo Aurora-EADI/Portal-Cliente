@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { connect, ChannelModel, ConfirmChannel, ConsumeMessage, Options, RecoveringChannelModel } from 'amqplib';
 import { rabbitMqConfig, RabbitMqConfig, RABBITMQ_DEFAULTS } from './rabbitmq.config';
+import { SIGNATURE_HEADER_NAME, signMessage, signingEnforced, verifyMessage } from './message-signature';
 
 type ConsumerRegistration = { queue: string; handler: (message: ConsumeMessage) => Promise<void> };
 
@@ -45,11 +46,23 @@ export class RabbitMqService implements OnModuleDestroy {
   async publish(exchange: string, routingKey: string, payload: unknown, options: Options.Publish = {}): Promise<void> {
     const channel = this.channel;
     if (!channel) throw new Error('RabbitMQ indisponível');
-    const accepted = channel.publish(exchange, routingKey, Buffer.from(JSON.stringify(payload)), {
+    // Assina sobre os bytes publicados. No retry o corpo é o mesmo, então a
+    // assinatura recalculada bate. Inerte sem RABBITMQ_SIGNING_SECRET.
+    const body = Buffer.from(JSON.stringify(payload));
+    const signature = signMessage(body);
+    const accepted = channel.publish(exchange, routingKey, body, {
       persistent: true,
       contentType: 'application/json',
       timestamp: Date.now(),
       ...options,
+      ...(signature
+        ? {
+            headers: {
+              ...(options.headers as Record<string, unknown> | undefined),
+              [SIGNATURE_HEADER_NAME]: signature,
+            },
+          }
+        : {}),
     });
     if (!accepted) await new Promise<void>((resolve) => channel.once('drain', resolve));
     await channel.waitForConfirms();
@@ -225,7 +238,19 @@ export class RabbitMqService implements OnModuleDestroy {
     this.consumerTags.length = 0;
     for (const registration of this.registrations) {
       const result = await channel.consume(registration.queue, (message) => {
-        if (message) void registration.handler(message).catch((error) => this.logger.error(this.errorMessage(error)));
+        if (!message) return;
+        const verdict = verifyMessage(message.content, message.properties.headers?.[SIGNATURE_HEADER_NAME]);
+        if (verdict === 'bad-signature' && signingEnforced()) {
+          // Forjada ou sem assinatura com enforce ligado: descarta (ack sem
+          // requeue), não processa nem devolve para a fila.
+          this.logger.error(`RabbitMQ assinatura HMAC inválida em ${registration.queue} — mensagem descartada`);
+          this.channel?.ack(message);
+          return;
+        }
+        if (verdict === 'bad-signature') {
+          this.logger.warn(`RabbitMQ assinatura HMAC inválida em ${registration.queue} (RABBITMQ_SIGNING_ENFORCE off) — processando mesmo assim`);
+        }
+        void registration.handler(message).catch((error) => this.logger.error(this.errorMessage(error)));
       }, { noAck: false });
       this.consumerTags.push(result.consumerTag);
     }

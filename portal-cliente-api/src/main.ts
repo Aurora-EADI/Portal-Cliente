@@ -35,14 +35,26 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const config = new DocumentBuilder()
-    .setTitle('Portal do Cliente API')
-    .setDescription('Documentação da API do Portal do Cliente')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  // Swagger expõe o mapa inteiro da API (inclusive o formato das rotas
+  // /service/*). Este host é exposto à internet, então em produção o doc só
+  // sobe com SWAGGER_ENABLED=true explícito — fora de produção, sobe sempre.
+  const swaggerEnabled =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.SWAGGER_ENABLED === 'true';
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('Portal do Cliente API')
+      .setDescription('Documentação da API do Portal do Cliente')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, config),
+    );
+  }
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/api/health', (_req: Request, res: Response) => {

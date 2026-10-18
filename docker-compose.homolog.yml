@@ -120,6 +120,9 @@ services:
       # Broker interno da stack. Composto aqui, e não no .env.homolog, para a
       # senha ter uma fonte só; por isso ela precisa ser URL-safe.
       RABBITMQ_URL: amqp://${RABBITMQ_HML_USER:-portal_cliente_hml}:${RABBITMQ_HML_PASSWORD:?RABBITMQ_HML_PASSWORD e obrigatorio}@rabbitmq:5672/homologacao
+      # Assinatura HMAC cross-portal. Mesmo segredo no Aurora de homologação.
+      RABBITMQ_SIGNING_SECRET: ${RABBITMQ_SIGNING_SECRET:-}
+      RABBITMQ_SIGNING_ENFORCE: ${RABBITMQ_SIGNING_ENFORCE:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Sem publicação de porta: o Traefik da stack roteia pela rede interna.

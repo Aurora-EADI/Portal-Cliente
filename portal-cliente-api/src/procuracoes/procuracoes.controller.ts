@@ -27,6 +27,7 @@ import { ProcuracaoStatus, User, UserRole } from '@prisma/client';
 import { BetterAuthDomainGuard } from '../common/guards/better-auth-domain.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ServiceKeyGuard } from '../common/guards/service-key.guard';
+import { AverbacaoAtivaGuard } from '../common/guards/averbacao-ativa.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { TAMANHO_MAXIMO_BYTES } from '../common/arquivo';
 import { ProcuracoesService } from './procuracoes.service';
@@ -54,7 +55,7 @@ function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
 }
 
 @Controller('procuracoes')
-@UseGuards(BetterAuthDomainGuard, RolesGuard)
+@UseGuards(AverbacaoAtivaGuard, BetterAuthDomainGuard, RolesGuard)
 export class ProcuracoesController {
   constructor(
     private readonly service: ProcuracoesService,
