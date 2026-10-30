@@ -29,7 +29,12 @@ import {
   EditarAverbacaoDto,
   processoEditavel,
 } from '@/types/averbacao';
-import { DI_REGEX, mascararDi } from './NovaAverbacaoModal';
+import {
+  DOCUMENTO_SAIDA,
+  SeletorDocumentoSaida,
+  documentoSaidaValido,
+  tipoDocumentoSaida,
+} from './documentoSaida';
 
 const MOTIVO_MINIMO = 5;
 
@@ -80,7 +85,8 @@ export function BannerDevolucao({
         <AlertDescription>
           {processo.diDuimpAnterior && (
             <p>
-              DI <CodeBadge className="line-through">{processo.diDuimpAnterior}</CodeBadge>{' '}
+              {DOCUMENTO_SAIDA[tipoDocumentoSaida(processo.diDuimpAnterior)].rotulo}{' '}
+              <CodeBadge className="line-through">{processo.diDuimpAnterior}</CodeBadge>{' '}
               → <CodeBadge>{processo.diDuimp}</CodeBadge>
             </p>
           )}
@@ -153,6 +159,9 @@ function CorrigirModal({
   processo: AverbacaoProcessoDetalhe;
   onClose: () => void;
 }) {
+  const [tipoSaida, setTipoSaida] = useState(() =>
+    tipoDocumentoSaida(processo.diDuimp),
+  );
   const [diDuimp, setDiDuimp] = useState(processo.diDuimp);
   const [localOrigem, setLocalOrigem] = useState(processo.localOrigem ?? '');
   const [recintoDestino, setRecintoDestino] = useState(
@@ -161,7 +170,8 @@ function CorrigirModal({
   const [cargaEspecial, setCargaEspecial] = useState(processo.cargaEspecial);
   const { mutateAsync: editar, isPending } = useEditarAverbacao(processo.id);
 
-  const diValida = DI_REGEX.test(diDuimp);
+  const saida = DOCUMENTO_SAIDA[tipoSaida];
+  const diValida = documentoSaidaValido(tipoSaida, diDuimp);
 
   // Envia só o que mudou — o backend recusa corpo vazio.
   const dto: EditarAverbacaoDto = {
@@ -228,18 +238,31 @@ function CorrigirModal({
           label="Documento de saída (DI / DUIMP)"
           htmlFor="corrigir-di"
           required
-          error={diDuimp && !diValida ? 'Formato esperado: XX/XXXXXXX-X' : undefined}
+          error={
+            diDuimp && !diValida ? `Formato esperado: ${saida.formato}` : undefined
+          }
         >
-          <Input
-            id="corrigir-di"
-            value={diDuimp}
-            onChange={(e) => setDiDuimp(mascararDi(e.target.value))}
-            placeholder="00/0000000-0"
-            className="font-mono"
-            inputMode="numeric"
-            autoFocus
-            aria-describedby="corrigir-di-error"
-          />
+          <div className="flex gap-2">
+            {/* Trocar o tipo zera o número: os formatos não se aproveitam. */}
+            <SeletorDocumentoSaida
+              tipo={tipoSaida}
+              idCampo="corrigir-di"
+              onChange={(t) => {
+                setTipoSaida(t);
+                setDiDuimp('');
+              }}
+            />
+            <Input
+              id="corrigir-di"
+              value={diDuimp}
+              onChange={(e) => setDiDuimp(saida.mascarar(e.target.value))}
+              placeholder={saida.placeholder}
+              className="min-w-0 flex-1 font-mono"
+              inputMode="numeric"
+              autoFocus
+              aria-describedby="corrigir-di-error"
+            />
+          </div>
         </FormField>
 
         <FormField label="Local de Origem" htmlFor="corrigir-origem">

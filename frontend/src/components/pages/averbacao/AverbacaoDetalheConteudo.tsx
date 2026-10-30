@@ -31,6 +31,7 @@ import {
 } from '@/types/averbacao';
 import { StatusDocumento, StatusProcesso } from './StatusBadges';
 import { AcoesProcesso, BannerDevolucao } from './AcoesProcesso';
+import { DOCUMENTO_SAIDA, tipoDocumentoSaida } from './documentoSaida';
 import { useAuthContext } from '@/context/AuthContext';
 
 const ICONE_MODALIDADE: Record<Modalidade, typeof Ship> = {
@@ -67,7 +68,10 @@ export function CabecalhoProcesso({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-mono text-xl font-bold">DI: {processo.diDuimp}</h2>
+        <h2 className="font-mono text-xl font-bold">
+          {DOCUMENTO_SAIDA[tipoDocumentoSaida(processo.diDuimp)].rotulo}:{' '}
+          {processo.diDuimp}
+        </h2>
         <StatusProcesso status={processo.status} />
       </div>
 

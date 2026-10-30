@@ -28,6 +28,7 @@ import { procuracaoVigente } from '../procuracoes/procuracoes.service';
 import { resolverContainers } from '../common/containers';
 import { CriarAverbacaoDto } from './dto/criar-averbacao.dto';
 import { EditarAverbacaoDto } from './dto/editar-averbacao.dto';
+import { rotuloDocumentoSaida } from './dto/documento-saida';
 import { AverbacoesEventos } from './averbacoes.eventos';
 import { OutboxService } from '../rabbitmq/publishers/outbox.service';
 
@@ -186,14 +187,15 @@ export class AverbacoesService {
 
     // O protocolo só é mostrado a quem é dono dele: dizer a um o número do
     // processo de outro vazaria o que não é dele.
+    const rotulo = rotuloDocumentoSaida(diDuimp);
     if (meu) {
       throw new ConflictException(
-        `Já existe o processo ${existente.protocolo} para a DI ${diDuimp}. ` +
+        `Já existe o processo ${existente.protocolo} para a ${rotulo} ${diDuimp}. ` +
           'Continue nele ou cancele-o antes de abrir outro.',
       );
     }
     throw new ConflictException(
-      `A DI ${diDuimp} já tem um processo em andamento. ` +
+      `A ${rotulo} ${diDuimp} já tem um processo em andamento. ` +
         'Procure a equipe da Aurora.',
     );
   }

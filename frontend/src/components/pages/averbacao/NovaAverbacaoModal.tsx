@@ -46,18 +46,12 @@ import {
   Modalidade,
   TipoDocumentoResumo,
 } from '@/types/averbacao';
-
-// A spec pede ^\d{2}/\d{9}$, mas as DIs reais têm dígito verificador
-// (22/2564365-1). O backend aceita as duas; a máscara aqui segue a real.
-export const DI_REGEX = /^\d{2}\/(\d{7}-\d|\d{9})$/;
-
-/** Só dígitos, formatando como XX/XXXXXXX-X enquanto digita. */
-export function mascararDi(valor: string): string {
-  const d = valor.replace(/\D/g, '').slice(0, 10);
-  if (d.length <= 2) return d;
-  if (d.length <= 9) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 9)}-${d.slice(9)}`;
-}
+import {
+  DOCUMENTO_SAIDA,
+  SeletorDocumentoSaida,
+  TipoDocumentoSaida,
+  documentoSaidaValido,
+} from './documentoSaida';
 
 const MODALIDADES: {
   valor: Modalidade;
@@ -463,6 +457,7 @@ export function NovaAverbacaoModal({
 
   const [modalidade, setModalidade] = useState<Modalidade | ''>('');
   const [clienteId, setClienteId] = useState('');
+  const [tipoSaida, setTipoSaida] = useState<TipoDocumentoSaida>('DI');
   const [diDuimp, setDiDuimp] = useState('');
   const [localOrigem, setLocalOrigem] = useState('');
   const [recintoDestino, setRecintoDestino] = useState('');
@@ -482,6 +477,7 @@ export function NovaAverbacaoModal({
     setArquivoUnico(null);
     setModalidade('');
     setClienteId('');
+    setTipoSaida('DI');
     setDiDuimp('');
     setLocalOrigem('');
     setRecintoDestino('');
@@ -504,7 +500,8 @@ export function NovaAverbacaoModal({
     }
   }, [aberto, souCliente, clienteProprio]);
 
-  const diValida = DI_REGEX.test(diDuimp);
+  const saida = DOCUMENTO_SAIDA[tipoSaida];
+  const diValida = documentoSaidaValido(tipoSaida, diDuimp);
   const podeAvancar = Boolean(modalidade) && Boolean(clienteId) && diValida;
 
   const exigidos = useMemo(
@@ -626,17 +623,30 @@ export function NovaAverbacaoModal({
                   Declaração de Importação (DI / DUIMP){' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="di"
-                  value={diDuimp}
-                  onChange={(e) => setDiDuimp(mascararDi(e.target.value))}
-                  placeholder="00/0000000-0"
-                  className="font-mono"
-                  inputMode="numeric"
-                />
+                <div className="mt-1 flex gap-2">
+                  {/* Trocar o tipo zera o número: os formatos não se
+                      aproveitam, e meio número convertido seria um erro. */}
+                  <SeletorDocumentoSaida
+                    tipo={tipoSaida}
+                    idCampo="di"
+                    onChange={(t) => {
+                      setTipoSaida(t);
+                      setDiDuimp('');
+                    }}
+                  />
+                  <Input
+                    id="di"
+                    value={diDuimp}
+                    onChange={(e) => setDiDuimp(saida.mascarar(e.target.value))}
+                    placeholder={saida.placeholder}
+                    aria-label={`Número da ${saida.rotulo}`}
+                    className="mt-0 min-w-0 flex-1 font-mono"
+                    inputMode="numeric"
+                  />
+                </div>
                 {diDuimp && !diValida && (
                   <p className="mt-1 text-xs text-destructive">
-                    Formato esperado: XX/XXXXXXX-X
+                    Formato esperado: {saida.formato}
                   </p>
                 )}
               </div>
@@ -786,7 +796,7 @@ export function NovaAverbacaoModal({
               </span>
               {' · '}
               {processo?.cliente.nome}
-              {' · DI '}
+              {` · ${saida.rotulo} `}
               <span className="font-mono">{processo?.diDuimp}</span>
             </div>
 
