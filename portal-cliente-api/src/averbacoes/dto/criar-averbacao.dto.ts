@@ -12,24 +12,20 @@ import {
 } from 'class-validator';
 import { Modalidade } from '@prisma/client';
 import { MAX_CONTAINERS } from '../../common/containers';
+import {
+  DOCUMENTO_SAIDA_MENSAGEM,
+  DOCUMENTO_SAIDA_REGEX,
+  normalizarDocumentoSaida,
+} from './documento-saida';
 
 export class CriarAverbacaoDto {
   @IsEnum(Modalidade)
   modalidade!: Modalidade;
 
-  /**
-   * A spec pede `^\d{2}/\d{9}$`, mas nenhuma DI real do sistema casa com isso:
-   * o formato em uso é 22/2564365-1 — dois dígitos, barra, sete dígitos, hífen
-   * e dígito verificador. Aplicar a máscara da spec ao pé da letra recusaria
-   * toda DI legítima já cadastrada.
-   *
-   * Aceita as duas formas: a real (com hífen) e a da spec, para o caso de
-   * DUIMP sem verificador. Restringir só à real é uma linha, se preferirem.
-   */
+  /** DI ou DUIMP — formatos em `documento-saida.ts`. */
+  @Transform(({ value }) => normalizarDocumentoSaida(value))
   @IsString()
-  @Matches(/^\d{2}\/(\d{7}-\d|\d{9})$/, {
-    message: 'DI/DUIMP deve estar no formato XX/XXXXXXX-X',
-  })
+  @Matches(DOCUMENTO_SAIDA_REGEX, { message: DOCUMENTO_SAIDA_MENSAGEM })
   diDuimp!: string;
 
   /**

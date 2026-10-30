@@ -9,6 +9,11 @@ import {
   MaxLength,
 } from 'class-validator';
 import { MAX_CONTAINERS } from '../../common/containers';
+import {
+  DOCUMENTO_SAIDA_MENSAGEM,
+  DOCUMENTO_SAIDA_REGEX,
+  normalizarDocumentoSaida,
+} from './documento-saida';
 
 /**
  * Correção de um processo aberto por engano no cadastro.
@@ -25,10 +30,9 @@ import { MAX_CONTAINERS } from '../../common/containers';
  */
 export class EditarAverbacaoDto {
   @IsOptional()
+  @Transform(({ value }) => normalizarDocumentoSaida(value))
   @IsString()
-  @Matches(/^\d{2}\/(\d{7}-\d|\d{9})$/, {
-    message: 'DI/DUIMP deve estar no formato XX/XXXXXXX-X',
-  })
+  @Matches(DOCUMENTO_SAIDA_REGEX, { message: DOCUMENTO_SAIDA_MENSAGEM })
   diDuimp?: string;
 
   @IsOptional()
