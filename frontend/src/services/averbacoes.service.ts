@@ -64,6 +64,22 @@ export const averbacoesService = {
     return response.data;
   },
 
+  /** Um PDF só para todos os obrigatórios pendentes — cada um entra em análise. */
+  enviarArquivoUnico: async (
+    processoId: string,
+    arquivo: File,
+  ): Promise<{ documentos: AverbacaoDocumento[] }> => {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+
+    const response = await apiNest.post(
+      `${BASE_PATH}/${processoId}/arquivo-unico`,
+      form,
+      { headers: { 'Content-Type': undefined } },
+    );
+    return response.data;
+  },
+
   /** Streaming autenticado — não há link público para o arquivo. */
   urlArquivo: (documentoId: string): string =>
     `${apiNest.defaults.baseURL}${BASE_PATH}/documentos/${documentoId}/arquivo`,

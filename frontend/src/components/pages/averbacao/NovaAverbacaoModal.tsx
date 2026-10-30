@@ -7,7 +7,10 @@ import {
   Check,
   CheckCircle2,
   FileSignature,
+  FileStack,
+  Files,
   FolderOpen,
+  Info,
   Loader2,
   Package,
   Plane,
@@ -33,6 +36,7 @@ import { UserRole } from '@/types';
 import {
   useClientesAutorizados,
   useCriarAverbacao,
+  useEnviarArquivoUnico,
   useEnviarDocumento,
   useTiposPorModalidade,
 } from '@/hooks/useAverbacoes';
@@ -189,6 +193,248 @@ function LinhaDocumento({
   );
 }
 
+type ModoEnvio = 'individual' | 'unico';
+
+const MODOS_ENVIO: {
+  valor: ModoEnvio;
+  Icon: typeof Files;
+  titulo: string;
+  descricao: string;
+}[] = [
+  {
+    valor: 'individual',
+    Icon: Files,
+    titulo: 'Um arquivo por documento',
+    descricao: 'Anexe cada documento separadamente.',
+  },
+  {
+    valor: 'unico',
+    Icon: FileStack,
+    titulo: 'Arquivo único',
+    descricao: 'Todos os obrigatórios em um só PDF.',
+  },
+];
+
+/** Escolha entre anexar documento a documento ou um PDF com todos. */
+function SeletorModoEnvio({
+  modo,
+  onChange,
+  bloqueado,
+}: {
+  modo: ModoEnvio;
+  onChange: (modo: ModoEnvio) => void;
+  /** Depois do arquivo único enviado não há mais o que alternar. */
+  bloqueado: boolean;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Forma de envio dos documentos"
+      className="grid gap-3 sm:grid-cols-2"
+    >
+      {MODOS_ENVIO.map(({ valor, Icon, titulo, descricao }) => {
+        const ativo = modo === valor;
+        return (
+          <button
+            key={valor}
+            type="button"
+            role="radio"
+            aria-checked={ativo}
+            disabled={bloqueado && !ativo}
+            onClick={() => onChange(valor)}
+            className={cn(
+              'relative flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              ativo
+                ? 'border-primary bg-primary/5'
+                : 'hover:border-muted-foreground/40 hover:bg-muted/40',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent',
+            )}
+          >
+            <span
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                ativo
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              <Icon className="h-5 w-5" aria-hidden />
+            </span>
+            <span className="min-w-0">
+              <span className="block font-medium">{titulo}</span>
+              <span className="block text-xs text-muted-foreground">
+                {descricao}
+              </span>
+            </span>
+            {ativo && (
+              <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Upload de um PDF que cobre todos os obrigatórios ainda sem anexo. A lista
+ * numerada serve de roteiro para montar o arquivo na ordem que a equipe da
+ * Aurora espera encontrar.
+ */
+function BlocoArquivoUnico({
+  processoId,
+  obrigatorios,
+  enviados,
+  arquivoEnviado,
+  onEnviado,
+}: {
+  processoId: string;
+  obrigatorios: TipoDocumentoResumo[];
+  enviados: Set<string>;
+  /** Nome do PDF único já enviado nesta sessão, se houver. */
+  arquivoEnviado: string | null;
+  onEnviado: (nome: string, tipoIds: string[]) => void;
+}) {
+  const { mutateAsync: enviar, isPending } = useEnviarArquivoUnico(processoId);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const pendentes = obrigatorios.filter((t) => !enviados.has(t.id));
+  const jaEnviados = obrigatorios.length - pendentes.length;
+
+  const anexar = async (arquivo: File | null) => {
+    if (!arquivo) return;
+    setErro(null);
+    try {
+      const { documentos } = await enviar(arquivo);
+      onEnviado(
+        arquivo.name,
+        documentos.map((d) => d.tipoDocumento.id),
+      );
+      toast.success(
+        `Arquivo único enviado — ${documentos.length} documento(s) em análise.`,
+      );
+    } catch (e: unknown) {
+      setErro(getErrorMessage(e, 'Falha ao enviar o arquivo.'));
+    }
+  };
+
+  if (arquivoEnviado) {
+    return (
+      <div className="rounded-lg border border-emerald-300 bg-emerald-50/60 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+        <div className="flex items-start gap-3">
+          <CheckCircle2
+            className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Arquivo único enviado</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {arquivoEnviado}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A equipe da Aurora vai validar cada documento abaixo
+              separadamente. Se algum for rejeitado, você reenvia só aquele no
+              detalhe do processo.
+            </p>
+          </div>
+        </div>
+        <ul className="mt-3 divide-y rounded-md border bg-background">
+          {obrigatorios.map((tipo) => (
+            <li
+              key={tipo.id}
+              className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0">{tipo.descricao}</span>
+              <Badge variant="warning" className="shrink-0">
+                Em análise
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border p-4">
+      <div className="flex gap-3 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <p>
+          Junte todos os documentos obrigatórios em um único PDF, de preferência
+          na ordem abaixo. A equipe da Aurora vai abrir o arquivo e{' '}
+          <strong>validar cada documento separadamente</strong> — todos ficam
+          &quot;Em análise&quot; ao enviar.
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          O PDF deve conter ({pendentes.length})
+        </p>
+        <ol className="mt-2 space-y-1.5">
+          {obrigatorios.map((tipo, i) => {
+            const enviado = enviados.has(tipo.id);
+            return (
+              <li
+                key={tipo.id}
+                className={cn(
+                  'flex items-center gap-3 text-sm',
+                  enviado && 'text-muted-foreground',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                    enviado
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-primary/10 text-primary',
+                  )}
+                >
+                  {enviado ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                </span>
+                <span className={cn('min-w-0 flex-1', enviado && 'line-through')}>
+                  {tipo.descricao}
+                </span>
+                {enviado && (
+                  <Badge variant="secondary" className="shrink-0">
+                    Já enviado
+                  </Badge>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {jaEnviados > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Os documentos já enviados separadamente não serão substituídos.
+          </p>
+        )}
+      </div>
+
+      {pendentes.length === 0 ? (
+        <p className="rounded-md bg-muted/40 p-3 text-sm text-muted-foreground">
+          Todos os obrigatórios já foram anexados separadamente — não há o que
+          enviar no arquivo único.
+        </p>
+      ) : isPending ? (
+        <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Enviando arquivo único…
+        </p>
+      ) : (
+        <FileUpload
+          value={null}
+          onChange={anexar}
+          accept={['application/pdf']}
+          label="Arraste o PDF com todos os documentos obrigatórios"
+          hint="PDF até 20 MB"
+          error={erro}
+        />
+      )}
+    </div>
+  );
+}
+
 export function NovaAverbacaoModal({
   aberto,
   onClose,
@@ -212,6 +458,8 @@ export function NovaAverbacaoModal({
   const [etapa, setEtapa] = useState(1);
   const [processo, setProcesso] = useState<AverbacaoProcessoResumo | null>(null);
   const [enviados, setEnviados] = useState<Set<string>>(new Set());
+  const [modoEnvio, setModoEnvio] = useState<ModoEnvio>('individual');
+  const [arquivoUnico, setArquivoUnico] = useState<string | null>(null);
 
   const [modalidade, setModalidade] = useState<Modalidade | ''>('');
   const [clienteId, setClienteId] = useState('');
@@ -230,6 +478,8 @@ export function NovaAverbacaoModal({
     setEtapa(1);
     setProcesso(null);
     setEnviados(new Set());
+    setModoEnvio('individual');
+    setArquivoUnico(null);
     setModalidade('');
     setClienteId('');
     setDiDuimp('');
@@ -263,9 +513,15 @@ export function NovaAverbacaoModal({
     [tipos],
   );
 
-  const obrigatoriosPendentes = exigidos.filter(
-    (t) => t.obrigatorio && !enviados.has(t.id),
+  const obrigatorios = exigidos.filter((t) => t.obrigatorio);
+  const opcionais = exigidos.filter((t) => !t.obrigatorio);
+
+  const obrigatoriosPendentes = obrigatorios.filter(
+    (t) => !enviados.has(t.id),
   ).length;
+
+  const marcarEnviado = (tipoId: string) =>
+    setEnviados((atual) => new Set(atual).add(tipoId));
 
   // Criar o processo é o que fecha a etapa 1: os documentos precisam de um
   // processo para pertencer. Se a pessoa sair daqui, ele fica em RASCUNHO e
@@ -535,24 +791,66 @@ export function NovaAverbacaoModal({
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Anexe os documentos em PDF. Você pode enviar agora ou depois — o
-              processo fica salvo e só entra em análise quando todos os
-              obrigatórios forem anexados.
+              Anexe os documentos em PDF — um arquivo por documento ou um
+              arquivo único com todos os obrigatórios. Você pode enviar agora
+              ou depois: o processo fica salvo.
             </p>
 
-            <div className="space-y-3">
-              {exigidos.map((tipo) => (
-                <LinhaDocumento
-                  key={tipo.id}
-                  tipo={tipo}
+            {obrigatorios.length > 0 && (
+              <SeletorModoEnvio
+                modo={modoEnvio}
+                onChange={setModoEnvio}
+                bloqueado={arquivoUnico !== null}
+              />
+            )}
+
+            {modoEnvio === 'individual' ? (
+              <div className="space-y-3">
+                {exigidos.map((tipo) => (
+                  <LinhaDocumento
+                    key={tipo.id}
+                    tipo={tipo}
+                    processoId={processo!.id}
+                    enviado={enviados.has(tipo.id)}
+                    onEnviado={() => marcarEnviado(tipo.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                <BlocoArquivoUnico
                   processoId={processo!.id}
-                  enviado={enviados.has(tipo.id)}
-                  onEnviado={() =>
-                    setEnviados((atual) => new Set(atual).add(tipo.id))
-                  }
+                  obrigatorios={obrigatorios}
+                  enviados={enviados}
+                  arquivoEnviado={arquivoUnico}
+                  onEnviado={(nome, tipoIds) => {
+                    setArquivoUnico(nome);
+                    setEnviados((atual) => new Set([...atual, ...tipoIds]));
+                  }}
                 />
-              ))}
-            </div>
+
+                {opcionais.length > 0 && (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="font-medium">Documentos opcionais</p>
+                      <p className="text-sm text-muted-foreground">
+                        Não fazem parte do arquivo único. Envie separadamente,
+                        se tiver.
+                      </p>
+                    </div>
+                    {opcionais.map((tipo) => (
+                      <LinhaDocumento
+                        key={tipo.id}
+                        tipo={tipo}
+                        processoId={processo!.id}
+                        enviado={enviados.has(tipo.id)}
+                        onEnviado={() => marcarEnviado(tipo.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
         </div>

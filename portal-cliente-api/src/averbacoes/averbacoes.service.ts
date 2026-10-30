@@ -37,6 +37,7 @@ const SELECT_DOCUMENTO = {
   status: true,
   arquivoNome: true,
   arquivoTamanho: true,
+  arquivoUnico: true,
   motivoRejeicao: true,
   createdAt: true,
   updatedAt: true,
@@ -821,19 +822,7 @@ export class AverbacoesService {
       );
     }
     this.exigirDono(documento.processo, user);
-    if (
-      documento.processo.status ===
-      AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO
-    ) {
-      throw new ConflictException(
-        'Processo já liberado para agendamento — não aceita novos documentos.',
-      );
-    }
-    if (documento.processo.status === AverbacaoProcessoStatus.CANCELADO) {
-      throw new ConflictException(
-        'Processo cancelado — não aceita novos documentos.',
-      );
-    }
+    this.exigirAceitaDocumentos(documento.processo.status);
     // Reenviar por cima de um documento já validado o devolveria para análise
     // e derrubaria a liberação sem que ninguém pedisse.
     if (documento.status === AverbacaoDocumentoStatus.VALIDADO) {
@@ -857,6 +846,9 @@ export class AverbacoesService {
           arquivoNome: nome,
           arquivoTamanho: file!.size,
           arquivoMime: 'application/pdf',
+          // Reenvio individual (ex.: após rejeição) deixa de apontar para o
+          // PDF único — este documento passa a ter arquivo próprio.
+          arquivoUnico: false,
           motivoRejeicao: null,
         },
         select: SELECT_DOCUMENTO,
@@ -893,6 +885,114 @@ export class AverbacoesService {
     // O arquivo anterior fica no bucket: o histórico aponta para ele e apagar
     // destruiria a versão que foi analisada.
     return atualizado;
+  }
+
+  /**
+   * Um só PDF com todos os documentos obrigatórios pendentes. Cada obrigatório
+   * passa a apontar para o mesmo arquivo e entra em análise — a Aurora segue
+   * aprovando/rejeitando documento a documento, como no envio individual.
+   * Obrigatórios já em análise ou validados não são tocados.
+   */
+  async enviarArquivoUnico(
+    user: User,
+    processoId: string,
+    file: Express.Multer.File | undefined,
+  ) {
+    const processo = await this.prisma.averbacaoProcesso.findUnique({
+      where: { id: processoId },
+      select: {
+        id: true,
+        clienteId: true,
+        despachanteId: true,
+        status: true,
+        documentos: {
+          where: {
+            tipoDocumento: { obrigatorio: true },
+            status: {
+              in: [
+                AverbacaoDocumentoStatus.NAO_ENVIADO,
+                AverbacaoDocumentoStatus.REJEITADO,
+              ],
+            },
+          },
+          select: { id: true, arquivoKey: true },
+        },
+      },
+    });
+
+    if (!processo) throw new NotFoundException('Processo não encontrado');
+    this.exigirDono(processo, user);
+    this.exigirAceitaDocumentos(processo.status);
+    if (processo.documentos.length === 0) {
+      throw new BadRequestException(
+        'Nenhum documento obrigatório pendente de envio.',
+      );
+    }
+
+    const key = validarPdfEGerarKey(file, `averbacoes/${processoId}`);
+    await this.minio.uploadFile(file!, key);
+
+    const nome = nomeExibicao(file!.originalname);
+
+    return this.prisma.$transaction(async (tx) => {
+      const documentos = [];
+      for (const documento of processo.documentos) {
+        documentos.push(
+          await tx.averbacaoDocumento.update({
+            where: { id: documento.id },
+            data: {
+              status: AverbacaoDocumentoStatus.EM_ANALISE,
+              arquivoKey: key,
+              arquivoNome: nome,
+              arquivoTamanho: file!.size,
+              arquivoMime: 'application/pdf',
+              arquivoUnico: true,
+              motivoRejeicao: null,
+            },
+            select: SELECT_DOCUMENTO,
+          }),
+        );
+
+        await tx.averbacaoHistorico.create({
+          data: {
+            documentoId: documento.id,
+            acao: documento.arquivoKey
+              ? AverbacaoHistoricoAcao.SUBSTITUICAO
+              : AverbacaoHistoricoAcao.ENVIO,
+            autorNome: user.name,
+            autorUserId: user.id,
+            arquivoKey: key,
+            arquivoNome: nome,
+          },
+        });
+      }
+
+      const statusProcesso = await this.recalcularProcesso(tx, processoId);
+
+      // Um evento só para o lote inteiro: a Aurora relê o processo completo.
+      await this.outbox.createAverbacaoProcessoAtualizado(tx, {
+        id: processoId,
+        clienteId: processo.clienteId,
+        despachanteId: processo.despachanteId,
+        status: statusProcesso,
+      });
+
+      return { documentos };
+    });
+  }
+
+  /** Liberado ou cancelado não recebe mais documento. */
+  private exigirAceitaDocumentos(status: AverbacaoProcessoStatus) {
+    if (status === AverbacaoProcessoStatus.LIBERADO_AGENDAMENTO) {
+      throw new ConflictException(
+        'Processo já liberado para agendamento — não aceita novos documentos.',
+      );
+    }
+    if (status === AverbacaoProcessoStatus.CANCELADO) {
+      throw new ConflictException(
+        'Processo cancelado — não aceita novos documentos.',
+      );
+    }
   }
 
   async abrirArquivo(documentoId: string, user?: User) {
