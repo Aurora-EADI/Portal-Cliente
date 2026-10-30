@@ -873,6 +873,9 @@ model AverbacaoDocumento {
   arquivoNome    String? @map("arquivo_nome")
   arquivoTamanho Int?    @map("arquivo_tamanho")
   arquivoMime    String? @map("arquivo_mime")
+  // PDF único enviado para todos os obrigatórios: vários documentos do
+  // processo apontam para o mesmo arquivoKey e a Aurora valida cada um.
+  arquivoUnico   Boolean @default(false) @map("arquivo_unico")
 
   /// Obrigatório quando REJEITADO — é o que o Despachante lê para corrigir.
   motivoRejeicao String? @map("motivo_rejeicao")

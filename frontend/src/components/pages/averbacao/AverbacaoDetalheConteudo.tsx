@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   ExternalLink,
+  FileStack,
   History,
   Loader2,
   Plane,
@@ -157,6 +158,18 @@ function CartaoDocumento({
           </a>
         ) : (
           'Nenhum arquivo enviado para esta exigência.'
+        )}
+        {documento.arquivoNome && documento.arquivoUnico && (
+          <div className="mt-1.5">
+            <Badge
+              variant="secondary"
+              className="gap-1"
+              title="Este documento faz parte do PDF único enviado com os demais obrigatórios."
+            >
+              <FileStack className="h-3 w-3" aria-hidden />
+              Arquivo único
+            </Badge>
+          </div>
         )}
       </div>
 

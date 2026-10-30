@@ -43,6 +43,22 @@ import {
   VincularLoteDto,
 } from './dto/decidir-documento.dto';
 
+const UPLOAD_PDF = {
+  storage: memoryStorage(),
+  limits: { fileSize: TAMANHO_MAXIMO_BYTES },
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, acceptFile: boolean) => void,
+  ) => {
+    // Barreira barata; a que vale é a dos magic bytes no service.
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Envie o documento em PDF'), false);
+    }
+    cb(null, true);
+  },
+};
+
 function enviarPdf(res: Response, nome: string, stream: NodeJS.ReadableStream) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
@@ -119,19 +135,7 @@ export class AverbacoesController {
   @Post(':id/documentos/:tipoId')
   @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  @UseInterceptors(
-    FileInterceptor('arquivo', {
-      storage: memoryStorage(),
-      limits: { fileSize: TAMANHO_MAXIMO_BYTES },
-      fileFilter: (_req, file, cb) => {
-        // Barreira barata; a que vale é a dos magic bytes no service.
-        if (file.mimetype !== 'application/pdf') {
-          return cb(new Error('Envie o documento em PDF'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('arquivo', UPLOAD_PDF))
   enviarDocumento(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('tipoId', ParseUUIDPipe) tipoId: string,
@@ -139,6 +143,19 @@ export class AverbacoesController {
     @UploadedFile() arquivo?: Express.Multer.File,
   ) {
     return this.service.enviarDocumento(req.user as User, id, tipoId, arquivo);
+  }
+
+  /** Um PDF só cobrindo todos os documentos obrigatórios pendentes. */
+  @Post(':id/arquivo-unico')
+  @Roles(UserRole.DESPACHANTE, UserRole.CLIENTE)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UseInterceptors(FileInterceptor('arquivo', UPLOAD_PDF))
+  enviarArquivoUnico(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+    @UploadedFile() arquivo?: Express.Multer.File,
+  ) {
+    return this.service.enviarArquivoUnico(req.user as User, id, arquivo);
   }
 
   @Get('documentos/:docId/arquivo')

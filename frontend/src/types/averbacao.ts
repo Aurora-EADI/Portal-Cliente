@@ -79,6 +79,8 @@ export interface AverbacaoDocumento {
   status: DocumentoStatus;
   arquivoNome: string | null;
   arquivoTamanho: number | null;
+  /** Arquivo é o PDF único compartilhado com os demais obrigatórios. */
+  arquivoUnico: boolean;
   motivoRejeicao: string | null;
   createdAt: string;
   updatedAt: string;

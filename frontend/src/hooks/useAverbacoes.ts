@@ -100,3 +100,17 @@ export function useEnviarDocumento(processoId: string) {
     },
   });
 }
+
+export function useEnviarArquivoUnico(processoId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (arquivo: File) =>
+      averbacoesService.enviarArquivoUnico(processoId, arquivo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: AVERBACAO_KEYS.detail(processoId),
+      });
+      queryClient.invalidateQueries({ queryKey: AVERBACAO_KEYS.list() });
+    },
+  });
+}
