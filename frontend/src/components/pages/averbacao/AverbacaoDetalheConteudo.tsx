@@ -37,6 +37,7 @@ import { StatusDocumento, StatusProcesso } from './StatusBadges';
 import { AcoesProcesso, BannerDevolucao } from './AcoesProcesso';
 import { DOCUMENTO_SAIDA, tipoDocumentoSaida } from './documentoSaida';
 import { useAuthContext } from '@/context/AuthContext';
+import { ModoEnvio, SeletorModoEnvio } from './SeletorModoEnvio';
 
 const ICONE_MODALIDADE: Record<Modalidade, typeof Ship> = {
   [Modalidade.MARITIMO]: Ship,
@@ -250,28 +251,25 @@ function CartaoDocumento({
 }
 
 /**
- * Atalho para enviar num PDF só os obrigatórios ainda sem arquivo ou
- * rejeitados — os mesmos que o backend aceita em /arquivo-unico. Fica fechado
- * por padrão: quem prefere anexar documento a documento não é atrapalhado.
+ * Envio num PDF só dos obrigatórios ainda sem arquivo ou rejeitados — os
+ * mesmos que o backend aceita em /arquivo-unico. Aparece quando a pessoa
+ * escolhe "Arquivo único" no seletor de forma de envio.
  */
 function PainelArquivoUnico({
   processoId,
   pendentes,
+  onEnviado,
+  onCancelar,
 }: {
   processoId: string;
   /** Obrigatórios NAO_ENVIADO ou REJEITADO, já na ordem da tela. */
   pendentes: AverbacaoDocumento[];
+  onEnviado: () => void;
+  onCancelar: () => void;
 }) {
-  const [aberto, setAberto] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const { mutateAsync: enviar, isPending } = useEnviarArquivoUnico(processoId);
-
-  const fechar = () => {
-    setAberto(false);
-    setArquivo(null);
-    setErro(null);
-  };
 
   const submeter = async () => {
     if (!arquivo) return;
@@ -281,38 +279,12 @@ function PainelArquivoUnico({
       toast.success(
         `Arquivo único enviado — ${documentos.length} documento(s) em análise.`,
       );
-      fechar();
+      setArquivo(null);
+      onEnviado();
     } catch (e: unknown) {
       setErro(getErrorMessage(e, 'Falha ao enviar o arquivo.'));
     }
   };
-
-  if (!aberto) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <FileStack className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-medium">
-              {pendentes.length} obrigatório(s) aguardando arquivo
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Tem todos em um PDF só? Envie de uma vez como arquivo único.
-            </p>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5"
-          onClick={() => setAberto(true)}
-        >
-          <FileStack className="h-3.5 w-3.5" />
-          Enviar arquivo único
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-3 rounded-lg border border-primary/30 p-4">
@@ -373,7 +345,12 @@ function PainelArquivoUnico({
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Enviar {pendentes.length} documento(s) para análise
         </Button>
-        <Button size="sm" variant="outline" onClick={fechar} disabled={isPending}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onCancelar}
+          disabled={isPending}
+        >
           Cancelar
         </Button>
       </div>
@@ -482,6 +459,12 @@ export function AverbacaoDetalheConteudo({
         d.status === DocumentoStatus.REJEITADO),
   );
 
+  const [modoEnvio, setModoEnvio] = useState<ModoEnvio>('individual');
+  const podeArquivoUnico =
+    !somenteLeitura && pendentesArquivoUnico.length > 0;
+  // Sem pendentes (ex.: acabou de enviar) volta sozinho para o individual.
+  const modoAtivo: ModoEnvio = podeArquivoUnico ? modoEnvio : 'individual';
+
   return (
     <div className="space-y-4">
       <BannerDevolucao processo={processo} />
@@ -537,15 +520,30 @@ export function AverbacaoDetalheConteudo({
             </span>
           </div>
 
-          {!somenteLeitura && pendentesArquivoUnico.length > 0 && (
+          {/* Mesma escolha da criação: quem fechou o modal antes de anexar
+              volta aqui e encontra as duas formas de envio. */}
+          {podeArquivoUnico && (
+            <SeletorModoEnvio modo={modoAtivo} onChange={setModoEnvio} />
+          )}
+
+          {modoAtivo === 'unico' && (
             <PainelArquivoUnico
               processoId={processo.id}
               pendentes={pendentesArquivoUnico}
+              onEnviado={() => setModoEnvio('individual')}
+              onCancelar={() => setModoEnvio('individual')}
             />
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {documentos.map((d) => (
+            {/* No arquivo único os obrigatórios pendentes vão no PDF; os
+                cartões deles sairiam repetidos com a lista do painel. */}
+            {documentos
+              .filter(
+                (d) =>
+                  modoAtivo !== 'unico' || !pendentesArquivoUnico.includes(d),
+              )
+              .map((d) => (
               <CartaoDocumento
                 key={d.id}
                 documento={d}
