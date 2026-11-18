@@ -24,10 +24,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { data: session, isPending: isSessionPending } = authClient.useSession();
+  // O better-auth refaz o fetch da sessão ao voltar o foco para a aba e devolve
+  // um objeto novo a cada vez. Depender do objeto recarregava o perfil e
+  // ligava isLoading, o que fazia os guards trocarem a página pelo loader —
+  // desmontando tudo que estava aberto (ex.: o modal de Nova Averbação). Só a
+  // troca de usuário justifica recarregar.
+  const sessionUserId = session?.user?.id ?? null;
 
   useEffect(() => {
     if (isSessionPending) return;
-    if (!session) {
+    if (!sessionUserId) {
       setCurrentUser(null);
       setIsLoading(false);
       return;
@@ -41,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [isSessionPending, session]);
+  }, [isSessionPending, sessionUserId]);
 
   const loginUser = async (user: User) => {
     setCurrentUser(user);
