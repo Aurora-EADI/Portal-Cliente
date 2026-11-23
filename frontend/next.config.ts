@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_STANDALONE === 'true' ? 'standalone' : undefined,
   outputFileTracingRoot: path.join(__dirname, '..'),
   reactStrictMode: true,
+  poweredByHeader: false,
 
   // Permite acessar o dev server a partir dos hosts internos.
   allowedDevOrigins: ['172.20.210.81', '172.20.210.84'],
