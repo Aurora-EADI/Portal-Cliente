@@ -5,6 +5,13 @@ packages:
 nodeLinker: isolated
 strictPeerDependencies: false
 
+# Correções de segurança em dependências transitivas (Dependabot/pnpm audit).
+# Remover cada entrada quando o pacote pai passar a trazer a versão corrigida.
+overrides:
+  multer: ^2.4.0 # @nestjs/platform-express fixa 2.2.0 (DoS no upload multipart)
+  postcss: ^8.5.23 # next fixa 8.4.31 (leitura de arquivo via sourceMappingURL)
+  mysql2: ^3.23.1 # vem pelo prisma CLI; não é usado em runtime (banco é Postgres)
+
 allowBuilds:
   '@nestjs/core': true
   '@prisma/client': true
