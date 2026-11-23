@@ -7,6 +7,16 @@ type BetterAuthEmail = {
   kind: 'password-reset';
 };
 
+// O nome é editável pelo próprio usuário; sem escape, vira HTML injetado no email.
+function escapeHtml(valor: string): string {
+  return valor
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export async function sendBetterAuthEmail(message: BetterAuthEmail): Promise<void> {
   const host = process.env.SMTP_HOST;
   const user = process.env.SMTP_USER;
@@ -34,6 +44,6 @@ export async function sendBetterAuthEmail(message: BetterAuthEmail): Promise<voi
     to: message.to,
     subject,
     text: `Olá, ${message.name}. Use este link para redefinir sua senha: ${link}`,
-    html: `<p>Olá, ${message.name}.</p><p><a href="${link}">Redefinir senha</a></p>`,
+    html: `<p>Olá, ${escapeHtml(message.name)}.</p><p><a href="${escapeHtml(link)}">Redefinir senha</a></p>`,
   });
 }

@@ -5,6 +5,15 @@ packages:
 nodeLinker: isolated
 strictPeerDependencies: false
 
+# Correções de segurança em dependências transitivas (Dependabot/pnpm audit).
+# Remover cada entrada quando o pacote pai passar a trazer a versão corrigida.
+overrides:
+  multer: ^2.4.0 # @nestjs/platform-express fixa 2.2.0 (DoS no upload multipart)
+  postcss: ^8.5.23 # next fixa 8.4.31 (leitura de arquivo via sourceMappingURL)
+  mysql2: ^3.23.1 # vem pelo prisma CLI; não é usado em runtime (banco é Postgres)
+  next: ^15.5.28 # better-auth ainda puxa 15.5.25 (RCE SVG na Image Optimization)
+  proxy-addr: ^2.0.8 # express (via NestJS) fixa <2.0.8 (IP spoofing IPv4-mapped)
+
 allowBuilds:
   '@nestjs/core': true
   '@prisma/client': true
@@ -17,11 +26,11 @@ allowBuilds:
   '@scarf/scarf': false
 
 minimumReleaseAgeExclude:
-  - '@better-auth/core@1.7.5'
-  - '@better-auth/drizzle-adapter@1.7.5'
-  - '@better-auth/kysely-adapter@1.7.5'
-  - '@better-auth/memory-adapter@1.7.5'
-  - '@better-auth/mongo-adapter@1.7.5'
-  - '@better-auth/prisma-adapter@1.7.5'
-  - '@better-auth/telemetry@1.7.5'
-  - better-auth@1.7.5
+  - '@better-auth/core@1.7.7'
+  - '@better-auth/drizzle-adapter@1.7.7'
+  - '@better-auth/kysely-adapter@1.7.7'
+  - '@better-auth/memory-adapter@1.7.7'
+  - '@better-auth/mongo-adapter@1.7.7'
+  - '@better-auth/prisma-adapter@1.7.7'
+  - '@better-auth/telemetry@1.7.7'
+  - better-auth@1.7.7
