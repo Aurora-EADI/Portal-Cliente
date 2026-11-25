@@ -86,6 +86,33 @@ services:
       RABBITMQ_AGENDAMENTO_CANCEL_RETRY_QUEUE: ${RABBITMQ_AGENDAMENTO_CANCEL_RETRY_QUEUE:-portal-cliente.agendamento.cancel.requested.retry.30s}
       RABBITMQ_AGENDAMENTO_CANCEL_DLQ: ${RABBITMQ_AGENDAMENTO_CANCEL_DLQ:-portal-cliente.agendamento.cancel.requested.dlq}
       AGENDAMENTO_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${AGENDAMENTO_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
+      # Demais filas/flags do rabbitmq.config.ts — sem repassar aqui, o .env.prod
+      # era ignorado e os consumers de comando ficavam sempre desligados.
+      RABBITMQ_DI_DESAVERBADA_QUEUE: ${RABBITMQ_DI_DESAVERBADA_QUEUE:-portal-cliente.dis-averbada.removed}
+      RABBITMQ_DI_DESAVERBADA_RETRY_QUEUE: ${RABBITMQ_DI_DESAVERBADA_RETRY_QUEUE:-portal-cliente.dis-averbada.removed.retry.30s}
+      RABBITMQ_DI_DESAVERBADA_DLQ: ${RABBITMQ_DI_DESAVERBADA_DLQ:-portal-cliente.dis-averbada.removed.dlq}
+      RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_QUEUE: ${RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_QUEUE:-portal-cliente.averbacao.tipos-documento.replicar}
+      RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_RETRY_QUEUE: ${RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_RETRY_QUEUE:-portal-cliente.averbacao.tipos-documento.replicar.retry.30s}
+      RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_DLQ: ${RABBITMQ_AVERBACAO_TIPOS_DOCUMENTO_DLQ:-portal-cliente.averbacao.tipos-documento.replicar.dlq}
+      RABBITMQ_AGENDAMENTO_STATUS_CHANGE_QUEUE: ${RABBITMQ_AGENDAMENTO_STATUS_CHANGE_QUEUE:-portal-cliente.agendamento.status.change.requested}
+      RABBITMQ_AGENDAMENTO_STATUS_CHANGE_RETRY_QUEUE: ${RABBITMQ_AGENDAMENTO_STATUS_CHANGE_RETRY_QUEUE:-portal-cliente.agendamento.status.change.requested.retry.30s}
+      RABBITMQ_AGENDAMENTO_STATUS_CHANGE_DLQ: ${RABBITMQ_AGENDAMENTO_STATUS_CHANGE_DLQ:-portal-cliente.agendamento.status.change.requested.dlq}
+      RABBITMQ_AVERBACAO_COMMAND_QUEUE: ${RABBITMQ_AVERBACAO_COMMAND_QUEUE:-portal-cliente.averbacao.command.requested}
+      RABBITMQ_AVERBACAO_COMMAND_RETRY_QUEUE: ${RABBITMQ_AVERBACAO_COMMAND_RETRY_QUEUE:-portal-cliente.averbacao.command.requested.retry.30s}
+      RABBITMQ_AVERBACAO_COMMAND_DLQ: ${RABBITMQ_AVERBACAO_COMMAND_DLQ:-portal-cliente.averbacao.command.requested.dlq}
+      RABBITMQ_GESTAO_ACESSO_COMMAND_QUEUE: ${RABBITMQ_GESTAO_ACESSO_COMMAND_QUEUE:-portal-cliente.gestao-acesso.command.requested}
+      RABBITMQ_GESTAO_ACESSO_COMMAND_RETRY_QUEUE: ${RABBITMQ_GESTAO_ACESSO_COMMAND_RETRY_QUEUE:-portal-cliente.gestao-acesso.command.requested.retry.30s}
+      RABBITMQ_GESTAO_ACESSO_COMMAND_DLQ: ${RABBITMQ_GESTAO_ACESSO_COMMAND_DLQ:-portal-cliente.gestao-acesso.command.requested.dlq}
+      RABBITMQ_TRANSPORTADORAS_QUEUE: ${RABBITMQ_TRANSPORTADORAS_QUEUE:-portal-cliente.transportadoras.replicar}
+      RABBITMQ_TRANSPORTADORAS_RETRY_QUEUE: ${RABBITMQ_TRANSPORTADORAS_RETRY_QUEUE:-portal-cliente.transportadoras.replicar.retry.30s}
+      RABBITMQ_TRANSPORTADORAS_DLQ: ${RABBITMQ_TRANSPORTADORAS_DLQ:-portal-cliente.transportadoras.replicar.dlq}
+      RABBITMQ_JANELA_COMMAND_QUEUE: ${RABBITMQ_JANELA_COMMAND_QUEUE:-portal-cliente.janela.command.requested}
+      RABBITMQ_JANELA_COMMAND_RETRY_QUEUE: ${RABBITMQ_JANELA_COMMAND_RETRY_QUEUE:-portal-cliente.janela.command.requested.retry.30s}
+      RABBITMQ_JANELA_COMMAND_DLQ: ${RABBITMQ_JANELA_COMMAND_DLQ:-portal-cliente.janela.command.requested.dlq}
+      AGENDAMENTO_STATUS_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${AGENDAMENTO_STATUS_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
+      AVERBACAO_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${AVERBACAO_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
+      GESTAO_ACESSO_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${GESTAO_ACESSO_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
+      JANELA_COMMAND_RABBITMQ_CONSUMER_ENABLED: ${JANELA_COMMAND_RABBITMQ_CONSUMER_ENABLED:-false}
       RABBITMQ_RETRY_DELAY_MS: ${RABBITMQ_RETRY_DELAY_MS:-30000}
       RABBITMQ_MAX_RETRIES: ${RABBITMQ_MAX_RETRIES:-5}
       # Assinatura HMAC das mensagens cross-portal. Mesmo segredo no Aurora.
