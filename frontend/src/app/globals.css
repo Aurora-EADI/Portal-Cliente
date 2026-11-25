@@ -4,9 +4,7 @@
 
 
 /* Ocultar indicador de build do Next.js */
-#__next-build-watcher, 
-/* Ocultar Vercel Toolbar */
-vercel-live-feedback {
+#__next-build-watcher {
   display: none !important;
 }
 
