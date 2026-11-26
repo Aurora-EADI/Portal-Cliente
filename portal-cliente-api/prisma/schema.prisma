@@ -185,6 +185,7 @@ model Cliente {
   procuracoes     Procuracao[]
   averbacoes      AverbacaoProcesso[]
   despachantes    DespachanteCliente[]
+  transportadorasVinculadas TransportadoraVinculo[]
 
   @@map("clientes")
 }
@@ -372,6 +373,7 @@ model Despachante {
   clientes     DespachanteCliente[]
   motoristas   Motorista[]
   veiculos     Veiculo[]
+  transportadorasVinculadas TransportadoraVinculo[]
 
   @@map("despachantes")
 }
@@ -523,8 +525,31 @@ model TransportadoraConta {
   agendamentos Agendamento[]
   motoristas   Motorista[]
   veiculos     Veiculo[]
+  vinculos     TransportadoraVinculo[]
 
   @@map("transportadora_contas")
+}
+
+/// "Meus transportadores": transportadoras da lista SIAUM que um cliente ou um
+/// despachante adicionou (busca por CNPJ) ou já atribuiu. Só elas aparecem no
+/// seletor de atribuição/agendamento desses perfis. Exatamente um dono por
+/// linha (CHECK na migration): clienteId XOR despachanteId.
+model TransportadoraVinculo {
+  id                    String   @id @default(uuid())
+  transportadoraContaId String   @map("transportadora_conta_id")
+  clienteId             String?  @map("cliente_id")
+  despachanteId         String?  @map("despachante_id")
+  criadoPorUserId       String?  @map("criado_por_user_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  transportadora TransportadoraConta @relation(fields: [transportadoraContaId], references: [id], onDelete: Cascade)
+  cliente        Cliente?            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  despachante    Despachante?        @relation(fields: [despachanteId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, transportadoraContaId])
+  @@unique([despachanteId, transportadoraContaId])
+  @@index([transportadoraContaId])
+  @@map("transportadora_vinculos")
 }
 
 model DiTransportadoraAtribuicao {

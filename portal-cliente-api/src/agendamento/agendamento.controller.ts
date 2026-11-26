@@ -37,7 +37,30 @@ export class AgendamentoController {
 
   @Get('transportadoras-conta')
   @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE, UserRole.TRANSPORTADORA)
-  findTransportadorasConta() { return this.fcl.findTransportadorasConta(); }
+  findTransportadorasConta(@Req() request: AuthenticatedRequest) {
+    return this.fcl.findTransportadorasConta(request.user as User);
+  }
+
+  @Get('transportadoras-conta/buscar')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  buscarTransportadoraPorCnpj(@Req() request: AuthenticatedRequest, @Query('cnpj') cnpj?: string) {
+    return this.fcl.buscarTransportadoraPorCnpj(request.user as User, cnpj);
+  }
+
+  @Post('transportadoras-conta/vinculos')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  vincularTransportadora(@Req() request: AuthenticatedRequest, @Body() body: any) {
+    return this.fcl.vincularTransportadora(request.user as User, body?.cnpj);
+  }
+
+  @Delete('transportadoras-conta/vinculos/:transportadoraContaId')
+  @Roles(UserRole.CLIENTE, UserRole.DESPACHANTE)
+  desvincularTransportadora(
+    @Req() request: AuthenticatedRequest,
+    @Param('transportadoraContaId') transportadoraContaId: string,
+  ) {
+    return this.fcl.desvincularTransportadora(request.user as User, transportadoraContaId);
+  }
 
   // AGENDAMENTOS
   // O escopo sai do usuário autenticado, no serviço: `clienteId` vem da query

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { DI, Motorista, Veiculo, Transportadora, Agendamento, AgendamentoStatus, JanelaAtendimento } from '@/types/agendamento';
 import { DadosFormData } from '@/components/pages/agendamento/steps/DadosStep';
@@ -20,6 +20,8 @@ interface AgendamentoContextValue {
   veiculos: Veiculo[];
   transportadoras: Transportadora[];
   transportadorasConta: Transportadora[];
+  /** Recarrega "Meus transportadores" (ex.: depois de vincular um CNPJ). */
+  reloadTransportadorasConta: () => Promise<void>;
   activeBookings: Agendamento[];
   visibleDis: DI[];
   visibleBookings: Agendamento[];
@@ -185,6 +187,15 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
   const [transportadorasConta, setTransportadorasConta] = useState<Transportadora[]>([]);
   const [activeBookings, setActiveBookings] = useState<Agendamento[]>([]);
   const [janelasAtendimento, setJanelasAtendimento] = useState<JanelaAtendimento[]>([]);
+
+  const reloadTransportadorasConta = useCallback(async () => {
+    try {
+      const r = await api.get('/agendamento/transportadoras-conta');
+      setTransportadorasConta(r.data);
+    } catch {
+      // Mantém a lista atual; o picker segue funcionando com o que já tem.
+    }
+  }, []);
 
   const {
     currentStep, setCurrentStep,
@@ -402,7 +413,7 @@ export function AgendamentoProvider({ children }: { children: ReactNode }) {
 
   return (
     <AgendamentoContext.Provider value={{
-      isLoadingData, dis, motoristas, veiculos, transportadoras, transportadorasConta, activeBookings, janelasAtendimento,
+      isLoadingData, dis, motoristas, veiculos, transportadoras, transportadorasConta, reloadTransportadorasConta, activeBookings, janelasAtendimento,
       visibleDis, visibleBookings, isAdmin, isDespachante, isTransportadora, canSelectClient,
       selectedClient: effectiveClient, selectedJanelaId,
       currentStep, setCurrentStep, selectedDI, setSelectedDI,

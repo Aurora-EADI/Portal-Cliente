@@ -269,3 +269,42 @@ test('caminho da DI segue recusando transportadora, como no fluxo legado', async
     /não disponível para transportadoras/i,
   );
 });
+
+test('wizard: cliente com CNPJ fora do SIAUM não agenda nem cadastra transportadora', async () => {
+  const service = servicoCom(
+    prismaFake({
+      transportadoraConta: {
+        findUnique: async () => null,
+        create: async () => { throw new Error('não deve criar transportadora'); },
+      },
+    }),
+  );
+  await assert.rejects(
+    () => service.createAgendamento(CLIENTE, { ...formBase, transportadora: 'Nova', transportadoraCnpj: '12.345.678/0001-99' }),
+    (e) => e.status === 404 && /suporte da Aurora/.test(e.message),
+  );
+});
+
+test('wizard: transportadora do SIAUM usada pelo cliente entra em meus transportadores', async () => {
+  const vinculos = [];
+  let criado;
+  const service = servicoCom(
+    prismaFake({
+      agendamento: {
+        findMany: async () => [],
+        create: async ({ data }) => { criado = data; return { id: 'ag-1', ...data }; },
+      },
+      transportadoraConta: {
+        findUnique: async () => ({ id: 'tc-9', cnpj: '12345678000199', nome: 'Transp', email: null, codTransp: null, ativo: true }),
+      },
+      transportadoraVinculo: {
+        findFirst: async () => null,
+        create: async ({ data }) => { vinculos.push(data); return data; },
+      },
+      user: { findFirst: async () => ({ id: 'tu-1' }) },
+    }),
+  );
+  await service.createAgendamento(CLIENTE, { ...formBase, transportadoraCnpj: '12345678000199' });
+  assert.equal(criado.transportadoraContaId, 'tc-9');
+  assert.deepEqual(vinculos, [{ clienteId: 'cli-1', transportadoraContaId: 'tc-9', criadoPorUserId: null }]);
+});

@@ -26,6 +26,10 @@ type UsuarioAgendamento = Pick<
   'role' | 'clienteId' | 'despachanteId' | 'transportadoraContaId'
 >;
 
+/** CNPJ fora da réplica SIAUM: só o suporte da Aurora inclui. */
+export const TRANSPORTADORA_FORA_DO_SIAUM =
+  'Transportador não encontrado no cadastro da Aurora (SIAUM). Entre em contato com o time de suporte da Aurora.';
+
 /** Campos que o formulário manda como lista e a tabela guarda como texto. */
 function juntarLista(valor: unknown): string | null {
   if (Array.isArray(valor)) return valor.join(', ') || null;
@@ -105,16 +109,17 @@ export class AgendamentoService {
     if (container && !(di.containers ?? '').split('/').map((v) => v.trim()).includes(container)) {
       throw new BadRequestException('Container não pertence a esta DI');
     }
+    // Só transportadoras da lista SIAUM. CNPJ fora dela não vira cadastro novo:
+    // quem resolve é o suporte da Aurora, que inclui no SIAUM.
     let transportadora = await this.prisma.transportadoraConta.findUnique({ where: { cnpj } });
-    if (!transportadora) {
-      if (!body.nome) throw new BadRequestException('nome é obrigatório para nova transportadora');
-      transportadora = await this.prisma.transportadoraConta.create({ data: { cnpj, nome: body.nome, whatsapp: body.whatsapp || null } });
-    } else if (body.whatsapp && body.whatsapp !== transportadora.whatsapp) {
+    if (!transportadora || transportadora.ativo === false) throw new NotFoundException(TRANSPORTADORA_FORA_DO_SIAUM);
+    if (body.whatsapp && body.whatsapp !== transportadora.whatsapp) {
       transportadora = await this.prisma.transportadoraConta.update({ where: { id: transportadora.id }, data: { whatsapp: body.whatsapp } });
       await this.prisma.diTransportadoraAtribuicao.updateMany({ where: { transportadoraContaId: transportadora.id, whatsappNotificadoEm: null }, data: { whatsappNotificadoEm: new Date() } });
     }
     const existente = await this.prisma.diTransportadoraAtribuicao.findFirst({ where: { nLote, container }, include: { transportadora: { select: { nome: true } } } });
     if (existente) throw new ConflictException('Esta DI/container já possui uma atribuição');
+    await this.garantirVinculo(user, transportadora.id);
     const convite = await this.ensureTransportadoraInvite(transportadora, body.email);
     const atribuicao = await this.prisma.diTransportadoraAtribuicao.create({
       data: { nLote, container, transportadoraContaId: transportadora.id, atribuidoPorUserId: user.id, atribuidoPorRole: user.role },
@@ -201,11 +206,89 @@ export class AgendamentoService {
     return { message: 'Atribuição removida' };
   }
 
-  findTransportadorasConta() {
-    return this.prisma.transportadoraConta.findMany({
-      where: { ativo: true, cnpj: { not: '' } },
-      orderBy: { nome: 'asc' },
+  /**
+   * Transportadoras que o seletor mostra. CLIENTE e DESPACHANTE veem só as
+   * vinculadas à própria empresa ("Meus transportadores"); as demais entram
+   * pela busca por CNPJ. TRANSPORTADORA segue vendo a lista inteira.
+   */
+  async findTransportadorasConta(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>) {
+    const base: Prisma.TransportadoraContaWhereInput = { ativo: true, cnpj: { not: '' } };
+    if (user.role === UserRole.CLIENTE || user.role === UserRole.DESPACHANTE) {
+      const dono = this.donoVinculo(user);
+      if (!dono) return [];
+      return this.prisma.transportadoraConta.findMany({
+        where: { ...base, vinculos: { some: dono } },
+        orderBy: { nome: 'asc' },
+      });
+    }
+    return this.prisma.transportadoraConta.findMany({ where: base, orderBy: { nome: 'asc' } });
+  }
+
+  /**
+   * Busca por CNPJ na lista SIAUM (réplica em transportadora_contas). Não
+   * vincula nada: só diz se existe e se já está em "Meus transportadores".
+   */
+  async buscarTransportadoraPorCnpj(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, cnpjInformado: unknown) {
+    const cnpj = String(cnpjInformado ?? '').replace(/\D/g, '');
+    if (cnpj.length !== 14) throw new BadRequestException('Informe um CNPJ válido (14 dígitos)');
+    const dono = this.donoVinculo(user);
+    if (!dono) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const transportadora = await this.prisma.transportadoraConta.findFirst({
+      where: { cnpj, ativo: true },
+      select: { id: true, nome: true, cnpj: true, email: true, telefone: true, whatsapp: true, codTransp: true },
     });
+    if (!transportadora) return { encontrado: false as const, mensagem: TRANSPORTADORA_FORA_DO_SIAUM };
+    const vinculo = await this.prisma.transportadoraVinculo.findFirst({
+      where: { ...dono, transportadoraContaId: transportadora.id },
+      select: { id: true },
+    });
+    return { encontrado: true as const, vinculado: Boolean(vinculo), transportadora };
+  }
+
+  /** Adiciona uma transportadora da lista SIAUM a "Meus transportadores". */
+  async vincularTransportadora(user: Pick<User, 'id' | 'role' | 'clienteId' | 'despachanteId'>, cnpjInformado: unknown) {
+    const cnpj = String(cnpjInformado ?? '').replace(/\D/g, '');
+    if (cnpj.length !== 14) throw new BadRequestException('Informe um CNPJ válido (14 dígitos)');
+    if (!this.donoVinculo(user)) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const transportadora = await this.prisma.transportadoraConta.findFirst({ where: { cnpj, ativo: true } });
+    if (!transportadora) throw new NotFoundException(TRANSPORTADORA_FORA_DO_SIAUM);
+    await this.garantirVinculo(user, transportadora.id);
+    return transportadora;
+  }
+
+  /** Tira de "Meus transportadores". Atribuições já feitas ficam como estão. */
+  async desvincularTransportadora(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>, transportadoraContaId: string) {
+    const dono = this.donoVinculo(user);
+    if (!dono) throw new ForbiddenException('Usuário sem vínculo de cliente/despachante');
+    const { count } = await this.prisma.transportadoraVinculo.deleteMany({ where: { ...dono, transportadoraContaId } });
+    if (!count) throw new NotFoundException('Transportadora não está em seus transportadores');
+    return { message: 'Transportadora removida de seus transportadores' };
+  }
+
+  /** Dono do vínculo: a empresa do usuário, não o usuário. */
+  private donoVinculo(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'>) {
+    if (user.role === UserRole.CLIENTE && user.clienteId) return { clienteId: user.clienteId };
+    if (user.role === UserRole.DESPACHANTE && user.despachanteId) return { despachanteId: user.despachanteId };
+    return null;
+  }
+
+  /** Idempotente; não faz nada para perfis sem dono (ADMIN, EMPLOYEE...). */
+  private async garantirVinculo(user: Pick<User, 'role' | 'clienteId' | 'despachanteId'> & Partial<Pick<User, 'id'>>, transportadoraContaId: string) {
+    const dono = this.donoVinculo(user);
+    if (!dono) return;
+    const existente = await this.prisma.transportadoraVinculo.findFirst({
+      where: { ...dono, transportadoraContaId },
+      select: { id: true },
+    });
+    if (existente) return;
+    try {
+      await this.prisma.transportadoraVinculo.create({
+        data: { ...dono, transportadoraContaId, criadoPorUserId: user.id ?? null },
+      });
+    } catch (erro) {
+      // Corrida com outra request do mesmo dono: o unique já garante o vínculo.
+      if ((erro as { code?: string }).code !== 'P2002') throw erro;
+    }
   }
 
 
@@ -561,9 +644,15 @@ export class AgendamentoService {
     if (!transportadoraContaId && transportadoraCnpj) {
       const cnpjDigits = String(transportadoraCnpj).replace(/\D/g, '');
       if (cnpjDigits.length === 14) {
+        const temDono = user.role === UserRole.CLIENTE || user.role === UserRole.DESPACHANTE;
         let conta = await this.prisma.transportadoraConta.findUnique({
           where: { cnpj: cnpjDigits },
         });
+        // Cliente e despachante só agendam com transportadora da lista SIAUM.
+        if (temDono && (!conta || conta.ativo === false)) {
+          throw new NotFoundException(TRANSPORTADORA_FORA_DO_SIAUM);
+        }
+        if (temDono && conta) await this.garantirVinculo(user, conta.id);
         if (!conta && transportadora) {
           conta = await this.prisma.transportadoraConta.create({
             data: { cnpj: cnpjDigits, nome: transportadora },

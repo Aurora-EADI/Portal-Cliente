@@ -212,8 +212,8 @@ export const TOURS: Record<TourPageId, PageTour> = {
       },
       {
         elemento: '[data-tour="transportadoras-convidar"]',
-        titulo: 'Convidar transportadora',
-        descricao: 'Transportadora que ainda não usa o portal recebe um convite para criar o acesso.',
+        titulo: 'Meus transportadores',
+        descricao: 'Busque o transportador pelo CNPJ no cadastro da Aurora e salve-o para usar nas atribuições. Quem ainda não usa o portal recebe o convite automaticamente na primeira atribuição.',
       },
       {
         elemento: '[data-tour="transportadoras-busca"]',

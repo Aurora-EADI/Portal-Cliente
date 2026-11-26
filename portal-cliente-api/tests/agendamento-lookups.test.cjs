@@ -54,6 +54,20 @@ test('carrier accounts exclude inactive and empty CNPJ records', async () => {
   const service = new AgendamentoService({
     transportadoraConta: { findMany: async args => { query = args; return []; } },
   });
-  await service.findTransportadorasConta();
+  await service.findTransportadorasConta({ role: 'TRANSPORTADORA', transportadoraContaId: 'tc-1' });
   assert.deepEqual(query, { where: { ativo: true, cnpj: { not: '' } }, orderBy: { nome: 'asc' } });
+});
+
+test('cliente e despachante veem so transportadoras vinculadas a propria empresa', async () => {
+  let query;
+  const service = new AgendamentoService({
+    transportadoraConta: { findMany: async args => { query = args; return []; } },
+  });
+  await service.findTransportadorasConta({ role: 'CLIENTE', clienteId: 'c-1' });
+  assert.deepEqual(query.where, { ativo: true, cnpj: { not: '' }, vinculos: { some: { clienteId: 'c-1' } } });
+  await service.findTransportadorasConta({ role: 'DESPACHANTE', despachanteId: 'd-1' });
+  assert.deepEqual(query.where, { ativo: true, cnpj: { not: '' }, vinculos: { some: { despachanteId: 'd-1' } } });
+  query = undefined;
+  assert.deepEqual(await service.findTransportadorasConta({ role: 'CLIENTE', clienteId: null }), []);
+  assert.equal(query, undefined);
 });

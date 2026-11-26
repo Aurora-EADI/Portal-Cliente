@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Search, Truck, X, Copy, Check, Mail, Trash2, UserPlus, CheckCircle } from 'lucide-react';
+import { Search, Truck, X, Trash2, UserPlus, CheckCircle } from 'lucide-react';
+import { formatCNPJ } from '@/lib/agendamento';
 import { useAgendamento } from '@/context/AgendamentoContext';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/error-message';
@@ -20,14 +21,8 @@ function parseContainers(containerStr: string): string[] {
   return containerStr.split('/').map(c => c.trim()).filter(Boolean);
 }
 
-interface ConviteGerado {
-  link: string;
-  expiresAt: string;
-  emailSent: boolean;
-}
-
 export function AtribuicaoTransportadorasView() {
-  const { dis, isLoadingData, transportadorasConta } = useAgendamento();
+  const { dis, isLoadingData, transportadorasConta, reloadTransportadorasConta } = useAgendamento();
   const [search, setSearch] = useState('');
   const [atribuicoes, setAtribuicoes] = useState<AtribuicaoApi[]>([]);
   const [loadingAtribuicoes, setLoadingAtribuicoes] = useState(true);
@@ -43,15 +38,12 @@ export function AtribuicaoTransportadorasView() {
   const [saving, setSaving] = useState(false);
   const [inviteNotice, setInviteNotice] = useState<{ status: 'pending' | 'created'; link?: string; emailSent?: boolean } | null>(null);
 
-  // Modal de convite
-  const [showConvite, setShowConvite] = useState(false);
-  const [convCnpj, setConvCnpj] = useState('');
-  const [convNome, setConvNome] = useState('');
-  const [convEmail, setConvEmail] = useState('');
-  const [convError, setConvError] = useState('');
-  const [convGerado, setConvGerado] = useState<ConviteGerado | null>(null);
-  const [convSaving, setConvSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
+  // Modal "Meus transportadores": busca por CNPJ no SIAUM + lista vinculada.
+  // O convite segue automático na atribuição (mesma regra de sempre).
+  const [showMeus, setShowMeus] = useState(false);
+  const [meusPickerKey, setMeusPickerKey] = useState(0);
+  const [meusError, setMeusError] = useState('');
+  const [removendoId, setRemovendoId] = useState<string | null>(null);
 
   const loadAtribuicoes = async () => {
     try {
@@ -136,40 +128,23 @@ export function AtribuicaoTransportadorasView() {
     }
   };
 
-  const handleConvidar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setConvError('');
-
-    const cnpjDigits = convCnpj.replace(/\D/g, '');
-    if (cnpjDigits.length !== 14) { setConvError('CNPJ inválido (14 dígitos).'); return; }
-    if (convNome.trim().length < 3) { setConvError('Informe o nome da transportadora.'); return; }
-
-    setConvSaving(true);
+  const handleDesvincular = async (transportadoraContaId: string) => {
+    setMeusError('');
+    setRemovendoId(transportadoraContaId);
     try {
-      const { data } = await api.post('/agendamento/convites-transportadora', {
-        cnpj: cnpjDigits,
-        nome: convNome.trim(),
-        email: convEmail.trim() || undefined,
-      });
-      setConvGerado({ link: data.link, expiresAt: data.expiresAt, emailSent: data.emailSent });
+      await api.delete(`/agendamento/transportadoras-conta/vinculos/${encodeURIComponent(transportadoraContaId)}`);
+      await reloadTransportadorasConta();
     } catch (err: unknown) {
-      setConvError(getErrorMessage(err, 'Erro ao gerar convite.'));
+      setMeusError(getErrorMessage(err, 'Erro ao remover transportador.'));
     } finally {
-      setConvSaving(false);
+      setRemovendoId(null);
     }
   };
 
-  const handleCopyLink = () => {
-    if (!convGerado) return;
-    navigator.clipboard.writeText(convGerado.link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const closeConvite = () => {
-    setShowConvite(false);
-    setConvCnpj(''); setConvNome(''); setConvEmail('');
-    setConvError(''); setConvGerado(null); setCopied(false);
+  const closeMeus = () => {
+    setShowMeus(false);
+    setMeusError('');
+    setMeusPickerKey(k => k + 1);
   };
 
   const isLoading = isLoadingData || loadingAtribuicoes;
@@ -183,11 +158,11 @@ export function AtribuicaoTransportadorasView() {
         </div>
         <button
           data-tour="transportadoras-convidar"
-          onClick={() => setShowConvite(true)}
+          onClick={() => setShowMeus(true)}
           className="inline-flex items-center gap-1.5 bg-[#ED6A23] hover:bg-[#D45917] text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm cursor-pointer self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Convidar Transportadora</span>
+          <span>Meus Transportadores</span>
         </button>
       </div>
 
@@ -422,65 +397,62 @@ export function AtribuicaoTransportadorasView() {
         </div>
       )}
 
-      {/* Modal de convite */}
-      {showConvite && (
+      {/* Modal "Meus transportadores" */}
+      {showMeus && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-zinc-200">
-              <h3 className="text-sm font-extrabold text-zinc-900">Convidar Transportadora</h3>
-              <button onClick={closeConvite} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
+              <h3 className="text-sm font-extrabold text-zinc-900">Meus Transportadores</h3>
+              <button onClick={closeMeus} className="text-zinc-400 hover:text-zinc-600 cursor-pointer"><X className="w-5 h-5" /></button>
             </div>
-
-            {!convGerado ? (
-              <form onSubmit={handleConvidar} className="p-5 space-y-4 text-xs">
-                {convError && (
-                  <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {convError}</div>
+            <div className="p-5 space-y-4 text-xs">
+              <p className="text-zinc-500">
+                Informe o CNPJ do transportador. Se ele estiver no cadastro da Aurora, salve-o para usar nas atribuições e agendamentos.
+                O convite de acesso é enviado automaticamente na primeira atribuição.
+              </p>
+              <TransportadoraCnpjPicker
+                key={meusPickerKey}
+                transportadoras={transportadorasConta}
+                cnpj=""
+                nome=""
+                onChangeCnpj={() => {}}
+                onChangeNome={() => {}}
+                onSelect={() => setMeusPickerKey(k => k + 1)}
+                onClear={() => {}}
+              />
+              {meusError && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded text-red-700 font-semibold">• {meusError}</div>
+              )}
+              <div>
+                <p className="text-zinc-600 font-bold mb-1.5">Salvos ({transportadorasConta.length})</p>
+                {transportadorasConta.length === 0 ? (
+                  <p className="text-zinc-400 border border-zinc-200 rounded-lg px-3 py-2 bg-zinc-50">Nenhum transportador salvo ainda.</p>
+                ) : (
+                  <ul className="border border-zinc-200 rounded-lg divide-y divide-zinc-100 max-h-64 overflow-y-auto">
+                    {transportadorasConta.map(t => (
+                      <li key={t.id} className="flex items-center gap-2 px-3 py-2">
+                        <Truck className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                        <span className="font-semibold text-zinc-800 truncate">{t.nome}</span>
+                        <span className="font-mono text-[10px] text-zinc-400">{formatCNPJ(t.cnpj ?? '')}</span>
+                        <button
+                          type="button"
+                          title="Remover de meus transportadores"
+                          disabled={removendoId === t.id}
+                          onClick={() => handleDesvincular(t.id)}
+                          className="ml-auto text-zinc-400 hover:text-red-600 disabled:opacity-50 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <TransportadoraCnpjPicker
-                  transportadoras={transportadorasConta}
-                  cnpj={convCnpj}
-                  nome={convNome}
-                  onChangeCnpj={setConvCnpj}
-                  onChangeNome={setConvNome}
-                  email={convEmail}
-                  onChangeEmail={setConvEmail}
-                />
-                <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={closeConvite} className="px-4 py-2 border border-zinc-200 text-zinc-600 bg-white rounded-lg font-semibold text-xs">Cancelar</button>
-                  <button type="submit" disabled={convSaving} className="px-4 py-2 bg-[#ED6A23] text-white rounded-lg font-bold hover:bg-[#D45917] disabled:opacity-60 text-xs shadow-sm">
-                    {convSaving ? 'Gerando...' : 'Gerar Convite'}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="p-5 space-y-4 text-xs">
-                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded text-emerald-700 font-semibold flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Convite gerado com sucesso!
-                  {convGerado.emailSent && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600"><Mail className="w-3.5 h-3.5" /> E-mail enviado</span>
-                  )}
-                </div>
-                <div>
-                  <label className="text-zinc-600 font-bold block mb-1.5">Link do convite</label>
-                  <div className="flex gap-2">
-                    <input readOnly value={convGerado.link}
-                      className="flex-1 py-2 px-3 border border-zinc-200 rounded-lg bg-zinc-50 font-mono text-[10px] text-zinc-700" />
-                    <button onClick={handleCopyLink}
-                      className="inline-flex items-center gap-1 px-3 py-2 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 font-bold cursor-pointer">
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copied ? 'Copiado' : 'Copiar'}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-zinc-400 mt-1.5">
-                    Expira em {new Date(convGerado.expiresAt).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button onClick={closeConvite} className="px-4 py-2 bg-zinc-800 text-white rounded-lg font-bold hover:bg-zinc-700 text-xs">Fechar</button>
-                </div>
+                <p className="text-[10px] text-zinc-400 mt-1.5">Remover daqui não desfaz atribuições já feitas.</p>
               </div>
-            )}
+              <div className="flex justify-end pt-2">
+                <button onClick={closeMeus} className="px-4 py-2 bg-zinc-800 text-white rounded-lg font-bold hover:bg-zinc-700 text-xs">Fechar</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
